@@ -1,0 +1,57 @@
+# Build context = D:/project (parent of komiku-server, needed for path dep
+# ../komik/core). Everything below is either heavy sibling projects or
+# generated artifacts the server build never reads.
+
+# --- Rust build artifacts (the big one: komik/target 2.1G, komiku-server/target 2.9G) ---
+**/target/
+**/Cargo.lock.orig
+
+# --- node/vite ---
+**/node_modules/
+**/dist/
+**/.vite/
+
+# --- VCS / tooling / local state ---
+**/.git/
+**/.gitignore
+**/.gitattributes
+.omh/
+.hermes/
+.hermes-tmp.*
+
+# --- heavy sibling projects NOT needed by the server build ---
+3d-html-site/
+akata/
+alif-3d-portfolio/
+alif-pixel-portfolio/
+archived/
+getcontact-cli/
+graphify-out/
+hermes-webui/
+jev-explainer-video/
+komiku-apk/
+komiku-re/
+old/
+OpenIntelligentUI/
+PortaText/
+porto-website-persona5-alif/
+pwtest/
+qa/
+scroll-craft-demo/
+unword/
+WA-Bulk/
+zombie-city-zx25r/
+zqa-blank/
+bot-discord.txt
+
+# --- VM disk images ---
+*.vhdx
+*.vhd
+*.iso
+
+# --- logs / scratch inside the needed dirs ---
+*.log
+komiku-server/data/
+komiku-server/downloads/
+komiku-server/graphify-out/
+komik/graphify-out/
