@@ -19,8 +19,21 @@ import type {
 
 const BASE = '/api'
 
+/**
+ * Header akun. Semua request menyisipkan `X-Komik-User` kalau user sudah
+ * masuk; server membalas 401 kalau header ini hilang di endpoint ber-scope
+ * akun. Import statis (bukan dynamic) supaya tidak ada await di jalur panas.
+ */
+import { getUser } from './account'
+
+function accountHeaders(base?: Record<string, string>): Record<string, string> | undefined {
+  const u = getUser()
+  if (!u) return base
+  return { ...(base ?? {}), 'X-Komik-User': u }
+}
+
 async function get<T>(path: string, signal?: AbortSignal): Promise<T> {
-  const res = await fetch(`${BASE}${path}`, { signal })
+  const res = await fetch(`${BASE}${path}`, { signal, headers: accountHeaders() })
   if (!res.ok) {
     // server mengirim { error, hint } — tampilkan itu, bukan stack mentah
     let detail = `HTTP ${res.status}`
@@ -46,7 +59,9 @@ async function send<T>(
   const res = await fetch(`${BASE}${path}`, {
     method,
     signal,
-    headers: body === undefined ? undefined : { 'content-type': 'application/json' },
+    headers: accountHeaders(
+      body === undefined ? undefined : { 'content-type': 'application/json' },
+    ),
     body: body === undefined ? undefined : JSON.stringify(body),
   })
   if (!res.ok) {
@@ -206,12 +221,47 @@ export interface NotifFavorite {
 
 export const notifApi = {
   list: (signal?: AbortSignal) => get<NotifListResponse>('/notif/list', signal),
+  /**
+   * Favorit milik akun aktif — dipakai untuk HYDRATE rak sebelum push pertama.
+   * Wajib dipanggil sebelum `putFavorites` boleh jalan (lihat notifStore).
+   */
+  getFavorites: (signal?: AbortSignal) =>
+    get<{ favorites: NotifFavorite[] }>('/notif/favorites', signal),
   putFavorites: (favorites: NotifFavorite[], signal?: AbortSignal) =>
     send<{ ok: boolean }>('PUT', '/notif/favorites', { favorites }, signal),
   markRead: (body: { ids: string[] } | { all: true }, signal?: AbortSignal) =>
     send<{ ok: boolean }>('POST', '/notif/read', body, signal),
   dismiss: (id: string, signal?: AbortSignal) =>
     send<{ ok: boolean }>('POST', '/notif/dismiss', { id }, signal),
+}
+
+// ---------------------------------------------------------------- akun
+
+export interface ClaimResult {
+  ok: boolean
+  username: string
+  /** true = akun BARU dibuat → arah sinkronisasi PUSH. false = akun lama → PULL. */
+  created: boolean
+}
+
+export const userApi = {
+  /** Daftar sekaligus masuk. Satu-satunya cara membuat/masuk akun. */
+  claim: (username: string, signal?: AbortSignal) =>
+    send<ClaimResult>('POST', '/user/claim', { username }, signal),
+  /** Probe akun aktif (401 kalau username belum terdaftar). */
+  me: (signal?: AbortSignal) => get<{ username: string }>('/user/me', signal),
+}
+
+// ---------------------------------------------------------------- progress
+
+/** Bentuk entri progress = `ProgressEntry` di hooks/useProgress.ts (opaque bagi server). */
+export type ProgressEntryPayload = Record<string, unknown>
+
+export const progressApi = {
+  get: (signal?: AbortSignal) =>
+    get<{ entries: ProgressEntryPayload[] }>('/progress', signal),
+  put: (entries: ProgressEntryPayload[], signal?: AbortSignal) =>
+    send<{ ok: boolean; count: number }>('PUT', '/progress', { entries }, signal),
 }
 
 /**

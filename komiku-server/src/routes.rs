@@ -35,6 +35,7 @@ enum ErrKind {
     Upstream,
     BadRequest,
     NotFound,
+    Unauthorized,
 }
 
 pub struct AppError {
@@ -57,6 +58,12 @@ impl AppError {
     pub fn not_found(msg: impl Into<String>) -> Self {
         AppError { err: anyhow::anyhow!(msg.into()), kind: ErrKind::NotFound }
     }
+
+    /// Klien belum terautentikasi sebagai akun (header `X-Komik-User` hilang,
+    /// invalid, atau akun belum terdaftar) — 401.
+    pub fn unauthorized(msg: impl Into<String>) -> Self {
+        AppError { err: anyhow::anyhow!(msg.into()), kind: ErrKind::Unauthorized }
+    }
 }
 
 impl IntoResponse for AppError {
@@ -78,6 +85,11 @@ impl IntoResponse for AppError {
                 .into_response(),
             ErrKind::NotFound => (
                 StatusCode::NOT_FOUND,
+                Json(json!({ "error": msg })),
+            )
+                .into_response(),
+            ErrKind::Unauthorized => (
+                StatusCode::UNAUTHORIZED,
                 Json(json!({ "error": msg })),
             )
                 .into_response(),

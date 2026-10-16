@@ -11,8 +11,10 @@ mod downloads;
 mod img;
 mod notif;
 mod pdf;
+mod progress;
 mod routes;
 mod unified;
+mod user;
 
 use routes::AppState;
 // Diperlukan untuk memanggil `.call(req)` pada Service/ServeDir di bawah.
@@ -42,6 +44,9 @@ async fn main() -> anyhow::Result<()> {
     // Route notif favorit lintas sumber (mirror unified::unified_routes()).
     // Handler stateless -> Router<()>, langsung di-merge sebelum fallback SPA.
     let app = app.merge(notif::notif_routes());
+    // Akun (username-only) + posisi baca per-akun. Sama-sama stateless.
+    let app = app.merge(user::user_routes());
+    let app = app.merge(progress::progress_routes());
     let app = if dist.is_dir() {
         let dist = dist.to_path_buf();
         app.fallback_service(tower::service_fn(move |req: axum::http::Request<axum::body::Body>| {
