@@ -1,0 +1,67 @@
+name: komik-hub
+
+# Komik Hub (komiku-web + komiku-server) — Docker stack.
+#
+#   docker compose up -d --build        # prod: nginx (8780) -> Rust API (internal)
+#   docker compose --profile dev up -d  # dev: vite HMR (5173) -> Rust API
+#
+# Server tidak di-publish ke host: port 8788 host dipakai server native
+# (jangan tabrak). Akses API dari host hanya lewat nginx /api proxy di 8780.
+# Data (PDF rak + state notif) bind-mount ke direktori host yang sama dengan
+# yang dipakai native server -> unduhan lama tetap kebaca.
+
+services:
+  komiku-server:
+    build:
+      # Context WAJIB root D:/project (bukan komiku-server): Cargo.toml server
+      # punya path dep komik-core = { path = "../komik/core" }.
+      context: .
+      dockerfile: komiku-server/Dockerfile
+    image: komiku-server:latest
+    environment:
+      PORT: 8788
+      RUST_LOG: info
+      KOMIKU_DOWNLOADS_DIR: /data/downloads
+      KOMIKU_NOTIF_DIR: /data
+    volumes:
+      - ./komiku-server/downloads:/data/downloads
+      - ./komiku-server/data:/data
+    restart: unless-stopped
+    networks: [komiknet]
+
+  web:
+    build:
+      context: ./komiku-web
+    image: komiku-web:latest
+    ports:
+      - "8780:80"
+    depends_on:
+      - komiku-server
+    restart: unless-stopped
+    networks: [komiknet]
+
+  web-dev:
+    profiles: [dev]
+    image: node:22-alpine
+    working_dir: /app
+    # npm ci sekali, lalu vite dev dengan HMR. CHOKIDAR_USEPOLLING wajib:
+    # bind-mount Windows tidak dapat inotify lintas VM Docker Desktop.
+    command: sh -c "npm ci && npm run dev -- --host 0.0.0.0"
+    environment:
+      VITE_API_TARGET: http://server:8788
+      CHOKIDAR_USEPOLLING: "true"
+    volumes:
+      - ./komiku-web:/app
+      - web-dev-nm:/app/node_modules
+    ports:
+      - "5173:5173"
+    depends_on:
+      - komiku-server
+    networks: [komiknet]
+
+networks:
+  komiknet:
+    driver: bridge
+
+volumes:
+  web-dev-nm:

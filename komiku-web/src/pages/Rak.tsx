@@ -5,7 +5,7 @@ import { unifiedApi } from '../api'
 import * as rakStore from '../rakStore'
 import { readerHref } from '../readerSource'
 import { Empty, Spinner } from '../App'
-import { IconArrowRight, IconSliders, IconXmark } from '../icons'
+import { IconArrowRight, IconXmark } from '../icons'
 import { humanSize } from '../downloadBatch'
 // Store unduhan: import STATIS (bukan import.meta.glob lazy) — glob-lazy
 // bisa membuat instance modul terpisah dari yang dipakai halaman series,
@@ -14,7 +14,7 @@ import { humanSize } from '../downloadBatch'
 import { cancelRun, getRuns, subscribeRuns } from '../downloadStore'
 import { useNotifCounts } from '../notifCounts'
 import SourceBadge from '../components/SourceBadge'
-import type { DownloadItem, DownloadsResponse, EvictionItem } from '../types'
+import type { DownloadItem, DownloadsResponse } from '../types'
 
 type TabKey = 'sejarah' | 'favorit' | 'unduhan'
 
@@ -332,8 +332,6 @@ function DownloadsTab() {
   const [data, setData] = useState<DownloadsResponse | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
-  const [evictions, setEvictions] = useState<EvictionItem[]>([])
-  const [settingsOpen, setSettingsOpen] = useState(false)
   // buka/tutup kartu series; default terbuka kalau <=3 chapter
   const [openOverride, setOpenOverride] = useState<Record<string, boolean>>({})
   const pending = usePendingRuns()
@@ -344,11 +342,6 @@ function DownloadsTab() {
       .downloads()
       .then(setData)
       .catch((e: Error) => setError(e.message))
-    // eviction dicek saat tab Unduhan dibuka
-    unifiedApi
-      .evictions()
-      .then((r) => setEvictions(r.items ?? []))
-      .catch(() => setEvictions([]))
   }
 
   useEffect(() => {
@@ -363,47 +356,10 @@ function DownloadsTab() {
       {/* proses unduhan yang masih jalan (lintas halaman) */}
       <ActiveDownloads runs={pending} />
 
-      {/* eviction: badge + sheet daftar */}
-      {evictions.length > 0 && (
-        <EvictionSheet
-          items={evictions}
-          onDismissed={() => {
-            setEvictions([])
-            load()
-          }}
-        />
-      )}
-
       {error && (
         <p className="mb-3 rounded-xl border border-brand-red/40 bg-brand-red/10 px-3 py-2 text-[12px] text-brand-red">
           {error}
         </p>
-      )}
-
-      {/* meter penyimpanan + tombol pengaturan */}
-      {data && (
-        <div className="mb-4 rounded-xl border border-ink-800 bg-ink-900 p-3">
-          <div className="flex items-center justify-between text-[11.5px] text-ink-300">
-            <span>
-              Penyimpanan {humanSize(data.total_bytes)} / {humanSize(data.limit_bytes)}
-            </span>
-            <button
-              onClick={() => setSettingsOpen(true)}
-              aria-label="Pengaturan unduhan"
-              className="rounded-full bg-ink-850 p-1.5 text-ink-300"
-            >
-              <IconSliders className="size-4" />
-            </button>
-          </div>
-          <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-ink-800">
-            <div
-              className="h-full rounded-full bg-brand-amber"
-              style={{
-                width: `${Math.min(100, Math.round((data.total_bytes / Math.max(data.limit_bytes, 1)) * 100))}%`,
-              }}
-            />
-          </div>
-        </div>
       )}
 
       {busy && !data && <Spinner label="Memuat unduhan…" />}
@@ -493,152 +449,7 @@ function DownloadsTab() {
           )
         })}
       </ul>
-
-      {settingsOpen && (
-        <SettingsModal
-          limitBytes={data?.limit_bytes ?? 0}
-          onClose={() => setSettingsOpen(false)}
-          onSaved={load}
-        />
-      )}
     </div>
   )
 }
 
-/** Sheet daftar file yang dihapus otomatis server (eviction). */
-function EvictionSheet({
-  items,
-  onDismissed,
-}: {
-  items: EvictionItem[]
-  onDismissed: () => void
-}) {
-  const dismiss = () => {
-    unifiedApi
-      .dismissEvictions()
-      .then(() => onDismissed())
-      .catch(() => onDismissed())
-  }
-  return (
-    <div className="mb-4 rounded-xl border border-brand-amber-dim bg-brand-amber/10 p-3">
-      <div className="flex items-start justify-between gap-2">
-        <div>
-          <p className="text-[12px] font-bold text-brand-amber">
-            {items.length} file dihapus otomatis (penyimpanan penuh)
-          </p>
-          <ul className="mt-1.5 space-y-1">
-            {items.slice(0, 5).map((e, i) => (
-              <li key={i} className="text-[11.5px] text-ink-300">
-                {e.series_title} — {e.chapter_title} · {humanSize(e.size_bytes)}
-                {e.evicted_at != null && ` · ${new Date(e.evicted_at).toLocaleDateString('id-ID')}`}
-              </li>
-            ))}
-          </ul>
-        </div>
-        <button
-          onClick={dismiss}
-          aria-label="Tutup notifikasi eviction"
-          className="shrink-0 p-1.5 text-ink-400"
-        >
-          <IconXmark className="size-4" />
-        </button>
-      </div>
-    </div>
-  )
-}
-
-function SettingsModal({
-  limitBytes,
-  onClose,
-  onSaved,
-}: {
-  limitBytes: number
-  onClose: () => void
-  onSaved: () => void
-}) {
-  const gb = limitBytes / 1024 / 1024 / 1024
-  const [value, setValue] = useState(gb > 0 ? String(Number(gb.toFixed(2))) : '2')
-  const [busy, setBusy] = useState(false)
-  const [msg, setMsg] = useState<string | null>(null)
-
-  const save = () => {
-    const n = Number(value)
-    if (!Number.isFinite(n) || n <= 0) {
-      setMsg('Limit harus angka GB positif.')
-      return
-    }
-    setBusy(true)
-    setMsg(null)
-    unifiedApi
-      .setSettingsDownloads(Math.round(n * 1024 * 1024 * 1024))
-      .then(() => {
-        setMsg('Limit disimpan.')
-        onSaved()
-      })
-      .catch((e: Error) => setMsg(e.message))
-      .finally(() => setBusy(false))
-  }
-
-  const deleteAll = () => {
-    if (!window.confirm('Hapus SEMUA unduhan? Tindakan ini tidak bisa dibatalkan.')) return
-    setBusy(true)
-    setMsg(null)
-    unifiedApi
-      .downloads()
-      .then(async (r) => {
-        // beruransi: DELETE ringan, paralel tak perlu dan bisa membebani server
-        for (const d of r.items) {
-          await unifiedApi.deleteDownload(d.id).catch(() => {
-            /* satu gagal: lanjutkan yang lain, status dilaporkan jumlah di bawah */
-          })
-        }
-        setMsg(`${r.items.length} unduhan dihapus.`)
-        onSaved()
-      })
-      .catch((e: Error) => setMsg(e.message))
-      .finally(() => setBusy(false))
-  }
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
-      <div className="w-full max-w-sm rounded-2xl border border-ink-800 bg-ink-900 p-4">
-        <div className="flex items-center justify-between">
-          <h2 className="text-[14px] font-bold text-ink-100">Pengaturan unduhan</h2>
-          <button onClick={onClose} aria-label="Tutup" className="p-1.5 text-ink-400">
-            <IconXmark className="size-4" />
-          </button>
-        </div>
-
-        <label className="mt-4 block text-[12px] text-ink-300">
-          Batas penyimpanan (GB)
-          <input
-            type="number"
-            min="0.1"
-            step="0.1"
-            value={value}
-            onChange={(e) => setValue(e.target.value)}
-            className="mt-1.5 w-full rounded-xl border border-ink-700 bg-ink-950 px-3 py-2 text-[13px] text-ink-100"
-          />
-        </label>
-
-        <button
-          onClick={save}
-          disabled={busy}
-          className="mt-3 w-full rounded-xl bg-brand-amber py-2.5 text-[13px] font-bold text-ink-950 disabled:opacity-60"
-        >
-          Simpan limit
-        </button>
-
-        <button
-          onClick={deleteAll}
-          disabled={busy}
-          className="mt-2 w-full rounded-xl border border-brand-red/50 py-2.5 text-[13px] font-semibold text-brand-red disabled:opacity-60"
-        >
-          Hapus semua unduhan
-        </button>
-
-        {msg && <p className="mt-2.5 text-[11.5px] text-ink-400">{msg}</p>}
-      </div>
-    </div>
-  )
-}

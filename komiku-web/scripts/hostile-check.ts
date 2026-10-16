@@ -6,7 +6,7 @@
  *   W3  judul jahat dari API tidak dieksekusi (React { } auto-escape)
  *   W4  unified gagal (500/HTML) → Search pakai fallback /api/search lama
  *   W5  route handle aneh (spasi/%/:///..) tidak crash & tetap unified
- *   W6  imgUrl: host non-komiku → /img?u=, idempoten, host jahat lolos polos
+ *   W6  imgUrl: URL CDN dikembalikan APA ADANYA (hotlink, tanpa proxy /img)
  *   W7  kunci chapter/anchor tidak tabrakan dengan id legacy angka
  */
 import assert from 'node:assert/strict'
@@ -18,7 +18,6 @@ import { Row, MangaCard } from '../src/pages/Home.tsx'
 import ReaderToolbar from '../src/components/ReaderToolbar.tsx'
 import { toMangaCard, unifiedApi } from '../src/api.ts'
 import { chapterKeyOf, parseUnifiedKey, readerHref, unifiedKey } from '../src/readerSource.ts'
-import { manifestKey } from '../src/offlineStore.ts'
 import { imgUrl } from '../src/imgUrl.ts'
 import type { MangaOut } from '../src/types.ts'
 import { XSS_PAYLOADS, ODD_HANDLES, IMG_FIXTURE } from './hostile-fixture.mjs'
@@ -183,31 +182,26 @@ assert.equal(chapterKeyOf(undefined, 'kiryuu:solo-leveling', '179.6'), 'kiryuu:s
 ok('parse kunci: angka legacy tetap legacy, handle desimal/non-numerik utuh')
 
 // ---------------------------------------------------------------- W6 imgUrl
-console.log('[W6] imgUrl rewrite host')
+console.log('[W6] imgUrl hotlink CDN (tanpa proxy /img)')
 for (const u of [...IMG_FIXTURE.komiku, ...IMG_FIXTURE.other]) {
   const out = imgUrl(u)
-  assert.ok(out.startsWith('/img?u='), `${u} harus diproksi, dapat ${out}`)
+  assert.equal(out, u, `${u} harus dikembalikan apa adanya, dapat ${out}`)
+  assert.ok(!out.startsWith('/img?u='), `${u} TIDAK boleh diproksi lagi (Q21)`)
   assert.equal(imgUrl(out), out, 'idempoten')
-  const q = new URL(out, 'http://x.invalid').searchParams.get('u')
-  assert.equal(q, u, 'param u = URL asli (round-trip)')
 }
-ok(`${IMG_FIXTURE.komiku.length + IMG_FIXTURE.other.length} URL host terdaftar → /img?u=, idempoten, round-trip benar`)
-// 'jahat' = URL yang BUKAN boleh divalid ulang proxy. Catatan: entri terakhir
-// fixture (`/img?u=...`) memang output proxy, jadi idempoten → benar dikembalikan
-// apa adanya (itu perilaku yang diinginkan, bukan kegagalan).
-for (const u of IMG_FIXTURE.jahat.slice(0, -1)) {
-  const out = imgUrl(u)
-  assert.ok(!out.startsWith('/img?u='), `${u} TIDAK boleh diproksi, dapat ${out}`)
+ok(`${IMG_FIXTURE.komiku.length + IMG_FIXTURE.other.length} URL CDN → dikembalikan apa adanya, idempoten`)
+// URL jahat / non-CDN juga dibiarkan apa adanya (tidak ada lagi rewriting).
+for (const u of IMG_FIXTURE.jahat) {
+  assert.equal(imgUrl(u), u, `${u} harus dibiarkan apa adanya`)
 }
-const alreadyProxy = IMG_FIXTURE.jahat.at(-1)!
-assert.equal(imgUrl(alreadyProxy), alreadyProxy, 'sudah /img?u= → idempoten, tidak dobel-encode')
-ok('data: / javascript: / //host / host luar allowlist → TIDAK diproxy; /img?u= idempoten')
-const r403 = await abs(`/img?u=${encodeURIComponent(IMG_FIXTURE.jahat[0])}`)
-assert.equal(r403.status, 403, 'proxy /img menolak host luar allowlist')
-ok('proxy /img menolak host non-allowlist (403) — bukan SSRF lewat proxy')
+ok('data: / javascript: / //host / /img?u= → semua dibiarkan apa adanya (tak ada proxy)')
+assert.equal(imgUrl(null), '', 'null → string kosong')
+assert.equal(imgUrl(undefined), '', 'undefined → string kosong')
+assert.equal(imgUrl('/covers/local.jpg'), '/covers/local.jpg', 'path relatif dibiarkan')
+ok('null/undefined → "", path relatif lokal dibiarkan (tanpa crash)')
 
 // ---------------------------------------------------------------- W7 anchor
-console.log('[W7] tabrakan kunci anchor/progress/offline')
+console.log('[W7] tabrakan kunci anchor/progress')
 const keys = {
   unifiedKomiku: unifiedKey('komiku:6426', '1195'),
   unifiedKiryuu: unifiedKey('kiryuu:solo-leveling', '179.6'),
@@ -226,9 +220,7 @@ assert.equal(new Set(hrefs).size, 3, `href harus beda: ${hrefs.join(' | ')}`)
 ok('komiku:6426:1195 vs legacy 113228 → kunci & href unik, tidak saling menimpa')
 const ch = await unifiedApi.chapter('kiryuu:solo-leveling', '2.5')
 assert.equal(chapterKeyOf(undefined, 'kiryuu:solo-leveling', ch.number), 'kiryuu:solo-leveling:2.5')
-const mkeys = [manifestKey('113228'), manifestKey(keys.unifiedKomiku)]
-assert.equal(new Set(mkeys).size, 2, `manifest offline harus beda: ${mkeys.join(' | ')}`)
-ok('kunci offline manifest berbeda untuk unified vs legacy (query keyed)')
+ok('kunci chapter unified (sumber:native_id:nomor) utuh untuk nomor desimal')
 
 // ------------------------------------------------------------ W8 rak/unduhan
 console.log('[W8] rak: PDF gagal, data jahat, ukuran aneh')

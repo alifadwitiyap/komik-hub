@@ -1,40 +1,30 @@
-//! Store unduhan PDF server — state PER-AKUN, file PDF DIBAGI.
+//! Store unduhan PDF server — state PER-AKUN, file PDF DIBAGI, retensi TTL 24 JAM.
 //!
-//! Semua state di satu direktori (default `D:/project/komiku-server/downloads`,
-//! bisa dioverride lewat env `KOMIKU_DOWNLOADS_DIR` untuk test):
-//! - `<id>.pdf`             — file PDF hasil generate (DIBAGI antar-akun)
-//! - `index/<username>.json`     — daftar unduhan milik satu akun
-//! - `evictions/<username>.json` — log eviction milik satu akun
-//! - `settings/<username>.json`  — limit unduhan milik satu akun
-//! - `refs.json`            — {download_id: jumlah akun yang masih memegang}
+//! Layout (default `D:/project/komiku-server/downloads`, override via env
+//! `KOMIKU_DOWNLOADS_DIR` untuk test):
+//! - `<id>.pdf`              — file PDF hasil generate (DIBAGI antar-akun)
+//! - `index/<username>.json` — daftar unduhan milik satu akun
 //!
-//! ## Kenapa per-akun
-//! Dulu satu index global: PDF yang diunduh satu orang muncul di rak semua
-//! orang. Index/evictions/settings kini per-akun; SATU file per akun (bukan
-//! satu file besar) supaya satu akun menulis tidak menyentuh akun lain.
+//! `download_id = fnv1a64("handle|number")` content-addressed: chapter sama =
+//! ID sama = satu file, walau banyak akun membacanya. Index per-akun, jadi file
+//! fisik hanya dihapus saat TIDAK ADA lagi akun yang menunjuk id itu.
 //!
-//! ## File PDF tetap DIBAGI + refcount
-//! `download_id = fnv1a64("handle|number")` (`download_id`) sudah
-//! content-addressed: chapter yang sama = ID yang sama = satu file, walau 10
-//! akun membacanya (disk dipakai sekali). Karena file dibagi tapi index
-//! per-akun, menghapus unduhan HANYA boleh menghapus file fisik saat
-//! `refs[id]` mencapai 0 — kalau tidak, satu orang hapus = orang lain
-//! kehilangan PDF-nya. Refcount dinaikkan saat akun PERTAMA mengunduh id itu,
-//! diturunkan saat akun menghapus/meng-evict entri terakhirnya.
+//! ## Retensi: TTL ABSOLUT 24 JAM (menggantikan LRU + limit 2 GiB)
+//! Entri hidup tepat `TTL_SECS` sejak `downloaded_at`; tidak ada limit byte,
+//! eviction LRU, tenggang 7 hari, atau settings per-akun. `sweep_expired` (task
+//! berkala) menghapus entri yang lebih tua dari TTL di SEMUA akun, lalu file
+//! fisiknya bila tak ada pemegang lain.
 //!
-//! ## Kebijakan eviction (keputusan 8 plan, kini per-akun)
-//! - Saat unduhan baru membuat total AKUN itu > `limit_bytes` (limit akun),
-//!   hapus kandidat LRU milik akun itu sampai muat.
-//! - TENGGANG 7 hari: entri dengan `downloaded_at` < 7 hari TIDAK boleh
-//!   dihapus (baru diunduh tapi belum sempat dibaca = aman). Kalau setelah
-//!   semua kandidat tenggang habis masih > limit, unduhan tetap disimpan
-//!   (best-effort; limit adalah target lunak, data user tidak dibuang paksa).
-//! - Tiap eviction dicatat di `evictions/<username>.json` + log `tracing::info!`.
+//! ## Refcount DIHAPUS (pilihan paling sederhana)
+//! Dulu ada `refs.json`. Satu-satunya pemakaiannya adalah cabang
+//! `u_download_file` "navigasi tanpa header" + keputusan hapus file. Index
+//! per-akun SUDAH sumber kebenaran tunggal, jadi refcount cuma duplikat state
+//! yang bisa desinkron. Maka refs dibuang: "masih dipegang akun mana pun?"
+//! dijawab dengan memindai index semua akun (`any_holder_locked`), dan cabang
+//! tanpa header cukup cek file masih ada di disk.
 //!
-//! Satu mutex (`Mutex<State>`) memegang SEMUA akun + refcount: eviction &
-//! refcount tetap serial, dan tidak ada beberapa lock yang bisa deadlock.
-//! Setiap akses ke satu akun me-lazy-load file akun itu dari disk lebih dulu,
-//! jadi state tetap benar setelah restart server.
+//! Satu mutex (`Mutex<State>`) memegang SEMUA akun; tiap akses me-lazy-load file
+//! akun itu dari disk lebih dulu, jadi state benar setelah restart server.
 
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
@@ -42,12 +32,8 @@ use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use tokio::sync::Mutex;
 
-/// Default limit disk unduhan per-akun: 2 GiB (keputusan 8 plan).
-pub const DEFAULT_LIMIT_BYTES: u64 = 2 * 1024 * 1024 * 1024;
-/// Tenggang eviction: entri lebih muda dari ini tidak boleh dihapus (keputusan 8).
-pub const EVICTION_GRACE_SECS: i64 = 7 * 24 * 60 * 60;
-/// Batas jumlah item log eviction yang disimpan.
-const EVICTIONS_MAX: usize = 200;
+/// Retensi unduhan: entri hidup 24 jam sejak `downloaded_at` (epoch millis).
+pub const TTL_SECS: i64 = 24 * 60 * 60;
 /// Batas halaman per chapter saat generate PDF (pengaman memori).
 pub const MAX_PAGES: usize = 300;
 
@@ -63,20 +49,8 @@ pub struct DownloadEntry {
     pub title_key: String,
     pub filename: String,
     pub size_bytes: u64,
-    /// epoch millis
+    /// epoch millis — satu-satunya cap waktu (dasar TTL).
     pub downloaded_at: i64,
-    /// epoch millis, di-update setiap GET file (LRU)
-    pub last_opened_at: i64,
-}
-
-/// Satu baris log eviction (bentuk `items[]` kontrak `/api/unified/evictions`).
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct EvictionEntry {
-    pub series_title: String,
-    pub chapter_title: String,
-    pub size_bytes: u64,
-    /// epoch millis
-    pub evicted_at: i64,
 }
 
 #[derive(Debug, Default, Serialize, Deserialize)]
@@ -84,35 +58,10 @@ struct Index {
     items: Vec<DownloadEntry>,
 }
 
-#[derive(Debug, Default, Serialize, Deserialize)]
-struct EvictionLog {
-    items: Vec<EvictionEntry>,
-}
-
-/// Refcount file PDF yang DIBAGI: download_id -> jumlah akun yang memegang.
-#[derive(Debug, Default, Serialize, Deserialize)]
-struct RefsLog {
-    #[serde(default)]
-    refs: BTreeMap<String, usize>,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct Settings {
-    pub limit_bytes: u64,
-}
-
-impl Default for Settings {
-    fn default() -> Self {
-        Settings { limit_bytes: DEFAULT_LIMIT_BYTES }
-    }
-}
-
-/// State satu akun (index + evictions + settings).
+/// State satu akun (index saja; evictions/settings sudah dibuang).
 #[derive(Default)]
 struct UserState {
     index: Index,
-    evictions: EvictionLog,
-    settings: Settings,
 }
 
 impl UserState {
@@ -120,18 +69,14 @@ impl UserState {
     fn load(dir: &Path, username: &str) -> Self {
         UserState {
             index: read_json(&index_path(dir, username)).unwrap_or_default(),
-            evictions: read_json(&evictions_path(dir, username)).unwrap_or_default(),
-            settings: read_json(&settings_path(dir, username)).unwrap_or_default(),
         }
     }
 }
 
-/// State seluruh akun + refcount file yang dibagi.
+/// State seluruh akun.
 struct State {
-    /// username -> index + evictions + settings
+    /// username -> index
     users: BTreeMap<String, UserState>,
-    /// download_id -> jumlah akun yang masih memegang file PDF itu
-    refs: BTreeMap<String, usize>,
 }
 
 /// Store unduhan: direktori + state per-akun di memory, ditulis balik ke disk
@@ -139,23 +84,14 @@ struct State {
 pub struct DownloadStore {
     dir: PathBuf,
     /// Semua state di balik SATU mutex: generate (yang butuh lock panjang),
-    /// eviction, refcount, dan update LRU harus serial.
+    /// hapus, dan sweep TTL harus serial.
     state: Mutex<State>,
 }
 
-// ---- path helper (per-akun + refs) ----------------------------------------
+// ---- path helper (per-akun) -----------------------------------------------
 
 fn index_path(dir: &Path, username: &str) -> PathBuf {
     dir.join("index").join(format!("{username}.json"))
-}
-fn evictions_path(dir: &Path, username: &str) -> PathBuf {
-    dir.join("evictions").join(format!("{username}.json"))
-}
-fn settings_path(dir: &Path, username: &str) -> PathBuf {
-    dir.join("settings").join(format!("{username}.json"))
-}
-fn refs_path(dir: &Path) -> PathBuf {
-    dir.join("refs.json")
 }
 
 /// Username yang punya file index di disk (untuk `get_any` lintas restart).
@@ -179,18 +115,17 @@ fn index_users(dir: &Path) -> Vec<String> {
 }
 
 impl DownloadStore {
-    /// Buka store dari direktori (sub-dir per-akun dibuat kalau belum ada).
-    /// Index/settings/refs yang rusak di-reset (bukan bikin server gagal start).
+    /// Buka store dari direktori (sub-dir index dibuat kalau belum ada).
+    /// Index yang rusak di-reset (bukan bikin server gagal start).
     pub fn open(dir: impl Into<PathBuf>) -> anyhow::Result<Arc<Self>> {
         let dir = dir.into();
         std::fs::create_dir_all(&dir)?;
-        for sub in ["index", "evictions", "settings"] {
-            let _ = std::fs::create_dir_all(dir.join(sub));
-        }
-        let refs: RefsLog = read_json(&refs_path(&dir)).unwrap_or_default();
+        let _ = std::fs::create_dir_all(dir.join("index"));
         Ok(Arc::new(DownloadStore {
             dir,
-            state: Mutex::new(State { users: BTreeMap::new(), refs: refs.refs }),
+            state: Mutex::new(State {
+                users: BTreeMap::new(),
+            }),
         }))
     }
 
@@ -214,17 +149,22 @@ impl DownloadStore {
 
     /// Nama file attachment yang aman + informatif.
     pub fn filename_for(series_title: &str, number: &str) -> String {
-        format!("{} - Chapter {}.pdf", sanitize(series_title), sanitize(number))
+        format!(
+            "{} - Chapter {}.pdf",
+            sanitize(series_title),
+            sanitize(number)
+        )
     }
 
-    /// Daftar unduhan MILIK `username` (urut terbaru dulu) + total + limit akun.
-    pub async fn list(&self, username: &str) -> (Vec<DownloadEntry>, u64, u64) {
+    /// Daftar unduhan MILIK `username` (urut terbaru dulu) + total byte.
+    /// Tidak ada limit lagi — total hanya untuk informasi.
+    pub async fn list(&self, username: &str) -> (Vec<DownloadEntry>, u64) {
         let mut st = self.state.lock().await;
         let u = Self::ensure_user(&self.dir, &mut st, username);
         let mut items = u.index.items.clone();
         items.sort_by(|a, b| b.downloaded_at.cmp(&a.downloaded_at));
         let total = items.iter().map(|e| e.size_bytes).sum();
-        (items, total, u.settings.limit_bytes)
+        (items, total)
     }
 
     /// Satu entri milik `username` by id (akun lain tidak bisa melihatnya).
@@ -235,20 +175,11 @@ impl DownloadStore {
     }
 
     /// Cari entri `id` di SEMUA akun (untuk melayani unduhan file yang dibagi
-    /// lewat navigasi browser tanpa header — metadata-nya diambil dari pemegang
-    /// mana pun). Dipakai HANYA setelah refcount dipastikan > 0.
+    /// lewat navigasi browser tanpa header — metadata diambil dari pemegang
+    /// mana pun). Akun yang hanya ada di disk ikut dipindai.
     pub async fn get_any(&self, id: &str) -> Option<DownloadEntry> {
         let mut st = self.state.lock().await;
-        // kandidat: akun yang sudah di memory + yang punya file index di disk
-        // (penting lintas restart: map in-memory masih kosong saat request
-        // pertama datang lewat navigasi browser tanpa header).
-        let mut names: Vec<String> = st.users.keys().cloned().collect();
-        for u in index_users(&self.dir) {
-            if !names.contains(&u) {
-                names.push(u);
-            }
-        }
-        for name in names {
+        for name in Self::all_usernames(&self.dir, &st) {
             if let Some(e) = Self::ensure_user(&self.dir, &mut st, &name)
                 .index
                 .items
@@ -262,27 +193,9 @@ impl DownloadStore {
         None
     }
 
-    /// Berapa akun yang masih memegang file PDF `id` (0 = tidak ada).
-    pub async fn refcount(&self, id: &str) -> usize {
-        let st = self.state.lock().await;
-        st.refs.get(id).copied().unwrap_or(0)
-    }
-
-    /// Tandai entri MILIK `username` dibuka sekarang (LRU) + kembalikan entri.
-    pub async fn touch(&self, username: &str, id: &str) -> Option<DownloadEntry> {
-        let mut st = self.state.lock().await;
-        let u = Self::ensure_user(&self.dir, &mut st, username);
-        let now = now_millis();
-        let entry = u.index.items.iter_mut().find(|e| e.id == id)?;
-        entry.last_opened_at = now;
-        let out = entry.clone();
-        Self::save_index(&self.dir, username, &u.index);
-        Some(out)
-    }
-
-    /// Hapus entri `id` MILIK `username` (+ turunkan refcount file). `false`
-    /// kalau akun itu tidak punya entri tersebut. File fisik hanya dihapus
-    /// saat refcount mencapai 0 (akun lain mungkin masih memakainya).
+    /// Hapus entri `id` MILIK `username`. `false` kalau akun itu tidak punya
+    /// entri tersebut. File fisik hanya dihapus bila akun lain tidak lagi
+    /// menunjuk id itu.
     pub async fn delete(&self, username: &str, id: &str) -> bool {
         let mut st = self.state.lock().await;
         let u = Self::ensure_user(&self.dir, &mut st, username);
@@ -292,12 +205,13 @@ impl DownloadStore {
             return false;
         }
         Self::save_index(&self.dir, username, &u.index);
-        Self::release_refs(&self.dir, &mut st, std::iter::once(id.to_string()));
+        Self::drop_file_if_unheld(&self.dir, &mut st, id);
         true
     }
 
-    /// Hapus SEMUA unduhan MILIK `username` (modal settings "hapus semua").
-    /// `true` kalau ada yang terhapus. File fisik dihapus hanya saat refcount 0.
+    /// Hapus SEMUA unduhan MILIK `username` (modal "hapus semua").
+    /// `true` kalau ada yang terhapus. File fisik dihapus hanya saat tak ada
+    /// akun lain yang menunjuknya.
     pub async fn clear_all(&self, username: &str) -> bool {
         let mut st = self.state.lock().await;
         let u = Self::ensure_user(&self.dir, &mut st, username);
@@ -306,47 +220,16 @@ impl DownloadStore {
         }
         let ids: Vec<String> = u.index.items.drain(..).map(|e| e.id).collect();
         Self::save_index(&self.dir, username, &u.index);
-        Self::release_refs(&self.dir, &mut st, ids.into_iter());
+        for id in ids {
+            Self::drop_file_if_unheld(&self.dir, &mut st, &id);
+        }
         true
     }
 
-    /// Settings unduhan MILIK `username`.
-    pub async fn settings(&self, username: &str) -> Settings {
-        let mut st = self.state.lock().await;
-        Self::ensure_user(&self.dir, &mut st, username).settings.clone()
-    }
-
-    /// Set limit MILIK `username`; langsung eviction kalau total akun itu
-    /// melewatinya. Mengembalikan (settings baru, jumlah eviction).
-    pub async fn set_limit(&self, username: &str, limit_bytes: u64) -> (Settings, usize) {
-        let mut st = self.state.lock().await;
-        Self::ensure_user(&self.dir, &mut st, username).settings.limit_bytes = limit_bytes;
-        let settings = Self::ensure_user(&self.dir, &mut st, username).settings.clone();
-        Self::save_settings(&self.dir, username, &settings);
-        let evicted = self.evict_locked(username, &mut st);
-        (settings, evicted)
-    }
-
-    /// Daftar eviction MILIK `username` (terbaru dulu).
-    pub async fn evictions(&self, username: &str) -> Vec<EvictionEntry> {
-        let mut st = self.state.lock().await;
-        let u = Self::ensure_user(&self.dir, &mut st, username);
-        let mut items = u.evictions.items.clone();
-        items.sort_by(|a, b| b.evicted_at.cmp(&a.evicted_at));
-        items
-    }
-
-    /// Kosongkan log eviction MILIK `username` (dismiss badge).
-    pub async fn dismiss_evictions(&self, username: &str) {
-        let mut st = self.state.lock().await;
-        let u = Self::ensure_user(&self.dir, &mut st, username);
-        u.evictions.items.clear();
-        Self::save_evictions(&self.dir, username, &u.evictions);
-    }
-
-    /// Simpan PDF yang sudah jadi untuk `username`: tulis file (dibagi),
-    /// upsert entri di index akun, naikkan refcount kalau id ini BARU bagi akun
-    /// itu, lalu eviction per-akun sampai total akun <= limit akun.
+    /// Simpan PDF yang sudah jadi untuk `username`: tulis file (dibagi) lalu
+    /// upsert entri di index akun (id deterministik -> unduhan ulang menimpa).
+    /// `downloaded_at` di-reset ke sekarang, jadi TTL 24 jam mulai dari unduhan
+    /// terakhir.
     pub async fn store_pdf(
         &self,
         username: &str,
@@ -374,120 +257,97 @@ impl DownloadStore {
             filename,
             size_bytes: size,
             downloaded_at: now,
-            last_opened_at: now,
         };
-        let is_new = {
-            let u = Self::ensure_user(&self.dir, &mut st, username);
-            let is_new = !u.index.items.iter().any(|e| e.id == id);
-            // upsert: unduhan ulang menimpa entri lama (id deterministik).
-            u.index.items.retain(|e| e.id != id);
-            u.index.items.push(entry.clone());
-            Self::save_index(&self.dir, username, &u.index);
-            is_new
-        };
-        if is_new {
-            *st.refs.entry(id.clone()).or_insert(0) += 1;
-            Self::save_refs(&self.dir, &st);
-        }
-        let evicted = self.evict_locked(username, &mut st);
-        if evicted > 0 {
-            tracing::info!(
-                "unduhan {id} ({username}): {evicted} entri di-evict untuk memenuhi limit"
-            );
-        }
+        let u = Self::ensure_user(&self.dir, &mut st, username);
+        u.index.items.retain(|e| e.id != id);
+        u.index.items.push(entry.clone());
+        Self::save_index(&self.dir, username, &u.index);
         Ok(entry)
     }
 
-    /// Eviction LRU MILIK `username` sampai total akun <= limit akun. File fisik
-    /// yang di-evict hanya dihapus saat refcount 0. Mengembalikan jumlah dihapus.
-    fn evict_locked(&self, username: &str, st: &mut State) -> usize {
+    /// Sapu entri kedaluwarsa (TTL 24 jam) di SEMUA akun, lalu hapus file fisik
+    /// yang tak lagi ditunjuk akun mana pun. Mengembalikan jumlah entri index
+    /// yang dihapus. Dipanggil task berkala (`unified::store`).
+    pub async fn sweep_expired(&self) -> usize {
         let now = now_millis();
-        let limit = match st.users.get(username) {
-            Some(u) => u.settings.limit_bytes,
-            None => return 0,
-        };
-        let mut removed: Vec<String> = Vec::new();
+        let ttl_ms = TTL_SECS * 1000;
+        let mut st = self.state.lock().await;
+        let mut removed = 0usize;
+        let mut gone_ids: Vec<String> = Vec::new();
+        for name in Self::all_usernames(&self.dir, &st) {
+            let u = Self::ensure_user(&self.dir, &mut st, &name);
+            let before = u.index.items.len();
+            u.index.items.retain(|e| {
+                // kedaluwarsa bila now - downloaded_at >= TTL; sisanya disimpan.
+                if now - e.downloaded_at >= ttl_ms {
+                    gone_ids.push(e.id.clone());
+                    false
+                } else {
+                    true
+                }
+            });
+            if u.index.items.len() != before {
+                removed += before - u.index.items.len();
+                Self::save_index(&self.dir, &name, &u.index);
+            }
+        }
+        // File fisik dicek SETELAH semua index dibersihkan: id yang masih
+        // dipegang akun lain (belum kedaluwarsa) tidak ikut terhapus.
+        gone_ids.sort();
+        gone_ids.dedup();
+        for id in gone_ids {
+            Self::drop_file_if_unheld(&self.dir, &mut st, &id);
+        }
+        removed
+    }
+
+    /// Semua username yang relevan: yang ada di memory + yang punya file index
+    /// di disk (penting lintas restart / task sapu yang jalan di latar).
+    fn all_usernames(dir: &Path, st: &State) -> Vec<String> {
+        let mut names: Vec<String> = st.users.keys().cloned().collect();
+        for u in index_users(dir) {
+            if !names.contains(&u) {
+                names.push(u);
+            }
+        }
+        names
+    }
+
+    /// Hapus file fisik `id` bila tidak ada akun yang masih menunjuknya.
+    fn drop_file_if_unheld(dir: &Path, st: &mut State, id: &str) {
+        if !Self::any_holder_locked(dir, st, id) {
+            let _ = std::fs::remove_file(dir.join(format!("{id}.pdf")));
+        }
+    }
+
+    /// Apakah ada akun mana pun yang masih menunjuk `id`? Pindai akun di
+    /// memory + akun yang hanya ada di disk (lazy-load saat dipindai).
+    fn any_holder_locked(dir: &Path, st: &mut State, id: &str) -> bool {
+        if st
+            .users
+            .values()
+            .any(|u| u.index.items.iter().any(|e| e.id == id))
         {
-            let Some(u) = st.users.get_mut(username) else {
-                return 0;
-            };
-            loop {
-                let total: u64 = u.index.items.iter().map(|e| e.size_bytes).sum();
-                if total <= limit {
-                    break;
-                }
-                // Kandidat: di luar tenggang 7 hari, terlama dibuka dulu.
-                let Some(victim_idx) = u
-                    .index
-                    .items
-                    .iter()
-                    .enumerate()
-                    .filter(|(_, e)| now - e.downloaded_at >= EVICTION_GRACE_SECS * 1000)
-                    .min_by_key(|(_, e)| e.last_opened_at)
-                    .map(|(i, _)| i)
-                else {
-                    // Semua kandidat masih dalam tenggang — berhenti (limit lunak).
-                    break;
-                };
-                let victim = u.index.items.remove(victim_idx);
-                u.evictions.items.push(EvictionEntry {
-                    series_title: victim.series_title.clone(),
-                    chapter_title: victim.title.clone(),
-                    size_bytes: victim.size_bytes,
-                    evicted_at: now,
-                });
-                tracing::info!(
-                    "eviction: {} {} ({} byte, dibuka terakhir {})",
-                    victim.series_title,
-                    victim.title,
-                    victim.size_bytes,
-                    victim.last_opened_at
-                );
-                removed.push(victim.id);
+            return true;
+        }
+        for name in index_users(dir) {
+            if st.users.contains_key(&name) {
+                continue;
             }
-            if !removed.is_empty() {
-                if u.evictions.items.len() > EVICTIONS_MAX {
-                    let keep = u.evictions.items.len() - EVICTIONS_MAX;
-                    u.evictions.items.drain(..keep);
-                }
-                Self::save_index(&self.dir, username, &u.index);
-                Self::save_evictions(&self.dir, username, &u.evictions);
+            if Self::ensure_user(dir, st, &name)
+                .index
+                .items
+                .iter()
+                .any(|e| e.id == id)
+            {
+                return true;
             }
         }
-        let evicted = removed.len();
-        if !removed.is_empty() {
-            Self::release_refs(&self.dir, st, removed.into_iter());
-        }
-        evicted
-    }
-
-    /// Turunkan refcount untuk sekumpulan id; hapus file fisik + entri refs saat
-    /// mencapai 0. Selalu menulis `refs.json` (satu file kecil).
-    fn release_refs(dir: &Path, st: &mut State, ids: impl Iterator<Item = String>) {
-        for id in ids {
-            if let Some(rc) = st.refs.get_mut(&id) {
-                *rc = rc.saturating_sub(1);
-                if *rc == 0 {
-                    st.refs.remove(&id);
-                    let _ = std::fs::remove_file(dir.join(format!("{id}.pdf")));
-                }
-            }
-        }
-        let _ = write_json(&refs_path(dir), &RefsLog { refs: st.refs.clone() });
-    }
-
-    fn save_refs(dir: &Path, st: &State) {
-        let _ = write_json(&refs_path(dir), &RefsLog { refs: st.refs.clone() });
+        false
     }
 
     fn save_index(dir: &Path, username: &str, idx: &Index) {
         let _ = write_json(&index_path(dir, username), idx);
-    }
-    fn save_evictions(dir: &Path, username: &str, ev: &EvictionLog) {
-        let _ = write_json(&evictions_path(dir, username), ev);
-    }
-    fn save_settings(dir: &Path, username: &str, s: &Settings) {
-        let _ = write_json(&settings_path(dir, username), s);
     }
 }
 
@@ -581,7 +441,7 @@ mod tests {
         dir
     }
 
-    fn entry(id: &str, size: u64, downloaded_at: i64, last_opened_at: i64) -> DownloadEntry {
+    fn entry(id: &str, size: u64, downloaded_at: i64) -> DownloadEntry {
         DownloadEntry {
             id: id.into(),
             handle: "komiku:1".into(),
@@ -592,7 +452,6 @@ mod tests {
             filename: format!("{id}.pdf"),
             size_bytes: size,
             downloaded_at,
-            last_opened_at,
         }
     }
 
@@ -603,129 +462,212 @@ mod tests {
         let dir = temp_dir("iso-list");
         let store = DownloadStore::open(&dir).unwrap();
         let a = store
-            .store_pdf("alif", "komiku:1", "1", "Ch 1", "Seri", "seri", vec![1u8; 100])
+            .store_pdf(
+                "alif",
+                "komiku:1",
+                "1",
+                "Ch 1",
+                "Seri",
+                "seri",
+                vec![1u8; 100],
+            )
             .await
             .unwrap();
         let b = store
-            .store_pdf("budi", "komiku:2", "2", "Ch 2", "Seri Lain", "seri lain", vec![2u8; 50])
+            .store_pdf(
+                "budi",
+                "komiku:2",
+                "2",
+                "Ch 2",
+                "Seri Lain",
+                "seri lain",
+                vec![2u8; 50],
+            )
             .await
             .unwrap();
-        let (ia, ta, _) = store.list("alif").await;
-        let (ib, tb, _) = store.list("budi").await;
-        assert_eq!(ia.len(), 1);
+        let (ia, ta) = store.list("alif").await;
+        let (ib, tb) = store.list("budi").await;
+        assert_eq!((ia.len(), ib.len()), (1, 1));
         assert_eq!(ia[0].id, a.id);
-        assert_eq!(ib.len(), 1);
         assert_eq!(ib[0].id, b.id);
-        assert_eq!(ta, 100);
-        assert_eq!(tb, 50);
+        assert_eq!((ta, tb), (100, 50));
         // A tidak bisa lihat entri B lewat get, dan sebaliknya.
         assert!(store.get("alif", &b.id).await.is_none());
         assert!(store.get("budi", &a.id).await.is_none());
         let _ = std::fs::remove_dir_all(&dir);
     }
 
+    // ---- TTL 24 JAM (menggantikan eviction/limit/settings/LRU) --------
+
+    /// Entri lebih tua dari 24 jam dihapus sweep; entri muda bertahan.
     #[tokio::test]
-    async fn settings_per_akun() {
-        let dir = temp_dir("settings-iso");
+    async fn sweep_hapus_kedaluwarsa_pertahankan_muda() {
+        let dir = temp_dir("ttl-basic");
         let store = DownloadStore::open(&dir).unwrap();
-        let (sa, _) = store.set_limit("alif", 1234).await;
-        assert_eq!(sa.limit_bytes, 1234);
-        assert_eq!(store.settings("alif").await.limit_bytes, 1234);
+        let now = now_millis();
+        {
+            let mut st = store.state.lock().await;
+            let u = DownloadStore::ensure_user(&store.dir, &mut st, "alif");
+            u.index
+                .items
+                .push(entry("old", 100, now - (TTL_SECS + 60) * 1000));
+            u.index.items.push(entry("fresh", 100, now));
+        }
+        std::fs::write(store.pdf_path("old"), b"x").unwrap();
+        std::fs::write(store.pdf_path("fresh"), b"x").unwrap();
+
         assert_eq!(
-            store.settings("budi").await.limit_bytes,
-            DEFAULT_LIMIT_BYTES,
-            "limit budi tidak ikut berubah"
+            store.sweep_expired().await,
+            1,
+            "hanya entri kedaluwarsa yang dihapus"
+        );
+        let ids: Vec<String> = store
+            .list("alif")
+            .await
+            .0
+            .iter()
+            .map(|e| e.id.clone())
+            .collect();
+        assert!(!ids.contains(&"old".to_string()), "entri > 24 jam hilang");
+        assert!(
+            ids.contains(&"fresh".to_string()),
+            "entri < 24 jam bertahan"
+        );
+        assert!(!store.pdf_path("old").exists(), "file kedaluwarsa dihapus");
+        assert!(store.pdf_path("fresh").exists(), "file muda tetap");
+        assert_eq!(store.sweep_expired().await, 0, "sweep kedua = no-op");
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    /// Batas: entri berumur >= TTL dihapus, yang lebih muda bertahan.
+    #[tokio::test]
+    async fn sweep_batas_tepat_ttl_dianggap_kedaluwarsa() {
+        let dir = temp_dir("ttl-boundary");
+        let store = DownloadStore::open(&dir).unwrap();
+        let now = now_millis();
+        {
+            let mut st = store.state.lock().await;
+            let u = DownloadStore::ensure_user(&store.dir, &mut st, "alif");
+            u.index
+                .items
+                .push(entry("edge", 100, now - TTL_SECS * 1000)); // umur persis TTL
+            u.index
+                .items
+                .push(entry("keep", 100, now - (TTL_SECS - 60) * 1000)); // 60s lebih muda
+        }
+        assert_eq!(store.sweep_expired().await, 1);
+        let items = store.list("alif").await.0;
+        assert_eq!(items.len(), 1);
+        assert_eq!(items[0].id, "keep");
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    /// Sweep menyapu SEMUA akun; file yang masih ditunjuk akun lain (belum
+    /// kedaluwarsa) TIDAK dihapus.
+    #[tokio::test]
+    async fn sweep_lintas_akun_dan_jaga_file_dibagi() {
+        let dir = temp_dir("ttl-cross");
+        let store = DownloadStore::open(&dir).unwrap();
+        let now = now_millis();
+        let old = now - (TTL_SECS + 60) * 1000;
+        {
+            let mut st = store.state.lock().await;
+            // "shared": alif kedaluwarsa, budi masih muda -> file harus tetap.
+            let ua = DownloadStore::ensure_user(&store.dir, &mut st, "alif");
+            ua.index.items.push(entry("shared", 100, old));
+            ua.index.items.push(entry("only_a", 100, old));
+            let ub = DownloadStore::ensure_user(&store.dir, &mut st, "budi");
+            ub.index.items.push(entry("shared", 100, now));
+        }
+        std::fs::write(store.pdf_path("shared"), b"x").unwrap();
+        std::fs::write(store.pdf_path("only_a"), b"x").unwrap();
+
+        assert_eq!(store.sweep_expired().await, 2, "dua entri alif kedaluwarsa");
+        assert!(store.list("alif").await.0.is_empty(), "index alif bersih");
+        assert_eq!(store.list("budi").await.0.len(), 1, "budi tak tersentuh");
+        assert!(store.pdf_path("shared").exists(), "masih dipakai budi");
+        assert!(
+            !store.pdf_path("only_a").exists(),
+            "tak ada pemegang -> file hilang"
         );
         let _ = std::fs::remove_dir_all(&dir);
     }
 
-    #[tokio::test]
-    async fn eviction_per_akun_tidak_menyentuh_akun_lain() {
-        let dir = temp_dir("evict-iso");
-        let store = DownloadStore::open(&dir).unwrap();
-        let now = now_millis();
-        let old = now - (EVICTION_GRACE_SECS + 60) * 1000;
-        {
-            // alif punya 3 entri lama (di luar tenggang), budi punya 1 entri lama.
-            let mut st = store.state.lock().await;
-            let u = DownloadStore::ensure_user(&store.dir, &mut st, "alif");
-            u.settings.limit_bytes = 250;
-            u.index.items.push(entry("a", 100, old, old));
-            u.index.items.push(entry("b", 100, old, old + 1000));
-            u.index.items.push(entry("c", 100, old, now));
-            let ub = DownloadStore::ensure_user(&store.dir, &mut st, "budi");
-            ub.index.items.push(entry("z", 100, old, old));
-            st.refs.insert("z".into(), 1);
-        }
-        // unduhan baru alif -> total 400 > 250 -> buang 2 LRU milik alif saja.
-        store
-            .store_pdf("alif", "komiku:9", "9", "Ch 9", "S", "s", vec![2u8; 100])
-            .await
-            .unwrap();
-        let (ia, ta, limit) = store.list("alif").await;
-        assert_eq!(limit, 250);
-        assert!(ta <= limit, "total alif {ta} harus <= {limit}");
-        let ids: Vec<String> = ia.iter().map(|e| e.id.clone()).collect();
-        assert!(!ids.contains(&"a".to_string()));
-        assert!(!ids.contains(&"b".to_string()));
-        assert!(ids.contains(&"c".to_string()));
-        // budi tidak tersentuh.
-        assert_eq!(store.list("budi").await.0.len(), 1);
-        assert_eq!(store.refcount("z").await, 1, "refcount budi utuh");
-        let _ = std::fs::remove_dir_all(&dir);
-    }
-
-    // ---- REFCOUNT file PDF yang DIBAGI --------------------------------
+    // ---- file PDF yang DIBAGI (tanpa refcount) ------------------------
 
     #[tokio::test]
-    async fn refcount_file_dibagi_hapus_terakhir() {
-        let dir = temp_dir("refcount");
+    async fn file_dibagi_dipertahankan_selama_akun_lain_pegang() {
+        let dir = temp_dir("shared-file");
         let store = DownloadStore::open(&dir).unwrap();
         let ea = store
-            .store_pdf("alif", "komiku:6426", "1195", "Ch 1195", "One Piece", "one piece", vec![7u8; 200])
+            .store_pdf(
+                "alif",
+                "komiku:6426",
+                "1195",
+                "Ch 1195",
+                "One Piece",
+                "one piece",
+                vec![7u8; 200],
+            )
             .await
             .unwrap();
         let eb = store
-            .store_pdf("budi", "komiku:6426", "1195", "Ch 1195", "One Piece", "one piece", vec![7u8; 200])
+            .store_pdf(
+                "budi",
+                "komiku:6426",
+                "1195",
+                "Ch 1195",
+                "One Piece",
+                "one piece",
+                vec![7u8; 200],
+            )
             .await
             .unwrap();
         assert_eq!(ea.id, eb.id, "chapter sama -> satu id (content-addressed)");
         assert!(store.pdf_path(&ea.id).exists());
-        assert_eq!(store.refcount(&ea.id).await, 2, "dua akun memegang file yang sama");
 
         // A hapus -> file HARUS masih ada, B tetap bisa ambil.
         assert!(store.delete("alif", &ea.id).await);
         assert!(store.pdf_path(&ea.id).exists(), "file masih dipakai budi");
         assert!(store.get("budi", &ea.id).await.is_some());
-        assert_eq!(store.refcount(&ea.id).await, 1);
         assert!(store.list("alif").await.0.is_empty());
 
-        // B hapus -> refcount 0 -> file hilang.
+        // B hapus -> tak ada pemegang -> file hilang.
         assert!(store.delete("budi", &eb.id).await);
-        assert!(!store.pdf_path(&eb.id).exists(), "refcount 0 -> file dihapus");
-        assert_eq!(store.refcount(&eb.id).await, 0);
+        assert!(
+            !store.pdf_path(&eb.id).exists(),
+            "tak ada pemegang -> file dihapus"
+        );
         let _ = std::fs::remove_dir_all(&dir);
     }
 
     #[tokio::test]
-    async fn unduh_ulang_akun_sama_tidak_menambah_refcount() {
-        let dir = temp_dir("refcount-redo");
+    async fn unduh_ulang_akun_sama_upsert_tetap_satu_entri() {
+        let dir = temp_dir("upsert");
         let store = DownloadStore::open(&dir).unwrap();
-        store.store_pdf("alif", "komiku:9", "9", "Ch 9", "S", "s", vec![1u8; 10]).await.unwrap();
-        let e2 = store.store_pdf("alif", "komiku:9", "9", "Ch 9", "S", "s", vec![1u8; 10]).await.unwrap();
-        assert_eq!(store.refcount(&e2.id).await, 1, "akun sama unduh ulang tidak menggandakan ref");
-        assert_eq!(store.list("alif").await.0.len(), 1, "tetap satu entri (upsert)");
+        store
+            .store_pdf("alif", "komiku:9", "9", "Ch 9", "S", "s", vec![1u8; 10])
+            .await
+            .unwrap();
+        store
+            .store_pdf("alif", "komiku:9", "9", "Ch 9", "S", "s", vec![1u8; 10])
+            .await
+            .unwrap();
+        assert_eq!(
+            store.list("alif").await.0.len(),
+            1,
+            "tetap satu entri (upsert)"
+        );
         let _ = std::fs::remove_dir_all(&dir);
     }
 
     #[tokio::test]
     async fn state_per_akun_bertahan_lintas_restart() {
-        // Buka-tutup store: index/settings/refs dibaca ulang dari disk, dan
-        // `get_any` (jalur navigasi tanpa header) tetap menemukan file.
+        // Buka-tutup store: index dibaca ulang dari disk, dan `get_any`
+        // (jalur navigasi tanpa header) tetap menemukan file.
         let dir = temp_dir("restart");
         let id = {
             let store = DownloadStore::open(&dir).unwrap();
-            store.set_limit("alif", 999).await;
             store
                 .store_pdf("alif", "komiku:5", "5", "Ch 5", "S", "s", vec![4u8; 40])
                 .await
@@ -734,9 +676,10 @@ mod tests {
         };
         let store2 = DownloadStore::open(&dir).unwrap();
         assert_eq!(store2.list("alif").await.0.len(), 1, "index akun bertahan");
-        assert_eq!(store2.settings("alif").await.limit_bytes, 999, "settings bertahan");
-        assert_eq!(store2.refcount(&id).await, 1, "refcount bertahan");
-        assert!(store2.get_any(&id).await.is_some(), "get_any menemukan file lintas restart");
+        assert!(
+            store2.get_any(&id).await.is_some(),
+            "get_any menemukan file lintas restart"
+        );
         let _ = std::fs::remove_dir_all(&dir);
     }
 
@@ -744,176 +687,57 @@ mod tests {
     async fn clear_all_hanya_akun_itu() {
         let dir = temp_dir("clear-one");
         let store = DownloadStore::open(&dir).unwrap();
-        let a = store.store_pdf("alif", "komiku:1", "1", "Ch 1", "S", "s", vec![1u8; 10]).await.unwrap();
-        let b = store.store_pdf("budi", "komiku:2", "2", "Ch 2", "S", "s", vec![2u8; 10]).await.unwrap();
+        let a = store
+            .store_pdf("alif", "komiku:1", "1", "Ch 1", "S", "s", vec![1u8; 10])
+            .await
+            .unwrap();
+        let b = store
+            .store_pdf("budi", "komiku:2", "2", "Ch 2", "S", "s", vec![2u8; 10])
+            .await
+            .unwrap();
         assert!(store.clear_all("alif").await);
         assert!(store.list("alif").await.0.is_empty());
         assert_eq!(store.list("budi").await.0.len(), 1, "budi tak tersentuh");
-        assert!(!store.pdf_path(&a.id).exists(), "file alif (ref 0) dihapus");
+        assert!(
+            !store.pdf_path(&a.id).exists(),
+            "file alif (tak dipegang) dihapus"
+        );
         assert!(store.pdf_path(&b.id).exists(), "file budi tetap");
-        assert_eq!(store.refcount(&a.id).await, 0);
-        assert_eq!(store.refcount(&b.id).await, 1);
         let _ = std::fs::remove_dir_all(&dir);
     }
 
-    #[tokio::test]
-    async fn eviction_menurunkan_refcount_dan_menghapus_file_saat_nol() {
-        let dir = temp_dir("evict-ref");
-        let store = DownloadStore::open(&dir).unwrap();
-        let now = now_millis();
-        let old = now - (EVICTION_GRACE_SECS + 60) * 1000;
-        // alif & budi sama-sama memegang id "shared"; alif juga punya entri lama
-        // yang akan di-evict oleh limit kecil -> file "shared" TIDAK boleh hilang.
-        {
-            let mut st = store.state.lock().await;
-            let u = DownloadStore::ensure_user(&store.dir, &mut st, "alif");
-            u.settings.limit_bytes = 150;
-            u.index.items.push(entry("shared", 100, old, old));
-            u.index.items.push(entry("victim", 100, old, now));
-            let ub = DownloadStore::ensure_user(&store.dir, &mut st, "budi");
-            ub.index.items.push(entry("shared", 100, old, old));
-            st.refs.insert("shared".into(), 2);
-            st.refs.insert("victim".into(), 1);
-        }
-        // tulis file fisik kedua id supaya bisa dicek keberadaannya
-        std::fs::write(store.pdf_path("shared"), b"x").unwrap();
-        std::fs::write(store.pdf_path("victim"), b"x").unwrap();
-        // unduhan baru alif (100 byte) -> total 300 > 150 -> evict 2 entri lama alif.
-        store.store_pdf("alif", "komiku:9", "9", "Ch 9", "S", "s", vec![3u8; 100]).await.unwrap();
-        // "shared" masih dipakai budi -> refcount turun ke 1, file tetap ada.
-        assert!(store.pdf_path("shared").exists(), "shared masih dipakai budi");
-        assert_eq!(store.refcount("shared").await, 1);
-        // "victim" hanya milik alif -> refcount 0 -> file hilang.
-        assert!(!store.pdf_path("victim").exists(), "victim ref 0 -> file dihapus");
-        assert_eq!(store.refcount("victim").await, 0);
-        let _ = std::fs::remove_dir_all(&dir);
-    }
-
-    // ---- perilaku lama (kini per-akun) --------------------------------
+    // ---- perilaku lama (kini per-akun, tanpa LRU/limit) ---------------
 
     #[tokio::test]
     async fn store_roundtrip_list_get_delete() {
         let dir = temp_dir("roundtrip");
         let store = DownloadStore::open(&dir).unwrap();
         let entry = store
-            .store_pdf("alif", "komiku:1", "1", "Chapter 1", "Judul Seri", "judul seri", vec![1u8; 100])
+            .store_pdf(
+                "alif",
+                "komiku:1",
+                "1",
+                "Chapter 1",
+                "Judul Seri",
+                "judul seri",
+                vec![1u8; 100],
+            )
             .await
             .unwrap();
         assert_eq!(entry.size_bytes, 100);
         assert_eq!(entry.title_key, "judul seri");
 
-        let (items, total, limit) = store.list("alif").await;
-        assert_eq!(items.len(), 1);
-        assert_eq!(total, 100);
-        assert_eq!(limit, DEFAULT_LIMIT_BYTES);
+        let (items, total) = store.list("alif").await;
+        assert_eq!((items.len(), total), (1, 100));
 
         let id = entry.id.clone();
         assert!(store.get("alif", &id).await.is_some());
         assert!(store.pdf_path(&id).exists());
 
-        // LRU touch
-        let before = store.get("alif", &id).await.unwrap().last_opened_at;
-        tokio::time::sleep(std::time::Duration::from_millis(5)).await;
-        let touched = store.touch("alif", &id).await.unwrap();
-        assert!(touched.last_opened_at >= before);
-
         assert!(store.delete("alif", &id).await);
         assert!(!store.pdf_path(&id).exists());
         assert!(store.get("alif", &id).await.is_none());
         assert!(!store.delete("alif", &id).await, "hapus dua kali = false");
-        let _ = std::fs::remove_dir_all(&dir);
-    }
-
-    #[tokio::test]
-    async fn eviction_respects_grace_and_lru() {
-        let dir = temp_dir("evict");
-        let store = DownloadStore::open(&dir).unwrap();
-        let now = now_millis();
-        let old = now - (EVICTION_GRACE_SECS + 60) * 1000;
-        {
-            // isi index manual: 3 entri 100 byte, semua di luar tenggang
-            let mut st = store.state.lock().await;
-            let u = DownloadStore::ensure_user(&store.dir, &mut st, "alif");
-            u.settings.limit_bytes = 250; // -> 300 byte harus jadi <= 250
-            u.index.items.push(entry("a", 100, old, old)); // paling lama dibuka
-            u.index.items.push(entry("b", 100, old, old + 1000));
-            u.index.items.push(entry("c", 100, old, now)); // terbaru
-            st.refs.insert("a".into(), 1);
-            st.refs.insert("b".into(), 1);
-            st.refs.insert("c".into(), 1);
-        }
-        // unduhan baru (100 byte) -> total 400, limit 250 -> buang 2 LRU
-        store
-            .store_pdf("alif", "komiku:9", "9", "Ch 9", "Series", "series", vec![2u8; 100])
-            .await
-            .unwrap();
-        let (items, total, limit) = store.list("alif").await;
-        assert_eq!(limit, 250);
-        assert!(total <= limit, "total {total} harus <= limit {limit}");
-        let ids: Vec<String> = items.iter().map(|e| e.id.clone()).collect();
-        assert!(!ids.contains(&"a".to_string()), "a (LRU) harus dibuang");
-        assert!(!ids.contains(&"b".to_string()), "b harus dibuang");
-        assert!(ids.contains(&"c".to_string()), "c terbaru tetap");
-        let evictions = store.evictions("alif").await;
-        assert_eq!(evictions.len(), 2);
-        assert!(evictions.iter().any(|e| e.chapter_title == "Chapter a"));
-        let _ = std::fs::remove_dir_all(&dir);
-    }
-
-    #[tokio::test]
-    async fn eviction_skips_entries_inside_grace() {
-        let dir = temp_dir("grace");
-        let store = DownloadStore::open(&dir).unwrap();
-        let now = now_millis();
-        {
-            let mut st = store.state.lock().await;
-            let u = DownloadStore::ensure_user(&store.dir, &mut st, "alif");
-            u.settings.limit_bytes = 50;
-            // baru diunduh (dalam tenggang) — TIDAK boleh dihapus
-            u.index.items.push(entry("fresh", 100, now, now));
-            st.refs.insert("fresh".into(), 1);
-        }
-        store
-            .store_pdf("alif", "komiku:2", "2", "Ch 2", "Series", "series", vec![3u8; 100])
-            .await
-            .unwrap();
-        let (items, total, _) = store.list("alif").await;
-        assert_eq!(items.len(), 2, "yang masih tenggang dipertahankan");
-        assert!(total > 50, "limit lunak: data user tidak dibuang paksa");
-        assert!(store.evictions("alif").await.is_empty());
-        let _ = std::fs::remove_dir_all(&dir);
-    }
-
-    #[tokio::test]
-    async fn settings_persist_and_dismiss_evictions() {
-        let dir = temp_dir("settings");
-        let store = DownloadStore::open(&dir).unwrap();
-        let (s, evicted) = store.set_limit("alif", 1234).await;
-        assert_eq!(s.limit_bytes, 1234);
-        assert_eq!(evicted, 0);
-        store.dismiss_evictions("alif").await;
-        drop(store);
-
-        let store2 = DownloadStore::open(&dir).unwrap();
-        assert_eq!(store2.settings("alif").await.limit_bytes, 1234, "settings persisten");
-        let _ = std::fs::remove_dir_all(&dir);
-    }
-
-    #[tokio::test]
-    async fn set_limit_triggers_immediate_eviction() {
-        let dir = temp_dir("setlimit");
-        let store = DownloadStore::open(&dir).unwrap();
-        let old = now_millis() - (EVICTION_GRACE_SECS + 60) * 1000;
-        {
-            let mut st = store.state.lock().await;
-            let u = DownloadStore::ensure_user(&store.dir, &mut st, "alif");
-            u.index.items.push(entry("x", 1000, old, old));
-            st.refs.insert("x".into(), 1);
-        }
-        let (s, evicted) = store.set_limit("alif", 10).await;
-        assert_eq!(s.limit_bytes, 10);
-        assert_eq!(evicted, 1, "limit baru langsung memicu eviction");
-        assert!(store.list("alif").await.0.is_empty());
         let _ = std::fs::remove_dir_all(&dir);
     }
 

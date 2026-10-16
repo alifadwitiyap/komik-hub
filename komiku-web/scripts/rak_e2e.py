@@ -96,7 +96,7 @@ with sync_playwright() as p:
     chapter_link.click()
     page.wait_for_url("**/baca/**", timeout=20000)
     page.wait_for_timeout(6000)
-    imgs = page.locator("main img, .manga-img, img[src*='/img']")
+    imgs = page.locator("main img, .manga-img")
     loaded = 0
     for i in range(min(imgs.count(), 20)):
         try:
@@ -161,14 +161,17 @@ with sync_playwright() as p:
     check("rak unduhan: entri PDF muncul dgn ukuran", ("One Piece" in body) and ("MB" in body or "KB" in body), body[:150])
     page.screenshot(path=SHOTS + "/6-rak-unduhan.png")
 
-    # 7. Settings modal
+    # 7. Pengaturan unduhan sudah DIHAPUS (plan komiku-ringan Q24): tab
+    #    Unduhan tinggal daftar. Pastikan tak ada gear/limit/eviction lagi.
     gear = page.locator('button[aria-label="Pengaturan unduhan"]')
-    if gear.count() > 0:
-        gear.first.click()
-        page.wait_for_timeout(800)
+    check("rak unduhan: tombol pengaturan sudah hilang", gear.count() == 0,
+          f"{gear.count()} tombol")
     body = page.inner_text("body")
-    check("rak settings: modal limit terbuka", "GB" in body or "Limit" in body or "limit" in body, body[:120])
-    page.screenshot(path=SHOTS + "/7-settings.png")
+    check("rak unduhan: tak ada meter 'Penyimpanan' / limit",
+          "Penyimpanan" not in body and "Batas penyimpanan" not in body, body[:120])
+    check("rak unduhan: tak ada notifikasi eviction",
+          "dihapus otomatis" not in body, body[:120])
+    page.screenshot(path=SHOTS + "/7-settings-removed.png")
 
     check("console: tanpa pageerror", len(errors) == 0, "; ".join(errors[:2]))
     browser.close()

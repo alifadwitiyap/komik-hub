@@ -7,6 +7,17 @@
     <meta name="theme-color" content="#0b0b0d" />
     <meta name="description" content="Baca manga, manhwa, dan manhua bahasa Indonesia — mode maraton seperti aplikasi Komik Hub." />
     <title>Komik Hub — baca manga, mode maraton</title>
+    <!--
+      Preload font yang dipakai di layar pertama (Beranda): Nunito Sans 400
+      untuk seluruh body/teks UI, BR Hendrix 400 (judul carousel) + 600
+      (judul seksi). `crossorigin` wajib walau same-origin — font selalu
+      di-fetch dalam mode CORS, tanpa atribut ini preload jadi fetch ganda.
+      BR Hendrix 700 (NotifPanel) sengaja tidak di-preload: hanya muncul
+      saat panel notifikasi dibuka, biar swap yang mengisi.
+    -->
+    <link rel="preload" as="font" type="font/woff2" href="/fonts/NunitoSans-Regular.woff2" crossorigin />
+    <link rel="preload" as="font" type="font/woff2" href="/fonts/BRHendrix-Regular.woff2" crossorigin />
+    <link rel="preload" as="font" type="font/woff2" href="/fonts/BRHendrix-SemiBold.woff2" crossorigin />
   </head>
   <body>
     <div id="root"></div>

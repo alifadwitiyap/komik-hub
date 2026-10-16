@@ -4,28 +4,32 @@
    Tema Komiku+ v2.3.0 — nilai diekstrak dari APK (resources.arsc):
    colorPrimary #0077b6 · colorAccent #935bab · greys · night #282828.
    Font asli: BR Hendrix (display) + Nunito Sans (body) dari assets/font APK.
+
+   Aset font: sumber .otf/.ttf sudah dikonversi ke woff2 + disubset ke SELURUH
+   cmap asli (tanpa kehilangan satu glyph pun; -69% berat). Tiap file woff2
+   di-generate dari sumbernya (pyftsubset --flavor=woff2) — bukan tautan luar.
    --------------------------------------------------------------------------- */
 @font-face {
   font-family: 'Nunito Sans';
-  src: url('/fonts/NunitoSans-Regular.ttf') format('truetype');
+  src: url('/fonts/NunitoSans-Regular.woff2') format('woff2');
   font-weight: 400;
   font-display: swap;
 }
 @font-face {
   font-family: 'BR Hendrix';
-  src: url('/fonts/BRHendrix-Regular.otf') format('opentype');
+  src: url('/fonts/BRHendrix-Regular.woff2') format('woff2');
   font-weight: 400;
   font-display: swap;
 }
 @font-face {
   font-family: 'BR Hendrix';
-  src: url('/fonts/BRHendrix-SemiBold.otf') format('opentype');
+  src: url('/fonts/BRHendrix-SemiBold.woff2') format('woff2');
   font-weight: 600;
   font-display: swap;
 }
 @font-face {
   font-family: 'BR Hendrix';
-  src: url('/fonts/BRHendrix-Bold.otf') format('opentype');
+  src: url('/fonts/BRHendrix-Bold.woff2') format('woff2');
   font-weight: 700;
   font-display: swap;
 }

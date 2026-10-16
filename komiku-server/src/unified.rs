@@ -22,6 +22,9 @@
 //!   Liveness PER SUMBER, bukan liveness server: SELALU 200 selama ada
 //!   baris (sumber mati = DATA, bukan galat). `label` dipetakan sisi SERVER;
 //!   probe jalan lewat `komik_core::probe` (kiryuu = Cloudflare DoH internal).
+//!   Di-cache dengan stale-while-revalidate (TTL 30 detik, single-flight) —
+//!   lihat tradeoff di doc `u_health`; `checked_at_ms` tetap waktu probe
+//!   ASLI, bukan waktu cache hit. `?force=1` = probe inline (tombol refresh).
 //!
 //! Model core (model.rs) sengaja tanpa Serialize, jadi bentuk keluar dibentuk
 //! via DTO di file ini — file core tidak diubah. Aggregator core sudah punya
@@ -38,8 +41,8 @@ use axum::{
 use serde::Deserialize;
 use serde_json::{json, Value};
 
-use komik_core::aggregator::Aggregator;
 use komik_core::adapters::all_sources;
+use komik_core::aggregator::Aggregator;
 use komik_core::model::{title_key, Chapter, Manga};
 use komik_core::source::{Source, PER_SOURCE_TIMEOUT_SECS};
 
@@ -149,7 +152,11 @@ impl From<komik_core::aggregator::Merged<Manga>> for ListOut {
     fn from(m: komik_core::aggregator::Merged<Manga>) -> Self {
         ListOut {
             items: m.items.iter().map(MangaOut::from).collect(),
-            failed_sources: m.failures.iter().map(|(s, _)| s.as_str().to_string()).collect(),
+            failed_sources: m
+                .failures
+                .iter()
+                .map(|(s, _)| s.as_str().to_string())
+                .collect(),
             from_cache: m.from_cache,
         }
     }
@@ -201,9 +208,7 @@ pub struct SearchQuery {
 /// - Perbandingan case-insensitive di nilai (mis. "MANHWA" == "Manhwa").
 fn match_filters(m: &Manga, tipe: Option<&str>, status: Option<&str>) -> bool {
     let eq_ci = |field: &Option<String>, want: Option<&str>| match want {
-        Some(w) => field
-            .as_deref()
-            .is_some_and(|v| v.eq_ignore_ascii_case(w)),
+        Some(w) => field.as_deref().is_some_and(|v| v.eq_ignore_ascii_case(w)),
         None => true,
     };
     eq_ci(&m.manga_type, tipe) && eq_ci(&m.status, status)
@@ -235,10 +240,7 @@ fn list_out_filtered(
     .into_iter()
     .filter(|m| match_filters(m, tipe, status))
     .collect();
-    let mut out = ListOut::from(komik_core::aggregator::Merged {
-        items,
-        ..merged
-    });
+    let mut out = ListOut::from(komik_core::aggregator::Merged { items, ..merged });
     if let Some(max) = max {
         out.items.truncate(max);
     }
@@ -265,7 +267,13 @@ async fn u_search(Query(q): Query<SearchQuery>) -> Res<ListOut> {
         // genre + judul bersamaan (bukan menyaring sisa halaman di client).
         Some(g) => {
             aggregator()
-                .search_in_genre(&query, g, q.page.unwrap_or(1).max(1), FILTER_FANOUT_CAP, None)
+                .search_in_genre(
+                    &query,
+                    g,
+                    q.page.unwrap_or(1).max(1),
+                    FILTER_FANOUT_CAP,
+                    None,
+                )
                 .await
         }
         None => {
@@ -290,11 +298,7 @@ async fn u_search(Query(q): Query<SearchQuery>) -> Res<ListOut> {
 /// `genre` (kalau ada) diteruskan ke `list()` — SAMA dengan mode search,
 /// jadi filternya menyaring sungguhan, bukan cuma menyediakan daftar.
 async fn u_catalogue(Query(q): Query<CatalogueQuery>) -> Res<ListOut> {
-    let genre = q
-        .genre
-        .as_deref()
-        .map(str::trim)
-        .filter(|s| !s.is_empty());
+    let genre = q.genre.as_deref().map(str::trim).filter(|s| !s.is_empty());
     let merged = aggregator()
         .list(genre, q.page.unwrap_or(1).max(1), FILTER_FANOUT_CAP, None)
         .await;
@@ -348,7 +352,7 @@ fn source_label(source: &str) -> String {
 /// Baris health satu sumber. Urutan field DECLARATION = urutan JSON (serde
 /// struct) = kontrak web lane (lane web baca: source, label, ok, latency_ms,
 /// error — `komiku-web/src/types.ts::SourceHealthRow`).
-#[derive(serde::Serialize)]
+#[derive(serde::Serialize, Clone)]
 pub struct HealthRow {
     pub source: String,
     pub label: String,
@@ -359,7 +363,7 @@ pub struct HealthRow {
 }
 
 /// Payload `GET /api/unified/health`.
-#[derive(serde::Serialize)]
+#[derive(serde::Serialize, Clone)]
 pub struct HealthOut {
     pub total: usize,
     pub healthy: usize,
@@ -417,17 +421,84 @@ fn health_payload(rows: &[HealthRow], checked_at_ms: i64) -> HealthOut {
     }
 }
 
-/// GET /api/unified/health — liveness PER SUMBER (bukan liveness server).
+/// TTL cache health (soft). KEPUTUSAN DESAIN yang diubah (dulu: sengaja TANPA
+/// cache supaya "alive" bukan artefak cache).
 ///
-/// Probe paralel (`JoinSet`) semua sumber tiap request: SATU probe per
-/// sumber, tanpa fan-out tambahan, tanpa cache (core `probe.rs` sengaja tak
-/// menyentuh cache supaya "alive" bukan artefak cache lama). Urutan keluaran
-/// = urutan `all_sources()` = `SOURCE_PRIORITY` (JoinSet selesai tak berurut).
+/// Skema: **stale-while-revalidate**. Umur < TTL = segar (sajikan cache).
+/// Umur >= TTL = basi TAPI masih disajikan seketika, sambil SATU refresh
+/// latar dijalankan (single-flight) supaya request berikutnya dapat hasil
+/// baru. Ini yang membuat latensi steady-state ~2 ms, bukan ~1 s: klien web
+/// poll tiap 30 s (`useSourceHealth.ts::POLL_MS`) dan tidak pernah lagi
+/// menunggu probe penuh, kecuali saat cache benar-benar dingin.
 ///
-/// Status: SELALU 200 selama ada baris — partial health (sebagian sumber
-/// mati) tetap 200 dengan `healthy < total`. Sumber mati BUKAN 502. Hanya
-/// nol baris yang error.
-async fn u_health() -> Res<HealthOut> {
+/// Kenapa TTL = 30 s (bukan 5 s seperti draft pertama): dengan poll klien
+/// 30 s, TTL 5 s hampir selalu sudah basi saat poll berikutnya tiba, jadi
+/// tiap poll tetap menunggu probe penuh (~1 s) — cache-nya nyaris tak
+/// berguna untuk latensi (hanya meredam burst). SWR memutus tradeoff itu:
+/// permintaan selalu dilayani dari cache seketika, dan probe tetap jalan di
+/// latar, jadi kesegaran tidak dikorbankan demi kecepatan.
+const HEALTH_CACHE_TTL: std::time::Duration = std::time::Duration::from_secs(30);
+
+/// Batas keras staleness: kalau snapshot lebih tua dari ini (mis. server
+/// baru bangun lalu tak ada request selama lama), JANGAN sajikan stale —
+/// probe inline (blokir) supaya klien tak pernah melihat data sangat basi.
+/// 10 menit ≫ TTL, jadi hanya terpicu pada kasus tepi (idle panjang).
+const HEALTH_CACHE_MAX_STALE: std::time::Duration = std::time::Duration::from_secs(600);
+
+/// Klasifikasi umur snapshot terhadap TTL/STALE (FUNGSI MURNI → mudah diuji).
+#[derive(Debug, PartialEq, Eq)]
+enum CacheAge {
+    /// umur < TTL: sajikan langsung, tanpa refresh.
+    Fresh,
+    /// TTL <= umur < MAX_STALE: sajikan langsung + refresh latar (SWR).
+    Stale,
+    /// umur >= MAX_STALE: terlalu basi, probe inline (blokir).
+    Expired,
+}
+
+/// Umur snapshot → [`CacheAge`]. Murni (durasi masuk) supaya batas bisa
+/// diuji tanpa jam/jaringan.
+fn classify_age(age: std::time::Duration) -> CacheAge {
+    if age < HEALTH_CACHE_TTL {
+        CacheAge::Fresh
+    } else if age < HEALTH_CACHE_MAX_STALE {
+        CacheAge::Stale
+    } else {
+        CacheAge::Expired
+    }
+}
+
+/// Slot cache health: `(waktu probe, payload)`. `None` = belum pernah probe.
+/// Satu slot global (bukan per-sumber) karena payload = satu snapshot gabungan.
+fn health_cache() -> &'static tokio::sync::Mutex<Option<(std::time::Instant, HealthOut)>> {
+    static CACHE: std::sync::OnceLock<
+        tokio::sync::Mutex<Option<(std::time::Instant, HealthOut)>>,
+    > = std::sync::OnceLock::new();
+    CACHE.get_or_init(|| tokio::sync::Mutex::new(None))
+}
+
+/// Gerbang single-flight: saat cache basi, HANYA satu request boleh menjalankan
+/// probe; sisanya menunggu lalu memakai hasil segar (double-check cache setelah
+/// ambil gerbang). Tanpa ini, N request bersamaan pada cache kosong = N probe
+/// penuh (stampede) — persis beban yang mau dihindari cache ini.
+fn health_refresh_gate() -> &'static tokio::sync::Mutex<()> {
+    static GATE: std::sync::OnceLock<tokio::sync::Mutex<()>> = std::sync::OnceLock::new();
+    GATE.get_or_init(|| tokio::sync::Mutex::new(()))
+}
+
+/// Query `GET /api/unified/health`. `force=1` = lewati cache, probe inline
+/// (dipakai tombol "periksa ulang" di badge supaya user dapat hasil segar
+/// sekarang, bukan stale-while-revalidate).
+#[derive(Deserialize)]
+pub struct HealthQuery {
+    #[serde(default)]
+    force: Option<u8>,
+}
+
+/// Probe SEMUA sumber sekarang (JoinSet paralel) dan bentuk payload-nya.
+/// Dipakai baik oleh jalur inline maupun refresh latar SWR — satu sumber
+/// kebenaran, tak ada duplikasi logika probe.
+async fn probe_health_now() -> anyhow::Result<HealthOut> {
     let sources = aggregator().sources.clone();
     let mut set = tokio::task::JoinSet::new();
     for src in sources {
@@ -450,11 +521,97 @@ async fn u_health() -> Res<HealthOut> {
         .filter_map(|s| by_source.remove(s.id().as_str()))
         .collect();
     if rows.is_empty() {
-        return Err(AppError::new(anyhow::anyhow!(
-            "tidak ada baris health: agregator tanpa sumber"
-        )));
+        // Nol baris = kegagalan internal TOTAL (agregator tanpa sumber).
+        anyhow::bail!("tidak ada baris health: agregator tanpa sumber");
     }
-    Ok(Json(health_payload(&rows, now_millis())))
+    Ok(health_payload(&rows, now_millis()))
+}
+
+/// Probe lalu simpan ke cache (waktu probe ASLI). Dipakai jalur inline.
+async fn probe_health_and_store() -> anyhow::Result<HealthOut> {
+    let out = probe_health_now().await?;
+    *health_cache().lock().await = Some((std::time::Instant::now(), out.clone()));
+    Ok(out)
+}
+
+/// Jalankan SATU refresh latar (single-flight): ambil gerbang, double-check
+/// cache (request lain mungkin sudah me-refresh), lalu probe + simpan.
+/// Kegagalan probe hanya di-log — pemanggil sudah melayani stale, jadi
+/// endpoint tetap responsif; permintaan berikutnya akan mencoba lagi.
+fn spawn_health_refresh() {
+    tokio::spawn(async move {
+        let _gate = health_refresh_gate().lock().await;
+        {
+            let cache = health_cache().lock().await;
+            if let Some((at, _)) = cache.as_ref() {
+                if classify_age(at.elapsed()) == CacheAge::Fresh {
+                    return; // sudah di-refresh request lain saat menunggu gerbang
+                }
+            }
+        }
+        match probe_health_and_store().await {
+            Ok(_) => {}
+            Err(e) => tracing::warn!("refresh health latar gagal: {e:#}"),
+        }
+    });
+}
+
+/// GET /api/unified/health — liveness PER SUMBER (bukan liveness server).
+///
+/// Probe paralel (`JoinSet`) semua sumber, SATU probe per sumber, tanpa
+/// fan-out tambahan. DULU tanpa cache (core `probe.rs` sengaja tak menyentuh
+/// cache supaya "alive" bukan artefak cache lama); sekarang payload di-cache
+/// dengan **stale-while-revalidate** ([`HEALTH_CACHE_TTL`] /
+/// [`HEALTH_CACHE_MAX_STALE`]) — lihat tradeoff di doc konstanta itu.
+/// `probe.rs`/core tetap tak di-cache: yang di-cache adalah SNAPSHOT HASIL
+/// PROBE di server, bukan liveness adapter. Urutan keluaran = urutan
+/// `all_sources()` = `SOURCE_PRIORITY` (JoinSet selesai tak berurut).
+///
+/// Alur: cache SEGAR → sajikan langsung; cache BASI (≥ TTL) → sajikan stale
+/// seketika + refresh latar (single-flight, dedupe lewat gerbang); cache
+/// sangat basi (≥ MAX_STALE) atau kosong → probe inline (blokir) supaya klien
+/// tak pernah melihat data tua. `?force=1` memaksa probe inline.
+///
+/// Status: SELALU 200 selama ada baris — partial health (sebagian sumber
+/// mati) tetap 200 dengan `healthy < total`. Sumber mati BUKAN 502. Hanya
+/// nol baris yang error.
+async fn u_health(Query(q): Query<HealthQuery>) -> Res<HealthOut> {
+    let force = q.force.is_some_and(|v| v != 0);
+    if !force {
+        // Jalur cepat: baca cache sekali.
+        let snapshot = {
+            let cache = health_cache().lock().await;
+            cache
+                .as_ref()
+                .map(|(at, out)| (classify_age(at.elapsed()), out.clone()))
+        };
+        match snapshot {
+            Some((CacheAge::Fresh, out)) => return Ok(Json(out)),
+            Some((CacheAge::Stale, out)) => {
+                // Serve-stale: balas SEGERA, refresh di latar. Gerbang
+                // single-flight mencegah N request basi = N probe.
+                spawn_health_refresh();
+                return Ok(Json(out));
+            }
+            // Expired atau belum ada: jatuh ke probe inline di bawah.
+            _ => {}
+        }
+    }
+    // Probe inline (blokir): cache kosong / sangat basi / `?force=1`.
+    // Gerbang tetap dipakai supaya burst bersamaan tidak menumpuk probe.
+    let _gate = health_refresh_gate().lock().await;
+    if !force {
+        let cache = health_cache().lock().await;
+        if let Some((at, out)) = cache.as_ref() {
+            if classify_age(at.elapsed()) != CacheAge::Expired {
+                return Ok(Json(out.clone()));
+            }
+        }
+    }
+    match probe_health_and_store().await {
+        Ok(out) => Ok(Json(out)),
+        Err(e) => Err(AppError::new(e)),
+    }
 }
 
 /// epoch millis sekarang (0 kalau jam sistem sebelum UNIX_EPOCH).
@@ -544,7 +701,12 @@ async fn u_chapter(Path((handle, number)): Path<(String, String)>) -> Res<Value>
         .series_resolve(&handle, SERIES_CHAPTER_LIMIT, None)
         .await
         .ok()
-        .map(|o| (o.detail.manga.title_key.clone(), o.detail.manga.title.clone()));
+        .map(|o| {
+            (
+                o.detail.manga.title_key.clone(),
+                o.detail.manga.title.clone(),
+            )
+        });
     let out = aggregator()
         .read_chapter_any(&handle, &number, None, SERIES_CHAPTER_LIMIT)
         .await
@@ -571,7 +733,7 @@ async fn u_chapter(Path((handle, number)): Path<(String, String)>) -> Res<Value>
 
 /// Direktori unduhan: default `<users_dir>/downloads` (relatif ke CWD server =
 /// D:/project/komiku-server), bisa dioverride lewat env `KOMIKU_DOWNLOADS_DIR`.
-/// Di bawah `users_dir()` supaya state per-akun (index/evictions/settings)
+/// Di bawah `users_dir()` supaya state per-akun (`index/<username>.json`)
 /// hidup berdampingan dengan `users/<username>.json`.
 fn download_dir() -> std::path::PathBuf {
     std::env::var_os("KOMIKU_DOWNLOADS_DIR")
@@ -579,17 +741,53 @@ fn download_dir() -> std::path::PathBuf {
         .unwrap_or_else(|| users_dir().join("downloads"))
 }
 
+/// Selang sapu TTL: tiap 1 jam. Entri yang lebih tua dari 24 jam dibuang
+/// (lihat `downloads::TTL_SECS`).
+const SWEEP_INTERVAL: std::time::Duration = std::time::Duration::from_secs(60 * 60);
+
 /// Satu instance store untuk seluruh proses (pola sama seperti `aggregator()`).
+///
+/// Saat OnceLock pertama diinisialisasi, spawn SATU task ringan yang tiap
+/// `SWEEP_INTERVAL` memanggil `sweep_expired` (TTL 24 jam). Spawn di sini
+/// (bukan di `main.rs`) karena store hidup di modul ini: semua jalur yang
+/// memakai store lewat fungsi ini, jadi tidak ada yang bisa memakai store
+/// tanpa ikut menyalakan sapu. Task hanya tidur lalu bangun — tidak
+/// menghalangi shutdown (tokio mematikannya saat runtime berhenti).
 fn store() -> anyhow::Result<&'static std::sync::Arc<DownloadStore>> {
     static STORE: std::sync::OnceLock<anyhow::Result<std::sync::Arc<DownloadStore>, String>> =
         std::sync::OnceLock::new();
-    STORE
-        .get_or_init(|| {
-            DownloadStore::open(download_dir()).map_err(|e| {
-                tracing::error!("store unduhan gagal dibuka: {e:#}");
-                e.to_string()
-            })
+    let opened = STORE.get_or_init(|| {
+        DownloadStore::open(download_dir()).map_err(|e| {
+            tracing::error!("store unduhan gagal dibuka: {e:#}");
+            e.to_string()
         })
+    });
+    if let Ok(store) = opened.as_ref() {
+        // spawn sekali saja (OnceLock init hanya jalan sekali); hanya bila
+        // runtime tokio sudah aktif (di luar runtime, mis. test sinkron ->
+        // tak perlu sapu, biar tidak panic).
+        if tokio::runtime::Handle::try_current().is_ok() {
+            static SPAWNED: std::sync::OnceLock<()> = std::sync::OnceLock::new();
+            SPAWNED.get_or_init(|| {
+                let store = store.clone();
+                tokio::spawn(async move {
+                    let mut ticker = tokio::time::interval(SWEEP_INTERVAL);
+                    // Tick pertama `interval` selesai seketika; sapu SEKARANG
+                    // supaya entri kedaluwarsa dari proses sebelumnya dibuang
+                    // saat boot (bukan menunggu 1 jam penuh).
+                    ticker.tick().await;
+                    loop {
+                        let n = store.sweep_expired().await;
+                        if n > 0 {
+                            tracing::info!("sweep unduhan: {n} entri kedaluwarsa dibuang");
+                        }
+                        ticker.tick().await;
+                    }
+                });
+            });
+        }
+    }
+    opened
         .as_ref()
         .map_err(|e| anyhow::anyhow!("store unduhan tidak tersedia: {e}"))
 }
@@ -601,11 +799,6 @@ const PAGE_CONCURRENCY: usize = 6;
 struct DownloadPdfReq {
     handle: String,
     number: String,
-}
-
-#[derive(Deserialize)]
-struct LimitReq {
-    limit_bytes: u64,
 }
 
 /// Referer paling generik untuk host gambar: `https://host/`. Adapter sumber
@@ -621,10 +814,10 @@ fn referer_for(url: &str) -> String {
     }
 }
 
-/// Ambil satu gambar chapter server-side. Host WAJIB di allowlist `img.rs`
-/// (guard SSRF yang sama dengan proxy `/img`) + UA mobile + Referer host.
+/// Ambil satu gambar chapter server-side. Host WAJIB di allowlist `hosts.rs`
+/// (guard SSRF) + UA mobile + Referer host.
 async fn fetch_image(url: &str) -> anyhow::Result<Vec<u8>> {
-    if !crate::img::host_allowed(url) {
+    if !crate::hosts::host_allowed(url) {
         anyhow::bail!("host gambar tidak diizinkan ({url})");
     }
     let client = reqwest::Client::builder()
@@ -664,7 +857,8 @@ async fn fetch_pages(urls: &[String]) -> anyhow::Result<Vec<pdf::Page>> {
     for (url, slot) in urls.iter().zip(slots) {
         pages.push(pdf::Page {
             url: url.clone(),
-            bytes: slot.ok_or_else(|| anyhow::anyhow!("gambar halaman {} hilang", pages.len() + 1))?,
+            bytes: slot
+                .ok_or_else(|| anyhow::anyhow!("gambar halaman {} hilang", pages.len() + 1))?,
         });
     }
     Ok(pages)
@@ -673,7 +867,11 @@ async fn fetch_pages(urls: &[String]) -> anyhow::Result<Vec<pdf::Page>> {
 /// Orkestrasi generate+simpan PDF: resolve chapter lintas sumber via
 /// `read_chapter_any` (gambar = `outcome.pages.images`), judul series dari
 /// `series_resolve` (untuk `series_title` + `title_key`), tulis PDF ke store.
-async fn generate_pdf(username: &str, handle: &str, number: &str) -> Result<DownloadEntry, AppError> {
+async fn generate_pdf(
+    username: &str,
+    handle: &str,
+    number: &str,
+) -> Result<DownloadEntry, AppError> {
     let series = aggregator()
         .series_resolve(handle, SERIES_CHAPTER_LIMIT, None)
         .await
@@ -697,7 +895,9 @@ async fn generate_pdf(username: &str, handle: &str, number: &str) -> Result<Down
             downloads::MAX_PAGES
         )));
     }
-    let pages = fetch_pages(&out.pages.images).await.map_err(AppError::new)?;
+    let pages = fetch_pages(&out.pages.images)
+        .await
+        .map_err(AppError::new)?;
     let (bytes, report) = pdf::write_pdf_bytes(&pages).map_err(AppError::new)?;
     let entry = store()
         .map_err(AppError::new)?
@@ -750,19 +950,33 @@ async fn u_download_pdf(headers: HeaderMap, Json(req): Json<DownloadPdfReq>) -> 
 }
 
 /// GET /api/unified/downloads
-/// -> {items:[...], total_bytes, limit_bytes} MILIK akun.
+/// -> {items:[...], total_bytes} MILIK akun.
+///
+/// Tidak ada `limit_bytes` lagi (limit byte dihapus, diganti TTL 24 jam).
+/// `expires_at` (aditif) = epoch millis `downloaded_at + TTL`, biar web bisa
+/// menampilkan sisa waktu tanpa menghitung sendiri.
 async fn u_downloads(headers: HeaderMap) -> Res<Value> {
     let username = require_user(&headers)?;
-    let (items, total, limit) = store()?.list(&username).await;
+    let (items, total) = store()?.list(&username).await;
+    let ttl_ms = downloads::TTL_SECS * 1000;
+    let items: Vec<Value> = items
+        .into_iter()
+        .map(|e| {
+            let mut v = serde_json::to_value(&e).unwrap_or(Value::Null);
+            if let Some(obj) = v.as_object_mut() {
+                obj.insert("expires_at".into(), json!(e.downloaded_at + ttl_ms));
+            }
+            v
+        })
+        .collect();
     Ok(Json(json!({
         "items": items,
         "total_bytes": total,
-        "limit_bytes": limit,
     })))
 }
 
 /// GET /api/unified/downloads/{id} -> byte PDF + Content-Disposition
-/// attachment; SEKALIGUS update last_opened_at (LRU).
+/// attachment.
 ///
 /// ## Seam: browser navigation tidak mengirim header
 /// Kartu Rak membuka file ini via `<a href>` (bukan fetch ber-header), jadi
@@ -770,13 +984,12 @@ async fn u_downloads(headers: HeaderMap) -> Res<Value> {
 /// - Header akun VALID  -> hanya id yang ADA di index akun itu (isolasi; id
 ///   akun lain -> 404 walau filenya masih dipakai orang lain).
 /// - Tanpa header valid -> file PDF content-addressed dan dibagi, jadi boleh
-///   dilayani selama masih direferensikan minimal satu akun (`refs[id] > 0`);
-///   id yang tak lagi dipakai (refcount 0) tetap 404.
-/// Cabang kedua menjaga tombol Baca/Unduh-lagi tetap bekerja.
-async fn u_download_file(
-    headers: HeaderMap,
-    Path(id): Path<String>,
-) -> Result<Response, AppError> {
+///   dilayani selama file fisiknya masih ada di disk; kalau sudah disapu TTL
+///   -> 404. Cabang ini menjaga tombol Baca/Unduh-lagi tetap bekerja.
+///
+/// Tidak ada lagi update LRU (`last_opened_at` dihapus; satu-satunya cap
+/// waktu = `downloaded_at`, dasar TTL).
+async fn u_download_file(headers: HeaderMap, Path(id): Path<String>) -> Result<Response, AppError> {
     let store = store().map_err(AppError::new)?;
     let not_found = || AppError::not_found(format!("unduhan {id} tidak ditemukan"));
     match require_user(&headers) {
@@ -786,9 +999,9 @@ async fn u_download_file(
                 return Err(not_found());
             }
         }
-        // navigasi tanpa header valid: file dibagi, batasi lewat refcount
+        // navigasi tanpa header valid: file dibagi, boleh selama ada di disk
         Err(_) => {
-            if store.refcount(&id).await == 0 {
+            if !store.pdf_path(&id).exists() {
                 return Err(not_found());
             }
         }
@@ -797,15 +1010,14 @@ async fn u_download_file(
     let bytes = tokio::fs::read(store.pdf_path(&id))
         .await
         .map_err(|_| AppError::not_found(format!("file unduhan {id} tidak ada di disk")))?;
-    // LRU update (best-effort: gagal update tidak boleh gagalkan unduhan).
-    if let Ok(username) = require_user(&headers) {
-        let _ = store.touch(&username, &id).await;
-    }
     Response::builder()
         .header(header::CONTENT_TYPE, "application/pdf")
         .header(
             header::CONTENT_DISPOSITION,
-            format!("attachment; filename=\"{}\"", entry.filename.replace('"', "")),
+            format!(
+                "attachment; filename=\"{}\"",
+                entry.filename.replace('"', "")
+            ),
         )
         .header(header::CONTENT_LENGTH, bytes.len())
         .body(Body::from(bytes))
@@ -813,7 +1025,8 @@ async fn u_download_file(
 }
 
 /// DELETE /api/unified/downloads/{id} -> {deleted:true}
-/// Menghapus entri MILIK akun; file fisik hilang hanya saat refcount 0.
+/// Menghapus entri MILIK akun; file fisik hilang hanya saat tak ada akun lain
+/// yang menunjuknya.
 async fn u_download_delete(headers: HeaderMap, Path(id): Path<String>) -> Res<Value> {
     let username = require_user(&headers)?;
     let store = store().map_err(AppError::new)?;
@@ -824,44 +1037,13 @@ async fn u_download_delete(headers: HeaderMap, Path(id): Path<String>) -> Res<Va
     }
 }
 
-/// DELETE /api/unified/downloads -> hapus SEMUA MILIK akun (modal settings).
+/// DELETE /api/unified/downloads -> hapus SEMUA MILIK akun (modal "hapus semua").
 async fn u_download_delete_all(headers: HeaderMap) -> Res<Value> {
     let username = require_user(&headers)?;
     let store = store().map_err(AppError::new)?;
     let before = store.list(&username).await.0.len();
     let changed = store.clear_all(&username).await;
     Ok(Json(json!({ "deleted": if changed { before } else { 0 } })))
-}
-
-/// GET /api/unified/evictions -> {items:[...]} MILIK akun.
-async fn u_evictions(headers: HeaderMap) -> Res<Value> {
-    let username = require_user(&headers)?;
-    Ok(Json(json!({ "items": store()?.evictions(&username).await })))
-}
-
-/// POST /api/unified/evictions/dismiss -> {ok:true} (log MILIK akun).
-async fn u_evictions_dismiss(headers: HeaderMap) -> Res<Value> {
-    let username = require_user(&headers)?;
-    store()?.dismiss_evictions(&username).await;
-    Ok(Json(json!({ "ok": true })))
-}
-
-/// GET /api/unified/settings/downloads -> {limit_bytes} MILIK akun.
-async fn u_settings_get(headers: HeaderMap) -> Res<Value> {
-    let username = require_user(&headers)?;
-    let s = store()?.settings(&username).await;
-    Ok(Json(json!({ "limit_bytes": s.limit_bytes })))
-}
-
-/// PUT /api/unified/settings/downloads {limit_bytes} -> {limit_bytes} MILIK akun.
-async fn u_settings_put(headers: HeaderMap, Json(body): Json<LimitReq>) -> Res<Value> {
-    let username = require_user(&headers)?;
-    let (s, evicted) = store()?.set_limit(&username, body.limit_bytes).await;
-    Ok(Json(json!({
-        "limit_bytes": s.limit_bytes,
-        // tambahan (aditif): berapa yang langsung dievict oleh limit baru
-        "evicted": evicted,
-    })))
 }
 
 // ------------------------------------------------------------------ router
@@ -879,11 +1061,9 @@ pub fn unified_routes() -> Router<crate::routes::AppState> {
         .route("/api/unified/genres", get(u_genres))
         .route("/api/unified/series/:handle", get(u_series))
         .route("/api/unified/chapter/:handle/:number", get(u_chapter))
-        // Rak buku: unduhan PDF + eviction + settings (kontrak lane rak-buku)
-        .route(
-            "/api/unified/download-pdf",
-            post(u_download_pdf),
-        )
+        // Rak buku: unduhan PDF (kontrak lane rak-buku). Limit byte +
+        // eviction + settings DIHAPUS, diganti retensi TTL 24 jam.
+        .route("/api/unified/download-pdf", post(u_download_pdf))
         .route(
             "/api/unified/downloads",
             get(u_downloads).delete(u_download_delete_all),
@@ -891,12 +1071,6 @@ pub fn unified_routes() -> Router<crate::routes::AppState> {
         .route(
             "/api/unified/downloads/:id",
             get(u_download_file).delete(u_download_delete),
-        )
-        .route("/api/unified/evictions", get(u_evictions))
-        .route("/api/unified/evictions/dismiss", post(u_evictions_dismiss))
-        .route(
-            "/api/unified/settings/downloads",
-            get(u_settings_get).put(u_settings_put),
         )
 }
 
@@ -944,7 +1118,9 @@ mod tests {
             "chapter 179.6 tidak ditemukan di sumber mana pun untuk komiku:1308"
         ));
         assert_eq!(nf.into_response().status(), 404);
-        let miss = classify_core_err(anyhow::anyhow!("gagal ambil series komiku:6426 (komiku: tidak ada)"));
+        let miss = classify_core_err(anyhow::anyhow!(
+            "gagal ambil series komiku:6426 (komiku: tidak ada)"
+        ));
         assert_eq!(miss.into_response().status(), 404);
         let upstream = classify_core_err(anyhow::anyhow!(
             "gagal memuat chapter 9 untuk komiku:6426 (semua sumber gagal diakses): kiryuu=timeout"
@@ -962,25 +1138,39 @@ mod tests {
             "One Piece: Romance Dawn!",
         );
         let out = MangaOut::from(&m);
-        assert_eq!(out.title_key, komik_core::model::title_key("One Piece: Romance Dawn!"));
+        assert_eq!(
+            out.title_key,
+            komik_core::model::title_key("One Piece: Romance Dawn!")
+        );
         assert_eq!(out.title_key, "one piece romance dawn");
     }
 
     /// Referer per-host: `https://host/path/img.jpg` -> `https://host/`.
     #[test]
     fn referer_for_host() {
-        assert_eq!(referer_for("https://img.komiku.org/a/b.jpg"), "https://img.komiku.org/");
-        assert_eq!(referer_for("https://cdn.jsdelivr.net/x.jpg"), "https://cdn.jsdelivr.net/");
+        assert_eq!(
+            referer_for("https://img.komiku.org/a/b.jpg"),
+            "https://img.komiku.org/"
+        );
+        assert_eq!(
+            referer_for("https://cdn.jsdelivr.net/x.jpg"),
+            "https://cdn.jsdelivr.net/"
+        );
         assert_eq!(referer_for("https://host"), "https://host/");
     }
 
-    /// Gambar chapter hanya boleh dari host di allowlist `img.rs` (SSRF).
+    /// Gambar chapter hanya boleh dari host di allowlist `hosts.rs` (SSRF).
     #[test]
     fn host_gambar_di_allowlist() {
-        assert!(crate::img::host_allowed("https://image2.komiku.to/a.jpg"));
-        assert!(!crate::img::host_allowed("https://127.0.0.1/a.jpg"));
-        assert!(!crate::img::host_allowed("https://evil.example.com/a.jpg"));
-        assert!(!crate::img::host_allowed("http://image2.komiku.to/a.jpg"), "bukan https");
+        assert!(crate::hosts::host_allowed("https://image2.komiku.to/a.jpg"));
+        assert!(!crate::hosts::host_allowed("https://127.0.0.1/a.jpg"));
+        assert!(!crate::hosts::host_allowed(
+            "https://evil.example.com/a.jpg"
+        ));
+        assert!(
+            !crate::hosts::host_allowed("http://image2.komiku.to/a.jpg"),
+            "bukan https"
+        );
     }
 
     // ------------------------------------------------------- health per sumber
@@ -1079,15 +1269,61 @@ mod tests {
         assert!(src["error"].is_null());
     }
 
+    // ------------------------------------------------------- cache TTL health
+
+    /// Batas klasifikasi umur (SWR): < TTL = Fresh; [TTL, MAX_STALE) = Stale
+    /// (sajikan + refresh latar); >= MAX_STALE = Expired (probe inline).
+    /// Uji batas persis supaya semantik `<` terkunci (umur == TTL = basi).
+    #[test]
+    fn classify_age_batas_ttl_dan_max_stale() {
+        use std::time::Duration;
+        assert_eq!(classify_age(Duration::ZERO), CacheAge::Fresh);
+        assert_eq!(
+            classify_age(HEALTH_CACHE_TTL - Duration::from_millis(1)),
+            CacheAge::Fresh
+        );
+        assert_eq!(
+            classify_age(HEALTH_CACHE_TTL),
+            CacheAge::Stale,
+            "umur persis TTL = basi (masuk jalur SWR)"
+        );
+        assert_eq!(
+            classify_age(HEALTH_CACHE_MAX_STALE - Duration::from_millis(1)),
+            CacheAge::Stale
+        );
+        assert_eq!(
+            classify_age(HEALTH_CACHE_MAX_STALE),
+            CacheAge::Expired,
+            "umur persis MAX_STALE = terlalu basi (probe inline)"
+        );
+        assert_eq!(
+            classify_age(HEALTH_CACHE_MAX_STALE + Duration::from_secs(60)),
+            CacheAge::Expired
+        );
+    }
+
+    /// Kontrak SWR: MAX_STALE HARUS > TTL (kalau tidak, jalur Stale tak pernah
+    /// tercapai dan SWR mati). Dan TTL >= interval poll klien (30s) supaya
+    /// poll rutin dilayani dari cache (Fresh/Stale), bukan menunggu probe.
+    #[test]
+    fn health_cache_ttl_mendukung_swr_pada_poll_30s() {
+        use std::time::Duration;
+        assert!(
+            HEALTH_CACHE_MAX_STALE > HEALTH_CACHE_TTL,
+            "MAX_STALE {HEALTH_CACHE_MAX_STALE:?} harus > TTL {HEALTH_CACHE_TTL:?} (jalur SWR)"
+        );
+        assert!(
+            HEALTH_CACHE_TTL >= Duration::from_secs(30),
+            "TTL {HEALTH_CACHE_TTL:?} harus >= interval poll klien 30s supaya poll rutin dilayani cache (bukan menunggu probe ~1s)"
+        );
+    }
+
     // ------------------------------------------------- filter tipe/status
 
     /// Manga sintetis untuk filter (manga_type/status diatur eksplisit).
     fn sample(tag: &str, tipe: Option<&str>, status: Option<&str>) -> Manga {
-        let mut m = komik_core::model::Manga::new(
-            komik_core::model::SourceId::from("komiku"),
-            tag,
-            tag,
-        );
+        let mut m =
+            komik_core::model::Manga::new(komik_core::model::SourceId::from("komiku"), tag, tag);
         m.manga_type = tipe.map(|s| s.to_string());
         m.status = status.map(|s| s.to_string());
         m
@@ -1108,8 +1344,14 @@ mod tests {
         let a = sample("a", Some("Manhwa"), Some("Completed"));
         assert!(match_filters(&a, Some("MANHWA"), None));
         assert!(match_filters(&a, Some("manhwa"), Some("COMPLETED")));
-        assert!(match_filters(&a, Some("Manhua"), None) == false, "tipe beda gugur");
-        assert!(match_filters(&a, None, Some("Ongoing")) == false, "status beda gugur");
+        assert!(
+            match_filters(&a, Some("Manhua"), None) == false,
+            "tipe beda gugur"
+        );
+        assert!(
+            match_filters(&a, None, Some("Ongoing")) == false,
+            "status beda gugur"
+        );
     }
 
     /// Item dengan field None GUGUR saat filter itu aktif — jangan pura-pura
@@ -1148,7 +1390,10 @@ mod tests {
                 sample("c", Some("Manga"), Some("Completed")),
                 sample("d", Some("Manhwa"), None),
             ],
-            failures: vec![(komik_core::model::SourceId::from("kiryuu"), "timeout".into())],
+            failures: vec![(
+                komik_core::model::SourceId::from("kiryuu"),
+                "timeout".into(),
+            )],
             sources_total: 4,
             sources_ok: 3,
             from_cache: false,
@@ -1156,7 +1401,10 @@ mod tests {
         // Filter tipe=Manga -> 2 item (a, c), status Ongoing -> ya.
         let out = list_out_filtered(merged.clone(), None, Some("Manga"), None, None);
         assert_eq!(out.items.len(), 2, "count harus jujur terhadap filter");
-        assert!(out.items.iter().all(|i| i.manga_type.as_deref() == Some("Manga")));
+        assert!(out
+            .items
+            .iter()
+            .all(|i| i.manga_type.as_deref() == Some("Manga")));
         // partial failure diteruskan apa adanya (bukan disembunyikan filter)
         assert_eq!(out.failed_sources, vec!["kiryuu".to_string()]);
 

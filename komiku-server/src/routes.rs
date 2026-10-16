@@ -46,23 +46,35 @@ pub struct AppError {
 impl AppError {
     /// Error dari upstream/gagal fetch — 502 (dipakai handler lama & `?`).
     pub fn new(e: impl Into<anyhow::Error>) -> Self {
-        AppError { err: e.into(), kind: ErrKind::Upstream }
+        AppError {
+            err: e.into(),
+            kind: ErrKind::Upstream,
+        }
     }
 
     /// Input klien tidak valid (validasi tangan) — 400, tanpa hint menyesatkan.
     pub fn bad_request(msg: impl Into<String>) -> Self {
-        AppError { err: anyhow::anyhow!(msg.into()), kind: ErrKind::BadRequest }
+        AppError {
+            err: anyhow::anyhow!(msg.into()),
+            kind: ErrKind::BadRequest,
+        }
     }
 
     /// Entitas tidak ada — 404, tanpa hint.
     pub fn not_found(msg: impl Into<String>) -> Self {
-        AppError { err: anyhow::anyhow!(msg.into()), kind: ErrKind::NotFound }
+        AppError {
+            err: anyhow::anyhow!(msg.into()),
+            kind: ErrKind::NotFound,
+        }
     }
 
     /// Klien belum terautentikasi sebagai akun (header `X-Komik-User` hilang,
     /// invalid, atau akun belum terdaftar) — 401.
     pub fn unauthorized(msg: impl Into<String>) -> Self {
-        AppError { err: anyhow::anyhow!(msg.into()), kind: ErrKind::Unauthorized }
+        AppError {
+            err: anyhow::anyhow!(msg.into()),
+            kind: ErrKind::Unauthorized,
+        }
     }
 }
 
@@ -74,25 +86,21 @@ impl IntoResponse for AppError {
                 tracing::warn!("gagal melayani request: {msg}");
                 (
                     StatusCode::BAD_GATEWAY,
-                    Json(json!({ "error": msg, "hint": "sumber sedang lambat/menolak; coba lagi" })),
+                    Json(
+                        json!({ "error": msg, "hint": "sumber sedang lambat/menolak; coba lagi" }),
+                    ),
                 )
                     .into_response()
             }
-            ErrKind::BadRequest => (
-                StatusCode::BAD_REQUEST,
-                Json(json!({ "error": msg })),
-            )
-                .into_response(),
-            ErrKind::NotFound => (
-                StatusCode::NOT_FOUND,
-                Json(json!({ "error": msg })),
-            )
-                .into_response(),
-            ErrKind::Unauthorized => (
-                StatusCode::UNAUTHORIZED,
-                Json(json!({ "error": msg })),
-            )
-                .into_response(),
+            ErrKind::BadRequest => {
+                (StatusCode::BAD_REQUEST, Json(json!({ "error": msg }))).into_response()
+            }
+            ErrKind::NotFound => {
+                (StatusCode::NOT_FOUND, Json(json!({ "error": msg }))).into_response()
+            }
+            ErrKind::Unauthorized => {
+                (StatusCode::UNAUTHORIZED, Json(json!({ "error": msg }))).into_response()
+            }
         }
     }
 }
@@ -158,7 +166,10 @@ fn chapter_list(v: &Value) -> Vec<Value> {
 async fn homepage() -> Res<Value> {
     let raw = api::homepage().await?;
     let mut out = serde_json::Map::new();
-    out.insert("success".into(), raw.get("success").cloned().unwrap_or(json!(true)));
+    out.insert(
+        "success".into(),
+        raw.get("success").cloned().unwrap_or(json!(true)),
+    );
 
     // setiap seksi (trending/popular/latest/...) diringkas seragam
     if let Some(obj) = raw.as_object() {
@@ -182,9 +193,7 @@ async fn homepage() -> Res<Value> {
     Ok(Json(Value::Object(out)))
 }
 
-async fn search(
-    Query(q): Query<SearchQuery>,
-) -> Res<Value> {
+async fn search(Query(q): Query<SearchQuery>) -> Res<Value> {
     let raw = api::search(&q.q, q.page.unwrap_or(1)).await?;
     let items = manga_list(&raw);
     Ok(Json(json!({
@@ -327,7 +336,6 @@ async fn health() -> Res<Value> {
 
 pub fn router(state: AppState) -> Router {
     Router::new()
-        .route("/img", get(crate::img::img_handler))
         .route("/api/health", get(health))
         .route("/api/homepage", get(homepage))
         .route("/api/search", get(search))

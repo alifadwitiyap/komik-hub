@@ -8,7 +8,7 @@
 mod api;
 mod crypto;
 mod downloads;
-mod img;
+mod hosts;
 mod notif;
 mod pdf;
 mod progress;
@@ -49,13 +49,26 @@ async fn main() -> anyhow::Result<()> {
     let app = app.merge(progress::progress_routes());
     let app = if dist.is_dir() {
         let dist = dist.to_path_buf();
-        app.fallback_service(tower::service_fn(move |req: axum::http::Request<axum::body::Body>| {
-            let dist = dist.clone();
-            async move { Ok::<_, std::convert::Infallible>(spa_fallback(&dist, req).await) }
-        }))
+        app.fallback_service(tower::service_fn(
+            move |req: axum::http::Request<axum::body::Body>| {
+                let dist = dist.clone();
+                async move { Ok::<_, std::convert::Infallible>(spa_fallback(&dist, req).await) }
+            },
+        ))
     } else {
         app
     };
+    // Kompresi gzip untuk SEMUA respons (API JSON + aset statis SPA).
+    // Dipasang PALING LUAR, setelah fallback, supaya aset hasil `spa_fallback`
+    // ikut terkompresi — bukan cuma route API. Hanya gzip yang aktif (fitur
+    // `compression-gzip`), dan tower-http otomatis:
+    //   - menambah `Vary: Accept-Encoding` pada respons yang dikompres,
+    //   - melewati (identity) respons yang sudah ter-encode, respons `206
+    //     Content-Range`, `text/event-stream` (SSE), `image/*`, dan body
+    //     < 32 byte — jadi SSE streaming & gambar tidak pernah dirusak.
+    // Client tanpa `Accept-Encoding: gzip` (curl polos, bot) menerima body
+    // apa adanya, jadi tidak ada regresi untuk konsumen non-browser.
+    let app = app.layer(tower_http::compression::CompressionLayer::new());
 
     let listener = tokio::net::TcpListener::bind(("0.0.0.0", port)).await?;
     tracing::info!("komiku-server di http://localhost:{port}");
@@ -85,11 +98,30 @@ async fn spa_fallback(
     let is_asset = last.rsplit_once('.').is_some_and(|(_, ext)| {
         matches!(
             ext.to_ascii_lowercase().as_str(),
-            "html" | "js" | "mjs" | "css" | "json" | "svg" | "png" | "jpg" | "jpeg"
-                | "webp" | "ico" | "woff" | "woff2" | "ttf" | "otf" | "map" | "webmanifest"
+            "html"
+                | "js"
+                | "mjs"
+                | "css"
+                | "json"
+                | "svg"
+                | "png"
+                | "jpg"
+                | "jpeg"
+                | "webp"
+                | "ico"
+                | "woff"
+                | "woff2"
+                | "ttf"
+                | "otf"
+                | "map"
+                | "webmanifest"
         )
     });
-    let file = if is_asset { dist.join(&path) } else { dist.join("index.html") };
+    let file = if is_asset {
+        dist.join(&path)
+    } else {
+        dist.join("index.html")
+    };
 
     // cegah path traversal (../../etc/passwd) — canonicalisasi lalu pastikan
     // masih berada di dalam dist.

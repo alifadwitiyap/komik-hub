@@ -25,7 +25,9 @@ interface ComicImageProps {
 
 /**
  * Satu halaman manga:
- * - src dilewatkan proxy `/img` (cache-first lewat service worker).
+ * - src di-hotlink LANGSUNG ke CDN (Q21) — imgUrl() mengembalikan URL apa
+ *   adanya, tanpa proxy `/img`. Respons lintas-origin (opaque), jadi gambar
+ *   TIDAK di-cache service worker; cache offline in-app dibuang (Q11).
  * - skeleton saat memuat, chip "Coba lagi" kalau gagal (jaringan jelek),
  *   tanpa harus reload seluruh chapter.
  * - ANTI LAYOUT-SHIFT: rasio aspek asli (dari kunjungan sebelumnya) dipasang
@@ -114,6 +116,10 @@ export default function ComicImage({
       width={ratio ? 1000 : undefined}
       height={ratio ? Math.round(1000 / ratio) : undefined}
       loading={eager ? 'eager' : 'lazy'}
+      // LCP: halaman pertama (eager) diminta dengan prioritas jaringan tinggi
+      // supaya tidak kalah dari aset lain di antrean awal. Sisanya dibiarkan
+      // default (browser tetap menurunkan prioritas gambar lazy di luar layar).
+      fetchPriority={eager ? 'high' : undefined}
       decoding="async"
       data-b={blockIndex}
       data-page={pageIndex}

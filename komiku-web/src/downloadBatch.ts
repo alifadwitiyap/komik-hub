@@ -38,6 +38,49 @@ export interface JobProgress {
   error?: string
 }
 
+/** Dipanggil tiap PDF selesai di-generate (lihat `saveGeneratedPdf`). */
+export type GeneratedHandler = (id: string, filename: string) => void
+
+/**
+ * Simpan PDF yang baru di-generate ke perangkat user (keputusan Q22.A:
+ * "user tekan Unduh → server kirim file → HP simpan").
+ *
+ * Server membalas `Content-Disposition: attachment` di
+ * `GET /api/unified/downloads/{id}` → cukup mengarahkan browser ke URL itu;
+ * file di-STREAM server, tidak ditahan di memori JS (tanpa fetch/blob). Atribut
+ * `download` dipakai supaya nama file yang tersimpan = `filename`.
+ *
+ * URL-nya same-origin (`/api/...`) sehingga tidak butuh CORS. Anchor
+ * DILEPAS SETELAH JEDA, bukan sinkron: `a.remove()` tepat setelah `click()`
+ * bisa membatalkan unduhan yang belum sempat mulai di sebagian browser —
+ * penjadwalan ulang (bukan `URL.revokeObjectURL`, yang memang tak dipakai
+ * karena kita mengarahkan langsung ke URL server, tanpa blob).
+ *
+ * AMAN di Node/SSR: tanpa `document` fungsi ini no-op dan mengembalikan
+ * `false`, jadi `downloadChapters` tetap bisa diuji tanpa DOM (hostile-check /
+ * unified-selfcheck). JANGAN menyentuh `document`/`window` saat inisialisasi
+ * modul (aturan wiring-check).
+ *
+ * Catatan jujur: batch > 1 chapter memicu beberapa unduhan beruntun; browser
+ * boleh menampilkan prompt "izinkan unduh banyak file" — itu perilaku browser,
+ * bukan bug (server tetap menyimpan tiap entri, bisa diambil ulang dari Rak).
+ */
+export function saveGeneratedPdf(id: string, filename: string): boolean {
+  if (typeof document === 'undefined' || !document.body) return false
+  const a = document.createElement('a')
+  a.href = unifiedApi.downloadFileUrl(id)
+  a.download = filename || 'chapter.pdf'
+  a.rel = 'noopener'
+  a.style.display = 'none'
+  document.body.appendChild(a)
+  a.click()
+  // Jangan hapus sinkron: beri unduhan waktu memulai sebelum anchor dilepas.
+  // Tanpa jeda, beberapa browser membatalkan transfer yang baru di-trigger.
+  // Tidak ada URL.revokeObjectURL di sini — tidak ada blob yang dibuat.
+  window.setTimeout(() => a.remove(), 1000)
+  return true
+}
+
 /** Pool sederhana: jalankan promise maksimal `limit` sekaligus. */
 export async function pool<T, R>(
   items: readonly T[],
@@ -68,11 +111,17 @@ export async function pool<T, R>(
  * `unifiedApi.downloadPdf` supaya fetch yang sedang jalan juga berhenti).
  * Chapter yang sedang jalan saat abort tidak ditandai gagal — statusnya
  * dibiarkan dan pemanggil yang merapikan state.
+ *
+ * `onGenerated` opsional (Q22.A): dipanggil tiap PDF berhasil di-generate,
+ * dengan `{id, filename}` server, supaya pemanggil bisa langsung menyimpan
+ * file ke perangkat user (lihat `saveGeneratedPdf`). Dipanggil SEBELUM
+ * status chapter menjadi 'ok'.
  */
 export async function downloadChapters(
   list: readonly ChapterRef[],
   onUpdate: (index: number, patch: Partial<JobProgress>) => void,
   signal?: AbortSignal,
+  onGenerated?: GeneratedHandler,
 ): Promise<void> {
   for (let offset = 0; offset < list.length; offset += CHUNK_SIZE) {
     if (signal?.aborted) return
@@ -84,7 +133,12 @@ export async function downloadChapters(
       if (signal?.aborted) return
       onUpdate(index, { state: 'run' })
       try {
-        await unifiedApi.downloadPdf(ref.handle, ref.number, signal)
+        const res = await unifiedApi.downloadPdf(ref.handle, ref.number, signal)
+        // Q22.A: PDF sudah di server → langsung kirim ke perangkat user.
+        // Dijalankan SEBELUM menandai 'ok' supaya kegagalan penyimpanan
+        // tidak menyamar sebagai sukses; `onGenerated` sendiri tidak
+        // melempar (saveGeneratedPdf no-op tanpa DOM).
+        onGenerated?.(res.id, res.filename)
         onUpdate(index, { state: 'ok' })
       } catch (e) {
         // abort bawaan user: fetch gagal dengan AbortError — jangan beri

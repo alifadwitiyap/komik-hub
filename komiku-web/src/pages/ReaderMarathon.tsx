@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import ComicImage from '../components/ComicImage'
-import DownloadSheet from '../components/DownloadSheet'
 import ReaderFooter from '../components/ReaderFooter'
 import ReaderMenu from '../components/ReaderMenu'
 import ReaderSettingsSheet from '../components/ReaderSettingsSheet'
@@ -9,7 +8,6 @@ import ReaderToolbar from '../components/ReaderToolbar'
 import SourceBadge from '../components/SourceBadge'
 import { useReaderSettings } from '../hooks/useReaderSettings'
 import { useChromeOnScroll } from '../hooks/useChromeOnScroll'
-import { warmCache } from '../imgUrl'
 import type { ChapterResponse } from '../types'
 import { Empty } from '../App'
 import { useProgress } from '../hooks/useProgress'
@@ -72,7 +70,6 @@ export default function ReaderMarathon() {
   const chrome = useChromeOnScroll()
   const [menuOpen, setMenuOpen] = useState(false)
   const [sheetOpen, setSheetOpen] = useState(false)
-  const [downloadOpen, setDownloadOpen] = useState(false)
   const [toast, setToast] = useState<string | null>(null)
   const [nextLoadFailed, setNextLoadFailed] = useState(false)
   const bottomRef = useRef<HTMLDivElement | null>(null)
@@ -268,12 +265,6 @@ export default function ReaderMarathon() {
     return () => io.disconnect()
   }, [chainExhausted, lastBlockSettled, loadNext])
 
-  // prefetch cerdas: hangatkan 6 gambar pertama chapter terbaru yang masuk
-  // rantai — kalau internet jelek, awal chapter berikutnya sudah siap.
-  useEffect(() => {
-    if (lastBlock) warmCache(lastBlock.images.slice(0, 6))
-  }, [lastBlock])
-
   if (error) return <Empty title="Gagal memuat mode maraton" body={error} />
   if (blocks.length === 0) {
     return (
@@ -304,7 +295,6 @@ export default function ReaderMarathon() {
         onBack={() => navigate(seriesHref(head?.seriesId) ?? '/')}
         onShare={() => setToast('Bagikan: salin URL halaman ini')}
         onMore={() => setMenuOpen(true)}
-        onDownload={() => setDownloadOpen(true)}
         chip="Maraton"
         badge={curSource && curSource !== 'komiku' ? <SourceBadge source={curSource} /> : null}
         visible={chrome.visible}
@@ -422,14 +412,6 @@ export default function ReaderMarathon() {
         onClose={() => setSheetOpen(false)}
         onChange={onChange}
         onReset={onReset}
-      />
-
-      {/* simpan offline — chapter yang SEDANG dibaca (bukan head rantai) */}
-      <DownloadSheet
-        open={downloadOpen}
-        chapterId={curBlock?.chapterId ?? chapterId ?? ''}
-        chapterName={curBlock?.chapterName ?? ''}
-        onClose={() => setDownloadOpen(false)}
       />
     </div>
   )

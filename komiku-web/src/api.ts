@@ -4,7 +4,6 @@ import type {
   ChapterResponse,
   DownloadPdfResult,
   DownloadsResponse,
-  EvictionsResponse,
   Homepage,
   Manga,
   MangaOut,
@@ -137,10 +136,13 @@ export const unifiedApi = {
   genres: (signal?: AbortSignal) =>
     get<{ items: UnifiedGenre[] }>('/unified/genres', signal),
   /**
-   * Kesehatan 4 sumber (probe LIVE server, tidak di-cache). Dipakai pill
-   * source-health di TopBar. Server membalas {total,healthy,sources[]}.
+   * Kesehatan 4 sumber. Server membalas {total,healthy,sources[]}.
+   * Server memakai stale-while-revalidate (cache 30s): respons normal
+   * dilayani seketika (mungkin stale ≤30s). `force` = paksa probe inline
+   * (tombol "periksa ulang" → hasil segar sekarang, bukan stale).
    */
-  health: (signal?: AbortSignal) => get<SourceHealth>('/unified/health', signal),
+  health: (signal?: AbortSignal, force = false) =>
+    get<SourceHealth>(`/unified/health${force ? '?force=1' : ''}`, signal),
   series: (handle: string, signal?: AbortSignal, lastSource?: string) =>
     get<UnifiedSeries>(
       `/unified/series/${encodeHandle(handle)}${lastSource ? `?last_source=${encodeURIComponent(lastSource)}` : ''}`,
@@ -157,10 +159,10 @@ export const unifiedApi = {
   /** Generate PDF server-side. body {handle, number}. */
   downloadPdf: (handle: string, number: string, signal?: AbortSignal) =>
     send<DownloadPdfResult>('POST', '/unified/download-pdf', { handle, number }, signal),
-  /** Daftar unduhan + total_bytes + limit_bytes. */
+  /** Daftar unduhan + total_bytes (buffer TTL 24 jam, tanpa limit byte). */
   downloads: (signal?: AbortSignal) =>
     get<DownloadsResponse>('/unified/downloads', signal),
-  /** URL file PDF (respons attachment; SEKALIGUS update last_opened_at). */
+  /** URL file PDF (respons attachment; auto-unduh ke perangkat). */
   downloadFileUrl: (id: string) => `${BASE}/unified/downloads/${encodeURIComponent(id)}`,
   deleteDownload: (id: string, signal?: AbortSignal) =>
     send<{ deleted: boolean }>(
@@ -169,14 +171,6 @@ export const unifiedApi = {
       undefined,
       signal,
     ),
-  /** Riwayat file yang dihapus otomatis (eviction LRU). */
-  evictions: (signal?: AbortSignal) => get<EvictionsResponse>('/unified/evictions', signal),
-  dismissEvictions: (signal?: AbortSignal) =>
-    send<{ ok: boolean }>('POST', '/unified/evictions/dismiss', undefined, signal),
-  settingsDownloads: (signal?: AbortSignal) =>
-    get<{ limit_bytes: number }>('/unified/settings/downloads', signal),
-  setSettingsDownloads: (limit_bytes: number, signal?: AbortSignal) =>
-    send<{ limit_bytes: number }>('PUT', '/unified/settings/downloads', { limit_bytes }, signal),
 }
 
 // ---------------------------------------------------------------- notifikasi

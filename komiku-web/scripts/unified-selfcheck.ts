@@ -60,51 +60,27 @@ assert.equal(seriesHref(null), null)
 assert.equal(seriesHref(''), null)
 assert.equal(unifiedKey('komiku:6426', '1195'), 'komiku:6426:1195')
 
-// --- imgUrl: rewrite host baru + idempoten + host asing dibiarkan ----------
-assert.equal(
-  imgUrl('https://image2.komiku.to/a/1.jpg'),
-  '/img?u=https%3A%2F%2Fimage2.komiku.to%2Fa%2F1.jpg',
-)
+// --- imgUrl: hotlink CDN apa adanya (Q21 — tanpa proxy /img) ----------------
+assert.equal(imgUrl('https://image2.komiku.to/a/1.jpg'), 'https://image2.komiku.to/a/1.jpg')
 assert.equal(
   imgUrl('https://v2.yuucdn.net/wp-content/uploads/1.jpg'),
-  '/img?u=https%3A%2F%2Fv2.yuucdn.net%2Fwp-content%2Fuploads%2F1.jpg',
+  'https://v2.yuucdn.net/wp-content/uploads/1.jpg',
 )
-assert.equal(
-  imgUrl('https://assets.shngm.id/x.webp'),
-  '/img?u=https%3A%2F%2Fassets.shngm.id%2Fx.webp',
-)
-assert.equal(
-  imgUrl('https://cdnkuma.my.id/x.jpg'),
-  '/img?u=https%3A%2F%2Fcdnkuma.my.id%2Fx.jpg',
-)
-assert.equal(
-  imgUrl('https://cdn.jsdelivr.net/gh/a/b.png'),
-  '/img?u=https%3A%2F%2Fcdn.jsdelivr.net%2Fgh%2Fa%2Fb.png',
-)
-assert.equal(
-  imgUrl('https://v7.kiryuu.to/uploads/a%20b.jpg'),
-  '/img?u=https%3A%2F%2Fv7.kiryuu.to%2Fuploads%2Fa%2520b.jpg',
-)
-// host existing komiku tetap ter-proxy (tidak ada regresi)
-assert.equal(
-  imgUrl('https://img.komiku.org/a/1.jpg'),
-  '/img?u=https%3A%2F%2Fimg.komiku.org%2Fa%2F1.jpg',
-)
-// host existing yang TIDAK ada di allowlist lama tapi ADA di allowlist baru
-assert.equal(
-  imgUrl('https://thumbnail.komiku.org/c.jpg'),
-  '/img?u=https%3A%2F%2Fthumbnail.komiku.org%2Fc.jpg',
-)
-// protocol-relative (//host/...) harus tetap ter-proxy (perilaku kode lama)
-assert.equal(
-  imgUrl('//image2.komiku.to/a/1.jpg'),
-  '/img?u=%2F%2Fimage2.komiku.to%2Fa%2F1.jpg',
-)
-// path relatif tanpa host dibiarkan apa adanya (mis. aset lokal aplikasi)
+assert.equal(imgUrl('https://assets.shngm.id/x.webp'), 'https://assets.shngm.id/x.webp')
+assert.equal(imgUrl('https://cdnkuma.my.id/x.jpg'), 'https://cdnkuma.my.id/x.jpg')
+assert.equal(imgUrl('https://cdn.jsdelivr.net/gh/a/b.png'), 'https://cdn.jsdelivr.net/gh/a/b.png')
+assert.equal(imgUrl('https://v7.kiryuu.to/uploads/a%20b.jpg'), 'https://v7.kiryuu.to/uploads/a%20b.jpg')
+assert.equal(imgUrl('https://img.komiku.org/a/1.jpg'), 'https://img.komiku.org/a/1.jpg')
+assert.equal(imgUrl('https://thumbnail.komiku.org/c.jpg'), 'https://thumbnail.komiku.org/c.jpg')
+// protocol-relative & path relatif juga dibiarkan apa adanya
+assert.equal(imgUrl('//image2.komiku.to/a/1.jpg'), '//image2.komiku.to/a/1.jpg')
 assert.equal(imgUrl('/covers/local.jpg'), '/covers/local.jpg')
-// idempoten: hasil rewrite dilewatkan lagi tidak boleh dobel-encode
-assert.equal(imgUrl('/img?u=https%3A%2F%2Fimage2.komiku.to%2Fa%2F1.jpg'), '/img?u=https%3A%2F%2Fimage2.komiku.to%2Fa%2F1.jpg')
-// host di luar allowlist server → 403 kalau diproksi, jadi biarkan apa adanya
+// idempoten: hasil apa pun dilewatkan lagi tetap sama
+assert.equal(
+  imgUrl('https://image2.komiku.to/a/1.jpg'),
+  'https://image2.komiku.to/a/1.jpg',
+)
+// host asing tetap dibiarkan (tak ada lagi allowlist proxy di klien)
 assert.equal(imgUrl('https://evil.example.com/1.jpg'), 'https://evil.example.com/1.jpg')
 assert.equal(imgUrl(null), '')
 

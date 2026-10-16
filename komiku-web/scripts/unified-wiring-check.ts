@@ -140,15 +140,20 @@ if (chapter.next?.handle && chapter.next?.number) {
   ok(`navigasi next lintas-sumber → ${nextHref}`)
 }
 
-// gambar non-komiku harus bisa lewat proxy /img (bukan hotlink yang akan gagal)
+// Q21: gambar di-hotlink LANGSUNG ke CDN — server TIDAK lagi punya proxy /img.
+// Yang dibuktikan di sini: URL gambar yang server kirim adalah URL absolut ke
+// host CDN (bukan '/img?u=...'), jadi klien bisa memasangnya apa adanya.
 const nonKomikuImg = chapter.images.find((u: string) => !u.includes('komiku.org'))
-if (nonKomikuImg) {
-  const r = await fetch(`${BASE}/img?u=${encodeURIComponent(nonKomikuImg)}`, { method: 'HEAD' })
-  assert.ok(r.status < 400, `proxy /img untuk ${nonKomikuImg} -> ${r.status}`)
-  ok(`gambar non-komiku lewat proxy /img (${new URL(nonKomikuImg).hostname})`)
-} else {
-  ok('gambar chapter ini semuanya host komiku (proxy existing)')
-}
+const sampleImg = nonKomikuImg ?? chapter.images[0]
+assert.ok(
+  /^https?:\/\//.test(sampleImg),
+  `gambar chapter harus URL CDN absolut (hotlink Q21), dapat: ${sampleImg}`,
+)
+assert.ok(
+  !sampleImg.startsWith('/img'),
+  `gambar TIDAK boleh lewat proxy /img lagi, dapat: ${sampleImg}`,
+)
+ok(`gambar chapter = URL CDN absolut (hotlink Q21): ${new URL(sampleImg).hostname}`)
 
 // ------------------------------------------------- 2. route handle → unified
 console.log('\n[2] /manga/<handle> dirender lewat halaman unified')
@@ -292,23 +297,14 @@ assert.equal(
 )
 ok('FAB "Lanjut baca" Home: URL dari sejarah[0]; null kalau rak kosong')
 
-// --- endpoint unduhan/eviction/settings (kontrak rak-buku.md) ---------------
-const settingsBefore = await getJson('/api/unified/settings/downloads')
-assert.equal(settingsBefore.limit_bytes, 2 * 1024 * 1024 * 1024, 'limit default 2 GB')
-
-// batas dikecilkan supaya eviction benar-benar terjadi
-const putLimit = await fetch(`${BASE}/api/unified/settings/downloads`, {
-  method: 'PUT',
-  headers: { 'content-type': 'application/json' },
-  body: JSON.stringify({ limit_bytes: 150 * 1024 }),
-})
-assert.ok(putLimit.ok, 'PUT settings/downloads hidup')
-const limitAfter = (await putLimit.json()) as { limit_bytes: number }
-assert.equal(limitAfter.limit_bytes, 150 * 1024, 'limit ter-update')
+// --- endpoint unduhan (kontrak buffer TTL 24 jam, plan komiku-ringan-homeserver)
+// Eviction/limit/settings SUDAH DIHAPUS (Q20.A/Q23) — tidak ada lagi
+// `/api/unified/settings/downloads`, `/api/unified/evictions`, dan respons list
+// tidak membawa `limit_bytes`. Semua unduhan hidup sampai `expires_at`.
 
 const created: any[] = []
 const chapterNumbers: string[] = (series.chapters as any[]).map((c) => String(c.number))
-assert.ok(chapterNumbers.length >= 3, 'fixture punya >=3 chapter untuk skenario eviction')
+assert.ok(chapterNumbers.length >= 3, 'fixture punya >=3 chapter untuk skenario unduhan')
 for (const n of chapterNumbers) {
   const r = await fetch(`${BASE}/api/unified/download-pdf`, {
     method: 'POST',
@@ -318,27 +314,37 @@ for (const n of chapterNumbers) {
   assert.ok(r.ok, `POST download-pdf ${n} -> HTTP ${r.status}`)
   created.push(await r.json())
 }
-assert.ok(created.length > 1, 'beberapa PDF dibuat untuk skenario eviction')
+assert.ok(created.length > 1, 'beberapa PDF dibuat (tanpa limit byte)')
 for (const c of created) {
   assert.equal(typeof c.id, 'string', 'download-pdf mengembalikan id')
   assert.equal(typeof c.size_bytes, 'number', 'download-pdf mengembalikan size_bytes')
   assert.equal(typeof c.filename, 'string', 'download-pdf mengembalikan filename')
 }
 const list = await getJson('/api/unified/downloads')
-assert.ok(list.total_bytes <= list.limit_bytes, 'total_bytes tidak melewati limit_bytes')
-assert.ok(
-  list.items.length < created.length,
-  `eviction membuang bertahap: ${created.length} dibuat, ${list.items.length} tersisa`,
+assert.equal(typeof list.total_bytes, 'number', 'respons list membawa total_bytes')
+assert.equal(
+  Object.prototype.hasOwnProperty.call(list, 'limit_bytes'),
+  false,
+  'limit_bytes SUDAH DIHAPUS dari respons list (buffer TTL, bukan kuota)',
 )
-const ev = await getJson('/api/unified/evictions')
-assert.ok(Array.isArray(ev.items) && ev.items.length > 0, 'log eviction terisi')
-assert.equal(typeof ev.items[0].series_title, 'string', 'eviction membawa series_title')
-assert.equal(typeof ev.items[0].size_bytes, 'number', 'eviction membawa size_bytes')
+assert.equal(
+  list.items.length,
+  created.length,
+  `semua unduhan disimpan (tanpa eviction): ${created.length} dibuat → ${list.items.length} tersisa`,
+)
+for (const it of list.items) {
+  assert.equal(typeof it.expires_at, 'number', 'tiap item membawa expires_at (TTL 24 jam)')
+  assert.equal(
+    it.expires_at - it.downloaded_at,
+    24 * 60 * 60 * 1000,
+    'expires_at = downloaded_at + 24 jam',
+  )
+}
 ok(
-  `unduhan: ${created.length} dibuat → ${list.items.length} tersisa (limit ${list.limit_bytes}B), ${ev.items.length} eviction tercatat`,
+  `unduhan: ${created.length} dibuat → ${list.items.length} tersisa, TTL 24 jam (tanpa limit/eviction)`,
 )
 
-// GET file: attachment PDF + last_opened_at ikut ter-update (LRU)
+// GET file: attachment PDF (tanpa LRU — TTL murni, tidak ada last_opened_at)
 const first = list.items[0]
 const fileRes = await fetch(`${BASE}/api/unified/downloads/${encodeURIComponent(first.id)}`)
 assert.equal(fileRes.status, 200, 'GET file unduhan hidup')
@@ -354,12 +360,15 @@ assert.match(
 )
 const afterOpen = (await (await fetch(`${BASE}/api/unified/downloads`)).json()) as any
 const opened = afterOpen.items.find((d: any) => d.id === first.id)
-assert.ok(opened && opened.last_opened_at != null, 'last_opened_at ter-update saat file dibuka')
-ok('GET /downloads/{id} → PDF attachment + last_opened_at ter-update')
+assert.ok(opened, 'item tetap ada setelah dibuka')
+assert.equal(
+  Object.prototype.hasOwnProperty.call(opened, 'last_opened_at'),
+  false,
+  'last_opened_at SUDAH DIHAPUS (tidak ada LRU lagi)',
+)
+ok('GET /downloads/{id} → PDF attachment (TTL murni, tanpa LRU)')
 
-// dismiss eviction + delete unduhan
-const dismiss = await fetch(`${BASE}/api/unified/evictions/dismiss`, { method: 'POST' })
-assert.ok(dismiss.ok, 'POST evictions/dismiss hidup')
+// DELETE unduhan (eviction/settings sudah tidak ada)
 const del = await fetch(`${BASE}/api/unified/downloads/${encodeURIComponent(first.id)}`, {
   method: 'DELETE',
 })
@@ -369,6 +378,6 @@ assert.ok(
   !afterDel.items.some((d: any) => d.id === first.id),
   'item hilang setelah DELETE',
 )
-ok('dismiss eviction + DELETE unduhan bekerja (kontrak terkunci)')
+ok('DELETE unduhan bekerja (kontrak TTL terkunci)')
 
 console.log(`\nunified-wiring-check: OK — ${checks} verifikasi lulus`)

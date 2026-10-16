@@ -104,7 +104,7 @@ function TopBar({
     <header className="fixed inset-x-0 top-0 z-40 border-b border-ink-800 bg-ink-950/95 backdrop-blur">
       <div className="mx-auto flex h-14 max-w-3xl items-center gap-1 px-3">
         <Link to="/" className="flex items-center" aria-label="Komik Hub">
-          <img src="/logo-komik-hub.png" alt="Komik Hub" className="h-[23px] w-auto" />
+          <img src="/logo-komik-hub.png" alt="Komik Hub" width={125} height={23} className="h-[23px] w-auto" />
         </Link>
         <div className="ml-auto flex items-center gap-1.5">
           <SourceHealthBadge />

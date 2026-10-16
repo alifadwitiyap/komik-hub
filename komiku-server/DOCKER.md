@@ -41,7 +41,7 @@ Env yang bisa di-override:
 | `RUST_LOG` | info | Level log tracing |
 | `KOMIKU_DOWNLOADS_DIR` | /data/downloads | Direktori unduhan PDF |
 | `KOMIKU_NOTIF_DIR` | /data | Direktori state notifikasi |
-| `NOTIF_INTERVAL_SECS` | 1800 | Interval background checker notif |
+| `NOTIF_INTERVAL_SECS` | 1800 | TTL pemicu check notif on-demand (GET /api/notif/list) |
 
 ## Smoke test
 

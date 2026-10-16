@@ -20,9 +20,7 @@ type Aes256CbcEnc = cbc::Encryptor<aes::Aes256>;
 type Aes256CbcDec = cbc::Decryptor<aes::Aes256>;
 
 /// IV tetap yang di-hardcode di APK: 0,1,2,...,15
-const IV: [u8; 16] = [
-    0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15,
-];
+const IV: [u8; 16] = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15];
 
 /// Sama dengan `Base64.decode("cXlHang1aDdCcw==").decodeToString()` di Kotlin.
 fn seed() -> &'static str {

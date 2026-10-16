@@ -104,10 +104,7 @@ pub async fn series(id: i64) -> Result<Value> {
     get(
         BASE_CONTENT,
         "",
-        &[
-            ("content", "manga".into()),
-            ("id", id.to_string()),
-        ],
+        &[("content", "manga".into()), ("id", id.to_string())],
     )
     .await
 }
@@ -117,10 +114,7 @@ pub async fn chapter(id: i64) -> Result<Value> {
     get(
         BASE_CONTENT,
         "",
-        &[
-            ("content", "chapter".into()),
-            ("id", id.to_string()),
-        ],
+        &[("content", "chapter".into()), ("id", id.to_string())],
     )
     .await
 }

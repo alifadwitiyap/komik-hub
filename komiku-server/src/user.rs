@@ -90,7 +90,9 @@ pub fn require_user(headers: &HeaderMap) -> Result<String, AppError> {
         return Err(AppError::unauthorized("header X-Komik-User wajib diisi"));
     }
     let Some(username) = normalize_username(raw) else {
-        return Err(AppError::unauthorized(format!("username tidak valid — {RULE}")));
+        return Err(AppError::unauthorized(format!(
+            "username tidak valid — {RULE}"
+        )));
     };
     if !user_exists(&username) {
         return Err(AppError::unauthorized(format!(
@@ -114,8 +116,7 @@ struct ClaimReq {
 /// (true = push rak lokal, selain itu = pull rak server). JANGAN dijadikan
 /// tanpa arti — itu bagian dari kontrak.
 async fn claim(Json(req): Json<ClaimReq>) -> Res<Value> {
-    let username = normalize_username(&req.username)
-        .ok_or_else(|| AppError::bad_request(RULE))?;
+    let username = normalize_username(&req.username).ok_or_else(|| AppError::bad_request(RULE))?;
 
     let dir = users_dir();
     let path = user_file(&dir, &username);
@@ -132,7 +133,9 @@ async fn claim(Json(req): Json<ClaimReq>) -> Res<Value> {
             .map_err(|e| AppError::new(anyhow::anyhow!("gagal buat akun: {e}")))?;
         tracing::info!("user: akun baru '{username}'");
     }
-    Ok(Json(json!({ "ok": true, "username": username, "created": created })))
+    Ok(Json(
+        json!({ "ok": true, "username": username, "created": created }),
+    ))
 }
 
 /// GET /api/user/me -> {username}
@@ -186,7 +189,7 @@ mod tests {
         assert_eq!(normalize_username(&"a".repeat(21)), None); // > 20
         assert_eq!(normalize_username("_alif"), None); // diawali '_'
         assert_eq!(normalize_username("-alif"), None); // diawali '-'
-        // 20 karakter tetap boleh
+                                                       // 20 karakter tetap boleh
         assert!(normalize_username(&"a".repeat(20)).is_some());
     }
 

@@ -77,8 +77,22 @@ export default function Search() {
 
   // input mengikuti URL (termasuk navigasi back/forward)
   useEffect(() => setInput(query), [query])
-  // query atau filter baru selalu mulai dari halaman 1
-  useEffect(() => setPage(1), [query, tipe, status, genreSlug])
+
+  /**
+   * Query atau filter baru selalu mulai dari halaman 1. Reset dilakukan SAAT
+   * RENDER (pola "menyesuaikan state saat input berubah"), BUKAN lewat effect
+   * terpisah: kalau page direset di effect, render pertama sesudah filter
+   * berubah masih membawa page lama sehingga pencarian ter-fire DUA kali
+   * (page lama + filter baru, lalu page 1 + filter baru) — dua fan-out ke
+   * server per satu aksi filter. React me-render ulang sebelum commit, jadi
+   * effect pencarian hanya pernah melihat page 1.
+   */
+  const searchSig = `${query}\u0000${tipe ?? ''}\u0000${status ?? ''}\u0000${genreSlug ?? ''}`
+  const searchSigRef = useRef(searchSig)
+  if (searchSigRef.current !== searchSig) {
+    searchSigRef.current = searchSig
+    setPage(1)
+  }
 
   /**
    * Tulis q ke URL dengan REPLACE (bukan push) supaya history tidak dibanjiri.

@@ -99,17 +99,52 @@ fn to_jpeg(bytes: &[u8], idx: usize, url: &str) -> anyhow::Result<Vec<u8>> {
     Ok(out)
 }
 
-/// Bangun byte PDF dari halaman urut. Jalur lossless dipakai selama semua
-/// (atau sebagian) halaman sudah JPEG; sisanya di-re-encode.
+/// Bangun byte PDF dari halaman urut, satu halaman pada satu waktu.
+///
+/// Jalur lossless dipakai selama (sebagian) halaman sudah JPEG; sisanya
+/// di-re-encode. Byte tiap halaman dialirkan langsung ke buffer PDF: halaman
+/// JPEG di-*borrow* dari input (tanpa klon), halaman lain di-re-encode ke satu
+/// buffer sementara yang dilepas sebelum halaman berikutnya diproses. Jadi
+/// puncak memori kerja ≈ 1 halaman di atas buffer PDF — bukan ~2× ukuran
+/// chapter seperti versi lama yang menampung `Vec<Vec<u8>>` klon semua
+/// halaman sekaligus plus buffer PDF.
 pub fn write_pdf_bytes(pages: &[Page]) -> anyhow::Result<(Vec<u8>, PdfReport)> {
     if pages.is_empty() {
         anyhow::bail!("tidak ada halaman untuk ditulis ke PDF");
     }
-    let mut jpegs: Vec<Vec<u8>> = Vec::with_capacity(pages.len());
     let mut passthrough = 0usize;
     let mut reencoded = 0usize;
+
+    let mut b = PdfBuilder::new();
+    // 1 = catalog, 2 = pages.
+    b.begin(1);
+    b.raw("<< /Type /Catalog /Pages 2 0 R >>\n");
+    b.end();
+
+    // Tiap halaman selalu 3 objek (page, image, content), jadi nomor objek dan
+    // /Kids bisa dihitung tanpa menunggu byte gambar apa pun — inilah yang
+    // memungkinkan penulisan satu-pass tanpa menampung semua halaman dulu.
+    let kids: Vec<String> = (0..pages.len())
+        .map(|i| format!("{} 0 R", 3 + i * 3))
+        .collect();
+    b.begin(2);
+    b.raw(&format!(
+        "<< /Type /Pages /Count {} /Kids [{}] >>\n",
+        pages.len(),
+        kids.join(" ")
+    ));
+    b.end();
+
     for (i, p) in pages.iter().enumerate() {
-        match sniff_format(&p.bytes) {
+        let page_obj = 3 + i * 3;
+        let img_obj = page_obj + 1;
+        let content_obj = page_obj + 2;
+
+        // Resolusi byte JPEG halaman ini. JPEG: pinjam `p.bytes` (nol salinan).
+        // Format lain: re-encode ke `owned`, yang hidup hanya sampai akhir
+        // iterasi ini sehingga puncaknya tetap satu halaman.
+        let owned: Vec<u8>;
+        let jpeg: &[u8] = match sniff_format(&p.bytes) {
             Some(ImageFormat::Jpeg) => {
                 // Pastikan header-nya bisa dibaca PDF (butuh W/H + komponen).
                 if jpeg_info(&p.bytes).is_none() {
@@ -120,12 +155,12 @@ pub fn write_pdf_bytes(pages: &[Page]) -> anyhow::Result<(Vec<u8>, PdfReport)> {
                     );
                 }
                 passthrough += 1;
-                jpegs.push(p.bytes.clone());
+                &p.bytes
             }
-            Some(fmt) => {
-                jpegs.push(to_jpeg(&p.bytes, i + 1, &p.url)?);
+            Some(_) => {
+                owned = to_jpeg(&p.bytes, i + 1, &p.url)?;
                 reencoded += 1;
-                let _ = fmt;
+                &owned
             }
             None => anyhow::bail!(
                 "halaman {} ({}): {} — ditolak, PDF tidak ditulis",
@@ -133,16 +168,44 @@ pub fn write_pdf_bytes(pages: &[Page]) -> anyhow::Result<(Vec<u8>, PdfReport)> {
                 p.url,
                 reject_reason(&p.bytes)
             ),
-        }
+        };
+        // JPEG passthrough sudah divalidasi; hasil re-encode selalu JPEG valid.
+        let (w, h, comps) = jpeg_info(jpeg).expect("JPEG valid sebelum ditulis ke PDF");
+
+        b.begin(page_obj);
+        b.raw(&format!(
+            "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 {w} {h}] \
+             /Resources << /XObject << /Im0 {img_obj} 0 R >> >> \
+             /Contents {content_obj} 0 R >>\n"
+        ));
+        b.end();
+
+        b.begin(img_obj);
+        b.raw(&format!(
+            "<< /Type /XObject /Subtype /Image /Width {w} /Height {h} \
+             /ColorSpace /{} /BitsPerComponent 8 /Filter /DCTDecode /Length {} >>\nstream\n",
+            colorspace(comps),
+            jpeg.len()
+        ));
+        b.buf.extend_from_slice(jpeg);
+        b.buf.extend_from_slice(b"\nendstream\n");
+        b.end();
+
+        // cm = skala gambar pas ke MediaBox 1:1.
+        let content = format!("q {w} 0 0 {h} 0 0 cm /Im0 Do Q\n");
+        b.begin(content_obj);
+        b.raw(&format!("<< /Length {} >>\nstream\n", content.len()));
+        b.buf.extend_from_slice(content.as_bytes());
+        b.buf.extend_from_slice(b"endstream\n");
+        b.end();
     }
 
-    let pdf = build_pdf(&jpegs)?;
     let report = PdfReport {
         pages: pages.len(),
         passthrough,
         reencoded,
     };
-    Ok((pdf, report))
+    Ok((b.finish(1)?, report))
 }
 
 // ------------------------------------------------------- JPEG header parse
@@ -169,11 +232,7 @@ fn jpeg_info(bytes: &[u8]) -> Option<(u32, u32, u8)> {
         }
         let seg_len = u16::from_be_bytes([bytes[i + 2], bytes[i + 3]]) as usize;
         // SOF0..SOF15 kecuali C4 (DHT), C8 (JPG), CC (DAC).
-        if (0xC0..=0xCF).contains(&marker)
-            && marker != 0xC4
-            && marker != 0xC8
-            && marker != 0xCC
-        {
+        if (0xC0..=0xCF).contains(&marker) && marker != 0xC4 && marker != 0xC8 && marker != 0xCC {
             if i + 10 > bytes.len() {
                 return None;
             }
@@ -208,10 +267,14 @@ struct PdfBuilder {
 
 impl PdfBuilder {
     fn new() -> Self {
-        let mut b = PdfBuilder { buf: Vec::new(), offsets: Vec::new() };
+        let mut b = PdfBuilder {
+            buf: Vec::new(),
+            offsets: Vec::new(),
+        };
         b.raw("%PDF-1.5\n");
         // Penanda biner: menghindari "text mode" translation di transfer file.
-        b.buf.extend_from_slice(&[0x25, 0xE2, 0xE3, 0xCF, 0xD3, 0x0A]);
+        b.buf
+            .extend_from_slice(&[0x25, 0xE2, 0xE3, 0xCF, 0xD3, 0x0A]);
         b
     }
 
@@ -251,66 +314,6 @@ impl PdfBuilder {
     }
 }
 
-fn build_pdf(images: &[Vec<u8>]) -> anyhow::Result<Vec<u8>> {
-    let infos: Vec<(u32, u32, u8)> = images
-        .iter()
-        .map(|b| jpeg_info(b).expect("sudah divalidasi sebelum build_pdf"))
-        .collect();
-
-    let mut b = PdfBuilder::new();
-    // 1 = catalog, 2 = pages.
-    b.begin(1);
-    b.raw("<< /Type /Catalog /Pages 2 0 R >>\n");
-    b.end();
-
-    let kids: Vec<String> = (0..images.len())
-        .map(|i| format!("{} 0 R", 3 + i * 3))
-        .collect();
-    b.begin(2);
-    b.raw(&format!(
-        "<< /Type /Pages /Count {} /Kids [{}] >>\n",
-        images.len(),
-        kids.join(" ")
-    ));
-    b.end();
-
-    for (i, bytes) in images.iter().enumerate() {
-        let (w, h, comps) = infos[i];
-        let page_obj = 3 + i * 3;
-        let img_obj = page_obj + 1;
-        let content_obj = page_obj + 2;
-
-        b.begin(page_obj);
-        b.raw(&format!(
-            "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 {w} {h}] \
-             /Resources << /XObject << /Im0 {img_obj} 0 R >> >> \
-             /Contents {content_obj} 0 R >>\n"
-        ));
-        b.end();
-
-        b.begin(img_obj);
-        b.raw(&format!(
-            "<< /Type /XObject /Subtype /Image /Width {w} /Height {h} \
-             /ColorSpace /{} /BitsPerComponent 8 /Filter /DCTDecode /Length {} >>\nstream\n",
-            colorspace(comps),
-            bytes.len()
-        ));
-        b.buf.extend_from_slice(bytes);
-        b.buf.extend_from_slice(b"\nendstream\n");
-        b.end();
-
-        // cm = skala gambar pas ke MediaBox 1:1.
-        let content = format!("q {w} 0 0 {h} 0 0 cm /Im0 Do Q\n");
-        b.begin(content_obj);
-        b.raw(&format!("<< /Length {} >>\nstream\n", content.len()));
-        b.buf.extend_from_slice(content.as_bytes());
-        b.buf.extend_from_slice(b"endstream\n");
-        b.end();
-    }
-
-    b.finish(1)
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -338,7 +341,10 @@ mod tests {
     #[test]
     fn sniff_rejects_html_and_accepts_images() {
         assert_eq!(sniff_format(&tiny_jpeg()), Some(ImageFormat::Jpeg));
-        assert_eq!(sniff_format(b"\x89PNG\r\n\x1a\n...."), Some(ImageFormat::Png));
+        assert_eq!(
+            sniff_format(b"\x89PNG\r\n\x1a\n...."),
+            Some(ImageFormat::Png)
+        );
         assert_eq!(sniff_format(b"GIF89a...."), Some(ImageFormat::Gif));
         assert_eq!(sniff_format(b"RIFF____WEBPVP8 "), Some(ImageFormat::Webp));
         assert_eq!(sniff_format(b"<!DOCTYPE html><html>"), None);
@@ -359,8 +365,14 @@ mod tests {
     #[test]
     fn passthrough_pdf_builds_valid_structure() {
         let pages = vec![
-            Page { url: "https://a/1.jpg".into(), bytes: tiny_jpeg() },
-            Page { url: "https://a/2.jpg".into(), bytes: tiny_jpeg() },
+            Page {
+                url: "https://a/1.jpg".into(),
+                bytes: tiny_jpeg(),
+            },
+            Page {
+                url: "https://a/2.jpg".into(),
+                bytes: tiny_jpeg(),
+            },
         ];
         let (pdf, report) = write_pdf_bytes(&pages).unwrap();
         assert_eq!(report.pages, 2);
@@ -378,7 +390,9 @@ mod tests {
         assert!(text.contains("/MediaBox [0 0 1 1]"));
         assert!(text.trim_end().ends_with("%%EOF"));
         // byte JPEG asli harus utuh (lossless passthrough).
-        assert!(pdf.windows(tiny_jpeg().len()).any(|w| w == tiny_jpeg().as_slice()));
+        assert!(pdf
+            .windows(tiny_jpeg().len())
+            .any(|w| w == tiny_jpeg().as_slice()));
 
         // startxref harus menunjuk ke "xref".
         let marker = text.rfind("startxref").unwrap();

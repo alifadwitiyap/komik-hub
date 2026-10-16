@@ -7,7 +7,7 @@ import ReaderMenu from '../components/ReaderMenu'
 import ReaderSettingsSheet from '../components/ReaderSettingsSheet'
 import ReaderToolbar from '../components/ReaderToolbar'
 import SourceBadge from '../components/SourceBadge'
-import { imgUrl, warmCache } from '../imgUrl'
+import { imgUrl } from '../imgUrl'
 import { useReaderSettings } from '../hooks/useReaderSettings'
 import { useChromeOnScroll } from '../hooks/useChromeOnScroll'
 import type { ChapterResponse, Manga } from '../types'
@@ -240,9 +240,6 @@ export default function Reader() {
   // Ditulis saat scroll (throttle), saat halaman gambar selesai muat, saat tab
   // disembunyikan/ditutup, dan saat keluar dari reader. Selama restore masih
   // berjalan penulisan dilewati supaya posisi pemulihan tidak menimpa anchor.
-  const prefetchAhead = { hemat: 1, seimbang: 3, siapkan: 8 }[settings.prefetchMode] ?? 3
-  const prefetchAheadRef = useRef(prefetchAhead)
-  prefetchAheadRef.current = prefetchAhead
   useEffect(() => {
     if (!data || images.length === 0 || !chapterId) return
     const last = { pageId: '', t: 0 }
@@ -426,15 +423,11 @@ export default function Reader() {
             src={src}
             alt={`${chapter.name} halaman ${i + 1}`}
             pageIndex={i}
-            eager={i < 3}
+            // hanya halaman 1-2 yang eager + fetchpriority tinggi (LCP);
+            // sisanya lazy supaya 9 MB/chapter tidak diunduh serentak
+            eager={i < 2}
             onLoad={() => {
               setLoadedPages((s) => (s.has(i) ? s : new Set(s).add(i)))
-              // prefetch cerdas: hangatkan halaman berikutnya sesuai mode
-              // (hemat=1, seimbang=3, siapkan=8)
-              const ahead = prefetchAheadRef.current
-              if (i >= 1 && i + ahead < images.length) {
-                warmCache(images.slice(i + 1, i + 1 + ahead))
-              }
             }}
             className="manga-img w-full"
           />

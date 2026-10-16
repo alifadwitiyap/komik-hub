@@ -1,19 +1,20 @@
 /* eslint-disable */
-// Service worker komiku-web — baca komik walau internet jelek.
+// Service worker komiku-web — percepat shell + metadata API.
+//
+// Keputusan Q21/Q11 (plan komiku-ringan-homeserver): gambar di-hotlink
+// LANGSUNG dari CDN, jadi tidak ada cache gambar di sini dan cache offline
+// in-app dibuang. Yang tersisa hanya percepatan shell same-origin & metadata
+// API.
 //
 // Strategi per jenis request:
-// - /img?u=...      : cache-first. Gambar immutable (path CDN per chapter tak
-//                     pernah berubah) → sekali unduh, tersedia selamanya, juga
-//                     saat offline.
-// - /api/chapter/.. : stale-while-revalidate. Daftar halaman langsung tampil
-//                     dari cache (menuai chaining offline), data segar diperbarui
-//                     di belakang layar.
-// - /api lain + shell same-origin : cache-first dengan update di background,
-//                     fallback ke index.html yang di-precache (SPA jalan offline).
-// - navigasi        : network-first, fallback cache.
+// - /api/notif/..  : network-first — badge unread HARUS segar.
+// - /api lain      : stale-while-revalidate (daftar halaman langsung tampil,
+//                    data segar menyusul di belakang layar).
+// - aset same-origin (js/css/font) : cache-first + update di background.
+// - navigasi       : network-first, fallback index.html yang di-precache.
+// - gambar CDN + sisanya: lewat jaringan biasa (hotlink, tanpa cache SW).
 
 const SHELL = 'komiku-shell-v2'
-const IMG = 'komiku-img-v2'
 const API = 'komiku-api-v2'
 
 self.addEventListener('install', (e) => {
@@ -30,7 +31,7 @@ self.addEventListener('activate', (e) => {
       .then((keys) =>
         Promise.all(
           keys
-            .filter((k) => ![SHELL, IMG, API].includes(k))
+            .filter((k) => ![SHELL, API].includes(k))
             .map((k) => caches.delete(k)),
         ),
       )
@@ -43,13 +44,7 @@ self.addEventListener('fetch', (e) => {
   if (req.method !== 'GET') return
   const url = new URL(req.url)
 
-  // 1) gambar komik → cache-first (immutable)
-  if (url.pathname === '/img') {
-    e.respondWith(cacheFirst(req, IMG))
-    return
-  }
-
-  // 1b) state notifikasi → network-first: badge unread HARUS segar.
+  // 1) state notifikasi → network-first: badge unread HARUS segar.
   // Cache hanya fallback saat offline (SWR membuat badge basi sampai poll 60s).
   if (url.pathname.startsWith('/api/notif/')) {
     e.respondWith(networkFirst(req, API))
@@ -76,14 +71,14 @@ self.addEventListener('fetch', (e) => {
     return
   }
 
-  // 4) sisanya (CDN lama/hotlink) lewat jaringan biasa
+  // 4) gambar CDN + sisanya: lewat jaringan biasa (hotlink; tanpa cache SW)
 })
 
 async function cacheFirst(req, cacheName) {
   const cache = await caches.open(cacheName)
   const hit = await cache.match(req, { ignoreSearch: false })
   if (hit) {
-    // gambar immutable: tak perlu revalidasi sama sekali
+    // aset shell immutable (nama file ber-hash): tak perlu revalidasi
     return hit
   }
   try {
@@ -138,70 +133,3 @@ async function networkFirst(req, cacheName) {
     )
   }
 }
-
-// pesan dari halaman: hangatkan cache (prefetch) / unduh offline
-self.addEventListener('message', (e) => {
-  // CACHE_CHAPTER dilayani handler terpisah di bawah — jangan diproses dua kali
-  if (e.data && e.data.type === 'CACHE_CHAPTER') return
-  const urls = e.data && e.data.urls
-  if (!Array.isArray(urls) || urls.length === 0) return
-  e.waitUntil(
-    (async () => {
-      const cache = await caches.open(IMG)
-      for (const u of urls) {
-        try {
-          const req = new Request(u)
-          if (!(await cache.match(req, { ignoreSearch: false }))) {
-            const res = await fetch(req)
-            if (res.ok) await cache.put(req, res)
-          }
-        } catch {
-          /* salah satu URL gagal: lanjutkan yang lain */
-        }
-      }
-    })(),
-  )
-})
-
-// pesan {type:'CACHE_CHAPTER', urls:[...]}: simpan seluruh chapter ke
-// komiku-img-v2 (skip yang sudah ada) sambil lapor progres ke halaman —
-// CACHE_PROGRESS {done,total} per URL dan CACHE_DONE {ok} di akhir.
-// catatan jujur: `done` hanya bertambah kalau URL benar-benar ada di cache
-// (termasuk yang tadinya sudah), jadi UI bisa menampilkan "x/y tersimpan"
-// tanpa mengklaim URL gagal sebagai sukses.
-self.addEventListener('message', (e) => {
-  if (!e.data || e.data.type !== 'CACHE_CHAPTER') return
-  const urls = Array.isArray(e.data.urls) ? e.data.urls : []
-  if (urls.length === 0) return
-  e.waitUntil(
-    (async () => {
-      const total = urls.length
-      const toClients = (msg) => {
-        const src = e.source
-        if (src && typeof src.postMessage === 'function') src.postMessage(msg)
-        else
-          self.clients.matchAll().then((cs) => cs.forEach((c) => c.postMessage(msg)))
-      }
-      const cache = await caches.open(IMG)
-      let done = 0
-      for (const u of urls) {
-        try {
-          const req = new Request(u)
-          if (await cache.match(req, { ignoreSearch: false })) {
-            done++
-          } else {
-            const res = await fetch(req)
-            if (res.ok) {
-              await cache.put(req, res)
-              done++
-            }
-          }
-        } catch {
-          /* offline/putus: tidak dihitung sebagai tersimpan */
-        }
-        toClients({ type: 'CACHE_PROGRESS', done, total })
-      }
-      toClients({ type: 'CACHE_DONE', ok: done === total })
-    })(),
-  )
-})

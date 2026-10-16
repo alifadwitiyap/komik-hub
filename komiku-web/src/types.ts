@@ -109,7 +109,9 @@ export interface UnifiedChapter {
   cover_url: string | null
 }
 
-/** Satu item unduhan (kontrak GET /api/unified/downloads). */
+/** Satu item unduhan (kontrak GET /api/unified/downloads).
+ *  PDF = buffer ber-TTL 24 jam (tanpa limit byte). `expires_at` = epoch millis
+ *  `downloaded_at + TTL`, dikirim server sebagai field aditif. */
 export interface DownloadItem {
   id: string
   handle: string
@@ -119,25 +121,12 @@ export interface DownloadItem {
   filename: string
   size_bytes: number
   downloaded_at: number | null
-  last_opened_at: number | null
+  expires_at?: number | null
 }
 
 export interface DownloadsResponse {
   items: DownloadItem[]
   total_bytes: number
-  limit_bytes: number
-}
-
-/** Catatan eviction otomatis (kontrak GET /api/unified/evictions). */
-export interface EvictionItem {
-  series_title: string
-  chapter_title: string
-  size_bytes: number
-  evicted_at: number | null
-}
-
-export interface EvictionsResponse {
-  items: EvictionItem[]
 }
 
 /** Satu baris GET /api/unified/health (kontrak lane server paralel — probe

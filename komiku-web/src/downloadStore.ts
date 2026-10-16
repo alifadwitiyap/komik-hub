@@ -24,7 +24,7 @@
  *     (lihat helper `runBusy` di halaman series).
  */
 
-import { downloadChapters } from './downloadBatch'
+import { downloadChapters, saveGeneratedPdf } from './downloadBatch'
 
 export interface DlJob {
   number: string
@@ -38,6 +38,13 @@ export interface DlRun {
   seriesTitle: string
   jobs: DlJob[]
   startedAt: number
+  /**
+   * Q22.A — jumlah PDF yang sudah otomatis dikirim ke perangkat user
+   * (auto-trigger simpan setelah generate). Dipakai UI untuk melaporkan
+   * jujur berapa file benar-benar tersimpan, terpisah dari berapa chapter
+   * berhasil di-generate di server.
+   */
+  saved: number
 }
 
 interface RunRec extends DlRun {
@@ -59,6 +66,7 @@ function snapshot(runs: readonly RunRec[]): DlRun[] {
     handle: r.handle,
     seriesTitle: r.seriesTitle,
     startedAt: r.startedAt,
+    saved: r.saved,
     jobs: r.jobs.map((j) => ({ ...j })),
   }))
 }
@@ -100,6 +108,7 @@ export function startRun(handle: string, seriesTitle: string, numbers: string[])
     handle,
     seriesTitle,
     startedAt: Date.now(),
+    saved: 0,
     ctrl: new AbortController(),
     jobs: numbers.map((number) => ({ number, state: 'wait' as const })),
   }
@@ -114,6 +123,16 @@ export function startRun(handle: string, seriesTitle: string, numbers: string[])
     numbers.map((number) => ({ handle, number })),
     (index, patch) => patchJob(rec, index, patch),
     rec.ctrl.signal,
+    // Q22.A — tiap PDF selesai di-generate langsung di-auto-unduh ke
+    // perangkat user (anchor `download` → Content-Disposition attachment).
+    // `saveGeneratedPdf` mengembalikan false tanpa DOM (uji node) → `saved`
+    // tetap 0 di lingkungan tanpa browser, jadi tidak ada klaim palsu.
+    (id, filename) => {
+      if (saveGeneratedPdf(id, filename)) {
+        rec.saved += 1
+        emit()
+      }
+    },
   ).then(() => {
     // Setelah abort, chapter yang belum mulai / sedang berjalan tidak dipatch
     // oleh downloadChapters (AbortError ditelan). Beri state terminal supaya

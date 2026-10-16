@@ -12,11 +12,7 @@
 //!
 //! Handler stateless (baca/tulis file), di-`.merge()` tanpa `AppState`.
 
-use axum::{
-    http::HeaderMap,
-    routing::get,
-    Json, Router,
-};
+use axum::{http::HeaderMap, routing::get, Json, Router};
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use std::path::{Path, PathBuf};
@@ -90,7 +86,9 @@ async fn put_progress(headers: HeaderMap, Json(req): Json<PutProgressReq>) -> Re
             req.entries.len()
         )));
     }
-    let st = ProgressState { entries: req.entries };
+    let st = ProgressState {
+        entries: req.entries,
+    };
     let body = serde_json::to_vec(&st)
         .map_err(|e| AppError::new(anyhow::anyhow!("gagal serialisasi progress: {e}")))?;
     if body.len() > MAX_BYTES {
@@ -148,7 +146,8 @@ mod tests {
         assert!(read_state(&missing).entries.is_empty());
 
         // korup: bukan JSON -> kosong, bukan panic
-        let bad = std::env::temp_dir().join(format!("komiku-progress-bad-{}.json", std::process::id()));
+        let bad =
+            std::env::temp_dir().join(format!("komiku-progress-bad-{}.json", std::process::id()));
         std::fs::write(&bad, b"{bukan json").unwrap();
         assert!(read_state(&bad).entries.is_empty());
         let _ = std::fs::remove_file(&bad);

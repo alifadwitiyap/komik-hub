@@ -73,11 +73,8 @@ const CH_IMAGES = (h, n) => [
   `https://assets.shngm.id/${h}/${n}/003.jpg`,
 ]
 
-// --- state rak: unduhan PDF, eviction, settings (kontrak rak-buku.md) -------
-const DEFAULT_LIMIT = 2 * 1024 * 1024 * 1024 // 2 GB
-const downloads = [] // {id, handle, number, title, series_title, filename, size_bytes, ...}
-const evictions = [] // {series_title, chapter_title, size_bytes, evicted_at}
-let limitBytes = DEFAULT_LIMIT
+// --- state rak: unduhan PDF (kontrak buffer TTL 24 jam) ---------------------
+const downloads = [] // {id, handle, number, title, series_title, filename, size_bytes, downloaded_at, expires_at}
 let downloadSeq = 0
 
 const PdfBytes = Buffer.from('%PDF-1.4 fixture pdf (bukan PDF asli)\n%%EOF\n', 'utf8')
@@ -188,20 +185,10 @@ const server = http.createServer(async (req, res) => {
       return json({ error: 'chapter tidak ditemukan' }, 404)
     }
     const size = 100 * 1024 // 100 KB per chapter (fixture)
-    // eviction sederhana: buang LRU (downloaded_at terlama) sampai muat
-    while (downloads.length > 0 && totals() + size > limitBytes) {
-      const victim = downloads.shift()
-      evictions.push({
-        series_title: victim.series_title,
-        chapter_title: victim.title,
-        size_bytes: victim.size_bytes,
-        evicted_at: Date.now(),
-      })
-    }
-    if (totals() + size > limitBytes) {
-      return json({ error: 'batas penyimpanan tidak cukup' }, 400)
-    }
+    // Kontrak TTL 24 jam: TIDAK ada eviction/limit — semua unduhan disimpan
+    // sampai kedaluwarsa.
     const id = `dl-${++downloadSeq}`
+    const downloadedAt = Date.now()
     const item = {
       id,
       handle: m.handle,
@@ -210,8 +197,8 @@ const server = http.createServer(async (req, res) => {
       series_title: m.title,
       filename: `${m.title_key}-${body.number}.pdf`,
       size_bytes: size,
-      downloaded_at: Date.now(),
-      last_opened_at: null,
+      downloaded_at: downloadedAt,
+      expires_at: downloadedAt + 24 * 60 * 60 * 1000,
     }
     downloads.push(item)
     return json({
@@ -223,7 +210,7 @@ const server = http.createServer(async (req, res) => {
     })
   }
   if (p === '/api/unified/downloads' && req.method === 'GET') {
-    return json({ items: downloads, total_bytes: totals(), limit_bytes: limitBytes })
+    return json({ items: downloads, total_bytes: totals() })
   }
   const dm = /^\/api\/unified\/downloads\/([^/]+)$/.exec(p)
   if (dm) {
@@ -234,30 +221,12 @@ const server = http.createServer(async (req, res) => {
       return json({ deleted: true })
     }
     if (!found) return json({ error: 'unduhan tidak ditemukan' }, 404)
-    // GET file: SEKALIGUS update last_opened_at (LRU)
-    found.last_opened_at = Date.now()
+    // GET file: kirim PDF (tanpa LRU — TTL murni)
     res.writeHead(200, {
       'content-type': 'application/pdf',
       'content-disposition': `attachment; filename="${found.filename}"`,
     })
     return res.end(PdfBytes)
-  }
-  if (p === '/api/unified/evictions' && req.method === 'GET') {
-    return json({ items: evictions })
-  }
-  if (p === '/api/unified/evictions/dismiss' && req.method === 'POST') {
-    evictions.length = 0
-    return json({ ok: true })
-  }
-  if (p === '/api/unified/settings/downloads') {
-    if (req.method === 'PUT') {
-      const body = await readJsonBody(req)
-      const n = Number(body.limit_bytes)
-      if (!Number.isFinite(n) || n < 0) return json({ error: 'limit_bytes tidak valid' }, 400)
-      limitBytes = n
-      return json({ limit_bytes: limitBytes })
-    }
-    return json({ limit_bytes: limitBytes })
   }
   // --- flow Komiku existing (harus tetap hijau) ----------------------------
   if (p === '/api/homepage')

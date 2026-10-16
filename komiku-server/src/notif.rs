@@ -2,10 +2,13 @@
 //!
 //! Menyimpan daftar favorit (kunci = `title_key` ternormalisasi lintas sumber),
 //! baseline chapter per sumber, dan log notifikasi — SEMUANYA per-akun
-//! (`data/users/<username>.json`). Satu interval tokio memeriksa setiap akun
-//! terhadap sumber aktif (komiku/mangaku/shinigami/kiryuu) lewat
-//! `komik_core::aggregator`; chapter baru (lebih tinggi dari baseline) menimbulkan
-//! SATU notifikasi per title_key per akun.
+//! (`data/users/<username>.json`). Pemeriksaan bersifat ON-DEMAND: TIDAK ada
+//! loop interval latar (supaya server boleh tidur), satu siklus dijalankan
+//! hanya saat `GET /api/notif/list` melihat `last_check_at` lebih tua dari TTL.
+//! Siklus itu memeriksa setiap akun terhadap sumber aktif
+//! (komiku/mangaku/shinigami/kiryuu) lewat `komik_core::aggregator`; chapter
+//! baru (lebih tinggi dari baseline) menimbulkan SATU notifikasi per title_key
+//! per akun.
 //!
 //! ## Kenapa per-akun
 //! Dulu SATU slot global: `PUT /api/notif/favorites` replace-all membuat device
@@ -60,9 +63,11 @@ const RETENTION_MS: i64 = 7 * 24 * 60 * 60 * 1000;
 const CACHE_TTL_MS: i64 = 30 * 60 * 1000;
 /// Batas chapter yang dimuat per sumber saat resolve (manga panjang).
 const NOTIF_CHAPTER_LIMIT: u32 = 2000;
-/// Interval default background checker (detik).
+/// TTL default pemicu check ON-DEMAND di `GET /api/notif/list` (detik). Dulu ini
+/// interval loop latar; loop-nya dihapus supaya server bisa tidur, jadi nilai
+/// ini kini hanya jarak minimum antar siklus saat ada request /list.
 const DEFAULT_INTERVAL_SECS: u64 = 1800;
-/// Favorit di atas jumlah ini (TOTAL seluruh akun) -> interval checker digandakan.
+/// Favorit di atas jumlah ini (TOTAL seluruh akun) -> TTL check digandakan.
 const BIG_LIST_THRESHOLD: usize = 50;
 
 /// UA Android: adapter komiku/mangaku/shinigami wajib UA mobile (sama seperti
@@ -70,6 +75,7 @@ const BIG_LIST_THRESHOLD: usize = 50;
 const UA_MOBILE: &str = "Mozilla/5.0 (Linux; Android 13; SM-S908B) AppleWebKit/537.36 \
                           (KHTML, like Gecko) Chrome/131.0.0.0 Mobile Safari/537.36";
 
+/// TTL pemicu on-demand dari `NOTIF_INTERVAL_SECS` (default 1800 detik).
 fn interval_secs() -> u64 {
     std::env::var("NOTIF_INTERVAL_SECS")
         .ok()
@@ -136,7 +142,7 @@ pub struct NotifStore {
     /// Mutex "ada check cycle berjalan" — cegah cycle bertumpuk.
     /// Sengaja Mutex (bukan AtomicBool): guard dilepas otomatis saat task
     /// selesai ATAU panic, jadi penanda tidak bisa nyangkut selamanya dan
-    /// mematikan checker latar permanen.
+    /// mematikan check on-demand permanen.
     checking: Mutex<()>,
 }
 
@@ -155,10 +161,13 @@ impl NotifStore {
     }
 
     /// Ambil/buat state satu akun (lazy dari disk). Dibuat sekali lalu di-cache.
-    fn ensure_user<'a>(dir: &Path, st: &'a mut BTreeMap<String, State>, username: &str) -> &'a mut State {
-        st.entry(username.to_string()).or_insert_with(|| {
-            read_json(&user_file(dir, username)).unwrap_or_default()
-        })
+    fn ensure_user<'a>(
+        dir: &Path,
+        st: &'a mut BTreeMap<String, State>,
+        username: &str,
+    ) -> &'a mut State {
+        st.entry(username.to_string())
+            .or_insert_with(|| read_json(&user_file(dir, username)).unwrap_or_default())
     }
 
     /// Purge retensi (7 hari) lalu tulis atomik file SATU akun. Dipanggil setiap
@@ -232,21 +241,17 @@ fn aggregator() -> &'static Aggregator {
     })
 }
 
-/// Store notifikasi global untuk handler + awal interval background.
+/// Store notifikasi global untuk handler. TIDAK ada loop latar: pemeriksaan
+/// dijalankan on-demand dari `GET /api/notif/list` (lihat `get_list`), jadi
+/// proses tidak bangun sendiri dan server boleh tidur.
 fn store() -> &'static Arc<NotifStore> {
     static STORE: OnceLock<Arc<NotifStore>> = OnceLock::new();
     STORE.get_or_init(|| {
         let dir = data_dir();
-        let s = NotifStore::open(&dir).unwrap_or_else(|e| {
+        NotifStore::open(&dir).unwrap_or_else(|e| {
             tracing::error!("notif store gagal dibuka ({}): {e:#}", dir.display());
             NotifStore::open(std::env::temp_dir()).expect("temp dir selalu ada")
-        });
-        // Interval checker dijalankan sekali di latar (butuh runtime tokio —
-        // handler selalu dipanggil di dalam runtime).
-        if tokio::runtime::Handle::try_current().is_ok() {
-            tokio::spawn(background_checker(s.clone()));
-        }
-        s
+        })
     })
 }
 
@@ -360,7 +365,10 @@ fn fnv1a(bytes: &[u8]) -> u64 {
 /// baseline-nya. Sumber tanpa baseline -> dilewati (None utk sumber itu).
 /// Mengembalikan (sumber, nomor_tertinggi) dengan nomor TERBESAR di antara
 /// kandidat baru — dipakai sbg nomor chapter notifikasi.
-fn detect_new(baseline: &BTreeMap<String, String>, current: &[(String, String)]) -> Option<(String, String)> {
+fn detect_new(
+    baseline: &BTreeMap<String, String>,
+    current: &[(String, String)],
+) -> Option<(String, String)> {
     let mut best: Option<(String, String)> = None;
     for (src, num) in current {
         let Some(base) = baseline.get(src) else {
@@ -382,7 +390,10 @@ fn detect_new(baseline: &BTreeMap<String, String>, current: &[(String, String)])
 
 /// Semua sumber yang muncul lebih tinggi dari baseline-nya (untuk field
 /// `sources` pada notifikasi).
-fn detect_new_sources(baseline: &BTreeMap<String, String>, current: &[(String, String)]) -> Vec<String> {
+fn detect_new_sources(
+    baseline: &BTreeMap<String, String>,
+    current: &[(String, String)],
+) -> Vec<String> {
     current
         .iter()
         .filter_map(|(src, num)| {
@@ -454,11 +465,18 @@ fn apply_favorites(existing: &mut BTreeMap<String, Favorite>, incoming: Vec<FavI
 /// ambil nomor tertinggi. Kegagalan sumber -> log warn + LANJUT (jangan abort).
 async fn fetch_snapshots(fav: &Favorite) -> Vec<(String, String)> {
     let agg = aggregator();
-    let names: Vec<String> = agg.sources.iter().map(|s| s.id().as_str().to_string()).collect();
+    let names: Vec<String> = agg
+        .sources
+        .iter()
+        .map(|s| s.id().as_str().to_string())
+        .collect();
     let mut out = Vec::new();
     let title = fav.title.as_str();
     for name in names {
-        match agg.series_resolve(&fav.title, NOTIF_CHAPTER_LIMIT, Some(&name)).await {
+        match agg
+            .series_resolve(&fav.title, NOTIF_CHAPTER_LIMIT, Some(&name))
+            .await
+        {
             Ok(o) => {
                 if let Some(hi) = highest_chapter(&o.detail.chapters) {
                     out.push((name, hi));
@@ -486,7 +504,10 @@ async fn fill_baselines(store: &NotifStore, username: &str, key: &str) {
     };
     let Some(fav) = fav else { return };
     let handle = format!("{}:{}", fav.source, fav.handle);
-    match aggregator().series_resolve(&handle, NOTIF_CHAPTER_LIMIT, None).await {
+    match aggregator()
+        .series_resolve(&handle, NOTIF_CHAPTER_LIMIT, None)
+        .await
+    {
         Ok(o) => {
             let served = o.detail.manga.source.as_str().to_string();
             let Some(hi) = highest_chapter(&o.detail.chapters) else {
@@ -503,17 +524,23 @@ async fn fill_baselines(store: &NotifStore, username: &str, key: &str) {
             };
             if do_save {
                 store.save_locked(username, st);
-                tracing::info!("notif: baseline '{key}' akun {username} terisi ({src}={hi})", src = fav.source);
+                tracing::info!(
+                    "notif: baseline '{key}' akun {username} terisi ({src}={hi})",
+                    src = fav.source
+                );
             }
         }
-        Err(e) => tracing::warn!("notif: baseline-fill '{title}' gagal: {e:#}", title = fav.title),
+        Err(e) => tracing::warn!(
+            "notif: baseline-fill '{title}' gagal: {e:#}",
+            title = fav.title
+        ),
     }
 }
 
 // ------------------------------------------------------------------ check cycle
 
 /// Satu siklus pemeriksaan untuk SEMUA akun. Guard `checking` mencegah cycle
-/// bertumpuk (dipicu GET /list Dan interval). Fetch sumber tetap DIBAGI lewat
+/// bertumpuk (dipicu GET /list saat TTL lewat). Fetch sumber tetap DIBAGI lewat
 /// cache global `snapshot()`. Chapter baru -> 1 notifikasi per title_key per akun.
 async fn run_check_cycle(store: &NotifStore) {
     // try_lock: kalau ada cycle berjalan, langsung keluar. Guard mutex
@@ -546,7 +573,11 @@ async fn run_check_cycle(store: &NotifStore) {
         for u in &usernames {
             let st = NotifStore::ensure_user(&store.dir, &mut map, u);
             st.last_check_at = Some(now);
-            let favs = st.favorites.iter().map(|(k, v)| (k.clone(), v.clone())).collect();
+            let favs = st
+                .favorites
+                .iter()
+                .map(|(k, v)| (k.clone(), v.clone()))
+                .collect();
             per_user.push((u.clone(), favs));
         }
         for (u, _) in &per_user {
@@ -583,7 +614,10 @@ async fn run_check_cycle(store: &NotifStore) {
                 let srcs = detect_new_sources(&f.baselines, snap);
                 // Naikkan/adopsi baseline ke snapshot terkini (tak pernah turun).
                 for (src, num) in snap {
-                    let e = f.baselines.entry(src.clone()).or_insert_with(|| num.clone());
+                    let e = f
+                        .baselines
+                        .entry(src.clone())
+                        .or_insert_with(|| num.clone());
                     if cmp_num_or_str(num, e) == Ordering::Greater {
                         *e = num.clone();
                     }
@@ -610,29 +644,15 @@ async fn run_check_cycle(store: &NotifStore) {
     // guard `checking` dilepas di sini (akhir scope) — otomatis walau panic.
 }
 
-/// Interval efektif: `NOTIF_INTERVAL_SECS` (default 1800), DIGANDAKAN kalau
-/// jumlah favorit (TOTAL seluruh akun) > 50 (BIG_LIST_THRESHOLD). Satu sumber
-/// kebenaran untuk interval checker latar DAN TTL pemicu check di GET /list.
+/// TTL efektif pemicu check ON-DEMAND: `NOTIF_INTERVAL_SECS` (default 1800),
+/// DIGANDAKAN kalau jumlah favorit (TOTAL seluruh akun) > 50 (BIG_LIST_THRESHOLD).
+/// Satu sumber kebenaran untuk jarak minimum antar siklus di `GET /api/notif/list`.
 fn effective_interval(favorites_len: usize) -> Duration {
     let base = Duration::from_secs(interval_secs());
     if favorites_len > BIG_LIST_THRESHOLD {
         base.saturating_mul(2)
     } else {
         base
-    }
-}
-
-/// Interval checker latar. Dihitung ulang tiap iterasi (replace daftar favorit
-/// bisa mengubahnya).
-async fn background_checker(store: Arc<NotifStore>) {
-    loop {
-        let secs = {
-            let map = store.state.lock().await;
-            let total: usize = map.values().map(|s| s.favorites.len()).sum();
-            effective_interval(total)
-        };
-        tokio::time::sleep(secs.max(Duration::from_secs(1))).await;
-        run_check_cycle(&store).await;
     }
 }
 
@@ -661,7 +681,9 @@ async fn put_favorites(headers: HeaderMap, Json(req): Json<PutFavoritesReq>) -> 
             }
         });
     }
-    Ok(Json(json!({ "ok": true, "count": count, "filling": filling })))
+    Ok(Json(
+        json!({ "ok": true, "count": count, "filling": filling }),
+    ))
 }
 
 /// GET /api/notif/favorites — favorit MILIK akun (hydrate rak di web).
@@ -686,12 +708,14 @@ async fn get_list(headers: HeaderMap) -> Res<Value> {
         let unread = st.notifications.iter().filter(|n| !n.read).count();
         let mut items = st.notifications.clone();
         items.sort_by(|a, b| b.at.cmp(&a.at));
-        // TTL = interval efektif (samakan dengan interval checker latar,
+        // TTL = interval efektif (jarak minimum antar siklus on-demand,
         // termasuk penggandaan saat total favorit > 50) supaya cadence check
         // konsisten dan tidak memblok request ini.
         let ttl = effective_interval(total).as_millis() as i64;
         let should_check = store.checking.try_lock().is_ok()
-            && st.last_check_at.map_or(true, |t| now.saturating_sub(t) > ttl);
+            && st
+                .last_check_at
+                .map_or(true, |t| now.saturating_sub(t) > ttl);
         (items, unread, st.last_check_at, should_check)
     };
     if should_check {
@@ -767,7 +791,10 @@ async fn dismiss(headers: HeaderMap, Json(req): Json<DismissReq>) -> Res<Value> 
     if removed {
         Ok(Json(json!({ "ok": true })))
     } else {
-        Err(AppError::not_found(format!("notifikasi {} tidak ditemukan", req.id)))
+        Err(AppError::not_found(format!(
+            "notifikasi {} tidak ditemukan",
+            req.id
+        )))
     }
 }
 
@@ -777,7 +804,10 @@ async fn dismiss(headers: HeaderMap, Json(req): Json<DismissReq>) -> Res<Value> 
 /// langsung di-`.merge()`. CORS permissive mengikuti router /api lain.
 pub fn notif_routes() -> Router {
     Router::new()
-        .route("/api/notif/favorites", get(get_favorites).put(put_favorites))
+        .route(
+            "/api/notif/favorites",
+            get(get_favorites).put(put_favorites),
+        )
         .route("/api/notif/list", get(get_list))
         .route("/api/notif/read", post(mark_read))
         .route("/api/notif/dismiss", post(dismiss))
@@ -807,14 +837,14 @@ mod tests {
 
     #[test]
     fn effective_interval_doubles_above_threshold() {
-        // <= 50 favorit: interval dasar (override NOTIF_INTERVAL_SECS dihormati)
+        // <= 50 favorit: TTL dasar (override NOTIF_INTERVAL_SECS dihormati)
         assert_eq!(effective_interval(0), Duration::from_secs(interval_secs()));
         assert_eq!(
             effective_interval(BIG_LIST_THRESHOLD),
             Duration::from_secs(interval_secs()),
             "tepat 50 TIDAK digandakan (batas > 50)"
         );
-        // > 50 favorit: digandakan (dipakai interval latar DAN TTL GET /list)
+        // > 50 favorit: digandakan (dipakai sebagai TTL pemicu GET /list)
         assert_eq!(
             effective_interval(BIG_LIST_THRESHOLD + 1),
             Duration::from_secs(interval_secs() * 2)
@@ -911,7 +941,11 @@ mod tests {
         base.insert("mangaku".to_string(), "extra-9".to_string());
         // "extra-10" lexicographically LESS than "extra-9" -> NOT new.
         let cur10 = vec![("mangaku".to_string(), "extra-10".to_string())];
-        assert_eq!(detect_new(&base, &cur10), None, "string compare: 'extra-10' < 'extra-9'");
+        assert_eq!(
+            detect_new(&base, &cur10),
+            None,
+            "string compare: 'extra-10' < 'extra-9'"
+        );
 
         // Kasus positif string: '9'(0x39) > '1'(0x31) -> "extra-9" > "extra-1".
         let mut base2 = BTreeMap::new();
@@ -1019,8 +1053,13 @@ mod tests {
         assert_eq!(st2.notifications[0].id, notif_id("k1", "1195"));
         assert_eq!(st2.last_check_at, Some(now));
         // file benar-benar ada di lokasi schema per-akun
-        assert!(user_file(&dir, "alif").ends_with("users/alif.json")
-            || user_file(&dir, "alif").to_string_lossy().replace('\\', "/").ends_with("users/alif.json"));
+        assert!(
+            user_file(&dir, "alif").ends_with("users/alif.json")
+                || user_file(&dir, "alif")
+                    .to_string_lossy()
+                    .replace('\\', "/")
+                    .ends_with("users/alif.json")
+        );
         let _ = std::fs::remove_dir_all(&dir);
     }
 
@@ -1032,7 +1071,8 @@ mod tests {
             let mut map = store.state.lock().await;
             let st = NotifStore::ensure_user(&store.dir, &mut map, "alif");
             let now = now_millis();
-            st.notifications.push(notif("old", now - 8 * 24 * 60 * 60 * 1000));
+            st.notifications
+                .push(notif("old", now - 8 * 24 * 60 * 60 * 1000));
             st.notifications.push(notif("fresh", now - 1000));
             store.save_locked("alif", st); // save = purge lalu tulis
         }
@@ -1054,7 +1094,8 @@ mod tests {
             let mut map = store.state.lock().await;
             {
                 let a = NotifStore::ensure_user(&store.dir, &mut map, "alif");
-                a.favorites.insert("one piece".into(), fav("3215", "komiku"));
+                a.favorites
+                    .insert("one piece".into(), fav("3215", "komiku"));
             }
             {
                 let b = NotifStore::ensure_user(&store.dir, &mut map, "budi");
@@ -1105,14 +1146,22 @@ mod tests {
         let (a_notifs, a_baseline) = {
             let a = NotifStore::ensure_user(&store.dir, &mut map, "alif");
             (
-                a.notifications.iter().map(|n| n.id.clone()).collect::<Vec<_>>(),
-                a.favorites.get("k1").and_then(|f| f.baselines.get("komiku").cloned()),
+                a.notifications
+                    .iter()
+                    .map(|n| n.id.clone())
+                    .collect::<Vec<_>>(),
+                a.favorites
+                    .get("k1")
+                    .and_then(|f| f.baselines.get("komiku").cloned()),
             )
         };
         let (b_notifs, b_fav_empty) = {
             let b = NotifStore::ensure_user(&store.dir, &mut map, "budi");
             (
-                b.notifications.iter().map(|n| n.id.clone()).collect::<Vec<_>>(),
+                b.notifications
+                    .iter()
+                    .map(|n| n.id.clone())
+                    .collect::<Vec<_>>(),
                 b.favorites.is_empty(),
             )
         };
@@ -1132,7 +1181,8 @@ mod tests {
         {
             let mut map = store.state.lock().await;
             let a = NotifStore::ensure_user(&store.dir, &mut map, "alif");
-            a.favorites.insert("one piece".into(), fav("3215", "komiku"));
+            a.favorites
+                .insert("one piece".into(), fav("3215", "komiku"));
             let b = NotifStore::ensure_user(&store.dir, &mut map, "budi");
             b.favorites.insert("naruto".into(), fav("99", "komiku"));
         }
@@ -1145,7 +1195,11 @@ mod tests {
             store.save_locked("alif", a);
         }
         assert!(store.favorites("alif").await.is_empty(), "alif dikosongkan");
-        assert_eq!(store.favorites("budi").await.len(), 1, "budi TIDAK tersentuh");
+        assert_eq!(
+            store.favorites("budi").await.len(),
+            1,
+            "budi TIDAK tersentuh"
+        );
         let _ = std::fs::remove_dir_all(&dir);
     }
 
@@ -1156,7 +1210,9 @@ mod tests {
         let mut state: BTreeMap<String, Favorite> = BTreeMap::new();
         // favorit lama k1 sudah punya baseline.
         let mut existing = fav("3215", "komiku");
-        existing.baselines.insert("komiku".to_string(), "100".to_string());
+        existing
+            .baselines
+            .insert("komiku".to_string(), "100".to_string());
         state.insert("k1".to_string(), existing);
         // favorit lama k3 yang akan hilang (tidak ada di input baru).
         state.insert("k3".to_string(), fav("9", "mangaku"));
@@ -1184,13 +1240,20 @@ mod tests {
         assert_eq!(new_keys, vec!["k2".to_string()]);
         // k1 baselines DIPERTAHANKAN, metadata di-refresh.
         let k1 = state.get("k1").unwrap();
-        assert_eq!(k1.baselines.get("komiku"), Some(&"100".to_string()), "baseline lama tak hilang");
+        assert_eq!(
+            k1.baselines.get("komiku"),
+            Some(&"100".to_string()),
+            "baseline lama tak hilang"
+        );
         assert_eq!(k1.title, "Judul 1 baru");
         assert_eq!(k1.cover_url.as_deref(), Some("https://x/c.jpg"));
         // k2 baru dengan baselines kosong (butuh baseline-fill).
         assert!(state.get("k2").unwrap().baselines.is_empty());
         // k3 dibuang (replace-all).
-        assert!(!state.contains_key("k3"), "favorit tak ada di input dibuang");
+        assert!(
+            !state.contains_key("k3"),
+            "favorit tak ada di input dibuang"
+        );
     }
 
     #[test]

@@ -63,14 +63,16 @@ with sync_playwright() as p:
     ctx = browser.new_context(viewport={"width": 1280, "height": 900}, locale="id-ID")
     ctx.route("**/sw.js", lambda r: r.fulfill(status=404, body="sw blocked"))
 
+    # Perlambat GAMBAR saja — JSON chapter tetap cepat, supaya yang diuji
+    # benar-benar "gambar belum selesai", bukan "data belum datang".
+    # Q21: gambar di-hotlink langsung dari CDN (tidak ada lagi proxy /img),
+    # jadi tunda berdasarkan JENIS resource, bukan path /img.
     def slow_img(route):
-        time.sleep(IMG_DELAY_MS / 1000)
+        if route.request.resource_type == "image":
+            time.sleep(IMG_DELAY_MS / 1000)
         route.continue_()
 
-    # perlambat GAMBAR saja — JSON chapter tetap cepat, supaya yang diuji
-    # benar-benar "gambar belum selesai", bukan "data belum datang".
-    ctx.route("**/img?**", slow_img)
-    ctx.route("**/img", slow_img)
+    ctx.route("**/*", slow_img)
 
     page = ctx.new_page()
     errors = []

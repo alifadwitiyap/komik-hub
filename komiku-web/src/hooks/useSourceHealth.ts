@@ -56,12 +56,12 @@ export function useSourceHealth(): SourceHealthState {
     }
   }, [])
 
-  const load = useCallback(async () => {
+  const load = useCallback(async (force = false) => {
     inFlight.current?.abort()
     const ctrl = new AbortController()
     inFlight.current = ctrl
     try {
-      const data = await unifiedApi.health(ctrl.signal)
+      const data = await unifiedApi.health(ctrl.signal, force)
       if (!mounted.current || ctrl.signal.aborted) return
       const rows = Array.isArray(data.sources) ? data.sources : []
       // total/healthy dipercaya dari server; kalau absen, hitung dari baris.
@@ -99,8 +99,10 @@ export function useSourceHealth(): SourceHealthState {
     }
   }, [load])
 
+  // refresh MANUAL (tombol "periksa ulang") → force=1: lewati cache server,
+  // jadi user benar-benar dapat hasil probe baru, bukan stale ≤30s.
   const refresh = useCallback(() => {
-    void load()
+    void load(true)
   }, [load])
 
   return { ...state, refresh }
