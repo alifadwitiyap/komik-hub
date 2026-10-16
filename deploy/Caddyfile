@@ -2,10 +2,13 @@
 	admin off
 }
 
-# Listener publik = $PORT dari Railway (fallback 8080 untuk docker run lokal).
-# TLS tidak di sini: Railway mengakhiri HTTPS di edge-nya (domain *.up.railway.app).
-:{$PORT:8080} {
-	# Healthcheck Railway (TANPA auth): diteruskan ke /api/health axum supaya
+# SITE_ADDR menentukan mode:
+#   - ":8080" / ":<PORT>" (Railway/Render) -> HTTP polos, TLS di edge platform.
+#   - hostname, mis. "1.2.3.4.sslip.io" (VM Oracle) -> Caddy auto-HTTPS:
+#     bind 443 + Let's Encrypt otomatis + redirect 80->443.
+# entrypoint.sh mengisi default ":${PORT:-8080}" bila SITE_ADDR kosong.
+{$SITE_ADDR::8080} {
+	# Healthcheck TANPA auth: diteruskan ke /api/health axum supaya
 	# "healthy" berarti backend benar-benar hidup, bukan sekadar Caddy berdiri.
 	@health path /healthz
 	handle @health {

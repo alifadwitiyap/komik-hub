@@ -22,8 +22,16 @@ export RUST_LOG="${RUST_LOG:-info}"
 export KOMIKU_DOWNLOADS_DIR="${KOMIKU_DOWNLOADS_DIR:-/data/downloads}"
 export KOMIKU_NOTIF_DIR="${KOMIKU_NOTIF_DIR:-/data}"
 
-# Caddy scratch dirs — tidak ada TLS/ACME di depan (Railway yang pegang TLS).
-export XDG_DATA_HOME="${XDG_DATA_HOME:-/tmp/caddy/data}"
+# SITE_ADDR: alamat listen Caddy.
+#   - belum di-set (Railway/Render) -> ":<PORT>" (edge platform yang pegang TLS)
+#   - di-set hostname (VM Oracle)   -> Caddy auto-HTTPS + Let's Encrypt
+if [ -z "${SITE_ADDR:-}" ]; then
+    export SITE_ADDR=":${PORT:-8080}"
+fi
+
+# Caddy dirs: sertifikat disimpan di /data supaya persist lintas restart
+# (VM Oracle: /data = bind-mount host yang persisten).
+export XDG_DATA_HOME="${XDG_DATA_HOME:-/data/caddy/data}"
 export XDG_CONFIG_HOME="${XDG_CONFIG_HOME:-/tmp/caddy/config}"
 
 # Backend di port internal tetap; Caddy pemilik $PORT publik.
