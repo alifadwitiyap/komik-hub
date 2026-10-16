@@ -30,7 +30,7 @@
 use axum::{
     body::Body,
     extract::{Path, Query},
-    http::header,
+    http::{header, HeaderMap},
     response::Response,
     routing::{get, post},
     Json, Router,
@@ -46,6 +46,7 @@ use komik_core::source::{Source, PER_SOURCE_TIMEOUT_SECS};
 use crate::downloads::{self, DownloadEntry, DownloadStore};
 use crate::pdf;
 use crate::routes::{AppError, Res};
+use crate::user::{require_user, users_dir};
 
 /// UA Android: adapter komiku/mangaku/shinigami WAJIB UA mobile (kalau tidak,
 /// host balas halaman/error tanpa data). Adapter kiryuu membuat client
@@ -568,12 +569,14 @@ async fn u_chapter(Path((handle, number)): Path<(String, String)>) -> Res<Value>
 
 // --------------------------------------------------- unduhan PDF (rak buku)
 
-/// Direktori unduhan: default `./downloads` (relatif ke CWD server =
+/// Direktori unduhan: default `<users_dir>/downloads` (relatif ke CWD server =
 /// D:/project/komiku-server), bisa dioverride lewat env `KOMIKU_DOWNLOADS_DIR`.
+/// Di bawah `users_dir()` supaya state per-akun (index/evictions/settings)
+/// hidup berdampingan dengan `users/<username>.json`.
 fn download_dir() -> std::path::PathBuf {
     std::env::var_os("KOMIKU_DOWNLOADS_DIR")
         .map(std::path::PathBuf::from)
-        .unwrap_or_else(|| std::path::PathBuf::from("downloads"))
+        .unwrap_or_else(|| users_dir().join("downloads"))
 }
 
 /// Satu instance store untuk seluruh proses (pola sama seperti `aggregator()`).
@@ -670,7 +673,7 @@ async fn fetch_pages(urls: &[String]) -> anyhow::Result<Vec<pdf::Page>> {
 /// Orkestrasi generate+simpan PDF: resolve chapter lintas sumber via
 /// `read_chapter_any` (gambar = `outcome.pages.images`), judul series dari
 /// `series_resolve` (untuk `series_title` + `title_key`), tulis PDF ke store.
-async fn generate_pdf(handle: &str, number: &str) -> Result<DownloadEntry, AppError> {
+async fn generate_pdf(username: &str, handle: &str, number: &str) -> Result<DownloadEntry, AppError> {
     let series = aggregator()
         .series_resolve(handle, SERIES_CHAPTER_LIMIT, None)
         .await
@@ -699,6 +702,7 @@ async fn generate_pdf(handle: &str, number: &str) -> Result<DownloadEntry, AppEr
     let entry = store()
         .map_err(AppError::new)?
         .store_pdf(
+            username,
             handle,
             number,
             &out.pages.title,
@@ -722,13 +726,16 @@ async fn generate_pdf(handle: &str, number: &str) -> Result<DownloadEntry, AppEr
 
 /// POST /api/unified/download-pdf {handle, number}
 /// -> {id, filename, title, series_title, size_bytes} (+title_key)
-async fn u_download_pdf(Json(req): Json<DownloadPdfReq>) -> Res<Value> {
+///
+/// Butuh akun: file PDF dibagi, tapi entri index masuk ke akun pemanggil.
+async fn u_download_pdf(headers: HeaderMap, Json(req): Json<DownloadPdfReq>) -> Res<Value> {
+    let username = require_user(&headers)?;
     validate_handle(&req.handle)?;
     let number = req.number.trim();
     if number.is_empty() {
         return Err(AppError::bad_request("parameter number wajib diisi"));
     }
-    let entry = generate_pdf(&req.handle, number).await?;
+    let entry = generate_pdf(&username, &req.handle, number).await?;
     Ok(Json(json!({
         "id": entry.id,
         "filename": entry.filename,
@@ -743,9 +750,10 @@ async fn u_download_pdf(Json(req): Json<DownloadPdfReq>) -> Res<Value> {
 }
 
 /// GET /api/unified/downloads
-/// -> {items:[...], total_bytes, limit_bytes}
-async fn u_downloads() -> Res<Value> {
-    let (items, total, limit) = store()?.list().await;
+/// -> {items:[...], total_bytes, limit_bytes} MILIK akun.
+async fn u_downloads(headers: HeaderMap) -> Res<Value> {
+    let username = require_user(&headers)?;
+    let (items, total, limit) = store()?.list(&username).await;
     Ok(Json(json!({
         "items": items,
         "total_bytes": total,
@@ -755,17 +763,44 @@ async fn u_downloads() -> Res<Value> {
 
 /// GET /api/unified/downloads/{id} -> byte PDF + Content-Disposition
 /// attachment; SEKALIGUS update last_opened_at (LRU).
-async fn u_download_file(Path(id): Path<String>) -> Result<Response, AppError> {
+///
+/// ## Seam: browser navigation tidak mengirim header
+/// Kartu Rak membuka file ini via `<a href>` (bukan fetch ber-header), jadi
+/// request itu TIDAK membawa `X-Komik-User`. Aturannya:
+/// - Header akun VALID  -> hanya id yang ADA di index akun itu (isolasi; id
+///   akun lain -> 404 walau filenya masih dipakai orang lain).
+/// - Tanpa header valid -> file PDF content-addressed dan dibagi, jadi boleh
+///   dilayani selama masih direferensikan minimal satu akun (`refs[id] > 0`);
+///   id yang tak lagi dipakai (refcount 0) tetap 404.
+/// Cabang kedua menjaga tombol Baca/Unduh-lagi tetap bekerja.
+async fn u_download_file(
+    headers: HeaderMap,
+    Path(id): Path<String>,
+) -> Result<Response, AppError> {
     let store = store().map_err(AppError::new)?;
-    let entry = store
-        .get(&id)
-        .await
-        .ok_or_else(|| AppError::not_found(format!("unduhan {id} tidak ditemukan")))?;
+    let not_found = || AppError::not_found(format!("unduhan {id} tidak ditemukan"));
+    match require_user(&headers) {
+        // akun valid: hanya boleh melihat unduhannya sendiri
+        Ok(username) => {
+            if store.get(&username, &id).await.is_none() {
+                return Err(not_found());
+            }
+        }
+        // navigasi tanpa header valid: file dibagi, batasi lewat refcount
+        Err(_) => {
+            if store.refcount(&id).await == 0 {
+                return Err(not_found());
+            }
+        }
+    }
+    let entry = store.get_any(&id).await.ok_or_else(not_found)?;
     let bytes = tokio::fs::read(store.pdf_path(&id))
         .await
         .map_err(|_| AppError::not_found(format!("file unduhan {id} tidak ada di disk")))?;
     // LRU update (best-effort: gagal update tidak boleh gagalkan unduhan).
-    let _ = store.touch(&id).await;
+    if let Ok(username) = require_user(&headers) {
+        let _ = store.touch(&username, &id).await;
+    }
     Response::builder()
         .header(header::CONTENT_TYPE, "application/pdf")
         .header(
@@ -778,43 +813,50 @@ async fn u_download_file(Path(id): Path<String>) -> Result<Response, AppError> {
 }
 
 /// DELETE /api/unified/downloads/{id} -> {deleted:true}
-async fn u_download_delete(Path(id): Path<String>) -> Res<Value> {
+/// Menghapus entri MILIK akun; file fisik hilang hanya saat refcount 0.
+async fn u_download_delete(headers: HeaderMap, Path(id): Path<String>) -> Res<Value> {
+    let username = require_user(&headers)?;
     let store = store().map_err(AppError::new)?;
-    if store.delete(&id).await {
+    if store.delete(&username, &id).await {
         Ok(Json(json!({ "deleted": true })))
     } else {
         Err(AppError::not_found(format!("unduhan {id} tidak ditemukan")))
     }
 }
 
-/// DELETE /api/unified/downloads -> hapus SEMUA (modal settings "hapus semua").
-async fn u_download_delete_all() -> Res<Value> {
+/// DELETE /api/unified/downloads -> hapus SEMUA MILIK akun (modal settings).
+async fn u_download_delete_all(headers: HeaderMap) -> Res<Value> {
+    let username = require_user(&headers)?;
     let store = store().map_err(AppError::new)?;
-    let before = store.list().await.0.len();
-    let changed = store.clear_all().await;
+    let before = store.list(&username).await.0.len();
+    let changed = store.clear_all(&username).await;
     Ok(Json(json!({ "deleted": if changed { before } else { 0 } })))
 }
 
-/// GET /api/unified/evictions -> {items:[{series_title,chapter_title,size_bytes,evicted_at}]}
-async fn u_evictions() -> Res<Value> {
-    Ok(Json(json!({ "items": store()?.evictions().await })))
+/// GET /api/unified/evictions -> {items:[...]} MILIK akun.
+async fn u_evictions(headers: HeaderMap) -> Res<Value> {
+    let username = require_user(&headers)?;
+    Ok(Json(json!({ "items": store()?.evictions(&username).await })))
 }
 
-/// POST /api/unified/evictions/dismiss -> {ok:true}
-async fn u_evictions_dismiss() -> Res<Value> {
-    store()?.dismiss_evictions().await;
+/// POST /api/unified/evictions/dismiss -> {ok:true} (log MILIK akun).
+async fn u_evictions_dismiss(headers: HeaderMap) -> Res<Value> {
+    let username = require_user(&headers)?;
+    store()?.dismiss_evictions(&username).await;
     Ok(Json(json!({ "ok": true })))
 }
 
-/// GET /api/unified/settings/downloads -> {limit_bytes}
-async fn u_settings_get() -> Res<Value> {
-    let s = store()?.settings().await;
+/// GET /api/unified/settings/downloads -> {limit_bytes} MILIK akun.
+async fn u_settings_get(headers: HeaderMap) -> Res<Value> {
+    let username = require_user(&headers)?;
+    let s = store()?.settings(&username).await;
     Ok(Json(json!({ "limit_bytes": s.limit_bytes })))
 }
 
-/// PUT /api/unified/settings/downloads {limit_bytes} -> {limit_bytes}
-async fn u_settings_put(Json(body): Json<LimitReq>) -> Res<Value> {
-    let (s, evicted) = store()?.set_limit(body.limit_bytes).await;
+/// PUT /api/unified/settings/downloads {limit_bytes} -> {limit_bytes} MILIK akun.
+async fn u_settings_put(headers: HeaderMap, Json(body): Json<LimitReq>) -> Res<Value> {
+    let username = require_user(&headers)?;
+    let (s, evicted) = store()?.set_limit(&username, body.limit_bytes).await;
     Ok(Json(json!({
         "limit_bytes": s.limit_bytes,
         // tambahan (aditif): berapa yang langsung dievict oleh limit baru

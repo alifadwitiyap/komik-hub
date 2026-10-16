@@ -1,21 +1,34 @@
-//! notif.rs — notifier "favorit diupdate" lintas sumber (server-side).
+//! notif.rs — notifier "favorit diupdate" lintas sumber (server-side), PER-AKUN.
 //!
 //! Menyimpan daftar favorit (kunci = `title_key` ternormalisasi lintas sumber),
-//! baseline chapter per sumber, dan log notifikasi. Satu interval tokio
-//! memeriksa setiap favorit terhadap sumber aktif (komiku/mangaku/shinigami/
-//! kiryuu) lewat `komik_core::aggregator`; chapter baru (lebih tinggi dari
-//! baseline) menimbulkan SATU notifikasi per title_key.
+//! baseline chapter per sumber, dan log notifikasi — SEMUANYA per-akun
+//! (`data/users/<username>.json`). Satu interval tokio memeriksa setiap akun
+//! terhadap sumber aktif (komiku/mangaku/shinigami/kiryuu) lewat
+//! `komik_core::aggregator`; chapter baru (lebih tinggi dari baseline) menimbulkan
+//! SATU notifikasi per title_key per akun.
 //!
-//! State di `data/state.json` (default relatif CWD = D:/project/komiku-server;
-//! override `KOMIKU_NOTIF_DIR`). Penulisan atomik (temp + rename) seperti
-//! `downloads.rs`. Retensi: notifikasi lebih tua dari 7 hari dibuang tiap save.
+//! ## Kenapa per-akun
+//! Dulu SATU slot global: `PUT /api/notif/favorites` replace-all membuat device
+//! yang push terakhir menghapus favorit device lain, dan baseline global bikin
+//! orang yang gabung belakangan kebanjiran notif chapter lama. Kini tiap akun
+//! (header `X-Komik-User`) punya state sendiri; satu akun menulis tidak
+//! menyentuh akun lain.
+//!
+//! ## Yang tetap DIBAGI
+//! Cache fetch sumber (`cache`, key = `title_key`, TTL 30 menit) tetap GLOBAL:
+//! 10 akun yang nge-favorit judul yang sama tetap memicu SATU fetch upstream.
+//!
+//! State satu akun: `<users_dir>/users/<username>.json` (penulisan atomik
+//! temp+rename). Retensi: notifikasi lebih tua dari 7 hari dibuang tiap save.
 //!
 //! Handler stateless (store global OnceLock + aggregator statis), jadi router
 //! bisa di-`.merge()` tanpa menyentuh `AppState` — pola sama seperti
-//! `unified::unified_routes()`.
+//! `unified::unified_routes()`. Semua handler mengambil akun dari
+//! `crate::user::require_user`.
 
 use axum::{
-    routing::{get, post, put},
+    http::HeaderMap,
+    routing::{get, post},
     Json, Router,
 };
 use serde::{Deserialize, Serialize};
@@ -33,12 +46,12 @@ use komik_core::model::Chapter;
 use komik_core::source::PER_SOURCE_TIMEOUT_SECS;
 
 use crate::routes::{AppError, Res};
+use crate::user::{require_user, user_file, users_dir};
 
-/// Direktori state default (relatif CWD server). Override `KOMIKU_NOTIF_DIR`.
+/// Direktori akun default (relatif CWD server). Override `KOMIKU_USERS_DIR`
+/// atau `KOMIKU_NOTIF_DIR` (lihat `crate::user::users_dir`).
 fn data_dir() -> PathBuf {
-    std::env::var_os("KOMIKU_NOTIF_DIR")
-        .map(PathBuf::from)
-        .unwrap_or_else(|| PathBuf::from("data"))
+    users_dir()
 }
 
 /// Retensi notifikasi: 7 hari.
@@ -49,7 +62,7 @@ const CACHE_TTL_MS: i64 = 30 * 60 * 1000;
 const NOTIF_CHAPTER_LIMIT: u32 = 2000;
 /// Interval default background checker (detik).
 const DEFAULT_INTERVAL_SECS: u64 = 1800;
-/// Favorit di atas jumlah ini -> interval checker digandakan.
+/// Favorit di atas jumlah ini (TOTAL seluruh akun) -> interval checker digandakan.
 const BIG_LIST_THRESHOLD: usize = 50;
 
 /// UA Android: adapter komiku/mangaku/shinigami wajib UA mobile (sama seperti
@@ -98,6 +111,7 @@ struct NotifEntry {
     read: bool,
 }
 
+/// State SATU akun.
 #[derive(Debug, Default, Serialize, Deserialize)]
 struct State {
     #[serde(default)]
@@ -110,12 +124,14 @@ struct State {
 
 // ------------------------------------------------------------------ store
 
-/// Store notifikasi: state di balik satu mutex (serial tulis), cache snapshot
-/// per-series terpisah (biar mutex state tak dipegang saat fetch jaringan).
+/// Store notifikasi: state per-akun di balik satu mutex (serial tulis), cache
+/// snapshot per-series TERPISAH dan GLOBAL (biar mutex state tak dipegang saat
+/// fetch jaringan, dan fetch tetap dibagi antar-akun).
 pub struct NotifStore {
-    state_path: PathBuf,
-    state: Mutex<State>,
-    /// title_key -> (fetched_at_ms, [(sumber, chapter_tertinggi)])
+    dir: PathBuf,
+    /// username -> State. Lazy-load dari `<dir>/users/<username>.json`.
+    state: Mutex<BTreeMap<String, State>>,
+    /// title_key -> (fetched_at_ms, [(sumber, chapter_tertinggi)]) — GLOBAL.
     cache: Mutex<HashMap<String, (i64, Vec<(String, String)>)>>,
     /// Mutex "ada check cycle berjalan" — cegah cycle bertumpuk.
     /// Sengaja Mutex (bukan AtomicBool): guard dilepas otomatis saat task
@@ -130,27 +146,34 @@ impl NotifStore {
         if let Err(e) = std::fs::create_dir_all(&dir) {
             tracing::warn!("notif: gagal buat dir {}: {e}", dir.display());
         }
-        let state_path = dir.join("state.json");
-        let state = read_json(&state_path).unwrap_or_default();
         Ok(Arc::new(NotifStore {
-            state_path,
-            state: Mutex::new(state),
+            dir,
+            state: Mutex::new(BTreeMap::new()),
             cache: Mutex::new(HashMap::new()),
             checking: Mutex::new(()),
         }))
     }
 
-    /// Purge retensi (7 hari) lalu tulis atomik. Dipanggil setiap mutasi state.
-    fn save_locked(&self, st: &mut State) {
+    /// Ambil/buat state satu akun (lazy dari disk). Dibuat sekali lalu di-cache.
+    fn ensure_user<'a>(dir: &Path, st: &'a mut BTreeMap<String, State>, username: &str) -> &'a mut State {
+        st.entry(username.to_string()).or_insert_with(|| {
+            read_json(&user_file(dir, username)).unwrap_or_default()
+        })
+    }
+
+    /// Purge retensi (7 hari) lalu tulis atomik file SATU akun. Dipanggil setiap
+    /// mutasi state akun itu.
+    fn save_locked(&self, username: &str, st: &mut State) {
         let cutoff = now_millis().saturating_sub(RETENTION_MS);
         st.notifications.retain(|n| n.at >= cutoff);
-        if let Err(e) = write_json(&self.state_path, st) {
-            tracing::error!("notif: gagal tulis {}: {e:#}", self.state_path.display());
+        if let Err(e) = write_json(&user_file(&self.dir, username), st) {
+            tracing::error!("notif: gagal tulis akun {username}: {e:#}");
         }
     }
 
     /// Snapshot chapter-tertinggi per sumber untuk satu favorit, dengan cache
-    /// in-memory 30 menit. Fetch SUMBER di luar lock state.
+    /// in-memory 30 menit (GLOBAL, key `title_key`). Fetch SUMBER di luar lock
+    /// state.
     async fn snapshot(&self, key: &str, fav: &Favorite) -> Vec<(String, String)> {
         {
             let cache = self.cache.lock().await;
@@ -167,6 +190,33 @@ impl NotifStore {
         }
         snap
     }
+
+    /// Favorit MILIK satu akun sebagai daftar ringkas (untuk GET
+    /// /api/notif/favorites). Akun lain tidak bisa melihatnya.
+    async fn favorites(&self, username: &str) -> Vec<FavOut> {
+        let mut map = self.state.lock().await;
+        let st = Self::ensure_user(&self.dir, &mut map, username);
+        st.favorites
+            .iter()
+            .map(|(k, f)| FavOut {
+                title_key: k.clone(),
+                title: f.title.clone(),
+                cover_url: f.cover_url.clone(),
+                handle: f.handle.clone(),
+                source: f.source.clone(),
+            })
+            .collect()
+    }
+}
+
+/// Bentuk favorit untuk `GET /api/notif/favorites` (hydrate rak di web).
+#[derive(Debug, Clone, Serialize, Deserialize)]
+struct FavOut {
+    title_key: String,
+    title: String,
+    cover_url: Option<String>,
+    handle: String,
+    source: String,
 }
 
 /// Satu instance Aggregator untuk proses ini (pola sama `unified::aggregator()`).
@@ -209,6 +259,28 @@ fn now_millis() -> i64 {
         .unwrap_or(0)
 }
 
+/// Username akun yang punya file state di disk (untuk background checker yang
+/// harus tetap jalan lintas restart, saat map in-memory masih kosong).
+fn list_users(dir: &Path) -> Vec<String> {
+    let mut out = Vec::new();
+    let Ok(rd) = std::fs::read_dir(dir.join("users")) else {
+        return out;
+    };
+    for e in rd.flatten() {
+        let p = e.path();
+        if p.extension().and_then(|x| x.to_str()) != Some("json") {
+            continue;
+        }
+        if let Some(stem) = p.file_stem().and_then(|s| s.to_str()) {
+            // hanya username valid (cegah memproses file sampah / path aneh).
+            if crate::user::normalize_username(stem).is_some() {
+                out.push(stem.to_string());
+            }
+        }
+    }
+    out
+}
+
 fn read_json<T: for<'de> Deserialize<'de>>(path: &Path) -> Option<T> {
     let raw = std::fs::read_to_string(path).ok()?;
     match serde_json::from_str(&raw) {
@@ -221,6 +293,9 @@ fn read_json<T: for<'de> Deserialize<'de>>(path: &Path) -> Option<T> {
 }
 
 fn write_json<T: Serialize>(path: &Path, value: &T) -> anyhow::Result<()> {
+    if let Some(parent) = path.parent() {
+        std::fs::create_dir_all(parent)?;
+    }
     let raw = serde_json::to_vec_pretty(value)?;
     // atomik: tmp lalu rename, supaya state tidak setengah tertulis.
     let tmp = path.with_extension("json.tmp");
@@ -334,9 +409,9 @@ struct PutFavoritesReq {
     favorites: Vec<FavIn>,
 }
 
-/// Terapkan snapshot "replace-all" favorit ke state. Favorit yang sudah ada
-/// mempertahankan BASELINES-nya (hanya metadata di-refresh); favorit baru kunci
-/// title_key idempotent; favorit lama yang tak ada di input dibuang.
+/// Terapkan snapshot "replace-all" favorit ke state SATU akun. Favorit yang
+/// sudah ada mempertahankan BASELINES-nya (hanya metadata di-refresh); favorit
+/// baru kunci title_key idempotent; favorit lama yang tak ada di input dibuang.
 /// Mengembalikan daftar title_key baru (baselines kosong, butuh baseline-fill).
 fn apply_favorites(existing: &mut BTreeMap<String, Favorite>, incoming: Vec<FavIn>) -> Vec<String> {
     let incoming_keys: std::collections::BTreeSet<String> =
@@ -397,13 +472,17 @@ async fn fetch_snapshots(fav: &Favorite) -> Vec<(String, String)> {
     out
 }
 
-/// Baseline-fill untuk favorit baru: ambil series dari sumber/handle favorit
-/// (native id) lalu set baseline sumber itu = chapter tertinggi saat ini.
-/// Hanya mengisi kalau baselines masih kosong (tak menimpa riwayat).
-async fn fill_baselines(store: &NotifStore, key: &str) {
+/// Baseline-fill untuk favorit baru MILIK `username`: ambil series dari
+/// sumber/handle favorit (native id) lalu set baseline sumber itu = chapter
+/// tertinggi saat ini. Hanya mengisi kalau baselines masih kosong (tak menimpa
+/// riwayat).
+async fn fill_baselines(store: &NotifStore, username: &str, key: &str) {
     let fav = {
-        let st = store.state.lock().await;
-        st.favorites.get(key).cloned()
+        let mut map = store.state.lock().await;
+        NotifStore::ensure_user(&store.dir, &mut map, username)
+            .favorites
+            .get(key)
+            .cloned()
     };
     let Some(fav) = fav else { return };
     let handle = format!("{}:{}", fav.source, fav.handle);
@@ -413,7 +492,8 @@ async fn fill_baselines(store: &NotifStore, key: &str) {
             let Some(hi) = highest_chapter(&o.detail.chapters) else {
                 return;
             };
-            let mut st = store.state.lock().await;
+            let mut map = store.state.lock().await;
+            let st = NotifStore::ensure_user(&store.dir, &mut map, username);
             let do_save = match st.favorites.get_mut(key) {
                 Some(f) if f.baselines.is_empty() => {
                     f.baselines.insert(served, hi.clone());
@@ -422,8 +502,8 @@ async fn fill_baselines(store: &NotifStore, key: &str) {
                 _ => false,
             };
             if do_save {
-                store.save_locked(&mut st);
-                tracing::info!("notif: baseline '{title_key}' terisi ({src}={hi})", title_key = key, src = fav.source);
+                store.save_locked(username, st);
+                tracing::info!("notif: baseline '{key}' akun {username} terisi ({src}={hi})", src = fav.source);
             }
         }
         Err(e) => tracing::warn!("notif: baseline-fill '{title}' gagal: {e:#}", title = fav.title),
@@ -432,9 +512,9 @@ async fn fill_baselines(store: &NotifStore, key: &str) {
 
 // ------------------------------------------------------------------ check cycle
 
-/// Satu siklus pemeriksaan. Guard `checking` mencegah cycle bertumpuk
-/// (dipicu GET /list Dan interval). Adopsi baseline sumber baru secara diam;
-/// chapter baru -> 1 notifikasi per title_key.
+/// Satu siklus pemeriksaan untuk SEMUA akun. Guard `checking` mencegah cycle
+/// bertumpuk (dipicu GET /list Dan interval). Fetch sumber tetap DIBAGI lewat
+/// cache global `snapshot()`. Chapter baru -> 1 notifikasi per title_key per akun.
 async fn run_check_cycle(store: &NotifStore) {
     // try_lock: kalau ada cycle berjalan, langsung keluar. Guard mutex
     // dipegang sampai fungsi selesai, termasuk saat return/panic -> tak
@@ -444,26 +524,53 @@ async fn run_check_cycle(store: &NotifStore) {
     };
     let now = now_millis();
 
-    // Snapshot favorit + catat waktu mulai. Baselines diklone; fetch di luar lock.
-    let favorites: Vec<(String, Favorite)> = {
-        let mut st = store.state.lock().await;
-        st.last_check_at = Some(now);
-        st.favorites.iter().map(|(k, v)| (k.clone(), v.clone())).collect()
+    // Akun yang diproses: yang sudah dimuat di memory + yang punya file di disk
+    // (penting lintas restart: map in-memory masih kosong saat cycle pertama).
+    let mut usernames: Vec<String> = {
+        let map = store.state.lock().await;
+        map.keys().cloned().collect()
     };
-
-    // Fetch snapshot per favorit di LUAR lock. Baselines kosong = DILEWATI.
-    let mut snaps: Vec<(String, Vec<(String, String)>)> = Vec::new();
-    for (key, fav) in &favorites {
-        if fav.baselines.is_empty() {
-            continue;
+    for u in list_users(&store.dir) {
+        if !usernames.contains(&u) {
+            usernames.push(u);
         }
-        let snap = store.snapshot(key, fav).await;
-        snaps.push((key.clone(), snap));
+    }
+    if usernames.is_empty() {
+        return; // tak ada akun -> tak ada yang perlu diperiksa
     }
 
-    // Deteksi + mutasi baseline/notifikasi di bawah SATU lock.
+    // Fase 1: tandai last_check_at + snapshot favorit per akun (di luar fetch).
+    let mut per_user: Vec<(String, Vec<(String, Favorite)>)> = Vec::new();
     {
-        let mut st = store.state.lock().await;
+        let mut map = store.state.lock().await;
+        for u in &usernames {
+            let st = NotifStore::ensure_user(&store.dir, &mut map, u);
+            st.last_check_at = Some(now);
+            let favs = st.favorites.iter().map(|(k, v)| (k.clone(), v.clone())).collect();
+            per_user.push((u.clone(), favs));
+        }
+        for (u, _) in &per_user {
+            if let Some(st) = map.get_mut(u) {
+                store.save_locked(u, st);
+            }
+        }
+    }
+
+    // Fase 2+3: fetch (di luar lock) lalu deteksi+mutasi per akun di bawah lock.
+    for (username, favorites) in &per_user {
+        let mut snaps: Vec<(String, Vec<(String, String)>)> = Vec::new();
+        for (key, fav) in favorites {
+            if fav.baselines.is_empty() {
+                continue; // baseline belum ada -> dilewati
+            }
+            let snap = store.snapshot(key, fav).await;
+            snaps.push((key.clone(), snap));
+        }
+        if snaps.is_empty() {
+            continue;
+        }
+        let mut map = store.state.lock().await;
+        let st = NotifStore::ensure_user(&store.dir, &mut map, username);
         for (key, snap) in &snaps {
             let notif: Option<NotifEntry> = {
                 let Some(f) = st.favorites.get_mut(key) else {
@@ -498,16 +605,14 @@ async fn run_check_cycle(store: &NotifStore) {
                 }
             }
         }
-        store.save_locked(&mut st);
+        store.save_locked(username, st);
     }
     // guard `checking` dilepas di sini (akhir scope) — otomatis walau panic.
 }
 
 /// Interval efektif: `NOTIF_INTERVAL_SECS` (default 1800), DIGANDAKAN kalau
-/// jumlah favorit > 50 (BIG_LIST_THRESHOLD). Satu sumber kebenaran untuk
-/// interval checker latar DAN TTL pemicu check di GET /list — sebelumnya
-/// keduanya beda (get_list memakai interval dasar), jadi daftar besar
-/// memicu cycle 2x lebih sering dari yang diperhitungkan.
+/// jumlah favorit (TOTAL seluruh akun) > 50 (BIG_LIST_THRESHOLD). Satu sumber
+/// kebenaran untuk interval checker latar DAN TTL pemicu check di GET /list.
 fn effective_interval(favorites_len: usize) -> Duration {
     let base = Duration::from_secs(interval_secs());
     if favorites_len > BIG_LIST_THRESHOLD {
@@ -522,8 +627,9 @@ fn effective_interval(favorites_len: usize) -> Duration {
 async fn background_checker(store: Arc<NotifStore>) {
     loop {
         let secs = {
-            let st = store.state.lock().await;
-            effective_interval(st.favorites.len())
+            let map = store.state.lock().await;
+            let total: usize = map.values().map(|s| s.favorites.len()).sum();
+            effective_interval(total)
         };
         tokio::time::sleep(secs.max(Duration::from_secs(1))).await;
         run_check_cycle(&store).await;
@@ -532,44 +638,58 @@ async fn background_checker(store: Arc<NotifStore>) {
 
 // ------------------------------------------------------------------ handler
 
-/// PUT /api/notif/favorites — replace-all snapshot; balas segera, lalu spawn
-/// baseline-fill async utk favorit baru (respons TIDAK menunggu fill).
-async fn put_favorites(Json(req): Json<PutFavoritesReq>) -> Res<Value> {
+/// PUT /api/notif/favorites — replace-all snapshot MILIK akun; balas segera,
+/// lalu spawn baseline-fill async utk favorit baru (respons TIDAK menunggu fill).
+async fn put_favorites(headers: HeaderMap, Json(req): Json<PutFavoritesReq>) -> Res<Value> {
+    let username = require_user(&headers)?;
     let store = store();
     let (count, new_keys) = {
-        let mut st = store.state.lock().await;
+        let mut map = store.state.lock().await;
+        let st = NotifStore::ensure_user(&store.dir, &mut map, &username);
         let new_keys = apply_favorites(&mut st.favorites, req.favorites);
         let count = st.favorites.len();
-        store.save_locked(&mut st);
+        store.save_locked(&username, st);
         (count, new_keys)
     };
     let filling = new_keys.len();
     if filling > 0 {
         let s = store.clone();
+        let user = username.clone();
         tokio::spawn(async move {
             for key in new_keys {
-                fill_baselines(&s, &key).await;
+                fill_baselines(&s, &user, &key).await;
             }
         });
     }
     Ok(Json(json!({ "ok": true, "count": count, "filling": filling })))
 }
 
-/// GET /api/notif/list — notifikasi (urut `at` DESC), unread, last_check_at.
-/// Kalau sudah lewat TTL dan tak ada cycle berjalan: picu check cycle async
-/// (fire-and-forget; respons tidak menunggu).
-async fn get_list() -> Res<Value> {
+/// GET /api/notif/favorites — favorit MILIK akun (hydrate rak di web).
+async fn get_favorites(headers: HeaderMap) -> Res<Value> {
+    let username = require_user(&headers)?;
+    let favorites = store().favorites(&username).await;
+    Ok(Json(json!({ "favorites": favorites })))
+}
+
+/// GET /api/notif/list — notifikasi MILIK akun (urut `at` DESC), unread,
+/// last_check_at. Kalau sudah lewat TTL dan tak ada cycle berjalan: picu check
+/// cycle async (fire-and-forget; respons tidak menunggu).
+async fn get_list(headers: HeaderMap) -> Res<Value> {
+    let username = require_user(&headers)?;
     let store = store();
     let now = now_millis();
     let (items, unread, last_check_at, should_check) = {
-        let st = store.state.lock().await;
+        let mut map = store.state.lock().await;
+        let _ = NotifStore::ensure_user(&store.dir, &mut map, &username); // muat dulu
+        let total: usize = map.values().map(|s| s.favorites.len()).sum();
+        let st = map.get_mut(&username).expect("baru dimuat");
         let unread = st.notifications.iter().filter(|n| !n.read).count();
         let mut items = st.notifications.clone();
         items.sort_by(|a, b| b.at.cmp(&a.at));
         // TTL = interval efektif (samakan dengan interval checker latar,
-        // termasuk penggandaan saat favorit > 50) supaya cadence check
+        // termasuk penggandaan saat total favorit > 50) supaya cadence check
         // konsisten dan tidak memblok request ini.
-        let ttl = effective_interval(st.favorites.len()).as_millis() as i64;
+        let ttl = effective_interval(total).as_millis() as i64;
         let should_check = store.checking.try_lock().is_ok()
             && st.last_check_at.map_or(true, |t| now.saturating_sub(t) > ttl);
         (items, unread, st.last_check_at, should_check)
@@ -593,33 +713,33 @@ struct ReadReq {
     all: Option<bool>,
 }
 
-/// POST /api/notif/read — {"ids":[...]} atau {"all":true}: tandai terbaca.
-async fn mark_read(Json(req): Json<ReadReq>) -> Res<Value> {
+/// POST /api/notif/read — {"ids":[...]} atau {"all":true}: tandai terbaca
+/// (hanya notifikasi MILIK akun).
+async fn mark_read(headers: HeaderMap, Json(req): Json<ReadReq>) -> Res<Value> {
+    let username = require_user(&headers)?;
     let store = store();
-    let marked = {
-        let mut st = store.state.lock().await;
-        let mut marked = 0usize;
-        if req.all.unwrap_or(false) {
-            for n in st.notifications.iter_mut() {
-                if !n.read {
-                    n.read = true;
-                    marked += 1;
-                }
-            }
-        } else if let Some(ids) = &req.ids {
-            let set: HashSet<&str> = ids.iter().map(String::as_str).collect();
-            for n in st.notifications.iter_mut() {
-                if !n.read && set.contains(n.id.as_str()) {
-                    n.read = true;
-                    marked += 1;
-                }
+    let mut map = store.state.lock().await;
+    let st = NotifStore::ensure_user(&store.dir, &mut map, &username);
+    let mut marked = 0usize;
+    if req.all.unwrap_or(false) {
+        for n in st.notifications.iter_mut() {
+            if !n.read {
+                n.read = true;
+                marked += 1;
             }
         }
-        if marked > 0 {
-            store.save_locked(&mut st);
+    } else if let Some(ids) = &req.ids {
+        let set: HashSet<&str> = ids.iter().map(String::as_str).collect();
+        for n in st.notifications.iter_mut() {
+            if !n.read && set.contains(n.id.as_str()) {
+                n.read = true;
+                marked += 1;
+            }
         }
-        marked
-    };
+    }
+    if marked > 0 {
+        store.save_locked(&username, st);
+    }
     Ok(Json(json!({ "ok": true, "marked": marked })))
 }
 
@@ -628,17 +748,19 @@ struct DismissReq {
     id: String,
 }
 
-/// POST /api/notif/dismiss — {"id":"..."}: hapus satu notifikasi (404 kalau
-/// tidak ada).
-async fn dismiss(Json(req): Json<DismissReq>) -> Res<Value> {
+/// POST /api/notif/dismiss — {"id":"..."}: hapus satu notifikasi MILIK akun
+/// (404 kalau tidak ada).
+async fn dismiss(headers: HeaderMap, Json(req): Json<DismissReq>) -> Res<Value> {
+    let username = require_user(&headers)?;
     let store = store();
     let removed = {
-        let mut st = store.state.lock().await;
+        let mut map = store.state.lock().await;
+        let st = NotifStore::ensure_user(&store.dir, &mut map, &username);
         let before = st.notifications.len();
         st.notifications.retain(|n| n.id != req.id);
         let removed = st.notifications.len() != before;
         if removed {
-            store.save_locked(&mut st);
+            store.save_locked(&username, st);
         }
         removed
     };
@@ -655,7 +777,7 @@ async fn dismiss(Json(req): Json<DismissReq>) -> Res<Value> {
 /// langsung di-`.merge()`. CORS permissive mengikuti router /api lain.
 pub fn notif_routes() -> Router {
     Router::new()
-        .route("/api/notif/favorites", put(put_favorites))
+        .route("/api/notif/favorites", get(get_favorites).put(put_favorites))
         .route("/api/notif/list", get(get_list))
         .route("/api/notif/read", post(mark_read))
         .route("/api/notif/dismiss", post(dismiss))
@@ -706,12 +828,12 @@ mod tests {
     #[tokio::test]
     async fn checking_guard_releases_after_cycle() {
         // Guard check cycle harus bebas lagi setelah run_check_cycle selesai
-        // (bukan "nyangkut true" seperti AtomicBool manual saat task gagal).
+        // (bukan "nyangkut true" seperti AtomicBool saat task gagal).
         let dir = temp_dir("checking-guard");
         let store = NotifStore::open(&dir).unwrap();
         assert!(store.checking.try_lock().is_ok(), "guard bebas saat idle");
         drop(store.checking.try_lock().unwrap());
-        run_check_cycle(&store).await; // tanpa favorit: no-op + save
+        run_check_cycle(&store).await; // tanpa akun: no-op
         assert!(
             store.checking.try_lock().is_ok(),
             "guard harus dilepas setelah cycle selesai"
@@ -721,22 +843,24 @@ mod tests {
 
     #[tokio::test]
     async fn save_failure_keeps_store_alive() {
-        // state.json berupa DIREKTORI -> setiap save pasti gagal. Store harus
-        // tetap terpakai (tidak panic, lock tetap bisa diambil) dan kegagalan
-        // hanya di-log (lihat test write_json_* untuk sisi Err-nya).
+        // file user berupa DIREKTORI -> setiap save pasti gagal. Store harus
+        // tetap terpakai (tidak panic, lock tetap bisa diambil).
         let dir = temp_dir("save-fail");
         std::fs::create_dir_all(&dir).unwrap();
-        std::fs::create_dir_all(dir.join("state.json")).unwrap();
         let store = NotifStore::open(&dir).unwrap();
+        // bikin users/<u>.json sebagai DIREKTORI supaya write_json gagal.
+        std::fs::create_dir_all(user_file(&dir, "alif")).unwrap();
         {
-            let mut st = store.state.lock().await;
+            let mut map = store.state.lock().await;
+            let st = NotifStore::ensure_user(&store.dir, &mut map, "alif");
             st.notifications.push(notif("x", now_millis()));
-            store.save_locked(&mut st); // gagal tulis -> ERROR log, tanpa panic
+            store.save_locked("alif", st); // gagal tulis -> ERROR log, tanpa panic
         }
         // store tetap hidup setelah kegagalan tulis
         assert!(store.checking.try_lock().is_ok());
         drop(store.checking.try_lock().unwrap());
-        let st = store.state.lock().await;
+        let mut map = store.state.lock().await;
+        let st = NotifStore::ensure_user(&store.dir, &mut map, "alif");
         assert_eq!(st.notifications.len(), 1, "state memori tetap utuh");
         let _ = std::fs::remove_dir_all(&dir);
     }
@@ -842,7 +966,7 @@ mod tests {
         assert_eq!(srcs, vec!["kiryuu".to_string(), "komiku".to_string()]);
     }
 
-    // ---- state persistence --------------------------------------------
+    // ---- state persistence per-akun -----------------------------------
 
     fn fav(id: &str, source: &str) -> Favorite {
         Favorite {
@@ -873,17 +997,19 @@ mod tests {
         let now = now_millis(); // timestamp segar supaya tak kena purge 7 hari
         {
             let store = NotifStore::open(&dir).unwrap();
-            let mut st = store.state.lock().await;
+            let mut map = store.state.lock().await;
+            let st = NotifStore::ensure_user(&store.dir, &mut map, "alif");
             let mut f = fav("3215", "komiku");
             f.baselines.insert("komiku".to_string(), "1195".to_string());
             st.favorites.insert("k1".to_string(), f);
             st.notifications.push(notif(&notif_id("k1", "1195"), now));
             st.last_check_at = Some(now);
-            store.save_locked(&mut st);
+            store.save_locked("alif", st);
         }
         // buka ulang dari disk
         let store2 = NotifStore::open(&dir).unwrap();
-        let st2 = store2.state.lock().await;
+        let mut map = store2.state.lock().await;
+        let st2 = NotifStore::ensure_user(&store2.dir, &mut map, "alif");
         assert_eq!(st2.favorites.len(), 1);
         assert_eq!(
             st2.favorites.get("k1").unwrap().baselines.get("komiku"),
@@ -892,8 +1018,9 @@ mod tests {
         assert_eq!(st2.notifications.len(), 1);
         assert_eq!(st2.notifications[0].id, notif_id("k1", "1195"));
         assert_eq!(st2.last_check_at, Some(now));
-        // file benar-benar ada di lokasi schema
-        assert!(store2.state_path.ends_with("state.json"));
+        // file benar-benar ada di lokasi schema per-akun
+        assert!(user_file(&dir, "alif").ends_with("users/alif.json")
+            || user_file(&dir, "alif").to_string_lossy().replace('\\', "/").ends_with("users/alif.json"));
         let _ = std::fs::remove_dir_all(&dir);
     }
 
@@ -902,20 +1029,127 @@ mod tests {
         let dir = temp_dir("retention");
         {
             let store = NotifStore::open(&dir).unwrap();
-            let mut st = store.state.lock().await;
+            let mut map = store.state.lock().await;
+            let st = NotifStore::ensure_user(&store.dir, &mut map, "alif");
             let now = now_millis();
             st.notifications.push(notif("old", now - 8 * 24 * 60 * 60 * 1000));
             st.notifications.push(notif("fresh", now - 1000));
-            store.save_locked(&mut st); // save = purge lalu tulis
+            store.save_locked("alif", st); // save = purge lalu tulis
         }
         let store2 = NotifStore::open(&dir).unwrap();
-        let st2 = store2.state.lock().await;
+        let mut map = store2.state.lock().await;
+        let st2 = NotifStore::ensure_user(&store2.dir, &mut map, "alif");
         assert_eq!(st2.notifications.len(), 1, "yang >7 hari dibuang");
         assert_eq!(st2.notifications[0].id, "fresh");
         let _ = std::fs::remove_dir_all(&dir);
     }
 
-    // ---- PUT replace-all semantics ------------------------------------
+    // ---- ISOLASI LINTAS-AKUN ------------------------------------------
+
+    #[tokio::test]
+    async fn favorit_terpisah_per_akun() {
+        let dir = temp_dir("iso-fav");
+        let store = NotifStore::open(&dir).unwrap();
+        {
+            let mut map = store.state.lock().await;
+            {
+                let a = NotifStore::ensure_user(&store.dir, &mut map, "alif");
+                a.favorites.insert("one piece".into(), fav("3215", "komiku"));
+            }
+            {
+                let b = NotifStore::ensure_user(&store.dir, &mut map, "budi");
+                b.favorites.insert("naruto".into(), fav("99", "komiku"));
+            }
+            // simpan supaya juga teruji lewat disk
+            {
+                let a = NotifStore::ensure_user(&store.dir, &mut map, "alif");
+                store.save_locked("alif", a);
+            }
+            {
+                let b = NotifStore::ensure_user(&store.dir, &mut map, "budi");
+                store.save_locked("budi", b);
+            }
+        }
+        let fa = store.favorites("alif").await;
+        let fb = store.favorites("budi").await;
+        assert_eq!(fa.len(), 1);
+        assert_eq!(fa[0].title_key, "one piece");
+        assert_eq!(fb.len(), 1);
+        assert_eq!(fb[0].title_key, "naruto");
+        // favorit A tidak muncul di B.
+        assert!(!fb.iter().any(|f| f.title_key == "one piece"));
+        assert!(!fa.iter().any(|f| f.title_key == "naruto"));
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[tokio::test]
+    async fn notifikasi_dan_baseline_terpisah_per_akun() {
+        let dir = temp_dir("iso-notif");
+        let store = NotifStore::open(&dir).unwrap();
+        let now = now_millis();
+        {
+            let mut map = store.state.lock().await;
+            {
+                let a = NotifStore::ensure_user(&store.dir, &mut map, "alif");
+                let mut f = fav("3215", "komiku");
+                f.baselines.insert("komiku".into(), "100".into());
+                a.favorites.insert("k1".into(), f);
+                a.notifications.push(notif("only-a", now));
+            }
+            {
+                let b = NotifStore::ensure_user(&store.dir, &mut map, "budi");
+                b.notifications.push(notif("only-b", now));
+            }
+        }
+        let mut map = store.state.lock().await;
+        let (a_notifs, a_baseline) = {
+            let a = NotifStore::ensure_user(&store.dir, &mut map, "alif");
+            (
+                a.notifications.iter().map(|n| n.id.clone()).collect::<Vec<_>>(),
+                a.favorites.get("k1").and_then(|f| f.baselines.get("komiku").cloned()),
+            )
+        };
+        let (b_notifs, b_fav_empty) = {
+            let b = NotifStore::ensure_user(&store.dir, &mut map, "budi");
+            (
+                b.notifications.iter().map(|n| n.id.clone()).collect::<Vec<_>>(),
+                b.favorites.is_empty(),
+            )
+        };
+        assert_eq!(a_notifs, vec!["only-a".to_string()]);
+        assert_eq!(b_notifs, vec!["only-b".to_string()]);
+        // baseline milik alif tidak muncul di budi.
+        assert!(b_fav_empty, "budi tidak punya favorit/baseline");
+        assert_eq!(a_baseline, Some("100".to_string()));
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[tokio::test]
+    async fn apply_favorites_hanya_menyentuh_akun_satu() {
+        // replace-all satu akun tidak boleh menghapus favorit akun lain.
+        let dir = temp_dir("iso-replace");
+        let store = NotifStore::open(&dir).unwrap();
+        {
+            let mut map = store.state.lock().await;
+            let a = NotifStore::ensure_user(&store.dir, &mut map, "alif");
+            a.favorites.insert("one piece".into(), fav("3215", "komiku"));
+            let b = NotifStore::ensure_user(&store.dir, &mut map, "budi");
+            b.favorites.insert("naruto".into(), fav("99", "komiku"));
+        }
+        // alif push daftar KOSONG (replace-all) -> favoritnya hilang.
+        {
+            let mut map = store.state.lock().await;
+            let a = NotifStore::ensure_user(&store.dir, &mut map, "alif");
+            let new_keys = apply_favorites(&mut a.favorites, vec![]);
+            assert!(new_keys.is_empty());
+            store.save_locked("alif", a);
+        }
+        assert!(store.favorites("alif").await.is_empty(), "alif dikosongkan");
+        assert_eq!(store.favorites("budi").await.len(), 1, "budi TIDAK tersentuh");
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    // ---- PUT replace-all semantics (per-akun, pure) -------------------
 
     #[test]
     fn replace_all_preserves_baselines_marks_new_and_drops_absent() {

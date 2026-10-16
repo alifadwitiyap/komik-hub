@@ -59,6 +59,38 @@ function emit(): void {
   }
 }
 
+/**
+ * Ganti SELURUH daftar favorit dengan snapshot dari server (hydrate).
+ *
+ * `silent: true` = JANGAN memancarkan `rak-change`. Ini bukan opsi kosmetik:
+ * `notifStore` mendengarkan `rak-change` untuk push, jadi hydrate yang memancar
+ * akan memicu push balik tepat setelah pull — membuang favorit server yang baru
+ * saja kita adopsi (lihat spec §5, urutan hydrate-sebelum-push).
+ *
+ * Riwayat (`history`) TIDAK disentuh: server belum menyimpan riwayat baca, dan
+ * snapshot favorit tidak boleh menghapus riwayat lokal device ini.
+ */
+export function replaceFavorites(
+  entries: Array<RakManga & { title_key: string; loved_at?: number }>,
+  opts?: { silent?: boolean },
+): void {
+  const data = load()
+  const favorites: Record<string, FavoriteEntry> = {}
+  for (const e of entries) {
+    favorites[e.title_key] = {
+      title_key: e.title_key,
+      title: e.title,
+      cover_url: e.cover_url,
+      handle: e.handle,
+      source: e.source,
+      loved_at: e.loved_at ?? Date.now(),
+    }
+  }
+  data.favorites = favorites
+  save(data)
+  if (!opts?.silent) emit()
+}
+
 export function toggleFavorite(manga: RakManga & { title_key: string }): void {
   const data = load()
   if (data.favorites[manga.title_key]) {

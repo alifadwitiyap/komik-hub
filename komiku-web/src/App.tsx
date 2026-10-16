@@ -7,10 +7,12 @@ import SeriesUnified from './pages/SeriesUnified'
 import Reader from './pages/Reader'
 import ReaderMarathon from './pages/ReaderMarathon'
 import Rak from './pages/Rak'
-import { IconHouse, IconRectangleHistory, IconMoon, IconSun, IconMagnifyingGlass, IconBookHeart, IconBell } from './icons'
+import Akun from './pages/Akun'
+import { IconHouse, IconRectangleHistory, IconMoon, IconSun, IconMagnifyingGlass, IconBookHeart, IconBell, IconUser } from './icons'
 import NotifPanel from './components/NotifPanel'
 import SourceHealthBadge from './components/SourceHealthBadge'
 import { startFavoritesSync } from './notifStore'
+import { captureFromUrl } from './account'
 import { NotifCountsProvider, useNotifCounts } from './notifCounts'
 import { useTheme } from './hooks/useTheme'
 
@@ -24,6 +26,11 @@ export default function App() {
   const { pathname } = useLocation()
   // Reader adalah halaman layar penuh: nav bawah disembunyikan
   const immersive = /^\/(baca|maraton)/.test(pathname)
+
+  // Link akun (?u=<username>) bisa mendarat di route mana pun (default '/').
+  // Tangkap identitasnya SEKALI, sebelum sync favorit mulai, supaya hydrate
+  // langsung memakai akun yang benar; query lalu dibersihkan dari address bar.
+  useState(() => captureFromUrl())
 
   // sinkron favorit → server notifikasi (PUT /api/notif/favorites)
   useState(() => startFavoritesSync())
@@ -41,6 +48,7 @@ export default function App() {
             <Route path="/" element={<Home />} />
             <Route path="/cari" element={<Search />} />
             <Route path="/rak" element={<Rak />} />
+            <Route path="/akun" element={<Akun />} />
             {/* manga: id komiku lama (angka) ATAU handle unified 'sumber:id' */}
             <Route path="/manga/:handle" element={<SeriesRoute />} />
             <Route path="/baca/:chapterId" element={<Reader />} />
@@ -106,6 +114,9 @@ function TopBar({
           </CircleButton>
           <CircleButton label="Rak buku" to="/rak">
             <IconBookHeart className="size-4" />
+          </CircleButton>
+          <CircleButton label="Akun" to="/akun">
+            <IconUser className="size-4" />
           </CircleButton>
           <div className="relative" ref={bellWrap}>
             <CircleButton
