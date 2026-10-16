@@ -1,0 +1,60 @@
+{
+  "retcode": 0,
+  "message": "success",
+  "meta": {
+    "request_id": "22a4a71b-3e79-4dbf-9433-7a7d843442fd",
+    "timestamp": 1791895190242,
+    "process_time": "4ms",
+    "page": 1,
+    "page_size": 5,
+    "total_page": 244,
+    "total_record": 1219
+  },
+  "data": [
+    {
+      "chapter_id": "69211040-3c41-4fbc-9c57-c4f9b9cba64a",
+      "manga_id": "48270276-bd79-4a46-b15e-fdd2cf5655b1",
+      "chapter_title": "",
+      "chapter_number": 1195,
+      "thumbnail_image_url": "https://assets.shngm.id/thumbnail/image/default.jpg",
+      "view_count": 26039,
+      "release_date": "2026-10-09T09:20:29Z"
+    },
+    {
+      "chapter_id": "89ccb3cf-2113-4073-811b-3e74c1e55637",
+      "manga_id": "48270276-bd79-4a46-b15e-fdd2cf5655b1",
+      "chapter_title": "",
+      "chapter_number": 1194,
+      "thumbnail_image_url": "https://assets.shngm.id/thumbnail/image/default.jpg",
+      "view_count": 38932,
+      "release_date": "2026-09-26T04:29:25Z"
+    },
+    {
+      "chapter_id": "b659ffa6-f149-4830-8451-74b8956a2551",
+      "manga_id": "48270276-bd79-4a46-b15e-fdd2cf5655b1",
+      "chapter_title": "",
+      "chapter_number": 1193,
+      "thumbnail_image_url": "https://assets.shngm.id/thumbnail/image/default.jpg",
+      "view_count": 44979,
+      "release_date": "2026-09-11T08:37:49Z"
+    },
+    {
+      "chapter_id": "7034d2cc-ec79-471f-8863-17b5bf8bf83c",
+      "manga_id": "48270276-bd79-4a46-b15e-fdd2cf5655b1",
+      "chapter_title": "",
+      "chapter_number": 1192,
+      "thumbnail_image_url": "https://assets.shngm.id/thumbnail/image/default.jpg",
+      "view_count": 43816,
+      "release_date": "2026-09-04T05:26:20Z"
+    },
+    {
+      "chapter_id": "f455cec6-571b-48c2-8688-7a098c3973e4",
+      "manga_id": "48270276-bd79-4a46-b15e-fdd2cf5655b1",
+      "chapter_title": "",
+      "chapter_number": 1191,
+      "thumbnail_image_url": "https://assets.shngm.id/thumbnail/image/default.jpg",
+      "view_count": 41851,
+      "release_date": "2026-08-22T03:49:59Z"
+    }
+  ]
+}

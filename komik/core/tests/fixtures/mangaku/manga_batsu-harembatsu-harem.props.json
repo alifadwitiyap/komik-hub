@@ -1,0 +1,3787 @@
+{
+  "component": "Manga/Show",
+  "props": {
+    "errors": {},
+    "auth": {
+      "user": null
+    },
+    "flash": {
+      "success": null,
+      "error": null
+    },
+    "isImpersonating": false,
+    "siteSettings": {
+      "site_name": "Mangaku",
+      "site_slug": "anime",
+      "favicon": "/storage/settings/nf7ljg2QLYQEDXp7Mg0O31bVKcFIJSLgEmRkZpRM.png",
+      "logo_icon": "sparkles",
+      "logo_color": "#3b82f6",
+      "footer_description": "Mangaku tempat baca komik, manga, manhwa, manhua, novel, serta anime subtitle Indonesia dengan update chapter dan episode terbaru setiap hari. Temukan cerita seru dari berbagai genre populer seperti action, romance, fantasy, isekai, comedy, adventure, mystery, dan drama. Nikmati kualitas gambar yang optimal, proses pemuatan yang cepat, serta antarmuka yang nyaman untuk digunakan kapan saja melalui desktop maupun smartphone.",
+      "footer_copyright": "",
+      "footer_credit": "Dibuat dengan ❤ Mangaku",
+      "nav_links": [
+        {
+          "label": "Beranda",
+          "href": "/"
+        },
+        {
+          "label": "Ingat Selalu Mangaku.lol",
+          "href": "/"
+        }
+      ],
+      "legal_links": [
+        {
+          "label": "Terms of Service",
+          "href": "/terms"
+        },
+        {
+          "label": "Privacy Policy",
+          "href": "/privacy"
+        },
+        {
+          "label": "DMCA",
+          "href": "/dmca"
+        },
+        {
+          "label": "Kontak Kami",
+          "href": "/contact"
+        }
+      ],
+      "social_facebook": "",
+      "social_twitter": "",
+      "social_instagram": "",
+      "show_visitor_stats": false,
+      "discord_enabled": false,
+      "discord_url": "https://discord.gg/u7D9BPtmS",
+      "discord_title": "Join Our Discord",
+      "discord_description": "Bergabunglah dengan server Discord kami untuk update terbaru, diskusi anime, dan dukungan langsung dari tim.",
+      "google_login_enabled": true,
+      "google_client_id": "671135248891-oun3nmd1gqhpea4mqujj0hm51p85gm30.apps.googleusercontent.com",
+      "google_client_secret": "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",
+      "logo_image": null,
+      "hero_slider_enabled": false,
+      "error_404_image": "/storage/settings/XFx62aLs5z2x46gBmWQ8WcOBc0G7E89E9wfEPxlw.png",
+      "footer_image": "/storage/settings/VgZcJXiRl6n5yB4eGyRJwqDjy6UCwhdoB69Lmzf4.png",
+      "komiku_url": "https://komiku.org",
+      "kanna_api_url": "https://api.satulagi.my.id",
+      "novel_source_domain": "https://novel.kiryuuid.net",
+      "novel_api_url": "https://novel.kiryuuid.net/wp-json/kiryuu/v1",
+      "novel_cover_hotlink": true,
+      "novel_chapter_mode": "live_api",
+      "site_tagline": "Streaming Anime"
+    },
+    "og": {
+      "title": "Mangaku",
+      "description": "Nonton anime streaming subtitle Indonesia terlengkap dan terupdate setiap hari.",
+      "image": null,
+      "url": "https://mangaku.lol/manga/batsu-harembatsu-harem",
+      "type": "website"
+    },
+    "pendingReports": {
+      "count": 0,
+      "recent": []
+    },
+    "ads": [],
+    "manga": {
+      "id": 2165,
+      "title": "Batsu Harem",
+      "slug": "batsu-harembatsu-harem",
+      "synopsis": "Batsu Harem mengikuti kisah seorang pria muda yang secara tak terduga terlibat dalam situasi di mana ia dikelilingi oleh banyak wanita dengan kepribadian yang berbeda-beda. Konflik dan dinamika sosial muncul saat ia mencoba memahami perasaannya sendiri dan hubungan yang berkembang antara mereka. \nCerita berkembang dengan memperlihatkan bagaimana protagonis menghadapi tantangan dan dilema emosional sekaligus tumbuh dan belajar tentang pentingnya kejujuran serta pengertian dalam hubungan interpersonal yang rumit.",
+      "status": "Ongoing",
+      "source_url": "https://komiku.org/manga/batsu-hare/",
+      "poster": "https://thumbnail.komiku.org/uploads/manga/batsu-hare/manga_thumbnail-Manga-Batsu-Hare.jpg?w=500",
+      "type": "Manga",
+      "author": "-",
+      "artist": "-",
+      "is_featured": 0,
+      "rating": "10.0",
+      "release_year": 2026,
+      "views_count": 180470,
+      "created_at": "2026-04-11T00:00:08.000000Z",
+      "updated_at": "2026-10-13T12:37:15.000000Z",
+      "genres": [
+        {
+          "id": 3,
+          "name": "Comedy",
+          "slug": "comedy",
+          "icon": "😂",
+          "created_at": "2026-03-23T06:39:14.000000Z",
+          "updated_at": "2026-03-23T06:39:14.000000Z",
+          "pivot": {
+            "manga_id": 2165,
+            "genre_id": 3
+          }
+        },
+        {
+          "id": 4,
+          "name": "Drama",
+          "slug": "drama",
+          "icon": "🎭",
+          "created_at": "2026-03-23T06:39:14.000000Z",
+          "updated_at": "2026-03-23T06:39:14.000000Z",
+          "pivot": {
+            "manga_id": 2165,
+            "genre_id": 4
+          }
+        },
+        {
+          "id": 5,
+          "name": "Ecchi",
+          "slug": "ecchi",
+          "icon": "🔞",
+          "created_at": "2026-03-23T06:39:14.000000Z",
+          "updated_at": "2026-03-23T06:39:14.000000Z",
+          "pivot": {
+            "manga_id": 2165,
+            "genre_id": 5
+          }
+        },
+        {
+          "id": 34,
+          "name": "Harem",
+          "slug": "harem",
+          "icon": null,
+          "created_at": "2026-03-23T15:31:50.000000Z",
+          "updated_at": "2026-03-23T15:31:50.000000Z",
+          "pivot": {
+            "manga_id": 2165,
+            "genre_id": 34
+          }
+        },
+        {
+          "id": 13,
+          "name": "Romance",
+          "slug": "romance",
+          "icon": "❤️",
+          "created_at": "2026-03-23T06:39:14.000000Z",
+          "updated_at": "2026-03-23T06:39:14.000000Z",
+          "pivot": {
+            "manga_id": 2165,
+            "genre_id": 13
+          }
+        },
+        {
+          "id": 25,
+          "name": "Seinen",
+          "slug": "seinen",
+          "icon": null,
+          "created_at": "2026-03-23T08:31:28.000000Z",
+          "updated_at": "2026-03-23T08:31:28.000000Z",
+          "pivot": {
+            "manga_id": 2165,
+            "genre_id": 25
+          }
+        }
+      ],
+      "chapters": [
+        {
+          "id": 404866,
+          "manga_id": 2165,
+          "title": "Chapter 210",
+          "slug": "chapter-210",
+          "chapter_number": 210,
+          "source_url": "https://komiku.org/batsu-harem-chapter-210/",
+          "content": null,
+          "views_count": 989,
+          "created_at": "2026-09-21T08:04:17.000000Z",
+          "updated_at": "2026-10-13T12:37:15.000000Z"
+        },
+        {
+          "id": 404036,
+          "manga_id": 2165,
+          "title": "Chapter 209",
+          "slug": "chapter-209",
+          "chapter_number": 209,
+          "source_url": "https://komiku.org/batsu-harem-chapter-209/",
+          "content": null,
+          "views_count": 425,
+          "created_at": "2026-09-18T03:12:10.000000Z",
+          "updated_at": "2026-10-13T12:35:40.000000Z"
+        },
+        {
+          "id": 404035,
+          "manga_id": 2165,
+          "title": "Chapter 208",
+          "slug": "chapter-208",
+          "chapter_number": 208,
+          "source_url": "https://komiku.org/batsu-harem-chapter-208/",
+          "content": null,
+          "views_count": 299,
+          "created_at": "2026-09-18T03:12:09.000000Z",
+          "updated_at": "2026-10-13T11:46:56.000000Z"
+        },
+        {
+          "id": 404034,
+          "manga_id": 2165,
+          "title": "Chapter 207",
+          "slug": "chapter-207",
+          "chapter_number": 207,
+          "source_url": "https://komiku.org/batsu-harem-chapter-207/",
+          "content": null,
+          "views_count": 273,
+          "created_at": "2026-09-18T03:12:09.000000Z",
+          "updated_at": "2026-10-13T10:15:51.000000Z"
+        },
+        {
+          "id": 404033,
+          "manga_id": 2165,
+          "title": "Chapter 206",
+          "slug": "chapter-206",
+          "chapter_number": 206,
+          "source_url": "https://komiku.org/batsu-harem-chapter-206/",
+          "content": null,
+          "views_count": 259,
+          "created_at": "2026-09-18T03:12:09.000000Z",
+          "updated_at": "2026-10-13T11:49:28.000000Z"
+        },
+        {
+          "id": 404032,
+          "manga_id": 2165,
+          "title": "Chapter 205",
+          "slug": "chapter-205",
+          "chapter_number": 205,
+          "source_url": "https://komiku.org/batsu-harem-chapter-205/",
+          "content": null,
+          "views_count": 255,
+          "created_at": "2026-09-18T03:12:08.000000Z",
+          "updated_at": "2026-10-13T11:32:29.000000Z"
+        },
+        {
+          "id": 404031,
+          "manga_id": 2165,
+          "title": "Chapter 204",
+          "slug": "chapter-204",
+          "chapter_number": 204,
+          "source_url": "https://komiku.org/batsu-harem-chapter-204/",
+          "content": null,
+          "views_count": 301,
+          "created_at": "2026-09-18T03:12:08.000000Z",
+          "updated_at": "2026-10-13T11:47:01.000000Z"
+        },
+        {
+          "id": 391738,
+          "manga_id": 2165,
+          "title": "Chapter 203",
+          "slug": "chapter-203",
+          "chapter_number": 203,
+          "source_url": "https://komiku.org/batsu-harem-chapter-203/",
+          "content": null,
+          "views_count": 4294,
+          "created_at": "2026-08-06T17:26:44.000000Z",
+          "updated_at": "2026-10-13T11:31:47.000000Z"
+        },
+        {
+          "id": 391737,
+          "manga_id": 2165,
+          "title": "Chapter 202",
+          "slug": "chapter-202",
+          "chapter_number": 202,
+          "source_url": "https://komiku.org/batsu-harem-chapter-202/",
+          "content": null,
+          "views_count": 1984,
+          "created_at": "2026-08-06T17:26:43.000000Z",
+          "updated_at": "2026-10-13T11:31:15.000000Z"
+        },
+        {
+          "id": 391000,
+          "manga_id": 2165,
+          "title": "Chapter 201",
+          "slug": "chapter-201",
+          "chapter_number": 201,
+          "source_url": "https://komiku.org/batsu-harem-chapter-201/",
+          "content": null,
+          "views_count": 1464,
+          "created_at": "2026-08-04T22:26:01.000000Z",
+          "updated_at": "2026-10-13T11:30:52.000000Z"
+        },
+        {
+          "id": 388520,
+          "manga_id": 2165,
+          "title": "Chapter 200",
+          "slug": "chapter-200",
+          "chapter_number": 200,
+          "source_url": "https://komiku.org/batsu-harem-chapter-200/",
+          "content": null,
+          "views_count": 1187,
+          "created_at": "2026-07-24T16:48:38.000000Z",
+          "updated_at": "2026-10-13T03:38:04.000000Z"
+        },
+        {
+          "id": 388199,
+          "manga_id": 2165,
+          "title": "Chapter 199",
+          "slug": "chapter-199",
+          "chapter_number": 199,
+          "source_url": "https://komiku.org/batsu-harem-chapter-199/",
+          "content": null,
+          "views_count": 804,
+          "created_at": "2026-07-22T17:04:31.000000Z",
+          "updated_at": "2026-10-13T03:36:20.000000Z"
+        },
+        {
+          "id": 388198,
+          "manga_id": 2165,
+          "title": "Chapter 198",
+          "slug": "chapter-198",
+          "chapter_number": 198,
+          "source_url": "https://komiku.org/batsu-harem-chapter-198/",
+          "content": null,
+          "views_count": 687,
+          "created_at": "2026-07-22T17:04:31.000000Z",
+          "updated_at": "2026-10-13T03:34:14.000000Z"
+        },
+        {
+          "id": 387618,
+          "manga_id": 2165,
+          "title": "Chapter 197",
+          "slug": "chapter-197",
+          "chapter_number": 197,
+          "source_url": "https://komiku.org/batsu-harem-chapter-197/",
+          "content": null,
+          "views_count": 602,
+          "created_at": "2026-07-22T02:57:53.000000Z",
+          "updated_at": "2026-10-13T03:17:15.000000Z"
+        },
+        {
+          "id": 387617,
+          "manga_id": 2165,
+          "title": "Chapter 196",
+          "slug": "chapter-196",
+          "chapter_number": 196,
+          "source_url": "https://komiku.org/batsu-harem-chapter-196/",
+          "content": null,
+          "views_count": 466,
+          "created_at": "2026-07-22T02:57:53.000000Z",
+          "updated_at": "2026-10-13T03:13:40.000000Z"
+        },
+        {
+          "id": 387205,
+          "manga_id": 2165,
+          "title": "Chapter 195",
+          "slug": "chapter-195",
+          "chapter_number": 195,
+          "source_url": "https://komiku.org/batsu-harem-chapter-195/",
+          "content": null,
+          "views_count": 438,
+          "created_at": "2026-07-20T17:51:04.000000Z",
+          "updated_at": "2026-10-13T03:02:38.000000Z"
+        },
+        {
+          "id": 387204,
+          "manga_id": 2165,
+          "title": "Chapter 194",
+          "slug": "chapter-194",
+          "chapter_number": 194,
+          "source_url": "https://komiku.org/batsu-harem-chapter-194/",
+          "content": null,
+          "views_count": 408,
+          "created_at": "2026-07-20T17:51:04.000000Z",
+          "updated_at": "2026-10-13T03:01:09.000000Z"
+        },
+        {
+          "id": 387203,
+          "manga_id": 2165,
+          "title": "Chapter 193",
+          "slug": "chapter-193",
+          "chapter_number": 193,
+          "source_url": "https://komiku.org/batsu-harem-chapter-193/",
+          "content": null,
+          "views_count": 420,
+          "created_at": "2026-07-20T17:51:04.000000Z",
+          "updated_at": "2026-10-13T10:44:42.000000Z"
+        },
+        {
+          "id": 383320,
+          "manga_id": 2165,
+          "title": "Chapter 192",
+          "slug": "chapter-192",
+          "chapter_number": 192,
+          "source_url": "https://komiku.org/batsu-harem-chapter-192/",
+          "content": null,
+          "views_count": 448,
+          "created_at": "2026-06-30T02:40:53.000000Z",
+          "updated_at": "2026-10-13T10:43:28.000000Z"
+        },
+        {
+          "id": 383319,
+          "manga_id": 2165,
+          "title": "Chapter 191",
+          "slug": "chapter-191",
+          "chapter_number": 191,
+          "source_url": "https://komiku.org/batsu-harem-chapter-191/",
+          "content": null,
+          "views_count": 431,
+          "created_at": "2026-06-30T02:40:53.000000Z",
+          "updated_at": "2026-10-13T10:42:35.000000Z"
+        },
+        {
+          "id": 383318,
+          "manga_id": 2165,
+          "title": "Chapter 190",
+          "slug": "chapter-190",
+          "chapter_number": 190,
+          "source_url": "https://komiku.org/batsu-harem-chapter-190/",
+          "content": null,
+          "views_count": 418,
+          "created_at": "2026-06-30T02:40:53.000000Z",
+          "updated_at": "2026-10-13T10:41:44.000000Z"
+        },
+        {
+          "id": 383189,
+          "manga_id": 2165,
+          "title": "Chapter 189",
+          "slug": "chapter-189",
+          "chapter_number": 189,
+          "source_url": "https://komiku.org/batsu-harem-chapter-189/",
+          "content": null,
+          "views_count": 375,
+          "created_at": "2026-06-29T07:39:14.000000Z",
+          "updated_at": "2026-10-13T10:40:09.000000Z"
+        },
+        {
+          "id": 383188,
+          "manga_id": 2165,
+          "title": "Chapter 188",
+          "slug": "chapter-188",
+          "chapter_number": 188,
+          "source_url": "https://komiku.org/batsu-harem-chapter-188/",
+          "content": null,
+          "views_count": 359,
+          "created_at": "2026-06-29T07:39:13.000000Z",
+          "updated_at": "2026-10-13T10:39:42.000000Z"
+        },
+        {
+          "id": 383187,
+          "manga_id": 2165,
+          "title": "Chapter 187",
+          "slug": "chapter-187",
+          "chapter_number": 187,
+          "source_url": "https://komiku.org/batsu-harem-chapter-187/",
+          "content": null,
+          "views_count": 359,
+          "created_at": "2026-06-29T07:39:13.000000Z",
+          "updated_at": "2026-10-13T10:38:38.000000Z"
+        },
+        {
+          "id": 383085,
+          "manga_id": 2165,
+          "title": "Chapter 186",
+          "slug": "chapter-186",
+          "chapter_number": 186,
+          "source_url": "https://komiku.org/batsu-harem-chapter-186/",
+          "content": null,
+          "views_count": 352,
+          "created_at": "2026-06-28T16:15:00.000000Z",
+          "updated_at": "2026-10-13T10:37:35.000000Z"
+        },
+        {
+          "id": 383084,
+          "manga_id": 2165,
+          "title": "Chapter 185",
+          "slug": "chapter-185",
+          "chapter_number": 185,
+          "source_url": "https://komiku.org/batsu-harem-chapter-185/",
+          "content": null,
+          "views_count": 376,
+          "created_at": "2026-06-28T16:14:59.000000Z",
+          "updated_at": "2026-10-13T10:36:26.000000Z"
+        },
+        {
+          "id": 383083,
+          "manga_id": 2165,
+          "title": "Chapter 184",
+          "slug": "chapter-184",
+          "chapter_number": 184,
+          "source_url": "https://komiku.org/batsu-harem-chapter-184/",
+          "content": null,
+          "views_count": 357,
+          "created_at": "2026-06-28T16:14:59.000000Z",
+          "updated_at": "2026-10-13T10:34:21.000000Z"
+        },
+        {
+          "id": 382865,
+          "manga_id": 2165,
+          "title": "Chapter 183",
+          "slug": "chapter-183",
+          "chapter_number": 183,
+          "source_url": "https://komiku.org/batsu-harem-chapter-183/",
+          "content": null,
+          "views_count": 341,
+          "created_at": "2026-06-27T07:30:47.000000Z",
+          "updated_at": "2026-10-13T10:32:54.000000Z"
+        },
+        {
+          "id": 382864,
+          "manga_id": 2165,
+          "title": "Chapter 182",
+          "slug": "chapter-182",
+          "chapter_number": 182,
+          "source_url": "https://komiku.org/batsu-harem-chapter-182/",
+          "content": null,
+          "views_count": 333,
+          "created_at": "2026-06-27T07:30:47.000000Z",
+          "updated_at": "2026-10-13T10:31:46.000000Z"
+        },
+        {
+          "id": 382863,
+          "manga_id": 2165,
+          "title": "Chapter 181",
+          "slug": "chapter-181",
+          "chapter_number": 181,
+          "source_url": "https://komiku.org/batsu-harem-chapter-181/",
+          "content": null,
+          "views_count": 362,
+          "created_at": "2026-06-27T07:30:47.000000Z",
+          "updated_at": "2026-10-13T10:31:29.000000Z"
+        },
+        {
+          "id": 382563,
+          "manga_id": 2165,
+          "title": "Chapter 180",
+          "slug": "chapter-180",
+          "chapter_number": 180,
+          "source_url": "https://komiku.org/batsu-harem-chapter-180/",
+          "content": null,
+          "views_count": 448,
+          "created_at": "2026-06-26T08:00:11.000000Z",
+          "updated_at": "2026-10-13T10:31:04.000000Z"
+        },
+        {
+          "id": 382562,
+          "manga_id": 2165,
+          "title": "Chapter 179",
+          "slug": "chapter-179",
+          "chapter_number": 179,
+          "source_url": "https://komiku.org/batsu-harem-chapter-179/",
+          "content": null,
+          "views_count": 434,
+          "created_at": "2026-06-26T08:00:10.000000Z",
+          "updated_at": "2026-10-13T10:29:55.000000Z"
+        },
+        {
+          "id": 382561,
+          "manga_id": 2165,
+          "title": "Chapter 178",
+          "slug": "chapter-178",
+          "chapter_number": 178,
+          "source_url": "https://komiku.org/batsu-harem-chapter-178/",
+          "content": null,
+          "views_count": 433,
+          "created_at": "2026-06-26T08:00:10.000000Z",
+          "updated_at": "2026-10-13T10:28:32.000000Z"
+        },
+        {
+          "id": 382491,
+          "manga_id": 2165,
+          "title": "Chapter 177",
+          "slug": "chapter-177",
+          "chapter_number": 177,
+          "source_url": "https://komiku.org/batsu-harem-chapter-177/",
+          "content": null,
+          "views_count": 416,
+          "created_at": "2026-06-25T08:39:08.000000Z",
+          "updated_at": "2026-10-13T10:27:03.000000Z"
+        },
+        {
+          "id": 382490,
+          "manga_id": 2165,
+          "title": "Chapter 176",
+          "slug": "chapter-176",
+          "chapter_number": 176,
+          "source_url": "https://komiku.org/batsu-harem-chapter-176/",
+          "content": null,
+          "views_count": 416,
+          "created_at": "2026-06-25T08:39:07.000000Z",
+          "updated_at": "2026-10-13T10:24:42.000000Z"
+        },
+        {
+          "id": 382489,
+          "manga_id": 2165,
+          "title": "Chapter 175",
+          "slug": "chapter-175",
+          "chapter_number": 175,
+          "source_url": "https://komiku.org/batsu-harem-chapter-175/",
+          "content": null,
+          "views_count": 400,
+          "created_at": "2026-06-25T08:39:07.000000Z",
+          "updated_at": "2026-10-13T10:23:37.000000Z"
+        },
+        {
+          "id": 382331,
+          "manga_id": 2165,
+          "title": "Chapter 174",
+          "slug": "chapter-174",
+          "chapter_number": 174,
+          "source_url": "https://komiku.org/batsu-harem-chapter-174/",
+          "content": null,
+          "views_count": 415,
+          "created_at": "2026-06-24T07:56:25.000000Z",
+          "updated_at": "2026-10-13T10:22:28.000000Z"
+        },
+        {
+          "id": 382330,
+          "manga_id": 2165,
+          "title": "Chapter 173",
+          "slug": "chapter-173",
+          "chapter_number": 173,
+          "source_url": "https://komiku.org/batsu-harem-chapter-173/",
+          "content": null,
+          "views_count": 380,
+          "created_at": "2026-06-24T07:56:25.000000Z",
+          "updated_at": "2026-10-13T10:21:01.000000Z"
+        },
+        {
+          "id": 382329,
+          "manga_id": 2165,
+          "title": "Chapter 172",
+          "slug": "chapter-172",
+          "chapter_number": 172,
+          "source_url": "https://komiku.org/batsu-harem-chapter-172/",
+          "content": null,
+          "views_count": 400,
+          "created_at": "2026-06-24T07:56:24.000000Z",
+          "updated_at": "2026-10-13T10:19:36.000000Z"
+        },
+        {
+          "id": 382109,
+          "manga_id": 2165,
+          "title": "Chapter 171",
+          "slug": "chapter-171",
+          "chapter_number": 171,
+          "source_url": "https://komiku.org/batsu-harem-chapter-171/",
+          "content": null,
+          "views_count": 382,
+          "created_at": "2026-06-23T07:28:01.000000Z",
+          "updated_at": "2026-10-13T10:18:23.000000Z"
+        },
+        {
+          "id": 382108,
+          "manga_id": 2165,
+          "title": "Chapter 170",
+          "slug": "chapter-170",
+          "chapter_number": 170,
+          "source_url": "https://komiku.org/batsu-harem-chapter-170/",
+          "content": null,
+          "views_count": 387,
+          "created_at": "2026-06-23T07:28:01.000000Z",
+          "updated_at": "2026-10-13T10:16:55.000000Z"
+        },
+        {
+          "id": 382107,
+          "manga_id": 2165,
+          "title": "Chapter 169",
+          "slug": "chapter-169",
+          "chapter_number": 169,
+          "source_url": "https://komiku.org/batsu-harem-chapter-169/",
+          "content": null,
+          "views_count": 363,
+          "created_at": "2026-06-23T07:28:00.000000Z",
+          "updated_at": "2026-10-13T10:14:28.000000Z"
+        },
+        {
+          "id": 382106,
+          "manga_id": 2165,
+          "title": "Chapter 168",
+          "slug": "chapter-168",
+          "chapter_number": 168,
+          "source_url": "https://komiku.org/batsu-harem-chapter-168/",
+          "content": null,
+          "views_count": 346,
+          "created_at": "2026-06-23T07:28:00.000000Z",
+          "updated_at": "2026-10-13T10:12:49.000000Z"
+        },
+        {
+          "id": 382105,
+          "manga_id": 2165,
+          "title": "Chapter 167",
+          "slug": "chapter-167",
+          "chapter_number": 167,
+          "source_url": "https://komiku.org/batsu-harem-chapter-167/",
+          "content": null,
+          "views_count": 352,
+          "created_at": "2026-06-23T07:28:00.000000Z",
+          "updated_at": "2026-10-13T10:11:57.000000Z"
+        },
+        {
+          "id": 382104,
+          "manga_id": 2165,
+          "title": "Chapter 166",
+          "slug": "chapter-166",
+          "chapter_number": 166,
+          "source_url": "https://komiku.org/batsu-harem-chapter-166/",
+          "content": null,
+          "views_count": 361,
+          "created_at": "2026-06-23T07:28:00.000000Z",
+          "updated_at": "2026-10-13T10:10:36.000000Z"
+        },
+        {
+          "id": 381762,
+          "manga_id": 2165,
+          "title": "Chapter 165",
+          "slug": "chapter-165",
+          "chapter_number": 165,
+          "source_url": "https://komiku.org/batsu-harem-chapter-165/",
+          "content": null,
+          "views_count": 386,
+          "created_at": "2026-06-21T17:45:47.000000Z",
+          "updated_at": "2026-10-13T10:09:22.000000Z"
+        },
+        {
+          "id": 381761,
+          "manga_id": 2165,
+          "title": "Chapter 164",
+          "slug": "chapter-164",
+          "chapter_number": 164,
+          "source_url": "https://komiku.org/batsu-harem-chapter-164/",
+          "content": null,
+          "views_count": 357,
+          "created_at": "2026-06-21T17:45:47.000000Z",
+          "updated_at": "2026-10-13T10:07:31.000000Z"
+        },
+        {
+          "id": 381566,
+          "manga_id": 2165,
+          "title": "Chapter 163",
+          "slug": "chapter-163",
+          "chapter_number": 163,
+          "source_url": "https://komiku.org/batsu-harem-chapter-163/",
+          "content": null,
+          "views_count": 367,
+          "created_at": "2026-06-20T16:02:12.000000Z",
+          "updated_at": "2026-10-13T10:05:35.000000Z"
+        },
+        {
+          "id": 381565,
+          "manga_id": 2165,
+          "title": "Chapter 162",
+          "slug": "chapter-162",
+          "chapter_number": 162,
+          "source_url": "https://komiku.org/batsu-harem-chapter-162/",
+          "content": null,
+          "views_count": 349,
+          "created_at": "2026-06-20T16:02:12.000000Z",
+          "updated_at": "2026-10-13T10:04:06.000000Z"
+        },
+        {
+          "id": 381564,
+          "manga_id": 2165,
+          "title": "Chapter 161",
+          "slug": "chapter-161",
+          "chapter_number": 161,
+          "source_url": "https://komiku.org/batsu-harem-chapter-161/",
+          "content": null,
+          "views_count": 354,
+          "created_at": "2026-06-20T16:02:11.000000Z",
+          "updated_at": "2026-10-13T10:03:12.000000Z"
+        },
+        {
+          "id": 381272,
+          "manga_id": 2165,
+          "title": "Chapter 159",
+          "slug": "chapter-159",
+          "chapter_number": 159,
+          "source_url": "https://komiku.org/batsu-harem-chapter-159/",
+          "content": null,
+          "views_count": 368,
+          "created_at": "2026-06-20T00:04:50.000000Z",
+          "updated_at": "2026-10-13T10:02:54.000000Z"
+        },
+        {
+          "id": 381271,
+          "manga_id": 2165,
+          "title": "Chapter 158",
+          "slug": "chapter-158",
+          "chapter_number": 158,
+          "source_url": "https://komiku.org/batsu-harem-chapter-158/",
+          "content": null,
+          "views_count": 370,
+          "created_at": "2026-06-20T00:04:49.000000Z",
+          "updated_at": "2026-10-13T10:02:33.000000Z"
+        },
+        {
+          "id": 381270,
+          "manga_id": 2165,
+          "title": "Chapter 157",
+          "slug": "chapter-157",
+          "chapter_number": 157,
+          "source_url": "https://komiku.org/batsu-harem-chapter-157/",
+          "content": null,
+          "views_count": 348,
+          "created_at": "2026-06-20T00:04:49.000000Z",
+          "updated_at": "2026-10-13T10:01:55.000000Z"
+        },
+        {
+          "id": 380680,
+          "manga_id": 2165,
+          "title": "Chapter 156",
+          "slug": "chapter-156",
+          "chapter_number": 156,
+          "source_url": "https://komiku.org/batsu-harem-chapter-156/",
+          "content": null,
+          "views_count": 366,
+          "created_at": "2026-06-19T01:27:48.000000Z",
+          "updated_at": "2026-10-13T10:01:33.000000Z"
+        },
+        {
+          "id": 380679,
+          "manga_id": 2165,
+          "title": "Chapter 155",
+          "slug": "chapter-155",
+          "chapter_number": 155,
+          "source_url": "https://komiku.org/batsu-harem-chapter-155/",
+          "content": null,
+          "views_count": 371,
+          "created_at": "2026-06-19T01:27:48.000000Z",
+          "updated_at": "2026-10-13T08:45:02.000000Z"
+        },
+        {
+          "id": 380678,
+          "manga_id": 2165,
+          "title": "Chapter 154",
+          "slug": "chapter-154",
+          "chapter_number": 154,
+          "source_url": "https://komiku.org/batsu-harem-chapter-154/",
+          "content": null,
+          "views_count": 358,
+          "created_at": "2026-06-19T01:27:48.000000Z",
+          "updated_at": "2026-10-13T08:41:32.000000Z"
+        },
+        {
+          "id": 380677,
+          "manga_id": 2165,
+          "title": "Chapter 153",
+          "slug": "chapter-153",
+          "chapter_number": 153,
+          "source_url": "https://komiku.org/batsu-harem-chapter-153/",
+          "content": null,
+          "views_count": 352,
+          "created_at": "2026-06-19T01:27:47.000000Z",
+          "updated_at": "2026-10-13T11:02:52.000000Z"
+        },
+        {
+          "id": 380676,
+          "manga_id": 2165,
+          "title": "Chapter 152",
+          "slug": "chapter-152",
+          "chapter_number": 152,
+          "source_url": "https://komiku.org/batsu-harem-chapter-152/",
+          "content": null,
+          "views_count": 371,
+          "created_at": "2026-06-19T01:27:47.000000Z",
+          "updated_at": "2026-10-13T11:02:52.000000Z"
+        },
+        {
+          "id": 380675,
+          "manga_id": 2165,
+          "title": "Chapter 151",
+          "slug": "chapter-151",
+          "chapter_number": 151,
+          "source_url": "https://komiku.org/batsu-harem-chapter-151/",
+          "content": null,
+          "views_count": 365,
+          "created_at": "2026-06-19T01:27:47.000000Z",
+          "updated_at": "2026-10-13T11:26:52.000000Z"
+        },
+        {
+          "id": 380674,
+          "manga_id": 2165,
+          "title": "Chapter 150",
+          "slug": "chapter-150",
+          "chapter_number": 150,
+          "source_url": "https://komiku.org/batsu-harem-chapter-150/",
+          "content": null,
+          "views_count": 376,
+          "created_at": "2026-06-19T01:27:47.000000Z",
+          "updated_at": "2026-10-13T11:02:52.000000Z"
+        },
+        {
+          "id": 380673,
+          "manga_id": 2165,
+          "title": "Chapter 149",
+          "slug": "chapter-149",
+          "chapter_number": 149,
+          "source_url": "https://komiku.org/batsu-harem-chapter-149/",
+          "content": null,
+          "views_count": 331,
+          "created_at": "2026-06-19T01:27:46.000000Z",
+          "updated_at": "2026-10-13T08:11:23.000000Z"
+        },
+        {
+          "id": 380672,
+          "manga_id": 2165,
+          "title": "Chapter 148",
+          "slug": "chapter-148",
+          "chapter_number": 148,
+          "source_url": "https://komiku.org/batsu-harem-chapter-148/",
+          "content": null,
+          "views_count": 340,
+          "created_at": "2026-06-19T01:27:46.000000Z",
+          "updated_at": "2026-10-13T08:08:43.000000Z"
+        },
+        {
+          "id": 380282,
+          "manga_id": 2165,
+          "title": "Chapter 147",
+          "slug": "chapter-147",
+          "chapter_number": 147,
+          "source_url": "https://komiku.org/batsu-harem-chapter-147/",
+          "content": null,
+          "views_count": 353,
+          "created_at": "2026-06-15T16:05:01.000000Z",
+          "updated_at": "2026-10-13T08:05:22.000000Z"
+        },
+        {
+          "id": 380281,
+          "manga_id": 2165,
+          "title": "Chapter 146",
+          "slug": "chapter-146",
+          "chapter_number": 146,
+          "source_url": "https://komiku.org/batsu-harem-chapter-146/",
+          "content": null,
+          "views_count": 357,
+          "created_at": "2026-06-15T16:05:01.000000Z",
+          "updated_at": "2026-10-13T08:00:32.000000Z"
+        },
+        {
+          "id": 380280,
+          "manga_id": 2165,
+          "title": "Chapter 145",
+          "slug": "chapter-145",
+          "chapter_number": 145,
+          "source_url": "https://komiku.org/batsu-harem-chapter-145/",
+          "content": null,
+          "views_count": 345,
+          "created_at": "2026-06-15T16:05:00.000000Z",
+          "updated_at": "2026-10-13T07:52:38.000000Z"
+        },
+        {
+          "id": 379670,
+          "manga_id": 2165,
+          "title": "Chapter 144",
+          "slug": "chapter-144",
+          "chapter_number": 144,
+          "source_url": "https://komiku.org/batsu-harem-chapter-144/",
+          "content": null,
+          "views_count": 339,
+          "created_at": "2026-06-14T08:14:50.000000Z",
+          "updated_at": "2026-10-13T07:49:50.000000Z"
+        },
+        {
+          "id": 379669,
+          "manga_id": 2165,
+          "title": "Chapter 143",
+          "slug": "chapter-143",
+          "chapter_number": 143,
+          "source_url": "https://komiku.org/batsu-harem-chapter-143/",
+          "content": null,
+          "views_count": 352,
+          "created_at": "2026-06-14T08:14:49.000000Z",
+          "updated_at": "2026-10-13T07:46:19.000000Z"
+        },
+        {
+          "id": 379668,
+          "manga_id": 2165,
+          "title": "Chapter 142",
+          "slug": "chapter-142",
+          "chapter_number": 142,
+          "source_url": "https://komiku.org/batsu-harem-chapter-142/",
+          "content": null,
+          "views_count": 361,
+          "created_at": "2026-06-14T08:14:49.000000Z",
+          "updated_at": "2026-10-13T07:41:35.000000Z"
+        },
+        {
+          "id": 379667,
+          "manga_id": 2165,
+          "title": "Chapter 141",
+          "slug": "chapter-141",
+          "chapter_number": 141,
+          "source_url": "https://komiku.org/batsu-harem-chapter-141/",
+          "content": null,
+          "views_count": 349,
+          "created_at": "2026-06-14T08:14:49.000000Z",
+          "updated_at": "2026-10-13T07:38:33.000000Z"
+        },
+        {
+          "id": 379666,
+          "manga_id": 2165,
+          "title": "Chapter 140",
+          "slug": "chapter-140",
+          "chapter_number": 140,
+          "source_url": "https://komiku.org/batsu-harem-chapter-140/",
+          "content": null,
+          "views_count": 358,
+          "created_at": "2026-06-14T08:14:49.000000Z",
+          "updated_at": "2026-10-13T07:28:56.000000Z"
+        },
+        {
+          "id": 379665,
+          "manga_id": 2165,
+          "title": "Chapter 139",
+          "slug": "chapter-139",
+          "chapter_number": 139,
+          "source_url": "https://komiku.org/batsu-harem-chapter-139/",
+          "content": null,
+          "views_count": 361,
+          "created_at": "2026-06-14T08:14:48.000000Z",
+          "updated_at": "2026-10-13T07:26:14.000000Z"
+        },
+        {
+          "id": 379664,
+          "manga_id": 2165,
+          "title": "Chapter 138",
+          "slug": "chapter-138",
+          "chapter_number": 138,
+          "source_url": "https://komiku.org/batsu-harem-chapter-138/",
+          "content": null,
+          "views_count": 366,
+          "created_at": "2026-06-14T08:14:48.000000Z",
+          "updated_at": "2026-10-13T06:10:50.000000Z"
+        },
+        {
+          "id": 379663,
+          "manga_id": 2165,
+          "title": "Chapter 137",
+          "slug": "chapter-137",
+          "chapter_number": 137,
+          "source_url": "https://komiku.org/batsu-harem-chapter-137/",
+          "content": null,
+          "views_count": 356,
+          "created_at": "2026-06-14T08:14:48.000000Z",
+          "updated_at": "2026-10-13T06:05:10.000000Z"
+        },
+        {
+          "id": 376753,
+          "manga_id": 2165,
+          "title": "Chapter 136",
+          "slug": "chapter-136",
+          "chapter_number": 136,
+          "source_url": "https://komiku.org/batsu-harem-chapter-136/",
+          "content": null,
+          "views_count": 391,
+          "created_at": "2026-06-01T05:11:14.000000Z",
+          "updated_at": "2026-10-13T06:01:42.000000Z"
+        },
+        {
+          "id": 373909,
+          "manga_id": 2165,
+          "title": "Chapter 135",
+          "slug": "chapter-135",
+          "chapter_number": 135,
+          "source_url": "https://komiku.org/batsu-harem-chapter-135/",
+          "content": null,
+          "views_count": 416,
+          "created_at": "2026-05-20T01:57:52.000000Z",
+          "updated_at": "2026-10-13T05:53:44.000000Z"
+        },
+        {
+          "id": 373908,
+          "manga_id": 2165,
+          "title": "Chapter 134",
+          "slug": "chapter-134",
+          "chapter_number": 134,
+          "source_url": "https://komiku.org/batsu-harem-chapter-134/",
+          "content": null,
+          "views_count": 399,
+          "created_at": "2026-05-20T01:57:51.000000Z",
+          "updated_at": "2026-10-13T05:51:03.000000Z"
+        },
+        {
+          "id": 373907,
+          "manga_id": 2165,
+          "title": "Chapter 133",
+          "slug": "chapter-133",
+          "chapter_number": 133,
+          "source_url": "https://komiku.org/batsu-harem-chapter-133/",
+          "content": null,
+          "views_count": 385,
+          "created_at": "2026-05-20T01:57:51.000000Z",
+          "updated_at": "2026-10-13T03:51:50.000000Z"
+        },
+        {
+          "id": 373906,
+          "manga_id": 2165,
+          "title": "Chapter 132",
+          "slug": "chapter-132",
+          "chapter_number": 132,
+          "source_url": "https://komiku.org/batsu-harem-chapter-132/",
+          "content": null,
+          "views_count": 398,
+          "created_at": "2026-05-20T01:57:50.000000Z",
+          "updated_at": "2026-10-13T03:49:36.000000Z"
+        },
+        {
+          "id": 373905,
+          "manga_id": 2165,
+          "title": "Chapter 131",
+          "slug": "chapter-131",
+          "chapter_number": 131,
+          "source_url": "https://komiku.org/batsu-harem-chapter-131/",
+          "content": null,
+          "views_count": 389,
+          "created_at": "2026-05-20T01:57:50.000000Z",
+          "updated_at": "2026-10-13T12:33:23.000000Z"
+        },
+        {
+          "id": 373904,
+          "manga_id": 2165,
+          "title": "Chapter 130",
+          "slug": "chapter-130",
+          "chapter_number": 130,
+          "source_url": "https://komiku.org/batsu-harem-chapter-130/",
+          "content": null,
+          "views_count": 396,
+          "created_at": "2026-05-20T01:57:49.000000Z",
+          "updated_at": "2026-10-13T12:33:02.000000Z"
+        },
+        {
+          "id": 372275,
+          "manga_id": 2165,
+          "title": "Chapter 129",
+          "slug": "chapter-129",
+          "chapter_number": 129,
+          "source_url": "https://komiku.org/batsu-harem-chapter-129/",
+          "content": null,
+          "views_count": 375,
+          "created_at": "2026-05-16T08:56:35.000000Z",
+          "updated_at": "2026-10-13T12:32:44.000000Z"
+        },
+        {
+          "id": 372274,
+          "manga_id": 2165,
+          "title": "Chapter 128",
+          "slug": "chapter-128",
+          "chapter_number": 128,
+          "source_url": "https://komiku.org/batsu-harem-chapter-128/",
+          "content": null,
+          "views_count": 402,
+          "created_at": "2026-05-16T08:56:34.000000Z",
+          "updated_at": "2026-10-13T12:32:25.000000Z"
+        },
+        {
+          "id": 372011,
+          "manga_id": 2165,
+          "title": "Chapter 127",
+          "slug": "chapter-127",
+          "chapter_number": 127,
+          "source_url": "https://komiku.org/batsu-harem-chapter-127/",
+          "content": null,
+          "views_count": 410,
+          "created_at": "2026-05-15T10:28:29.000000Z",
+          "updated_at": "2026-10-13T12:32:00.000000Z"
+        },
+        {
+          "id": 372010,
+          "manga_id": 2165,
+          "title": "Chapter 126",
+          "slug": "chapter-126",
+          "chapter_number": 126,
+          "source_url": "https://komiku.org/batsu-harem-chapter-126/",
+          "content": null,
+          "views_count": 408,
+          "created_at": "2026-05-15T10:28:28.000000Z",
+          "updated_at": "2026-10-13T12:31:54.000000Z"
+        },
+        {
+          "id": 371868,
+          "manga_id": 2165,
+          "title": "Chapter 125",
+          "slug": "chapter-125",
+          "chapter_number": 125,
+          "source_url": "https://komiku.org/batsu-harem-chapter-125/",
+          "content": null,
+          "views_count": 412,
+          "created_at": "2026-05-14T10:21:47.000000Z",
+          "updated_at": "2026-10-13T08:58:56.000000Z"
+        },
+        {
+          "id": 371867,
+          "manga_id": 2165,
+          "title": "Chapter 124",
+          "slug": "chapter-124",
+          "chapter_number": 124,
+          "source_url": "https://komiku.org/batsu-harem-chapter-124/",
+          "content": null,
+          "views_count": 415,
+          "created_at": "2026-05-14T10:21:47.000000Z",
+          "updated_at": "2026-10-13T08:58:25.000000Z"
+        },
+        {
+          "id": 371866,
+          "manga_id": 2165,
+          "title": "Chapter 123",
+          "slug": "chapter-123",
+          "chapter_number": 123,
+          "source_url": "https://komiku.org/batsu-harem-chapter-123/",
+          "content": null,
+          "views_count": 411,
+          "created_at": "2026-05-14T10:21:46.000000Z",
+          "updated_at": "2026-10-13T08:58:13.000000Z"
+        },
+        {
+          "id": 371865,
+          "manga_id": 2165,
+          "title": "Chapter 122",
+          "slug": "chapter-122",
+          "chapter_number": 122,
+          "source_url": "https://komiku.org/batsu-harem-chapter-122/",
+          "content": null,
+          "views_count": 444,
+          "created_at": "2026-05-14T10:21:46.000000Z",
+          "updated_at": "2026-10-13T08:56:37.000000Z"
+        },
+        {
+          "id": 165103,
+          "manga_id": 2165,
+          "title": "Chapter 121",
+          "slug": "chapter-121",
+          "chapter_number": 121,
+          "source_url": "https://komiku.org/batsu-harem-chapter-121/",
+          "content": null,
+          "views_count": 450,
+          "created_at": "2026-04-11T00:00:09.000000Z",
+          "updated_at": "2026-10-13T08:56:19.000000Z"
+        },
+        {
+          "id": 165105,
+          "manga_id": 2165,
+          "title": "Chapter 120",
+          "slug": "chapter-120",
+          "chapter_number": 120,
+          "source_url": "https://komiku.org/batsu-harem-chapter-120/",
+          "content": null,
+          "views_count": 462,
+          "created_at": "2026-04-11T00:00:09.000000Z",
+          "updated_at": "2026-10-13T08:56:14.000000Z"
+        },
+        {
+          "id": 165108,
+          "manga_id": 2165,
+          "title": "Chapter 119",
+          "slug": "chapter-119",
+          "chapter_number": 119,
+          "source_url": "https://komiku.org/batsu-harem-chapter-119/",
+          "content": null,
+          "views_count": 442,
+          "created_at": "2026-04-11T00:00:10.000000Z",
+          "updated_at": "2026-10-13T02:47:26.000000Z"
+        },
+        {
+          "id": 165111,
+          "manga_id": 2165,
+          "title": "Chapter 118",
+          "slug": "chapter-118",
+          "chapter_number": 118,
+          "source_url": "https://komiku.org/batsu-harem-chapter-118/",
+          "content": null,
+          "views_count": 470,
+          "created_at": "2026-04-11T00:00:10.000000Z",
+          "updated_at": "2026-10-13T02:45:46.000000Z"
+        },
+        {
+          "id": 165114,
+          "manga_id": 2165,
+          "title": "Chapter 117",
+          "slug": "chapter-117",
+          "chapter_number": 117,
+          "source_url": "https://komiku.org/batsu-harem-chapter-117/",
+          "content": null,
+          "views_count": 452,
+          "created_at": "2026-04-11T00:00:11.000000Z",
+          "updated_at": "2026-10-13T02:44:06.000000Z"
+        },
+        {
+          "id": 165117,
+          "manga_id": 2165,
+          "title": "Chapter 116",
+          "slug": "chapter-116",
+          "chapter_number": 116,
+          "source_url": "https://komiku.org/batsu-harem-chapter-116/",
+          "content": null,
+          "views_count": 441,
+          "created_at": "2026-04-11T00:00:11.000000Z",
+          "updated_at": "2026-10-13T02:42:08.000000Z"
+        },
+        {
+          "id": 165119,
+          "manga_id": 2165,
+          "title": "Chapter 115",
+          "slug": "chapter-115",
+          "chapter_number": 115,
+          "source_url": "https://komiku.org/batsu-harem-chapter-115/",
+          "content": null,
+          "views_count": 431,
+          "created_at": "2026-04-11T00:00:12.000000Z",
+          "updated_at": "2026-10-13T02:40:50.000000Z"
+        },
+        {
+          "id": 165121,
+          "manga_id": 2165,
+          "title": "Chapter 114",
+          "slug": "chapter-114",
+          "chapter_number": 114,
+          "source_url": "https://komiku.org/batsu-harem-chapter-114/",
+          "content": null,
+          "views_count": 440,
+          "created_at": "2026-04-11T00:00:12.000000Z",
+          "updated_at": "2026-10-13T02:39:14.000000Z"
+        },
+        {
+          "id": 165123,
+          "manga_id": 2165,
+          "title": "Chapter 113",
+          "slug": "chapter-113",
+          "chapter_number": 113,
+          "source_url": "https://komiku.org/batsu-harem-chapter-113/",
+          "content": null,
+          "views_count": 432,
+          "created_at": "2026-04-11T00:00:13.000000Z",
+          "updated_at": "2026-10-13T11:25:55.000000Z"
+        },
+        {
+          "id": 165126,
+          "manga_id": 2165,
+          "title": "Chapter 112",
+          "slug": "chapter-112",
+          "chapter_number": 112,
+          "source_url": "https://komiku.org/batsu-harem-chapter-112/",
+          "content": null,
+          "views_count": 429,
+          "created_at": "2026-04-11T00:00:14.000000Z",
+          "updated_at": "2026-10-13T11:24:52.000000Z"
+        },
+        {
+          "id": 165128,
+          "manga_id": 2165,
+          "title": "Chapter 111",
+          "slug": "chapter-111",
+          "chapter_number": 111,
+          "source_url": "https://komiku.org/batsu-harem-chapter-111/",
+          "content": null,
+          "views_count": 429,
+          "created_at": "2026-04-11T00:00:15.000000Z",
+          "updated_at": "2026-10-13T11:23:44.000000Z"
+        },
+        {
+          "id": 165130,
+          "manga_id": 2165,
+          "title": "Chapter 110",
+          "slug": "chapter-110",
+          "chapter_number": 110,
+          "source_url": "https://komiku.org/batsu-harem-chapter-110/",
+          "content": null,
+          "views_count": 425,
+          "created_at": "2026-04-11T00:00:15.000000Z",
+          "updated_at": "2026-10-13T11:22:52.000000Z"
+        },
+        {
+          "id": 165132,
+          "manga_id": 2165,
+          "title": "Chapter 109",
+          "slug": "chapter-109",
+          "chapter_number": 109,
+          "source_url": "https://komiku.org/batsu-harem-chapter-109/",
+          "content": null,
+          "views_count": 411,
+          "created_at": "2026-04-11T00:00:16.000000Z",
+          "updated_at": "2026-10-13T11:21:55.000000Z"
+        },
+        {
+          "id": 165134,
+          "manga_id": 2165,
+          "title": "Chapter 108",
+          "slug": "chapter-108",
+          "chapter_number": 108,
+          "source_url": "https://komiku.org/batsu-harem-chapter-108/",
+          "content": null,
+          "views_count": 406,
+          "created_at": "2026-04-11T00:00:16.000000Z",
+          "updated_at": "2026-10-13T11:20:45.000000Z"
+        },
+        {
+          "id": 165136,
+          "manga_id": 2165,
+          "title": "Chapter 107",
+          "slug": "chapter-107",
+          "chapter_number": 107,
+          "source_url": "https://komiku.org/batsu-harem-chapter-107/",
+          "content": null,
+          "views_count": 421,
+          "created_at": "2026-04-11T00:00:17.000000Z",
+          "updated_at": "2026-10-13T11:19:37.000000Z"
+        },
+        {
+          "id": 165138,
+          "manga_id": 2165,
+          "title": "Chapter 106",
+          "slug": "chapter-106",
+          "chapter_number": 106,
+          "source_url": "https://komiku.org/batsu-harem-chapter-106/",
+          "content": null,
+          "views_count": 420,
+          "created_at": "2026-04-11T00:00:17.000000Z",
+          "updated_at": "2026-10-13T11:18:28.000000Z"
+        },
+        {
+          "id": 165140,
+          "manga_id": 2165,
+          "title": "Chapter 105",
+          "slug": "chapter-105",
+          "chapter_number": 105,
+          "source_url": "https://komiku.org/batsu-harem-chapter-105/",
+          "content": null,
+          "views_count": 464,
+          "created_at": "2026-04-11T00:00:18.000000Z",
+          "updated_at": "2026-10-13T11:06:09.000000Z"
+        },
+        {
+          "id": 165142,
+          "manga_id": 2165,
+          "title": "Chapter 103",
+          "slug": "chapter-103",
+          "chapter_number": 103,
+          "source_url": "https://komiku.org/batsu-harem-chapter-103/",
+          "content": null,
+          "views_count": 469,
+          "created_at": "2026-04-11T00:00:18.000000Z",
+          "updated_at": "2026-10-13T11:04:37.000000Z"
+        },
+        {
+          "id": 165144,
+          "manga_id": 2165,
+          "title": "Chapter 102",
+          "slug": "chapter-102",
+          "chapter_number": 102,
+          "source_url": "https://komiku.org/batsu-harem-chapter-102/",
+          "content": null,
+          "views_count": 488,
+          "created_at": "2026-04-11T00:00:19.000000Z",
+          "updated_at": "2026-10-13T10:06:52.000000Z"
+        },
+        {
+          "id": 165146,
+          "manga_id": 2165,
+          "title": "Chapter 100",
+          "slug": "chapter-100",
+          "chapter_number": 100,
+          "source_url": "https://komiku.org/batsu-harem-chapter-100/",
+          "content": null,
+          "views_count": 505,
+          "created_at": "2026-04-11T00:00:19.000000Z",
+          "updated_at": "2026-10-13T09:28:22.000000Z"
+        },
+        {
+          "id": 165148,
+          "manga_id": 2165,
+          "title": "Chapter 99",
+          "slug": "chapter-99",
+          "chapter_number": 99,
+          "source_url": "https://komiku.org/batsu-harem-chapter-99/",
+          "content": null,
+          "views_count": 439,
+          "created_at": "2026-04-11T00:00:20.000000Z",
+          "updated_at": "2026-10-13T09:21:54.000000Z"
+        },
+        {
+          "id": 165150,
+          "manga_id": 2165,
+          "title": "Chapter 98",
+          "slug": "chapter-98",
+          "chapter_number": 98,
+          "source_url": "https://komiku.org/batsu-harem-chapter-98/",
+          "content": null,
+          "views_count": 448,
+          "created_at": "2026-04-11T00:00:20.000000Z",
+          "updated_at": "2026-10-13T09:18:38.000000Z"
+        },
+        {
+          "id": 165152,
+          "manga_id": 2165,
+          "title": "Chapter 97",
+          "slug": "chapter-97",
+          "chapter_number": 97,
+          "source_url": "https://komiku.org/batsu-harem-chapter-97/",
+          "content": null,
+          "views_count": 424,
+          "created_at": "2026-04-11T00:00:21.000000Z",
+          "updated_at": "2026-10-13T09:14:38.000000Z"
+        },
+        {
+          "id": 165154,
+          "manga_id": 2165,
+          "title": "Chapter 96",
+          "slug": "chapter-96",
+          "chapter_number": 96,
+          "source_url": "https://komiku.org/batsu-harem-chapter-96/",
+          "content": null,
+          "views_count": 446,
+          "created_at": "2026-04-11T00:00:21.000000Z",
+          "updated_at": "2026-10-13T09:12:10.000000Z"
+        },
+        {
+          "id": 165156,
+          "manga_id": 2165,
+          "title": "Chapter 95",
+          "slug": "chapter-95",
+          "chapter_number": 95,
+          "source_url": "https://komiku.org/batsu-harem-chapter-95/",
+          "content": null,
+          "views_count": 452,
+          "created_at": "2026-04-11T00:00:22.000000Z",
+          "updated_at": "2026-10-13T09:08:05.000000Z"
+        },
+        {
+          "id": 165158,
+          "manga_id": 2165,
+          "title": "Chapter 94",
+          "slug": "chapter-94",
+          "chapter_number": 94,
+          "source_url": "https://komiku.org/batsu-harem-chapter-94/",
+          "content": null,
+          "views_count": 444,
+          "created_at": "2026-04-11T00:00:22.000000Z",
+          "updated_at": "2026-10-13T11:21:25.000000Z"
+        },
+        {
+          "id": 165160,
+          "manga_id": 2165,
+          "title": "Chapter 93",
+          "slug": "chapter-93",
+          "chapter_number": 93,
+          "source_url": "https://komiku.org/batsu-harem-chapter-93/",
+          "content": null,
+          "views_count": 452,
+          "created_at": "2026-04-11T00:00:23.000000Z",
+          "updated_at": "2026-10-13T11:19:28.000000Z"
+        },
+        {
+          "id": 165162,
+          "manga_id": 2165,
+          "title": "Chapter 92",
+          "slug": "chapter-92",
+          "chapter_number": 92,
+          "source_url": "https://komiku.org/batsu-harem-chapter-92/",
+          "content": null,
+          "views_count": 463,
+          "created_at": "2026-04-11T00:00:23.000000Z",
+          "updated_at": "2026-10-13T11:17:35.000000Z"
+        },
+        {
+          "id": 165164,
+          "manga_id": 2165,
+          "title": "Chapter 91",
+          "slug": "chapter-91",
+          "chapter_number": 91,
+          "source_url": "https://komiku.org/batsu-harem-chapter-91/",
+          "content": null,
+          "views_count": 471,
+          "created_at": "2026-04-11T00:00:24.000000Z",
+          "updated_at": "2026-10-13T11:16:03.000000Z"
+        },
+        {
+          "id": 165166,
+          "manga_id": 2165,
+          "title": "Chapter 90",
+          "slug": "chapter-90",
+          "chapter_number": 90,
+          "source_url": "https://komiku.org/batsu-harem-chapter-90/",
+          "content": null,
+          "views_count": 487,
+          "created_at": "2026-04-11T00:00:25.000000Z",
+          "updated_at": "2026-10-13T10:20:34.000000Z"
+        },
+        {
+          "id": 165168,
+          "manga_id": 2165,
+          "title": "Chapter 89",
+          "slug": "chapter-89",
+          "chapter_number": 89,
+          "source_url": "https://komiku.org/batsu-harem-chapter-89/",
+          "content": null,
+          "views_count": 454,
+          "created_at": "2026-04-11T00:00:25.000000Z",
+          "updated_at": "2026-10-13T10:19:12.000000Z"
+        },
+        {
+          "id": 165170,
+          "manga_id": 2165,
+          "title": "Chapter 88",
+          "slug": "chapter-88",
+          "chapter_number": 88,
+          "source_url": "https://komiku.org/batsu-harem-chapter-88/",
+          "content": null,
+          "views_count": 476,
+          "created_at": "2026-04-11T00:00:26.000000Z",
+          "updated_at": "2026-10-13T10:16:37.000000Z"
+        },
+        {
+          "id": 165172,
+          "manga_id": 2165,
+          "title": "Chapter 87",
+          "slug": "chapter-87",
+          "chapter_number": 87,
+          "source_url": "https://komiku.org/batsu-harem-chapter-87/",
+          "content": null,
+          "views_count": 484,
+          "created_at": "2026-04-11T00:00:26.000000Z",
+          "updated_at": "2026-10-13T10:14:52.000000Z"
+        },
+        {
+          "id": 165174,
+          "manga_id": 2165,
+          "title": "Chapter 86",
+          "slug": "chapter-86",
+          "chapter_number": 86,
+          "source_url": "https://komiku.org/batsu-harem-chapter-86/",
+          "content": null,
+          "views_count": 494,
+          "created_at": "2026-04-11T00:00:27.000000Z",
+          "updated_at": "2026-10-13T10:13:44.000000Z"
+        },
+        {
+          "id": 165176,
+          "manga_id": 2165,
+          "title": "Chapter 85",
+          "slug": "chapter-85",
+          "chapter_number": 85,
+          "source_url": "https://komiku.org/batsu-harem-chapter-85/",
+          "content": null,
+          "views_count": 510,
+          "created_at": "2026-04-11T00:00:28.000000Z",
+          "updated_at": "2026-10-13T09:11:38.000000Z"
+        },
+        {
+          "id": 165178,
+          "manga_id": 2165,
+          "title": "Chapter 84",
+          "slug": "chapter-84",
+          "chapter_number": 84,
+          "source_url": "https://komiku.org/batsu-harem-chapter-84/",
+          "content": null,
+          "views_count": 482,
+          "created_at": "2026-04-11T00:00:28.000000Z",
+          "updated_at": "2026-10-13T09:10:10.000000Z"
+        },
+        {
+          "id": 165179,
+          "manga_id": 2165,
+          "title": "Chapter 83",
+          "slug": "chapter-83",
+          "chapter_number": 83,
+          "source_url": "https://komiku.org/batsu-harem-chapter-83/",
+          "content": null,
+          "views_count": 497,
+          "created_at": "2026-04-11T00:00:29.000000Z",
+          "updated_at": "2026-10-13T09:07:02.000000Z"
+        },
+        {
+          "id": 165181,
+          "manga_id": 2165,
+          "title": "Chapter 82",
+          "slug": "chapter-82",
+          "chapter_number": 82,
+          "source_url": "https://komiku.org/batsu-harem-chapter-82/",
+          "content": null,
+          "views_count": 488,
+          "created_at": "2026-04-11T00:00:29.000000Z",
+          "updated_at": "2026-10-13T09:04:52.000000Z"
+        },
+        {
+          "id": 165183,
+          "manga_id": 2165,
+          "title": "Chapter 81",
+          "slug": "chapter-81",
+          "chapter_number": 81,
+          "source_url": "https://komiku.org/batsu-harem-chapter-81/",
+          "content": null,
+          "views_count": 501,
+          "created_at": "2026-04-11T00:00:30.000000Z",
+          "updated_at": "2026-10-13T09:01:57.000000Z"
+        },
+        {
+          "id": 165185,
+          "manga_id": 2165,
+          "title": "Chapter 80",
+          "slug": "chapter-80",
+          "chapter_number": 80,
+          "source_url": "https://komiku.org/batsu-harem-chapter-80/",
+          "content": null,
+          "views_count": 520,
+          "created_at": "2026-04-11T00:00:30.000000Z",
+          "updated_at": "2026-10-13T09:00:37.000000Z"
+        },
+        {
+          "id": 165187,
+          "manga_id": 2165,
+          "title": "Chapter 79",
+          "slug": "chapter-79",
+          "chapter_number": 79,
+          "source_url": "https://komiku.org/batsu-harem-chapter-79/",
+          "content": null,
+          "views_count": 499,
+          "created_at": "2026-04-11T00:00:31.000000Z",
+          "updated_at": "2026-10-13T08:57:59.000000Z"
+        },
+        {
+          "id": 165189,
+          "manga_id": 2165,
+          "title": "Chapter 78",
+          "slug": "chapter-78",
+          "chapter_number": 78,
+          "source_url": "https://komiku.org/batsu-harem-chapter-78/",
+          "content": null,
+          "views_count": 497,
+          "created_at": "2026-04-11T00:00:31.000000Z",
+          "updated_at": "2026-10-13T08:56:44.000000Z"
+        },
+        {
+          "id": 165191,
+          "manga_id": 2165,
+          "title": "Chapter 77",
+          "slug": "chapter-77",
+          "chapter_number": 77,
+          "source_url": "https://komiku.org/batsu-harem-chapter-77/",
+          "content": null,
+          "views_count": 526,
+          "created_at": "2026-04-11T00:00:32.000000Z",
+          "updated_at": "2026-10-13T08:54:13.000000Z"
+        },
+        {
+          "id": 165193,
+          "manga_id": 2165,
+          "title": "Chapter 76",
+          "slug": "chapter-76",
+          "chapter_number": 76,
+          "source_url": "https://komiku.org/batsu-harem-chapter-76/",
+          "content": null,
+          "views_count": 578,
+          "created_at": "2026-04-11T00:00:33.000000Z",
+          "updated_at": "2026-10-13T08:52:49.000000Z"
+        },
+        {
+          "id": 165195,
+          "manga_id": 2165,
+          "title": "Chapter 75",
+          "slug": "chapter-75",
+          "chapter_number": 75,
+          "source_url": "https://komiku.org/batsu-harem-chapter-75/",
+          "content": null,
+          "views_count": 598,
+          "created_at": "2026-04-11T00:00:33.000000Z",
+          "updated_at": "2026-10-13T08:51:25.000000Z"
+        },
+        {
+          "id": 165197,
+          "manga_id": 2165,
+          "title": "Chapter 74",
+          "slug": "chapter-74",
+          "chapter_number": 74,
+          "source_url": "https://komiku.org/batsu-harem-chapter-74/",
+          "content": null,
+          "views_count": 594,
+          "created_at": "2026-04-11T00:00:34.000000Z",
+          "updated_at": "2026-10-13T08:49:41.000000Z"
+        },
+        {
+          "id": 165199,
+          "manga_id": 2165,
+          "title": "Chapter 73",
+          "slug": "chapter-73",
+          "chapter_number": 73,
+          "source_url": "https://komiku.org/batsu-harem-chapter-73/",
+          "content": null,
+          "views_count": 585,
+          "created_at": "2026-04-11T00:00:34.000000Z",
+          "updated_at": "2026-10-13T08:48:37.000000Z"
+        },
+        {
+          "id": 165201,
+          "manga_id": 2165,
+          "title": "Chapter 72",
+          "slug": "chapter-72",
+          "chapter_number": 72,
+          "source_url": "https://komiku.org/batsu-harem-chapter-72/",
+          "content": null,
+          "views_count": 588,
+          "created_at": "2026-04-11T00:00:35.000000Z",
+          "updated_at": "2026-10-13T08:46:38.000000Z"
+        },
+        {
+          "id": 165204,
+          "manga_id": 2165,
+          "title": "Chapter 71",
+          "slug": "chapter-71",
+          "chapter_number": 71,
+          "source_url": "https://komiku.org/batsu-harem-chapter-71/",
+          "content": null,
+          "views_count": 585,
+          "created_at": "2026-04-11T00:00:36.000000Z",
+          "updated_at": "2026-10-13T08:45:18.000000Z"
+        },
+        {
+          "id": 165206,
+          "manga_id": 2165,
+          "title": "Chapter 70",
+          "slug": "chapter-70",
+          "chapter_number": 70,
+          "source_url": "https://komiku.org/batsu-harem-chapter-70/",
+          "content": null,
+          "views_count": 613,
+          "created_at": "2026-04-11T00:00:37.000000Z",
+          "updated_at": "2026-10-13T08:43:01.000000Z"
+        },
+        {
+          "id": 165208,
+          "manga_id": 2165,
+          "title": "Chapter 69",
+          "slug": "chapter-69",
+          "chapter_number": 69,
+          "source_url": "https://komiku.org/batsu-harem-chapter-69/",
+          "content": null,
+          "views_count": 608,
+          "created_at": "2026-04-11T00:00:37.000000Z",
+          "updated_at": "2026-10-13T08:40:32.000000Z"
+        },
+        {
+          "id": 165210,
+          "manga_id": 2165,
+          "title": "Chapter 68",
+          "slug": "chapter-68",
+          "chapter_number": 68,
+          "source_url": "https://komiku.org/batsu-harem-chapter-68/",
+          "content": null,
+          "views_count": 596,
+          "created_at": "2026-04-11T00:00:38.000000Z",
+          "updated_at": "2026-10-13T08:39:38.000000Z"
+        },
+        {
+          "id": 165212,
+          "manga_id": 2165,
+          "title": "Chapter 67",
+          "slug": "chapter-67",
+          "chapter_number": 67,
+          "source_url": "https://komiku.org/batsu-harem-chapter-67/",
+          "content": null,
+          "views_count": 603,
+          "created_at": "2026-04-11T00:00:38.000000Z",
+          "updated_at": "2026-10-13T08:38:20.000000Z"
+        },
+        {
+          "id": 165214,
+          "manga_id": 2165,
+          "title": "Chapter 66",
+          "slug": "chapter-66",
+          "chapter_number": 66,
+          "source_url": "https://komiku.org/batsu-harem-chapter-66/",
+          "content": null,
+          "views_count": 593,
+          "created_at": "2026-04-11T00:00:39.000000Z",
+          "updated_at": "2026-10-13T08:36:45.000000Z"
+        },
+        {
+          "id": 165216,
+          "manga_id": 2165,
+          "title": "Chapter 65",
+          "slug": "chapter-65",
+          "chapter_number": 65,
+          "source_url": "https://komiku.org/batsu-harem-chapter-65/",
+          "content": null,
+          "views_count": 607,
+          "created_at": "2026-04-11T00:00:39.000000Z",
+          "updated_at": "2026-10-13T11:53:44.000000Z"
+        },
+        {
+          "id": 165219,
+          "manga_id": 2165,
+          "title": "Chapter 64",
+          "slug": "chapter-64",
+          "chapter_number": 64,
+          "source_url": "https://komiku.org/batsu-harem-chapter-64/",
+          "content": null,
+          "views_count": 609,
+          "created_at": "2026-04-11T00:00:40.000000Z",
+          "updated_at": "2026-10-13T08:17:16.000000Z"
+        },
+        {
+          "id": 165222,
+          "manga_id": 2165,
+          "title": "Chapter 63",
+          "slug": "chapter-63",
+          "chapter_number": 63,
+          "source_url": "https://komiku.org/batsu-harem-chapter-63/",
+          "content": null,
+          "views_count": 610,
+          "created_at": "2026-04-11T00:00:41.000000Z",
+          "updated_at": "2026-10-13T08:11:17.000000Z"
+        },
+        {
+          "id": 165225,
+          "manga_id": 2165,
+          "title": "Chapter 62",
+          "slug": "chapter-62",
+          "chapter_number": 62,
+          "source_url": "https://komiku.org/batsu-harem-chapter-62/",
+          "content": null,
+          "views_count": 606,
+          "created_at": "2026-04-11T00:00:41.000000Z",
+          "updated_at": "2026-10-13T08:09:08.000000Z"
+        },
+        {
+          "id": 165228,
+          "manga_id": 2165,
+          "title": "Chapter 61",
+          "slug": "chapter-61",
+          "chapter_number": 61,
+          "source_url": "https://komiku.org/batsu-harem-chapter-61/",
+          "content": null,
+          "views_count": 616,
+          "created_at": "2026-04-11T00:00:41.000000Z",
+          "updated_at": "2026-10-13T08:06:34.000000Z"
+        },
+        {
+          "id": 165231,
+          "manga_id": 2165,
+          "title": "Chapter 60",
+          "slug": "chapter-60",
+          "chapter_number": 60,
+          "source_url": "https://komiku.org/batsu-harem-chapter-60/",
+          "content": null,
+          "views_count": 642,
+          "created_at": "2026-04-11T00:00:42.000000Z",
+          "updated_at": "2026-10-13T08:03:45.000000Z"
+        },
+        {
+          "id": 165233,
+          "manga_id": 2165,
+          "title": "Chapter 59",
+          "slug": "chapter-59",
+          "chapter_number": 59,
+          "source_url": "https://komiku.org/batsu-harem-chapter-59/",
+          "content": null,
+          "views_count": 650,
+          "created_at": "2026-04-11T00:00:43.000000Z",
+          "updated_at": "2026-10-13T08:00:45.000000Z"
+        },
+        {
+          "id": 165236,
+          "manga_id": 2165,
+          "title": "Chapter 58",
+          "slug": "chapter-58",
+          "chapter_number": 58,
+          "source_url": "https://komiku.org/batsu-harem-chapter-58/",
+          "content": null,
+          "views_count": 683,
+          "created_at": "2026-04-11T00:00:43.000000Z",
+          "updated_at": "2026-10-13T07:58:59.000000Z"
+        },
+        {
+          "id": 165240,
+          "manga_id": 2165,
+          "title": "Chapter 57",
+          "slug": "chapter-57",
+          "chapter_number": 57,
+          "source_url": "https://komiku.org/batsu-harem-chapter-57/",
+          "content": null,
+          "views_count": 693,
+          "created_at": "2026-04-11T00:00:44.000000Z",
+          "updated_at": "2026-10-13T07:57:01.000000Z"
+        },
+        {
+          "id": 165242,
+          "manga_id": 2165,
+          "title": "Chapter 56",
+          "slug": "chapter-56",
+          "chapter_number": 56,
+          "source_url": "https://komiku.org/batsu-harem-chapter-56/",
+          "content": null,
+          "views_count": 714,
+          "created_at": "2026-04-11T00:00:44.000000Z",
+          "updated_at": "2026-10-13T07:55:31.000000Z"
+        },
+        {
+          "id": 165246,
+          "manga_id": 2165,
+          "title": "Chapter 55",
+          "slug": "chapter-55",
+          "chapter_number": 55,
+          "source_url": "https://komiku.org/batsu-harem-chapter-55/",
+          "content": null,
+          "views_count": 670,
+          "created_at": "2026-04-11T00:00:45.000000Z",
+          "updated_at": "2026-10-13T07:53:31.000000Z"
+        },
+        {
+          "id": 165249,
+          "manga_id": 2165,
+          "title": "Chapter 54",
+          "slug": "chapter-54",
+          "chapter_number": 54,
+          "source_url": "https://komiku.org/batsu-harem-chapter-54/",
+          "content": null,
+          "views_count": 670,
+          "created_at": "2026-04-11T00:00:46.000000Z",
+          "updated_at": "2026-10-13T07:50:48.000000Z"
+        },
+        {
+          "id": 165253,
+          "manga_id": 2165,
+          "title": "Chapter 53",
+          "slug": "chapter-53",
+          "chapter_number": 53,
+          "source_url": "https://komiku.org/batsu-harem-chapter-53/",
+          "content": null,
+          "views_count": 688,
+          "created_at": "2026-04-11T00:00:46.000000Z",
+          "updated_at": "2026-10-13T07:48:29.000000Z"
+        },
+        {
+          "id": 165256,
+          "manga_id": 2165,
+          "title": "Chapter 52",
+          "slug": "chapter-52",
+          "chapter_number": 52,
+          "source_url": "https://komiku.org/batsu-harem-chapter-52/",
+          "content": null,
+          "views_count": 709,
+          "created_at": "2026-04-11T00:00:47.000000Z",
+          "updated_at": "2026-10-13T06:28:37.000000Z"
+        },
+        {
+          "id": 165260,
+          "manga_id": 2165,
+          "title": "Chapter 51",
+          "slug": "chapter-51",
+          "chapter_number": 51,
+          "source_url": "https://komiku.org/batsu-harem-chapter-51/",
+          "content": null,
+          "views_count": 748,
+          "created_at": "2026-04-11T00:00:47.000000Z",
+          "updated_at": "2026-10-13T07:43:12.000000Z"
+        },
+        {
+          "id": 165263,
+          "manga_id": 2165,
+          "title": "Chapter 50",
+          "slug": "chapter-50",
+          "chapter_number": 50,
+          "source_url": "https://komiku.org/batsu-harem-chapter-50/",
+          "content": null,
+          "views_count": 790,
+          "created_at": "2026-04-11T00:00:48.000000Z",
+          "updated_at": "2026-10-13T07:16:55.000000Z"
+        },
+        {
+          "id": 165266,
+          "manga_id": 2165,
+          "title": "Chapter 49",
+          "slug": "chapter-49",
+          "chapter_number": 49,
+          "source_url": "https://komiku.org/batsu-harem-chapter-49/",
+          "content": null,
+          "views_count": 795,
+          "created_at": "2026-04-11T00:00:49.000000Z",
+          "updated_at": "2026-10-13T07:16:30.000000Z"
+        },
+        {
+          "id": 165269,
+          "manga_id": 2165,
+          "title": "Chapter 48",
+          "slug": "chapter-48",
+          "chapter_number": 48,
+          "source_url": "https://komiku.org/batsu-harem-chapter-48/",
+          "content": null,
+          "views_count": 813,
+          "created_at": "2026-04-11T00:00:49.000000Z",
+          "updated_at": "2026-10-13T07:16:23.000000Z"
+        },
+        {
+          "id": 165272,
+          "manga_id": 2165,
+          "title": "Chapter 47",
+          "slug": "chapter-47",
+          "chapter_number": 47,
+          "source_url": "https://komiku.org/batsu-harem-chapter-47/",
+          "content": null,
+          "views_count": 772,
+          "created_at": "2026-04-11T00:00:50.000000Z",
+          "updated_at": "2026-10-13T04:19:32.000000Z"
+        },
+        {
+          "id": 165275,
+          "manga_id": 2165,
+          "title": "Chapter 46",
+          "slug": "chapter-46",
+          "chapter_number": 46,
+          "source_url": "https://komiku.org/batsu-harem-chapter-46/",
+          "content": null,
+          "views_count": 798,
+          "created_at": "2026-04-11T00:00:50.000000Z",
+          "updated_at": "2026-10-13T04:18:05.000000Z"
+        },
+        {
+          "id": 165278,
+          "manga_id": 2165,
+          "title": "Chapter 45",
+          "slug": "chapter-45",
+          "chapter_number": 45,
+          "source_url": "https://komiku.org/batsu-harem-chapter-45/",
+          "content": null,
+          "views_count": 805,
+          "created_at": "2026-04-11T00:00:51.000000Z",
+          "updated_at": "2026-10-13T04:16:18.000000Z"
+        },
+        {
+          "id": 165281,
+          "manga_id": 2165,
+          "title": "Chapter 44",
+          "slug": "chapter-44",
+          "chapter_number": 44,
+          "source_url": "https://komiku.org/batsu-harem-chapter-44/",
+          "content": null,
+          "views_count": 777,
+          "created_at": "2026-04-11T00:00:52.000000Z",
+          "updated_at": "2026-10-13T04:14:45.000000Z"
+        },
+        {
+          "id": 165284,
+          "manga_id": 2165,
+          "title": "Chapter 43",
+          "slug": "chapter-43",
+          "chapter_number": 43,
+          "source_url": "https://komiku.org/batsu-harem-chapter-43/",
+          "content": null,
+          "views_count": 793,
+          "created_at": "2026-04-11T00:00:52.000000Z",
+          "updated_at": "2026-10-13T04:13:13.000000Z"
+        },
+        {
+          "id": 165287,
+          "manga_id": 2165,
+          "title": "Chapter 42",
+          "slug": "chapter-42",
+          "chapter_number": 42,
+          "source_url": "https://komiku.org/batsu-harem-chapter-42/",
+          "content": null,
+          "views_count": 823,
+          "created_at": "2026-04-11T00:00:53.000000Z",
+          "updated_at": "2026-10-13T04:11:54.000000Z"
+        },
+        {
+          "id": 165289,
+          "manga_id": 2165,
+          "title": "Chapter 41",
+          "slug": "chapter-41",
+          "chapter_number": 41,
+          "source_url": "https://komiku.org/batsu-harem-chapter-41/",
+          "content": null,
+          "views_count": 848,
+          "created_at": "2026-04-11T00:00:53.000000Z",
+          "updated_at": "2026-10-13T04:10:54.000000Z"
+        },
+        {
+          "id": 165292,
+          "manga_id": 2165,
+          "title": "Chapter 40",
+          "slug": "chapter-40",
+          "chapter_number": 40,
+          "source_url": "https://komiku.org/batsu-harem-chapter-40/",
+          "content": null,
+          "views_count": 855,
+          "created_at": "2026-04-11T00:00:54.000000Z",
+          "updated_at": "2026-10-13T04:10:02.000000Z"
+        },
+        {
+          "id": 165295,
+          "manga_id": 2165,
+          "title": "Chapter 39",
+          "slug": "chapter-39",
+          "chapter_number": 39,
+          "source_url": "https://komiku.org/batsu-harem-chapter-39/",
+          "content": null,
+          "views_count": 813,
+          "created_at": "2026-04-11T00:00:54.000000Z",
+          "updated_at": "2026-10-13T04:49:56.000000Z"
+        },
+        {
+          "id": 165298,
+          "manga_id": 2165,
+          "title": "Chapter 38",
+          "slug": "chapter-38",
+          "chapter_number": 38,
+          "source_url": "https://komiku.org/batsu-harem-chapter-38/",
+          "content": null,
+          "views_count": 839,
+          "created_at": "2026-04-11T00:00:55.000000Z",
+          "updated_at": "2026-10-13T04:08:00.000000Z"
+        },
+        {
+          "id": 165301,
+          "manga_id": 2165,
+          "title": "Chapter 37",
+          "slug": "chapter-37",
+          "chapter_number": 37,
+          "source_url": "https://komiku.org/batsu-harem-chapter-37/",
+          "content": null,
+          "views_count": 839,
+          "created_at": "2026-04-11T00:00:55.000000Z",
+          "updated_at": "2026-10-13T04:06:30.000000Z"
+        },
+        {
+          "id": 165303,
+          "manga_id": 2165,
+          "title": "Chapter 36",
+          "slug": "chapter-36",
+          "chapter_number": 36,
+          "source_url": "https://komiku.org/batsu-harem-chapter-36/",
+          "content": null,
+          "views_count": 855,
+          "created_at": "2026-04-11T00:00:56.000000Z",
+          "updated_at": "2026-10-13T04:04:34.000000Z"
+        },
+        {
+          "id": 165306,
+          "manga_id": 2165,
+          "title": "Chapter 35",
+          "slug": "chapter-35",
+          "chapter_number": 35,
+          "source_url": "https://komiku.org/batsu-harem-chapter-35/",
+          "content": null,
+          "views_count": 855,
+          "created_at": "2026-04-11T00:00:56.000000Z",
+          "updated_at": "2026-10-13T04:02:21.000000Z"
+        },
+        {
+          "id": 165309,
+          "manga_id": 2165,
+          "title": "Chapter 34",
+          "slug": "chapter-34",
+          "chapter_number": 34,
+          "source_url": "https://komiku.org/batsu-harem-chapter-34/",
+          "content": null,
+          "views_count": 876,
+          "created_at": "2026-04-11T00:00:57.000000Z",
+          "updated_at": "2026-10-13T03:58:07.000000Z"
+        },
+        {
+          "id": 165312,
+          "manga_id": 2165,
+          "title": "Chapter 33",
+          "slug": "chapter-33",
+          "chapter_number": 33,
+          "source_url": "https://komiku.org/batsu-harem-chapter-33/",
+          "content": null,
+          "views_count": 904,
+          "created_at": "2026-04-11T00:00:57.000000Z",
+          "updated_at": "2026-10-13T08:02:16.000000Z"
+        },
+        {
+          "id": 165315,
+          "manga_id": 2165,
+          "title": "Chapter 32",
+          "slug": "chapter-32",
+          "chapter_number": 32,
+          "source_url": "https://komiku.org/batsu-harem-chapter-32/",
+          "content": null,
+          "views_count": 926,
+          "created_at": "2026-04-11T00:00:58.000000Z",
+          "updated_at": "2026-10-13T08:00:58.000000Z"
+        },
+        {
+          "id": 165318,
+          "manga_id": 2165,
+          "title": "Chapter 31",
+          "slug": "chapter-31",
+          "chapter_number": 31,
+          "source_url": "https://komiku.org/batsu-harem-chapter-31/",
+          "content": null,
+          "views_count": 991,
+          "created_at": "2026-04-11T00:00:58.000000Z",
+          "updated_at": "2026-10-13T06:12:31.000000Z"
+        },
+        {
+          "id": 165321,
+          "manga_id": 2165,
+          "title": "Chapter 30",
+          "slug": "chapter-30",
+          "chapter_number": 30,
+          "source_url": "https://komiku.org/batsu-harem-chapter-30/",
+          "content": null,
+          "views_count": 1018,
+          "created_at": "2026-04-11T00:00:59.000000Z",
+          "updated_at": "2026-10-13T06:10:35.000000Z"
+        },
+        {
+          "id": 165323,
+          "manga_id": 2165,
+          "title": "Chapter 29",
+          "slug": "chapter-29",
+          "chapter_number": 29,
+          "source_url": "https://komiku.org/batsu-harem-chapter-29/",
+          "content": null,
+          "views_count": 970,
+          "created_at": "2026-04-11T00:00:59.000000Z",
+          "updated_at": "2026-10-13T06:09:34.000000Z"
+        },
+        {
+          "id": 165326,
+          "manga_id": 2165,
+          "title": "Chapter 28",
+          "slug": "chapter-28",
+          "chapter_number": 28,
+          "source_url": "https://komiku.org/batsu-harem-chapter-28/",
+          "content": null,
+          "views_count": 984,
+          "created_at": "2026-04-11T00:01:00.000000Z",
+          "updated_at": "2026-10-13T06:08:47.000000Z"
+        },
+        {
+          "id": 165329,
+          "manga_id": 2165,
+          "title": "Chapter 27",
+          "slug": "chapter-27",
+          "chapter_number": 27,
+          "source_url": "https://komiku.org/batsu-harem-chapter-27/",
+          "content": null,
+          "views_count": 1035,
+          "created_at": "2026-04-11T00:01:00.000000Z",
+          "updated_at": "2026-10-13T06:06:32.000000Z"
+        },
+        {
+          "id": 165332,
+          "manga_id": 2165,
+          "title": "Chapter 26",
+          "slug": "chapter-26",
+          "chapter_number": 26,
+          "source_url": "https://komiku.org/batsu-harem-chapter-26/",
+          "content": null,
+          "views_count": 1063,
+          "created_at": "2026-04-11T00:01:01.000000Z",
+          "updated_at": "2026-10-13T06:55:17.000000Z"
+        },
+        {
+          "id": 165336,
+          "manga_id": 2165,
+          "title": "Chapter 25",
+          "slug": "chapter-25",
+          "chapter_number": 25,
+          "source_url": "https://komiku.org/batsu-harem-chapter-25/",
+          "content": null,
+          "views_count": 1118,
+          "created_at": "2026-04-11T00:01:01.000000Z",
+          "updated_at": "2026-10-13T06:04:49.000000Z"
+        },
+        {
+          "id": 165340,
+          "manga_id": 2165,
+          "title": "Chapter 24",
+          "slug": "chapter-24",
+          "chapter_number": 24,
+          "source_url": "https://komiku.org/batsu-harem-chapter-24/",
+          "content": null,
+          "views_count": 1142,
+          "created_at": "2026-04-11T00:01:02.000000Z",
+          "updated_at": "2026-10-13T06:04:12.000000Z"
+        },
+        {
+          "id": 165343,
+          "manga_id": 2165,
+          "title": "Chapter 23",
+          "slug": "chapter-23",
+          "chapter_number": 23,
+          "source_url": "https://komiku.org/batsu-harem-chapter-23/",
+          "content": null,
+          "views_count": 1159,
+          "created_at": "2026-04-11T00:01:03.000000Z",
+          "updated_at": "2026-10-13T06:03:34.000000Z"
+        },
+        {
+          "id": 165347,
+          "manga_id": 2165,
+          "title": "Chapter 22",
+          "slug": "chapter-22",
+          "chapter_number": 22,
+          "source_url": "https://komiku.org/batsu-harem-chapter-22/",
+          "content": null,
+          "views_count": 1164,
+          "created_at": "2026-04-11T00:01:03.000000Z",
+          "updated_at": "2026-10-13T06:03:03.000000Z"
+        },
+        {
+          "id": 165352,
+          "manga_id": 2165,
+          "title": "Chapter 21",
+          "slug": "chapter-21",
+          "chapter_number": 21,
+          "source_url": "https://komiku.org/batsu-harem-chapter-21/",
+          "content": null,
+          "views_count": 1163,
+          "created_at": "2026-04-11T00:01:04.000000Z",
+          "updated_at": "2026-10-13T06:02:25.000000Z"
+        },
+        {
+          "id": 165356,
+          "manga_id": 2165,
+          "title": "Chapter 20",
+          "slug": "chapter-20",
+          "chapter_number": 20,
+          "source_url": "https://komiku.org/batsu-harem-chapter-20/",
+          "content": null,
+          "views_count": 1209,
+          "created_at": "2026-04-11T00:01:04.000000Z",
+          "updated_at": "2026-10-13T06:02:01.000000Z"
+        },
+        {
+          "id": 165359,
+          "manga_id": 2165,
+          "title": "Chapter 19",
+          "slug": "chapter-19",
+          "chapter_number": 19,
+          "source_url": "https://komiku.org/batsu-harem-chapter-19/",
+          "content": null,
+          "views_count": 1232,
+          "created_at": "2026-04-11T00:01:05.000000Z",
+          "updated_at": "2026-10-13T06:03:03.000000Z"
+        },
+        {
+          "id": 165363,
+          "manga_id": 2165,
+          "title": "Chapter 18",
+          "slug": "chapter-18",
+          "chapter_number": 18,
+          "source_url": "https://komiku.org/batsu-harem-chapter-18/",
+          "content": null,
+          "views_count": 1296,
+          "created_at": "2026-04-11T00:01:05.000000Z",
+          "updated_at": "2026-10-13T06:02:27.000000Z"
+        },
+        {
+          "id": 165367,
+          "manga_id": 2165,
+          "title": "Chapter 17",
+          "slug": "chapter-17",
+          "chapter_number": 17,
+          "source_url": "https://komiku.org/batsu-harem-chapter-17/",
+          "content": null,
+          "views_count": 1355,
+          "created_at": "2026-04-11T00:01:06.000000Z",
+          "updated_at": "2026-10-13T06:01:11.000000Z"
+        },
+        {
+          "id": 165371,
+          "manga_id": 2165,
+          "title": "Chapter 16",
+          "slug": "chapter-16",
+          "chapter_number": 16,
+          "source_url": "https://komiku.org/batsu-harem-chapter-16/",
+          "content": null,
+          "views_count": 1497,
+          "created_at": "2026-04-11T00:01:07.000000Z",
+          "updated_at": "2026-10-13T10:31:31.000000Z"
+        },
+        {
+          "id": 165374,
+          "manga_id": 2165,
+          "title": "Chapter 15",
+          "slug": "chapter-15",
+          "chapter_number": 15,
+          "source_url": "https://komiku.org/batsu-harem-chapter-15/",
+          "content": null,
+          "views_count": 1545,
+          "created_at": "2026-04-11T00:01:07.000000Z",
+          "updated_at": "2026-10-13T05:59:33.000000Z"
+        },
+        {
+          "id": 165378,
+          "manga_id": 2165,
+          "title": "Chapter 14",
+          "slug": "chapter-14",
+          "chapter_number": 14,
+          "source_url": "https://komiku.org/batsu-harem-chapter-14/",
+          "content": null,
+          "views_count": 1425,
+          "created_at": "2026-04-11T00:01:08.000000Z",
+          "updated_at": "2026-10-13T05:58:31.000000Z"
+        },
+        {
+          "id": 165382,
+          "manga_id": 2165,
+          "title": "Chapter 13",
+          "slug": "chapter-13",
+          "chapter_number": 13,
+          "source_url": "https://komiku.org/batsu-harem-chapter-13/",
+          "content": null,
+          "views_count": 1597,
+          "created_at": "2026-04-11T00:01:08.000000Z",
+          "updated_at": "2026-10-13T05:57:21.000000Z"
+        },
+        {
+          "id": 165386,
+          "manga_id": 2165,
+          "title": "Chapter 12",
+          "slug": "chapter-12",
+          "chapter_number": 12,
+          "source_url": "https://komiku.org/batsu-harem-chapter-12/",
+          "content": null,
+          "views_count": 1718,
+          "created_at": "2026-04-11T00:01:09.000000Z",
+          "updated_at": "2026-10-13T12:01:35.000000Z"
+        },
+        {
+          "id": 165390,
+          "manga_id": 2165,
+          "title": "Chapter 11",
+          "slug": "chapter-11",
+          "chapter_number": 11,
+          "source_url": "https://komiku.org/batsu-harem-chapter-11/",
+          "content": null,
+          "views_count": 1721,
+          "created_at": "2026-04-11T00:01:09.000000Z",
+          "updated_at": "2026-10-13T12:01:19.000000Z"
+        },
+        {
+          "id": 165394,
+          "manga_id": 2165,
+          "title": "Chapter 10",
+          "slug": "chapter-10",
+          "chapter_number": 10,
+          "source_url": "https://komiku.org/batsu-harem-chapter-10/",
+          "content": null,
+          "views_count": 1801,
+          "created_at": "2026-04-11T00:01:10.000000Z",
+          "updated_at": "2026-10-13T12:23:30.000000Z"
+        },
+        {
+          "id": 165398,
+          "manga_id": 2165,
+          "title": "Chapter 9",
+          "slug": "chapter-9",
+          "chapter_number": 9,
+          "source_url": "https://komiku.org/batsu-harem-chapter-09/",
+          "content": null,
+          "views_count": 1886,
+          "created_at": "2026-04-11T00:01:10.000000Z",
+          "updated_at": "2026-10-13T12:22:58.000000Z"
+        },
+        {
+          "id": 165402,
+          "manga_id": 2165,
+          "title": "Chapter 8",
+          "slug": "chapter-8",
+          "chapter_number": 8,
+          "source_url": "https://komiku.org/batsu-harem-chapter-08/",
+          "content": null,
+          "views_count": 1962,
+          "created_at": "2026-04-11T00:01:11.000000Z",
+          "updated_at": "2026-10-13T12:22:04.000000Z"
+        },
+        {
+          "id": 165406,
+          "manga_id": 2165,
+          "title": "Chapter 7",
+          "slug": "chapter-7",
+          "chapter_number": 7,
+          "source_url": "https://komiku.org/batsu-harem-chapter-07/",
+          "content": null,
+          "views_count": 1984,
+          "created_at": "2026-04-11T00:01:12.000000Z",
+          "updated_at": "2026-10-13T12:21:01.000000Z"
+        },
+        {
+          "id": 165409,
+          "manga_id": 2165,
+          "title": "Chapter 6",
+          "slug": "chapter-6",
+          "chapter_number": 6,
+          "source_url": "https://komiku.org/batsu-harem-chapter-06/",
+          "content": null,
+          "views_count": 2062,
+          "created_at": "2026-04-11T00:01:12.000000Z",
+          "updated_at": "2026-10-13T12:20:11.000000Z"
+        },
+        {
+          "id": 165413,
+          "manga_id": 2165,
+          "title": "Chapter 5",
+          "slug": "chapter-5",
+          "chapter_number": 5,
+          "source_url": "https://komiku.org/batsu-harem-chapter-05/",
+          "content": null,
+          "views_count": 2223,
+          "created_at": "2026-04-11T00:01:13.000000Z",
+          "updated_at": "2026-10-13T12:18:23.000000Z"
+        },
+        {
+          "id": 165418,
+          "manga_id": 2165,
+          "title": "Chapter 4",
+          "slug": "chapter-4",
+          "chapter_number": 4,
+          "source_url": "https://komiku.org/batsu-harem-chapter-04/",
+          "content": null,
+          "views_count": 2371,
+          "created_at": "2026-04-11T00:01:13.000000Z",
+          "updated_at": "2026-10-13T12:16:19.000000Z"
+        },
+        {
+          "id": 165421,
+          "manga_id": 2165,
+          "title": "Chapter 3",
+          "slug": "chapter-3",
+          "chapter_number": 3,
+          "source_url": "https://komiku.org/batsu-harem-chapter-03/",
+          "content": null,
+          "views_count": 2749,
+          "created_at": "2026-04-11T00:01:14.000000Z",
+          "updated_at": "2026-10-13T12:13:56.000000Z"
+        },
+        {
+          "id": 165427,
+          "manga_id": 2165,
+          "title": "Chapter 2",
+          "slug": "chapter-2",
+          "chapter_number": 2,
+          "source_url": "https://komiku.org/batsu-harem-chapter-02/",
+          "content": null,
+          "views_count": 3105,
+          "created_at": "2026-04-11T00:01:15.000000Z",
+          "updated_at": "2026-10-13T12:10:59.000000Z"
+        },
+        {
+          "id": 165430,
+          "manga_id": 2165,
+          "title": "Chapter 1.2",
+          "slug": "chapter-1-2",
+          "chapter_number": 1.2,
+          "source_url": "https://komiku.org/batsu-harem-chapter-01-2/",
+          "content": null,
+          "views_count": 3353,
+          "created_at": "2026-04-11T00:01:15.000000Z",
+          "updated_at": "2026-10-13T12:10:39.000000Z"
+        },
+        {
+          "id": 165433,
+          "manga_id": 2165,
+          "title": "Chapter 1.1",
+          "slug": "chapter-1-1",
+          "chapter_number": 1.1,
+          "source_url": "https://komiku.org/batsu-harem-chapter-01-1/",
+          "content": null,
+          "views_count": 9675,
+          "created_at": "2026-04-11T00:01:16.000000Z",
+          "updated_at": "2026-10-13T12:37:08.000000Z"
+        }
+      ],
+      "comments": [
+        {
+          "id": 1022,
+          "user_id": 39934,
+          "anime_id": null,
+          "content": "Kok dari chapter 45 dan seterusnya kosong",
+          "created_at": "2026-09-07T06:43:58.000000Z",
+          "updated_at": "2026-09-07T06:43:58.000000Z",
+          "parent_id": null,
+          "episode_id": null,
+          "manga_id": 2165,
+          "chapter_id": null,
+          "user": {
+            "id": 39934,
+            "name": "Abdul rahman Wahid",
+            "username": "abdulrahmanwahid",
+            "email": "abdulrahmanwahid949@gmail.com",
+            "is_admin": false,
+            "badge": null,
+            "email_verified_at": null,
+            "google_id": "113214668896502158951",
+            "avatar_url": "https://lh3.googleusercontent.com/a/ACg8ocKWIiGdZAbDGZZSVaisUOTST18irwvKw2Ig144rwLOY65CvEQ=s96-c",
+            "cover_url": null,
+            "bio": null,
+            "profile_public": true,
+            "login_history": null,
+            "created_at": "2026-09-07T06:33:55.000000Z",
+            "updated_at": "2026-09-07T06:33:55.000000Z"
+          },
+          "replies": []
+        }
+      ]
+    },
+    "mangaRank": 1,
+    "firstChapter": {
+      "id": 165433,
+      "manga_id": 2165,
+      "title": "Chapter 1.1",
+      "slug": "chapter-1-1",
+      "chapter_number": 1.1,
+      "source_url": "https://komiku.org/batsu-harem-chapter-01-1/",
+      "content": null,
+      "views_count": 9675,
+      "created_at": "2026-04-11T00:01:16.000000Z",
+      "updated_at": "2026-10-13T12:37:08.000000Z"
+    },
+    "relatedMangas": [
+      {
+        "id": 3076,
+        "title": "Hare-Kon.",
+        "slug": "hare-kon",
+        "synopsis": "Hare adalah seorang siswa SMA yang hidupnya tiba-tiba berubah setelah dia diminta menjadi pacar pura-pura oleh teman sekelasnya, Kaname. Kaname membutuhkan seseorang untuk menghadiri acara sekolah agar keluarganya tidak mencemaskan status sosialnya. Meskipun pada awalnya canggung, interaksi mereka yang sederhana mulai memperlihatkan sisi lain dari kepribadian masing-masing.\nSeiring waktu, Hare dan Kaname semakin dekat, menghadapi berbagai tantangan dari lingkungan sekitar mereka. Kisah ini menggambarkan bagaimana hubungan yang awalnya hanya hubungan palsu berkembang menjadi lebih berarti, sekaligus mengeksplorasi isu tentang identitas dan tekanan sosial di kalangan remaja.",
+        "status": "Ongoing",
+        "source_url": "https://komiku.org/manga/hare-kon/",
+        "poster": "https://thumbnail.komiku.org/uploads/manga/hare-kon/manga_thumbnail-Manga-Hare-Kon..jpg?w=500",
+        "type": "Manga",
+        "author": "-",
+        "artist": "-",
+        "is_featured": 0,
+        "rating": null,
+        "release_year": 2026,
+        "views_count": 1416,
+        "created_at": "2026-05-10T03:10:37.000000Z",
+        "updated_at": "2026-10-11T01:53:36.000000Z",
+        "shared_genres_count": 6,
+        "last_chapter": {
+          "id": 238390,
+          "manga_id": 3076,
+          "title": "Chapter 153",
+          "slug": "chapter-153",
+          "chapter_number": 153,
+          "source_url": "https://komiku.org/hare-kon-chapter-153/",
+          "content": null,
+          "views_count": 10,
+          "created_at": "2026-05-10T03:10:38.000000Z",
+          "updated_at": "2026-09-29T01:57:31.000000Z"
+        },
+        "genres": [
+          {
+            "id": 3,
+            "name": "Comedy",
+            "slug": "comedy",
+            "icon": "😂",
+            "created_at": "2026-03-23T06:39:14.000000Z",
+            "updated_at": "2026-03-23T06:39:14.000000Z",
+            "pivot": {
+              "manga_id": 3076,
+              "genre_id": 3
+            }
+          },
+          {
+            "id": 4,
+            "name": "Drama",
+            "slug": "drama",
+            "icon": "🎭",
+            "created_at": "2026-03-23T06:39:14.000000Z",
+            "updated_at": "2026-03-23T06:39:14.000000Z",
+            "pivot": {
+              "manga_id": 3076,
+              "genre_id": 4
+            }
+          },
+          {
+            "id": 5,
+            "name": "Ecchi",
+            "slug": "ecchi",
+            "icon": "🔞",
+            "created_at": "2026-03-23T06:39:14.000000Z",
+            "updated_at": "2026-03-23T06:39:14.000000Z",
+            "pivot": {
+              "manga_id": 3076,
+              "genre_id": 5
+            }
+          },
+          {
+            "id": 34,
+            "name": "Harem",
+            "slug": "harem",
+            "icon": null,
+            "created_at": "2026-03-23T15:31:50.000000Z",
+            "updated_at": "2026-03-23T15:31:50.000000Z",
+            "pivot": {
+              "manga_id": 3076,
+              "genre_id": 34
+            }
+          },
+          {
+            "id": 44,
+            "name": "Mature",
+            "slug": "mature",
+            "icon": null,
+            "created_at": "2026-03-23T15:48:50.000000Z",
+            "updated_at": "2026-03-23T15:48:50.000000Z",
+            "pivot": {
+              "manga_id": 3076,
+              "genre_id": 44
+            }
+          },
+          {
+            "id": 13,
+            "name": "Romance",
+            "slug": "romance",
+            "icon": "❤️",
+            "created_at": "2026-03-23T06:39:14.000000Z",
+            "updated_at": "2026-03-23T06:39:14.000000Z",
+            "pivot": {
+              "manga_id": 3076,
+              "genre_id": 13
+            }
+          },
+          {
+            "id": 25,
+            "name": "Seinen",
+            "slug": "seinen",
+            "icon": null,
+            "created_at": "2026-03-23T08:31:28.000000Z",
+            "updated_at": "2026-03-23T08:31:28.000000Z",
+            "pivot": {
+              "manga_id": 3076,
+              "genre_id": 25
+            }
+          },
+          {
+            "id": 15,
+            "name": "Slice of Life",
+            "slug": "slice-of-life",
+            "icon": "🍱",
+            "created_at": "2026-03-23T06:39:14.000000Z",
+            "updated_at": "2026-03-23T06:39:14.000000Z",
+            "pivot": {
+              "manga_id": 3076,
+              "genre_id": 15
+            }
+          }
+        ]
+      },
+      {
+        "id": 76,
+        "title": "Amentia",
+        "slug": "amentia",
+        "synopsis": "Amentia menceritakan tentang sebuah dunia di mana orang-orang kehilangan ingatan mereka secara misterius. Tokoh utama berusaha mengungkap penyebab dari kehilangan ingatan massal tersebut sembari menghadapi berbagai konflik dan tantangan yang terjadi akibat situasi yang kacau. Dalam perjalanan ini, ia juga berinteraksi dengan berbagai karakter yang memiliki latar belakang dan tujuan berbeda, yang membuat kisahnya semakin kompleks dan menarik. Cerita semakin berkembang ketika tokoh utama menyadari bahwa ada kekuatan tersembunyi yang mengendalikan peristiwa amnesia ini. Ia harus memutuskan kepada siapa ia bisa mempercayai demi mengembalikan ingatan dan menciptakan harapan baru bagi dunia yang semakin gelap akibat kehilangan memori ini. Amentia menyajikan tema tentang identitas, kepercayaan, dan perjuangan menghadapi ketidakpastian dengan gaya visual yang memikat dan narasi yang mendalam.",
+        "status": "Ongoing",
+        "source_url": "https://komiku.org/manga/amentia/",
+        "poster": "https://thumbnail.komiku.org/uploads/manga/amentia/manga_thumbnail-Komik-Amentia.jpg?w=500",
+        "type": "Manhwa",
+        "author": "Saputra Harjono",
+        "artist": "-",
+        "is_featured": 0,
+        "rating": null,
+        "release_year": 2026,
+        "views_count": 691,
+        "created_at": "2026-03-23T15:51:28.000000Z",
+        "updated_at": "2026-10-10T21:58:30.000000Z",
+        "shared_genres_count": 6,
+        "last_chapter": {
+          "id": 5199,
+          "manga_id": 76,
+          "title": "Chapter 37",
+          "slug": "chapter-37",
+          "chapter_number": 37,
+          "source_url": "https://komiku.org/amentia-chapter-37/",
+          "content": null,
+          "views_count": 18,
+          "created_at": "2026-03-23T15:52:42.000000Z",
+          "updated_at": "2026-09-29T00:13:54.000000Z"
+        },
+        "genres": [
+          {
+            "id": 3,
+            "name": "Comedy",
+            "slug": "comedy",
+            "icon": "😂",
+            "created_at": "2026-03-23T06:39:14.000000Z",
+            "updated_at": "2026-03-23T06:39:14.000000Z",
+            "pivot": {
+              "manga_id": 76,
+              "genre_id": 3
+            }
+          },
+          {
+            "id": 4,
+            "name": "Drama",
+            "slug": "drama",
+            "icon": "🎭",
+            "created_at": "2026-03-23T06:39:14.000000Z",
+            "updated_at": "2026-03-23T06:39:14.000000Z",
+            "pivot": {
+              "manga_id": 76,
+              "genre_id": 4
+            }
+          },
+          {
+            "id": 5,
+            "name": "Ecchi",
+            "slug": "ecchi",
+            "icon": "🔞",
+            "created_at": "2026-03-23T06:39:14.000000Z",
+            "updated_at": "2026-03-23T06:39:14.000000Z",
+            "pivot": {
+              "manga_id": 76,
+              "genre_id": 5
+            }
+          },
+          {
+            "id": 34,
+            "name": "Harem",
+            "slug": "harem",
+            "icon": null,
+            "created_at": "2026-03-23T15:31:50.000000Z",
+            "updated_at": "2026-03-23T15:31:50.000000Z",
+            "pivot": {
+              "manga_id": 76,
+              "genre_id": 34
+            }
+          },
+          {
+            "id": 12,
+            "name": "Psychological",
+            "slug": "psychological",
+            "icon": "🧠",
+            "created_at": "2026-03-23T06:39:14.000000Z",
+            "updated_at": "2026-03-23T06:39:14.000000Z",
+            "pivot": {
+              "manga_id": 76,
+              "genre_id": 12
+            }
+          },
+          {
+            "id": 13,
+            "name": "Romance",
+            "slug": "romance",
+            "icon": "❤️",
+            "created_at": "2026-03-23T06:39:14.000000Z",
+            "updated_at": "2026-03-23T06:39:14.000000Z",
+            "pivot": {
+              "manga_id": 76,
+              "genre_id": 13
+            }
+          },
+          {
+            "id": 24,
+            "name": "School life",
+            "slug": "school-life",
+            "icon": null,
+            "created_at": "2026-03-23T08:31:28.000000Z",
+            "updated_at": "2026-03-23T08:31:28.000000Z",
+            "pivot": {
+              "manga_id": 76,
+              "genre_id": 24
+            }
+          },
+          {
+            "id": 25,
+            "name": "Seinen",
+            "slug": "seinen",
+            "icon": null,
+            "created_at": "2026-03-23T08:31:28.000000Z",
+            "updated_at": "2026-03-23T08:31:28.000000Z",
+            "pivot": {
+              "manga_id": 76,
+              "genre_id": 25
+            }
+          },
+          {
+            "id": 17,
+            "name": "Supernatural",
+            "slug": "supernatural",
+            "icon": "🔮",
+            "created_at": "2026-03-23T06:39:14.000000Z",
+            "updated_at": "2026-03-23T06:39:14.000000Z",
+            "pivot": {
+              "manga_id": 76,
+              "genre_id": 17
+            }
+          }
+        ]
+      },
+      {
+        "id": 2057,
+        "title": "Youkoso Jitsuryoku Shijou Shugi no Kyoushitsu e",
+        "slug": "youkoso-jitsuryoku-shijou-shugi-no-kyoushitsu-eyoukoso-jitsuryoku-shijou-shugi-no-kyoushitsu-e",
+        "synopsis": "Komik ini bercerita tentang Kiyotaka Ayanokoji, seorang siswa yang dipindahkan ke Akademi Koudo Ikusei yang sangat elit dan hanya menerima murid dengan kemampuan luar biasa. Di sekolah ini, siswa dinilai berdasarkan kemampuan mereka dalam berbagai aspek, dan pesaingannya sangat sengit demi mencapai posisi tertinggi di kelas. Kiyotaka, yang berusaha menyembunyikan kemampuan sesungguhnya, menjalani kehidupannya dengan cerdik sambil mempelajari kekuatan teman-temannya dan lawan-lawannya.\n\nSeiring cerita berkembang, Kiyotaka mendapatkan teman sekelas seperti Suzune Horikita dan Kei Karuizawa yang juga memiliki ambisi besar. Bersama-sama mereka menghadapi tantangan kelas dan interaksi rumit antara siswa yang berlomba menjadi yang terbaik. Komik ini mengangkat tema kecerdasan, strategi, dan dinamika sosial yang kompleks di lingkungan sekolah paling kompetitif tersebut.",
+        "status": "Ongoing",
+        "source_url": "https://komiku.org/manga/youkoso-jitsuryoku-shijou-shugi-no-kyoushitsu-e/",
+        "poster": "https://thumbnail.komiku.org/uploads/manga/youkoso-jitsuryoku-shijou-shugi-no-kyoushitsu-e/manga_thumbnail-Komik-Youkoso-Jitsuryoku-Shijou-Shugi-no-Kyoushitsu-e.jpg?w=500",
+        "type": "Manga",
+        "author": "-",
+        "artist": "-",
+        "is_featured": 0,
+        "rating": "0.0",
+        "release_year": 2026,
+        "views_count": 521,
+        "created_at": "2026-04-08T02:04:29.000000Z",
+        "updated_at": "2026-10-11T11:03:34.000000Z",
+        "shared_genres_count": 6,
+        "last_chapter": {
+          "id": 155330,
+          "manga_id": 2057,
+          "title": "Chapter 72",
+          "slug": "chapter-72",
+          "chapter_number": 72,
+          "source_url": "https://komiku.org/youkoso-jitsuryoku-shijou-shugi-no-kyoushitsu-e-chapter-72/",
+          "content": null,
+          "views_count": 12,
+          "created_at": "2026-04-08T02:04:30.000000Z",
+          "updated_at": "2026-10-03T17:51:47.000000Z"
+        },
+        "genres": [
+          {
+            "id": 3,
+            "name": "Comedy",
+            "slug": "comedy",
+            "icon": "😂",
+            "created_at": "2026-03-23T06:39:14.000000Z",
+            "updated_at": "2026-03-23T06:39:14.000000Z",
+            "pivot": {
+              "manga_id": 2057,
+              "genre_id": 3
+            }
+          },
+          {
+            "id": 4,
+            "name": "Drama",
+            "slug": "drama",
+            "icon": "🎭",
+            "created_at": "2026-03-23T06:39:14.000000Z",
+            "updated_at": "2026-03-23T06:39:14.000000Z",
+            "pivot": {
+              "manga_id": 2057,
+              "genre_id": 4
+            }
+          },
+          {
+            "id": 5,
+            "name": "Ecchi",
+            "slug": "ecchi",
+            "icon": "🔞",
+            "created_at": "2026-03-23T06:39:14.000000Z",
+            "updated_at": "2026-03-23T06:39:14.000000Z",
+            "pivot": {
+              "manga_id": 2057,
+              "genre_id": 5
+            }
+          },
+          {
+            "id": 34,
+            "name": "Harem",
+            "slug": "harem",
+            "icon": null,
+            "created_at": "2026-03-23T15:31:50.000000Z",
+            "updated_at": "2026-03-23T15:31:50.000000Z",
+            "pivot": {
+              "manga_id": 2057,
+              "genre_id": 34
+            }
+          },
+          {
+            "id": 13,
+            "name": "Romance",
+            "slug": "romance",
+            "icon": "❤️",
+            "created_at": "2026-03-23T06:39:14.000000Z",
+            "updated_at": "2026-03-23T06:39:14.000000Z",
+            "pivot": {
+              "manga_id": 2057,
+              "genre_id": 13
+            }
+          },
+          {
+            "id": 24,
+            "name": "School life",
+            "slug": "school-life",
+            "icon": null,
+            "created_at": "2026-03-23T08:31:28.000000Z",
+            "updated_at": "2026-03-23T08:31:28.000000Z",
+            "pivot": {
+              "manga_id": 2057,
+              "genre_id": 24
+            }
+          },
+          {
+            "id": 25,
+            "name": "Seinen",
+            "slug": "seinen",
+            "icon": null,
+            "created_at": "2026-03-23T08:31:28.000000Z",
+            "updated_at": "2026-03-23T08:31:28.000000Z",
+            "pivot": {
+              "manga_id": 2057,
+              "genre_id": 25
+            }
+          }
+        ]
+      },
+      {
+        "id": 3087,
+        "title": "Youkoso Jitsuryoku Shijou Shugi no Kyoushitsu e",
+        "slug": "youkoso-jitsuryoku-shijou-shugi-no-kyoushitsu-e",
+        "synopsis": "Komik ini bercerita tentang Kiyotaka Ayanokoji, seorang siswa yang dipindahkan ke Akademi Koudo Ikusei yang sangat elit dan hanya menerima murid dengan kemampuan luar biasa. Di sekolah ini, siswa dinilai berdasarkan kemampuan mereka dalam berbagai aspek, dan pesaingannya sangat sengit demi mencapai posisi tertinggi di kelas. Kiyotaka, yang berusaha menyembunyikan kemampuan sesungguhnya, menjalani kehidupannya dengan cerdik sambil mempelajari kekuatan teman-temannya dan lawan-lawannya.\n\nSeiring cerita berkembang, Kiyotaka mendapatkan teman sekelas seperti Suzune Horikita dan Kei Karuizawa yang juga memiliki ambisi besar. Bersama-sama mereka menghadapi tantangan kelas dan interaksi rumit antara siswa yang berlomba menjadi yang terbaik. Komik ini mengangkat tema kecerdasan, strategi, dan dinamika sosial yang kompleks di lingkungan sekolah paling kompetitif tersebut.",
+        "status": "Ongoing",
+        "source_url": "https://komiku.org/manga/youkoso-jitsuryoku-shijou-shugi-no-kyoushitsu-e/",
+        "poster": "https://thumbnail.komiku.org/uploads/manga/youkoso-jitsuryoku-shijou-shugi-no-kyoushitsu-e/manga_thumbnail-Komik-Youkoso-Jitsuryoku-Shijou-Shugi-no-Kyoushitsu-e.jpg?w=500",
+        "type": "Manga",
+        "author": "-",
+        "artist": "-",
+        "is_featured": 0,
+        "rating": null,
+        "release_year": 2026,
+        "views_count": 400,
+        "created_at": "2026-05-10T03:11:40.000000Z",
+        "updated_at": "2026-10-11T11:04:04.000000Z",
+        "shared_genres_count": 6,
+        "last_chapter": {
+          "id": 238998,
+          "manga_id": 3087,
+          "title": "Chapter 72",
+          "slug": "chapter-72",
+          "chapter_number": 72,
+          "source_url": "https://komiku.org/youkoso-jitsuryoku-shijou-shugi-no-kyoushitsu-e-chapter-72/",
+          "content": null,
+          "views_count": 11,
+          "created_at": "2026-05-10T03:11:42.000000Z",
+          "updated_at": "2026-10-09T11:49:28.000000Z"
+        },
+        "genres": [
+          {
+            "id": 3,
+            "name": "Comedy",
+            "slug": "comedy",
+            "icon": "😂",
+            "created_at": "2026-03-23T06:39:14.000000Z",
+            "updated_at": "2026-03-23T06:39:14.000000Z",
+            "pivot": {
+              "manga_id": 3087,
+              "genre_id": 3
+            }
+          },
+          {
+            "id": 4,
+            "name": "Drama",
+            "slug": "drama",
+            "icon": "🎭",
+            "created_at": "2026-03-23T06:39:14.000000Z",
+            "updated_at": "2026-03-23T06:39:14.000000Z",
+            "pivot": {
+              "manga_id": 3087,
+              "genre_id": 4
+            }
+          },
+          {
+            "id": 5,
+            "name": "Ecchi",
+            "slug": "ecchi",
+            "icon": "🔞",
+            "created_at": "2026-03-23T06:39:14.000000Z",
+            "updated_at": "2026-03-23T06:39:14.000000Z",
+            "pivot": {
+              "manga_id": 3087,
+              "genre_id": 5
+            }
+          },
+          {
+            "id": 34,
+            "name": "Harem",
+            "slug": "harem",
+            "icon": null,
+            "created_at": "2026-03-23T15:31:50.000000Z",
+            "updated_at": "2026-03-23T15:31:50.000000Z",
+            "pivot": {
+              "manga_id": 3087,
+              "genre_id": 34
+            }
+          },
+          {
+            "id": 13,
+            "name": "Romance",
+            "slug": "romance",
+            "icon": "❤️",
+            "created_at": "2026-03-23T06:39:14.000000Z",
+            "updated_at": "2026-03-23T06:39:14.000000Z",
+            "pivot": {
+              "manga_id": 3087,
+              "genre_id": 13
+            }
+          },
+          {
+            "id": 24,
+            "name": "School life",
+            "slug": "school-life",
+            "icon": null,
+            "created_at": "2026-03-23T08:31:28.000000Z",
+            "updated_at": "2026-03-23T08:31:28.000000Z",
+            "pivot": {
+              "manga_id": 3087,
+              "genre_id": 24
+            }
+          },
+          {
+            "id": 25,
+            "name": "Seinen",
+            "slug": "seinen",
+            "icon": null,
+            "created_at": "2026-03-23T08:31:28.000000Z",
+            "updated_at": "2026-03-23T08:31:28.000000Z",
+            "pivot": {
+              "manga_id": 3087,
+              "genre_id": 25
+            }
+          }
+        ]
+      },
+      {
+        "id": 3061,
+        "title": "Youkoso Jitsuryoku Shijou Shugi no Kyoushitsu e: 2-nensei-hen",
+        "slug": "youkoso-jitsuryoku-shijou-shugi-no-kyoushitsu-e-2-nensei-hen",
+        "synopsis": "Komik ini melanjutkan kisah siswa kelas dua di Akademi Naruhodou yang dikenal dengan sistem klasifikasi yang sangat kompetitif dan menuntut kemampuan akademik serta sosial yang tinggi. Cerita berfokus pada perjuangan para siswa untuk mempertahankan posisi mereka di kelas unggulan sambil mengatasi konflik internal dan eksternal yang semakin kompleks. Setiap karakter menghadapi tantangan baru yang menuntut strategi cerdas serta kepekaan emosional dalam menghadapi rekan dan guru.\n\nDi semester kedua, tekanan semakin besar dengan kedatangan siswa baru dan perubahan dalam dinamika kelas yang memicu persaingan lebih sengit. Kisah ini menggambarkan bagaimana para siswa belajar tidak hanya tentang ilmu pengetahuan, tetapi juga tentang nilai kerja sama, integritas, dan pentingnya menjadi pribadi yang bertanggung jawab di tengah sistem yang keras dan penuh intrik.",
+        "status": "Ongoing",
+        "source_url": "https://komiku.org/manga/youkoso-jitsuryoku-shijou-shugi-no-kyoushitsu-e-2-nensei-hen/",
+        "poster": "https://thumbnail.komiku.org/uploads/manga/youkoso-jitsuryoku-shijou-shugi-no-kyoushitsu-e-2-nensei-hen/manga_thumbnail-Youkoso-Jitsuryoku-Shijou-Shugi-no-Kyoushitsu-1.jpg?w=500",
+        "type": "Manga",
+        "author": "-",
+        "artist": "-",
+        "is_featured": 0,
+        "rating": null,
+        "release_year": 2026,
+        "views_count": 261,
+        "created_at": "2026-05-10T03:09:09.000000Z",
+        "updated_at": "2026-10-11T11:03:58.000000Z",
+        "shared_genres_count": 6,
+        "last_chapter": {
+          "id": 237546,
+          "manga_id": 3061,
+          "title": "Chapter 19.7",
+          "slug": "chapter-19-7",
+          "chapter_number": 19.7,
+          "source_url": "https://komiku.org/youkoso-jitsuryoku-shijou-shugi-no-kyoushitsu-e-2-nensei-hen-chapter-19-7/",
+          "content": null,
+          "views_count": 21,
+          "created_at": "2026-05-10T03:09:10.000000Z",
+          "updated_at": "2026-09-11T01:02:41.000000Z"
+        },
+        "genres": [
+          {
+            "id": 3,
+            "name": "Comedy",
+            "slug": "comedy",
+            "icon": "😂",
+            "created_at": "2026-03-23T06:39:14.000000Z",
+            "updated_at": "2026-03-23T06:39:14.000000Z",
+            "pivot": {
+              "manga_id": 3061,
+              "genre_id": 3
+            }
+          },
+          {
+            "id": 4,
+            "name": "Drama",
+            "slug": "drama",
+            "icon": "🎭",
+            "created_at": "2026-03-23T06:39:14.000000Z",
+            "updated_at": "2026-03-23T06:39:14.000000Z",
+            "pivot": {
+              "manga_id": 3061,
+              "genre_id": 4
+            }
+          },
+          {
+            "id": 5,
+            "name": "Ecchi",
+            "slug": "ecchi",
+            "icon": "🔞",
+            "created_at": "2026-03-23T06:39:14.000000Z",
+            "updated_at": "2026-03-23T06:39:14.000000Z",
+            "pivot": {
+              "manga_id": 3061,
+              "genre_id": 5
+            }
+          },
+          {
+            "id": 34,
+            "name": "Harem",
+            "slug": "harem",
+            "icon": null,
+            "created_at": "2026-03-23T15:31:50.000000Z",
+            "updated_at": "2026-03-23T15:31:50.000000Z",
+            "pivot": {
+              "manga_id": 3061,
+              "genre_id": 34
+            }
+          },
+          {
+            "id": 12,
+            "name": "Psychological",
+            "slug": "psychological",
+            "icon": "🧠",
+            "created_at": "2026-03-23T06:39:14.000000Z",
+            "updated_at": "2026-03-23T06:39:14.000000Z",
+            "pivot": {
+              "manga_id": 3061,
+              "genre_id": 12
+            }
+          },
+          {
+            "id": 13,
+            "name": "Romance",
+            "slug": "romance",
+            "icon": "❤️",
+            "created_at": "2026-03-23T06:39:14.000000Z",
+            "updated_at": "2026-03-23T06:39:14.000000Z",
+            "pivot": {
+              "manga_id": 3061,
+              "genre_id": 13
+            }
+          },
+          {
+            "id": 24,
+            "name": "School life",
+            "slug": "school-life",
+            "icon": null,
+            "created_at": "2026-03-23T08:31:28.000000Z",
+            "updated_at": "2026-03-23T08:31:28.000000Z",
+            "pivot": {
+              "manga_id": 3061,
+              "genre_id": 24
+            }
+          },
+          {
+            "id": 25,
+            "name": "Seinen",
+            "slug": "seinen",
+            "icon": null,
+            "created_at": "2026-03-23T08:31:28.000000Z",
+            "updated_at": "2026-03-23T08:31:28.000000Z",
+            "pivot": {
+              "manga_id": 3061,
+              "genre_id": 25
+            }
+          }
+        ]
+      },
+      {
+        "id": 4209,
+        "title": "Youkoso Jitsuryoku Shijou Shugi no Kyoushitsu e √Horikita",
+        "slug": "youkoso-jitsuryoku-shijou-shugi-no-kyoushitsu-e-horikita",
+        "synopsis": "Cerita ini mengikuti kehidupan Kiyotaka Ayanokoji, seorang siswa yang masuk ke SMA prestisius yang menerapkan sistem pendidikan sangat ketat dan kompetitif. Di sekolah ini, setiap murid dituntut untuk menunjukkan kemampuan terbaik mereka dalam berbagai aspek akademik dan sosial demi mencapai prestasi tertinggi. Ayanokoji yang memiliki latar belakang misterius dan kemampuan luar biasa, berusaha menjaga dirinya tetap rendah hati dan tak menarik perhatian, meskipun ia mampu mengungguli murid lainnya secara diam-diam.\n\nDalam prosesnya, Ayanokoji bertemu dengan Suzune Horikita, seorang siswi serius yang ingin naik kelas dan berhasil mengubah cara pandang teman-temannya terhadap sistem yang keras ini. Dengan berbagai intrik dan strategi, mereka berdua menghadapi tantangan yang menguji kecerdasan, kepribadian, dan kekuatan mental demi bertahan dan berkembang di lingkungan yang penuh tekanan tersebut.",
+        "status": "Ongoing",
+        "source_url": "https://komiku.org/manga/youkoso-jitsuryoku-shijou-shugi-no-kyoushitsu-e-%e2%88%9ahorikita/",
+        "poster": "https://thumbnail.komiku.org/uploads/manga/youkoso-jitsuryoku-shijou-shugi-no-kyoushitsu-e-horikita/manga_thumbnail-Head-Youkoso-Jitsuryoku-shijou-shugi-no-kyoushitsu-e.jpg?w=500",
+        "type": "Manga",
+        "author": "-",
+        "artist": "-",
+        "is_featured": 0,
+        "rating": null,
+        "release_year": 2026,
+        "views_count": 124,
+        "created_at": "2026-05-10T04:37:08.000000Z",
+        "updated_at": "2026-10-11T11:03:40.000000Z",
+        "shared_genres_count": 6,
+        "last_chapter": {
+          "id": 287364,
+          "manga_id": 4209,
+          "title": "Chapter 15",
+          "slug": "chapter-15",
+          "chapter_number": 15,
+          "source_url": "https://komiku.org/youkoso-jitsuryoku-shijou-shugi-no-kyoushitsu-e-%e2%88%9ahorikita-chapter-15/",
+          "content": null,
+          "views_count": 11,
+          "created_at": "2026-05-10T04:37:09.000000Z",
+          "updated_at": "2026-10-03T13:08:16.000000Z"
+        },
+        "genres": [
+          {
+            "id": 3,
+            "name": "Comedy",
+            "slug": "comedy",
+            "icon": "😂",
+            "created_at": "2026-03-23T06:39:14.000000Z",
+            "updated_at": "2026-03-23T06:39:14.000000Z",
+            "pivot": {
+              "manga_id": 4209,
+              "genre_id": 3
+            }
+          },
+          {
+            "id": 4,
+            "name": "Drama",
+            "slug": "drama",
+            "icon": "🎭",
+            "created_at": "2026-03-23T06:39:14.000000Z",
+            "updated_at": "2026-03-23T06:39:14.000000Z",
+            "pivot": {
+              "manga_id": 4209,
+              "genre_id": 4
+            }
+          },
+          {
+            "id": 5,
+            "name": "Ecchi",
+            "slug": "ecchi",
+            "icon": "🔞",
+            "created_at": "2026-03-23T06:39:14.000000Z",
+            "updated_at": "2026-03-23T06:39:14.000000Z",
+            "pivot": {
+              "manga_id": 4209,
+              "genre_id": 5
+            }
+          },
+          {
+            "id": 34,
+            "name": "Harem",
+            "slug": "harem",
+            "icon": null,
+            "created_at": "2026-03-23T15:31:50.000000Z",
+            "updated_at": "2026-03-23T15:31:50.000000Z",
+            "pivot": {
+              "manga_id": 4209,
+              "genre_id": 34
+            }
+          },
+          {
+            "id": 13,
+            "name": "Romance",
+            "slug": "romance",
+            "icon": "❤️",
+            "created_at": "2026-03-23T06:39:14.000000Z",
+            "updated_at": "2026-03-23T06:39:14.000000Z",
+            "pivot": {
+              "manga_id": 4209,
+              "genre_id": 13
+            }
+          },
+          {
+            "id": 24,
+            "name": "School life",
+            "slug": "school-life",
+            "icon": null,
+            "created_at": "2026-03-23T08:31:28.000000Z",
+            "updated_at": "2026-03-23T08:31:28.000000Z",
+            "pivot": {
+              "manga_id": 4209,
+              "genre_id": 24
+            }
+          },
+          {
+            "id": 25,
+            "name": "Seinen",
+            "slug": "seinen",
+            "icon": null,
+            "created_at": "2026-03-23T08:31:28.000000Z",
+            "updated_at": "2026-03-23T08:31:28.000000Z",
+            "pivot": {
+              "manga_id": 4209,
+              "genre_id": 25
+            }
+          }
+        ]
+      },
+      {
+        "id": 5449,
+        "title": "Izure Shinwa no Ragnarok",
+        "slug": "izure-shinwa-no-ragnarok",
+        "synopsis": "Komik ini mengisahkan perjalanan para dewa dan pahlawan dalam menghadapi akhir zaman yang dikenal sebagai Ragnarok. Dalam kisah ini, berbagai makhluk mitos dan legenda Norse bersatu atau bertarung demi nasib dunia yang semakin dekat dengan kehancuran total. Tokoh utama berjuang menemukan tujuan dan kekuatan sejati di tengah konflik dan pengkhianatan yang mengancam keseimbangan alam semesta.\n\nCerita semakin mendalam ketika aliansi lama diuji oleh ambisi tersembunyi dan rahasia masa lalu yang terungkap. Setiap karakter menghadapi dilema moral, konflik batin, dan perubahan besar yang mempengaruhi jalan cerita. Dengan latar belakang mitologi yang kental, komik ini menawarkan perpaduan antara aksi, drama, dan refleksi tentang takdir yang sulit dihindari.",
+        "status": "Ongoing",
+        "source_url": "https://komiku.org/manga/izure-shinwa-no-ragnarok/",
+        "poster": "https://thumbnail.komiku.org/uploads/manga/izure-shinwa-no-ragnarok/manga_thumbnail-Izure-Shinwa-no-Houkago-Sensou-1.jpg?w=500",
+        "type": "Manga",
+        "author": "-",
+        "artist": "-",
+        "is_featured": 0,
+        "rating": null,
+        "release_year": 2026,
+        "views_count": 64,
+        "created_at": "2026-05-10T05:26:34.000000Z",
+        "updated_at": "2026-10-11T03:12:30.000000Z",
+        "shared_genres_count": 6,
+        "last_chapter": {
+          "id": 309900,
+          "manga_id": 5449,
+          "title": "Chapter 4",
+          "slug": "chapter-4",
+          "chapter_number": 4,
+          "source_url": "https://komiku.org/izure-shinwa-no-ragnarok-chapter-4/",
+          "content": null,
+          "views_count": 7,
+          "created_at": "2026-05-10T05:26:35.000000Z",
+          "updated_at": "2026-10-01T14:07:59.000000Z"
+        },
+        "genres": [
+          {
+            "id": 1,
+            "name": "Action",
+            "slug": "action",
+            "icon": "⚔️",
+            "created_at": "2026-03-23T06:39:14.000000Z",
+            "updated_at": "2026-03-23T06:39:14.000000Z",
+            "pivot": {
+              "manga_id": 5449,
+              "genre_id": 1
+            }
+          },
+          {
+            "id": 3,
+            "name": "Comedy",
+            "slug": "comedy",
+            "icon": "😂",
+            "created_at": "2026-03-23T06:39:14.000000Z",
+            "updated_at": "2026-03-23T06:39:14.000000Z",
+            "pivot": {
+              "manga_id": 5449,
+              "genre_id": 3
+            }
+          },
+          {
+            "id": 4,
+            "name": "Drama",
+            "slug": "drama",
+            "icon": "🎭",
+            "created_at": "2026-03-23T06:39:14.000000Z",
+            "updated_at": "2026-03-23T06:39:14.000000Z",
+            "pivot": {
+              "manga_id": 5449,
+              "genre_id": 4
+            }
+          },
+          {
+            "id": 5,
+            "name": "Ecchi",
+            "slug": "ecchi",
+            "icon": "🔞",
+            "created_at": "2026-03-23T06:39:14.000000Z",
+            "updated_at": "2026-03-23T06:39:14.000000Z",
+            "pivot": {
+              "manga_id": 5449,
+              "genre_id": 5
+            }
+          },
+          {
+            "id": 6,
+            "name": "Fantasy",
+            "slug": "fantasy",
+            "icon": "🪄",
+            "created_at": "2026-03-23T06:39:14.000000Z",
+            "updated_at": "2026-03-23T06:39:14.000000Z",
+            "pivot": {
+              "manga_id": 5449,
+              "genre_id": 6
+            }
+          },
+          {
+            "id": 34,
+            "name": "Harem",
+            "slug": "harem",
+            "icon": null,
+            "created_at": "2026-03-23T15:31:50.000000Z",
+            "updated_at": "2026-03-23T15:31:50.000000Z",
+            "pivot": {
+              "manga_id": 5449,
+              "genre_id": 34
+            }
+          },
+          {
+            "id": 44,
+            "name": "Mature",
+            "slug": "mature",
+            "icon": null,
+            "created_at": "2026-03-23T15:48:50.000000Z",
+            "updated_at": "2026-03-23T15:48:50.000000Z",
+            "pivot": {
+              "manga_id": 5449,
+              "genre_id": 44
+            }
+          },
+          {
+            "id": 13,
+            "name": "Romance",
+            "slug": "romance",
+            "icon": "❤️",
+            "created_at": "2026-03-23T06:39:14.000000Z",
+            "updated_at": "2026-03-23T06:39:14.000000Z",
+            "pivot": {
+              "manga_id": 5449,
+              "genre_id": 13
+            }
+          },
+          {
+            "id": 25,
+            "name": "Seinen",
+            "slug": "seinen",
+            "icon": null,
+            "created_at": "2026-03-23T08:31:28.000000Z",
+            "updated_at": "2026-03-23T08:31:28.000000Z",
+            "pivot": {
+              "manga_id": 5449,
+              "genre_id": 25
+            }
+          }
+        ]
+      },
+      {
+        "id": 6152,
+        "title": "Daten no Kugami – SLASHDOG –",
+        "slug": "daten-no-kugami-slashdog",
+        "synopsis": "Daten no Kugami berkisah tentang sebuah teknologi canggih yang memungkinkan replika digital manusia atau data cermin untuk berinteraksi di dunia nyata. Cerita berpusat pada tokoh utama yang secara tidak sengaja terjebak dalam konflik antara berbagai kelompok yang ingin menguasai teknologi tersebut demi kepentingan mereka sendiri. Dunia yang penuh dengan intrik dan bahaya ini menuntut mereka untuk beradaptasi dan bertarung demi bertahan hidup serta mengungkap kebenaran di balik teknologi data cermin.\n\nPerjalanan karakter utama membawa mereka mengenal sisi gelap dan terang dari kemajuan teknologi, sambil berjuang melindungi orang-orang yang mereka cintai. Dengan konflik yang semakin memanas dan tantangan yang datang tanpa henti, mereka harus belajar mempercayai diri sendiri dan orang lain untuk menghadapi masa depan yang penuh ketidakpastian dan risiko besar.",
+        "status": "Ongoing",
+        "source_url": "https://komiku.org/manga/daten-no-kugami-slashdog/",
+        "poster": "https://komiku.org/wp-content/uploads/2022/10/Daten-no-Kugami-–-SLASHDOG-–-1.png?w=500",
+        "type": "Manga",
+        "author": "-",
+        "artist": "-",
+        "is_featured": 0,
+        "rating": null,
+        "release_year": 2026,
+        "views_count": 28,
+        "created_at": "2026-05-10T05:43:30.000000Z",
+        "updated_at": "2026-10-10T23:43:34.000000Z",
+        "shared_genres_count": 6,
+        "last_chapter": {
+          "id": 315042,
+          "manga_id": 6152,
+          "title": "Chapter 1",
+          "slug": "chapter-1",
+          "chapter_number": 1,
+          "source_url": "https://komiku.org/daten-no-kugami-slashdog-chapter-1/",
+          "content": null,
+          "views_count": 10,
+          "created_at": "2026-05-10T05:43:31.000000Z",
+          "updated_at": "2026-09-30T06:39:11.000000Z"
+        },
+        "genres": [
+          {
+            "id": 2,
+            "name": "Adventure",
+            "slug": "adventure",
+            "icon": "🗺️",
+            "created_at": "2026-03-23T06:39:14.000000Z",
+            "updated_at": "2026-03-23T06:39:14.000000Z",
+            "pivot": {
+              "manga_id": 6152,
+              "genre_id": 2
+            }
+          },
+          {
+            "id": 3,
+            "name": "Comedy",
+            "slug": "comedy",
+            "icon": "😂",
+            "created_at": "2026-03-23T06:39:14.000000Z",
+            "updated_at": "2026-03-23T06:39:14.000000Z",
+            "pivot": {
+              "manga_id": 6152,
+              "genre_id": 3
+            }
+          },
+          {
+            "id": 4,
+            "name": "Drama",
+            "slug": "drama",
+            "icon": "🎭",
+            "created_at": "2026-03-23T06:39:14.000000Z",
+            "updated_at": "2026-03-23T06:39:14.000000Z",
+            "pivot": {
+              "manga_id": 6152,
+              "genre_id": 4
+            }
+          },
+          {
+            "id": 5,
+            "name": "Ecchi",
+            "slug": "ecchi",
+            "icon": "🔞",
+            "created_at": "2026-03-23T06:39:14.000000Z",
+            "updated_at": "2026-03-23T06:39:14.000000Z",
+            "pivot": {
+              "manga_id": 6152,
+              "genre_id": 5
+            }
+          },
+          {
+            "id": 34,
+            "name": "Harem",
+            "slug": "harem",
+            "icon": null,
+            "created_at": "2026-03-23T15:31:50.000000Z",
+            "updated_at": "2026-03-23T15:31:50.000000Z",
+            "pivot": {
+              "manga_id": 6152,
+              "genre_id": 34
+            }
+          },
+          {
+            "id": 44,
+            "name": "Mature",
+            "slug": "mature",
+            "icon": null,
+            "created_at": "2026-03-23T15:48:50.000000Z",
+            "updated_at": "2026-03-23T15:48:50.000000Z",
+            "pivot": {
+              "manga_id": 6152,
+              "genre_id": 44
+            }
+          },
+          {
+            "id": 13,
+            "name": "Romance",
+            "slug": "romance",
+            "icon": "❤️",
+            "created_at": "2026-03-23T06:39:14.000000Z",
+            "updated_at": "2026-03-23T06:39:14.000000Z",
+            "pivot": {
+              "manga_id": 6152,
+              "genre_id": 13
+            }
+          },
+          {
+            "id": 24,
+            "name": "School life",
+            "slug": "school-life",
+            "icon": null,
+            "created_at": "2026-03-23T08:31:28.000000Z",
+            "updated_at": "2026-03-23T08:31:28.000000Z",
+            "pivot": {
+              "manga_id": 6152,
+              "genre_id": 24
+            }
+          },
+          {
+            "id": 25,
+            "name": "Seinen",
+            "slug": "seinen",
+            "icon": null,
+            "created_at": "2026-03-23T08:31:28.000000Z",
+            "updated_at": "2026-03-23T08:31:28.000000Z",
+            "pivot": {
+              "manga_id": 6152,
+              "genre_id": 25
+            }
+          },
+          {
+            "id": 15,
+            "name": "Slice of Life",
+            "slug": "slice-of-life",
+            "icon": "🍱",
+            "created_at": "2026-03-23T06:39:14.000000Z",
+            "updated_at": "2026-03-23T06:39:14.000000Z",
+            "pivot": {
+              "manga_id": 6152,
+              "genre_id": 15
+            }
+          },
+          {
+            "id": 17,
+            "name": "Supernatural",
+            "slug": "supernatural",
+            "icon": "🔮",
+            "created_at": "2026-03-23T06:39:14.000000Z",
+            "updated_at": "2026-03-23T06:39:14.000000Z",
+            "pivot": {
+              "manga_id": 6152,
+              "genre_id": 17
+            }
+          }
+        ]
+      }
+    ],
+    "isBookmarked": false,
+    "readChapterIds": [],
+    "userRating": 0,
+    "totalRaters": 417
+  },
+  "url": "/manga/batsu-harembatsu-harem",
+  "version": "1f9ea7ef0878b9a4129e7a3158970903",
+  "clearHistory": false,
+  "encryptHistory": false
+}

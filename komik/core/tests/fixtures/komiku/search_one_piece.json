@@ -1,0 +1,193 @@
+{
+  "success": true,
+  "pages": null,
+  "manga": [
+    {
+      "id": 4851,
+      "title": "One Piece: Ace Story",
+      "title_alt": "One Piece: Kisah Ace",
+      "score": "8.5",
+      "date": "22 Oktober 2022",
+      "update_date": "1 tahun lalu",
+      "author": "Shueisha",
+      "total_views": "66603",
+      "thumbnail": "https://thumbnail.komiku.org/uploads/manga/one-piece-ace-story/manga_thumbnail-Manga-One-Piece-Ace-Story.png",
+      "cover": "https://thumbnail.komiku.org/uploads/manga/one-piece-ace-story/manga_img_horizontal-Komik-One-Piece-Ace-Story.png",
+      "synopsis": "Komik One Piece: Ace Story mengisahkan perjalanan Portgas D. Ace sebelum ia menjadi komandan divisi kedua Bajak Laut Shirohige. Petualangan dimulai saat Ace memulai perjalanan sebagai pemuda yang berambisi menunjukkan kehebatannya serta mencari arti dari kebebasannya sendiri di samudra luas. Selama perjalanannya, Ace membentuk kru bajak laut baru yang diberi nama Spade Pirates dan berjuang melawan tantangan berat, baik dari musuh kuat maupun kondisi samudra yang ganas.\n\nAce juga belajar tentang nilai persahabatan dan pengorbanan melalui interaksinya dengan rekan-rekannya. Ia akhirnya bertemu Shirohige, salah satu bajak laut paling legendaris, sehingga harus memutuskan arah hidupnya antara mempertahankan kebebasannya sendiri atau menggabungkan diri dalam keluarga baru yang lebih besar. Perjalanan ini memperlihatkan sisi lain Ace yang selama ini tidak banyak diceritakan dalam kisah utama One Piece.",
+      "summary": [
+        "Ace memulai petualangan sebagai kapten dan membentuk kru bajak lautnya sendiri dalam mengejar kebebasan.",
+        "Kisah ini menggambarkan perjalanan Ace untuk membuktikan dirinya sekaligus membangun keluarga baru di lautan.",
+        "Ace menghadapi berbagai tantangan serta pertemuan penting yang membentuk prinsip hidupnya sebagai bajak laut sejati.",
+        "Melalui pertemanan dan pertarungan, Ace belajar memahami makna keluarga dan pengorbanan di samudra yang keras.",
+        "Komik ini menyoroti kehidupan Ace sebelum masuk ke kelompok Shirohige dan memperluas semesta One Piece."
+      ],
+      "other": [],
+      "genre": [
+        {
+          "name": "Action",
+          "id": "action"
+        },
+        {
+          "name": "Adventure",
+          "id": "adventure"
+        },
+        {
+          "name": "Comedy",
+          "id": "comedy"
+        },
+        {
+          "name": "Drama",
+          "id": "drama"
+        },
+        {
+          "name": "Fantasy",
+          "id": "fantasy"
+        },
+        {
+          "name": "Shounen",
+          "id": "shounen"
+        }
+      ],
+      "genreutama": [
+        {
+          "name": "Aksi",
+          "id": "aksi"
+        }
+      ],
+      "ratemanga": [
+        {
+          "name": "15",
+          "id": "15"
+        }
+      ],
+      "statusmanga": [
+        {
+          "name": "Ongoing",
+          "id": "ongoing"
+        }
+      ],
+      "tipe": [
+        {
+          "name": "Manga",
+          "id": "manga"
+        }
+      ],
+      "first_chapter": [
+        {
+          "name": "Chapter 01",
+          "id": 198251,
+          "number": "01"
+        }
+      ],
+      "latest_chapter": [
+        {
+          "name": "Chapter 04",
+          "id": 198236,
+          "number": "04"
+        }
+      ]
+    },
+    {
+      "id": 6426,
+      "title": "One Piece",
+      "title_alt": "One Piece",
+      "score": "9",
+      "date": "19 Juli 1997",
+      "update_date": "4 hari lalu",
+      "author": "Eiichiro Oda",
+      "total_views": "61569843",
+      "thumbnail": "https://thumbnail.komiku.org/uploads/manga/komik-one-piece-indo/manga_thumbnail-Komik-One-Piece.jpg",
+      "cover": "https://thumbnail.komiku.org/uploads/manga/komik-one-piece-indo/manga_img_horizontal-Manga-One-Piece.jpg",
+      "synopsis": "One Piece mengikuti petualangan Monkey D. Luffy, seorang pemuda dengan kemampuan unik setelah memakan Buah Iblis yang membuat tubuhnya seperti karet. Luffy bercita-cita menjadi Raja Bajak Laut dengan menemukan harta karun legendaris bernama One Piece yang tersembunyi di dunia luas dan berbahaya. Dalam perjalanannya, ia mengumpulkan kru yang beragam dan kuat untuk menaklukkan lautan penuh tantangan, bajak laut rival, dan Pemerintah Dunia.\r\n\r\nCerita ini tidak hanya berfokus pada pertarungan dan petualangan, tetapi juga membahas nilai persahabatan, mimpi, dan kebebasan. Setiap karakter memiliki latar belakang dan motivasi yang mendalam, yang membawa kisah One Piece ke level yang lebih kompleks dan emosional, menjadikannya sebuah saga epik yang kaya akan pesan moral dan hiburan tanpa henti.",
+      "summary": [
+        "Monkey D. Luffy berlayar mencari harta karun legendaris untuk menjadi Raja Bajak Laut.",
+        "Setiap anggota kru One Piece memiliki mimpi dan kisah yang menginspirasi perjalanan mereka.",
+        "Luffy dan kawan-kawan menghadapi berbagai musuh kuat dan rintangan di lautan luas.",
+        "One Piece mengajarkan pentingnya persahabatan dan keberanian mengejar impian.",
+        "Sebuah petualangan epik tentang kebebasan dan pencarian jati diri di dunia bajak laut."
+      ],
+      "other": [
+        {
+          "name": "Chapter &gt;100",
+          "id": "chapter-100"
+        },
+        {
+          "name": "Hot",
+          "id": "hot"
+        },
+        {
+          "name": "Project",
+          "id": "project"
+        },
+        {
+          "name": "Rekomendasi",
+          "id": "rekomendasi"
+        }
+      ],
+      "genre": [
+        {
+          "name": "Action",
+          "id": "action"
+        },
+        {
+          "name": "Adventure",
+          "id": "adventure"
+        },
+        {
+          "name": "Comedy",
+          "id": "comedy"
+        },
+        {
+          "name": "Fantasy",
+          "id": "fantasy"
+        },
+        {
+          "name": "Shounen",
+          "id": "shounen"
+        },
+        {
+          "name": "Supernatural",
+          "id": "supernatural"
+        }
+      ],
+      "genreutama": [
+        {
+          "name": "Aksi",
+          "id": "aksi"
+        }
+      ],
+      "ratemanga": [
+        {
+          "name": "10",
+          "id": "10"
+        }
+      ],
+      "statusmanga": [
+        {
+          "name": "Ongoing",
+          "id": "ongoing"
+        }
+      ],
+      "tipe": [
+        {
+          "name": "Manga",
+          "id": "manga"
+        }
+      ],
+      "first_chapter": [
+        {
+          "name": "Chapter 1",
+          "id": 147664,
+          "number": "1"
+        }
+      ],
+      "latest_chapter": [
+        {
+          "name": "Chapter 1195",
+          "id": 578843,
+          "number": "1195"
+        }
+      ]
+    }
+  ]
+}

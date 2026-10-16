@@ -1,0 +1,70 @@
+# .railwayignore — batas upload `railway up` dari D:/project.
+# Sama dengan .gitignore root + target eksplisit. WAJIB ada: D:/project berisi
+# banyak sibling project + target Rust (~7 GB) + node_modules; tanpa file ini
+# upload bisa meledak ke puluhan GB.
+#
+# Yang HARUS ikut ter-upload (dipakai build):
+#   komiku-server/  komik/core+cli+Cargo.toml+Cargo.lock  komiku-web/  deploy/  railway.json
+
+# --- Rust build artifacts (paling besar) ---
+**/target/
+**/target-laneA/
+**/target-laneA-server/
+**/Cargo.lock.orig
+**/*.rs.bk
+
+# --- node/vite ---
+**/node_modules/
+**/dist/
+**/.vite/
+
+# --- tooling / local state ---
+.omh/
+.hermes/
+.hermes-tmp.*
+graphify-out/
+**/graphify-out/
+qa/
+old/
+archived/
+
+# --- logs / scratch / state runtime ---
+*.log
+**/*.log
+komiku-server/data/
+komiku-server/downloads/
+*.stackdump
+envout.txt
+showenv.bat
+
+# --- sibling projects (bukan bagian build) ---
+3d-html-site/
+akata/
+alif-3d-portfolio/
+alif-pixel-portfolio/
+getcontact-cli/
+hermes-webui/
+jev-explainer-video/
+komiku-apk/
+komiku-re/
+OpenIntelligentUI/
+PortaText/
+porto-website-persona5-alif/
+pwtest/
+scroll-craft-demo/
+unword/
+WA-Bulk/
+zombie-city-zx25r/
+zqa-blank/
+bot-discord.txt
+
+# --- VM disk images ---
+*.vhdx
+*.vhd
+*.iso
+
+# --- git internals ---
+**/.git/
+
+# --- deploy scratch ---
+deploy/seed/.seeded

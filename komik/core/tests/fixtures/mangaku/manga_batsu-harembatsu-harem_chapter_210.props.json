@@ -1,0 +1,1723 @@
+{
+  "component": "Manga/Read",
+  "props": {
+    "errors": {},
+    "auth": {
+      "user": null
+    },
+    "flash": {
+      "success": null,
+      "error": null
+    },
+    "isImpersonating": false,
+    "siteSettings": {
+      "site_name": "Mangaku",
+      "site_slug": "anime",
+      "favicon": "/storage/settings/nf7ljg2QLYQEDXp7Mg0O31bVKcFIJSLgEmRkZpRM.png",
+      "logo_icon": "sparkles",
+      "logo_color": "#3b82f6",
+      "footer_description": "Mangaku tempat baca komik, manga, manhwa, manhua, novel, serta anime subtitle Indonesia dengan update chapter dan episode terbaru setiap hari. Temukan cerita seru dari berbagai genre populer seperti action, romance, fantasy, isekai, comedy, adventure, mystery, dan drama. Nikmati kualitas gambar yang optimal, proses pemuatan yang cepat, serta antarmuka yang nyaman untuk digunakan kapan saja melalui desktop maupun smartphone.",
+      "footer_copyright": "",
+      "footer_credit": "Dibuat dengan ❤ Mangaku",
+      "nav_links": [
+        {
+          "label": "Beranda",
+          "href": "/"
+        },
+        {
+          "label": "Ingat Selalu Mangaku.lol",
+          "href": "/"
+        }
+      ],
+      "legal_links": [
+        {
+          "label": "Terms of Service",
+          "href": "/terms"
+        },
+        {
+          "label": "Privacy Policy",
+          "href": "/privacy"
+        },
+        {
+          "label": "DMCA",
+          "href": "/dmca"
+        },
+        {
+          "label": "Kontak Kami",
+          "href": "/contact"
+        }
+      ],
+      "social_facebook": "",
+      "social_twitter": "",
+      "social_instagram": "",
+      "show_visitor_stats": false,
+      "discord_enabled": false,
+      "discord_url": "https://discord.gg/u7D9BPtmS",
+      "discord_title": "Join Our Discord",
+      "discord_description": "Bergabunglah dengan server Discord kami untuk update terbaru, diskusi anime, dan dukungan langsung dari tim.",
+      "google_login_enabled": true,
+      "google_client_id": "671135248891-oun3nmd1gqhpea4mqujj0hm51p85gm30.apps.googleusercontent.com",
+      "google_client_secret": "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",
+      "logo_image": null,
+      "hero_slider_enabled": false,
+      "error_404_image": "/storage/settings/XFx62aLs5z2x46gBmWQ8WcOBc0G7E89E9wfEPxlw.png",
+      "footer_image": "/storage/settings/VgZcJXiRl6n5yB4eGyRJwqDjy6UCwhdoB69Lmzf4.png",
+      "komiku_url": "https://komiku.org",
+      "kanna_api_url": "https://api.satulagi.my.id",
+      "novel_source_domain": "https://novel.kiryuuid.net",
+      "novel_api_url": "https://novel.kiryuuid.net/wp-json/kiryuu/v1",
+      "novel_cover_hotlink": true,
+      "novel_chapter_mode": "live_api",
+      "site_tagline": "Streaming Anime"
+    },
+    "og": {
+      "title": "Mangaku",
+      "description": "Nonton anime streaming subtitle Indonesia terlengkap dan terupdate setiap hari.",
+      "image": null,
+      "url": "https://mangaku.lol/manga/batsu-harembatsu-harem/chapter/210",
+      "type": "website"
+    },
+    "pendingReports": {
+      "count": 0,
+      "recent": []
+    },
+    "ads": [],
+    "manga": {
+      "id": 2165,
+      "title": "Batsu Harem",
+      "slug": "batsu-harembatsu-harem",
+      "synopsis": "Batsu Harem mengikuti kisah seorang pria muda yang secara tak terduga terlibat dalam situasi di mana ia dikelilingi oleh banyak wanita dengan kepribadian yang berbeda-beda. Konflik dan dinamika sosial muncul saat ia mencoba memahami perasaannya sendiri dan hubungan yang berkembang antara mereka. \nCerita berkembang dengan memperlihatkan bagaimana protagonis menghadapi tantangan dan dilema emosional sekaligus tumbuh dan belajar tentang pentingnya kejujuran serta pengertian dalam hubungan interpersonal yang rumit.",
+      "status": "Ongoing",
+      "source_url": "https://komiku.org/manga/batsu-hare/",
+      "poster": "https://thumbnail.komiku.org/uploads/manga/batsu-hare/manga_thumbnail-Manga-Batsu-Hare.jpg?w=500",
+      "type": "Manga",
+      "author": "-",
+      "artist": "-",
+      "is_featured": 0,
+      "rating": "10.0",
+      "release_year": 2026,
+      "views_count": 180471,
+      "created_at": "2026-04-11T00:00:08.000000Z",
+      "updated_at": "2026-10-13T12:40:04.000000Z"
+    },
+    "chapter": {
+      "id": 404866,
+      "manga_id": 2165,
+      "title": "Chapter 210",
+      "slug": "chapter-210",
+      "chapter_number": 210,
+      "source_url": "https://komiku.org/batsu-harem-chapter-210/",
+      "content": null,
+      "views_count": 990,
+      "created_at": "2026-09-21T08:04:17.000000Z",
+      "updated_at": "2026-10-13T12:37:15.000000Z",
+      "images": [
+        {
+          "id": 16686017,
+          "chapter_id": 404866,
+          "image_path": "https://image2.komiku.to/komiku-promosi.webp",
+          "order": 0,
+          "created_at": "2026-09-21T08:04:17.000000Z",
+          "updated_at": "2026-09-21T08:04:17.000000Z"
+        },
+        {
+          "id": 16686018,
+          "chapter_id": 404866,
+          "image_path": "https://image2.komiku.to/upload5/batsu-harem/210/2026-09-21/1.webp",
+          "order": 1,
+          "created_at": "2026-09-21T08:04:17.000000Z",
+          "updated_at": "2026-09-21T08:04:17.000000Z"
+        },
+        {
+          "id": 16686019,
+          "chapter_id": 404866,
+          "image_path": "https://image3.komiku.to/upload5/batsu-harem/210/2026-09-21/2.webp",
+          "order": 2,
+          "created_at": "2026-09-21T08:04:17.000000Z",
+          "updated_at": "2026-09-21T08:04:17.000000Z"
+        },
+        {
+          "id": 16686020,
+          "chapter_id": 404866,
+          "image_path": "https://image4.komiku.to/upload5/batsu-harem/210/2026-09-21/3.webp",
+          "order": 3,
+          "created_at": "2026-09-21T08:04:17.000000Z",
+          "updated_at": "2026-09-21T08:04:17.000000Z"
+        },
+        {
+          "id": 16686021,
+          "chapter_id": 404866,
+          "image_path": "https://image5.komiku.to/upload5/batsu-harem/210/2026-09-21/4.webp",
+          "order": 4,
+          "created_at": "2026-09-21T08:04:17.000000Z",
+          "updated_at": "2026-09-21T08:04:17.000000Z"
+        },
+        {
+          "id": 16686022,
+          "chapter_id": 404866,
+          "image_path": "https://image6.komiku.to/upload5/batsu-harem/210/2026-09-21/5.webp",
+          "order": 5,
+          "created_at": "2026-09-21T08:04:17.000000Z",
+          "updated_at": "2026-09-21T08:04:17.000000Z"
+        },
+        {
+          "id": 16686023,
+          "chapter_id": 404866,
+          "image_path": "https://image7.komiku.to/upload5/batsu-harem/210/2026-09-21/6.webp",
+          "order": 6,
+          "created_at": "2026-09-21T08:04:17.000000Z",
+          "updated_at": "2026-09-21T08:04:17.000000Z"
+        },
+        {
+          "id": 16686024,
+          "chapter_id": 404866,
+          "image_path": "https://image8.komiku.to/upload5/batsu-harem/210/2026-09-21/7.webp",
+          "order": 7,
+          "created_at": "2026-09-21T08:04:17.000000Z",
+          "updated_at": "2026-09-21T08:04:17.000000Z"
+        },
+        {
+          "id": 16686025,
+          "chapter_id": 404866,
+          "image_path": "https://image9.komiku.to/upload5/batsu-harem/210/2026-09-21/8.webp",
+          "order": 8,
+          "created_at": "2026-09-21T08:04:17.000000Z",
+          "updated_at": "2026-09-21T08:04:17.000000Z"
+        },
+        {
+          "id": 16686026,
+          "chapter_id": 404866,
+          "image_path": "https://image10.komiku.to/upload5/batsu-harem/210/2026-09-21/9.webp",
+          "order": 9,
+          "created_at": "2026-09-21T08:04:17.000000Z",
+          "updated_at": "2026-09-21T08:04:17.000000Z"
+        },
+        {
+          "id": 16686027,
+          "chapter_id": 404866,
+          "image_path": "https://img.komiku.org/upload5/batsu-harem/210/2026-09-21/10.webp",
+          "order": 10,
+          "created_at": "2026-09-21T08:04:17.000000Z",
+          "updated_at": "2026-09-21T08:04:17.000000Z"
+        },
+        {
+          "id": 16686028,
+          "chapter_id": 404866,
+          "image_path": "https://img.komiku.org/upload5/batsu-harem/210/2026-09-21/11.webp",
+          "order": 11,
+          "created_at": "2026-09-21T08:04:17.000000Z",
+          "updated_at": "2026-09-21T08:04:17.000000Z"
+        },
+        {
+          "id": 16686029,
+          "chapter_id": 404866,
+          "image_path": "https://img.komiku.org/upload5/batsu-harem/210/2026-09-21/12.webp",
+          "order": 12,
+          "created_at": "2026-09-21T08:04:17.000000Z",
+          "updated_at": "2026-09-21T08:04:17.000000Z"
+        },
+        {
+          "id": 16686030,
+          "chapter_id": 404866,
+          "image_path": "https://img.komiku.org/upload5/batsu-harem/210/2026-09-21/13.webp",
+          "order": 13,
+          "created_at": "2026-09-21T08:04:17.000000Z",
+          "updated_at": "2026-09-21T08:04:17.000000Z"
+        },
+        {
+          "id": 16686031,
+          "chapter_id": 404866,
+          "image_path": "https://img.komiku.org/upload5/batsu-harem/210/2026-09-21/14.webp",
+          "order": 14,
+          "created_at": "2026-09-21T08:04:17.000000Z",
+          "updated_at": "2026-09-21T08:04:17.000000Z"
+        },
+        {
+          "id": 16686032,
+          "chapter_id": 404866,
+          "image_path": "https://img.komiku.org/upload5/batsu-harem/210/2026-09-21/15.webp",
+          "order": 15,
+          "created_at": "2026-09-21T08:04:17.000000Z",
+          "updated_at": "2026-09-21T08:04:17.000000Z"
+        }
+      ],
+      "comments": []
+    },
+    "prev": {
+      "id": 404036,
+      "manga_id": 2165,
+      "title": "Chapter 209",
+      "slug": "chapter-209",
+      "chapter_number": 209,
+      "source_url": "https://komiku.org/batsu-harem-chapter-209/",
+      "content": null,
+      "views_count": 425,
+      "created_at": "2026-09-18T03:12:10.000000Z",
+      "updated_at": "2026-10-13T12:35:40.000000Z"
+    },
+    "next": null,
+    "chapters": [
+      {
+        "id": 404866,
+        "title": "Chapter 210",
+        "chapter_number": 210,
+        "slug": "chapter-210",
+        "created_at": "2026-09-21T08:04:17.000000Z"
+      },
+      {
+        "id": 404036,
+        "title": "Chapter 209",
+        "chapter_number": 209,
+        "slug": "chapter-209",
+        "created_at": "2026-09-18T03:12:10.000000Z"
+      },
+      {
+        "id": 404035,
+        "title": "Chapter 208",
+        "chapter_number": 208,
+        "slug": "chapter-208",
+        "created_at": "2026-09-18T03:12:09.000000Z"
+      },
+      {
+        "id": 404034,
+        "title": "Chapter 207",
+        "chapter_number": 207,
+        "slug": "chapter-207",
+        "created_at": "2026-09-18T03:12:09.000000Z"
+      },
+      {
+        "id": 404033,
+        "title": "Chapter 206",
+        "chapter_number": 206,
+        "slug": "chapter-206",
+        "created_at": "2026-09-18T03:12:09.000000Z"
+      },
+      {
+        "id": 404032,
+        "title": "Chapter 205",
+        "chapter_number": 205,
+        "slug": "chapter-205",
+        "created_at": "2026-09-18T03:12:08.000000Z"
+      },
+      {
+        "id": 404031,
+        "title": "Chapter 204",
+        "chapter_number": 204,
+        "slug": "chapter-204",
+        "created_at": "2026-09-18T03:12:08.000000Z"
+      },
+      {
+        "id": 391738,
+        "title": "Chapter 203",
+        "chapter_number": 203,
+        "slug": "chapter-203",
+        "created_at": "2026-08-06T17:26:44.000000Z"
+      },
+      {
+        "id": 391737,
+        "title": "Chapter 202",
+        "chapter_number": 202,
+        "slug": "chapter-202",
+        "created_at": "2026-08-06T17:26:43.000000Z"
+      },
+      {
+        "id": 391000,
+        "title": "Chapter 201",
+        "chapter_number": 201,
+        "slug": "chapter-201",
+        "created_at": "2026-08-04T22:26:01.000000Z"
+      },
+      {
+        "id": 388520,
+        "title": "Chapter 200",
+        "chapter_number": 200,
+        "slug": "chapter-200",
+        "created_at": "2026-07-24T16:48:38.000000Z"
+      },
+      {
+        "id": 388199,
+        "title": "Chapter 199",
+        "chapter_number": 199,
+        "slug": "chapter-199",
+        "created_at": "2026-07-22T17:04:31.000000Z"
+      },
+      {
+        "id": 388198,
+        "title": "Chapter 198",
+        "chapter_number": 198,
+        "slug": "chapter-198",
+        "created_at": "2026-07-22T17:04:31.000000Z"
+      },
+      {
+        "id": 387618,
+        "title": "Chapter 197",
+        "chapter_number": 197,
+        "slug": "chapter-197",
+        "created_at": "2026-07-22T02:57:53.000000Z"
+      },
+      {
+        "id": 387617,
+        "title": "Chapter 196",
+        "chapter_number": 196,
+        "slug": "chapter-196",
+        "created_at": "2026-07-22T02:57:53.000000Z"
+      },
+      {
+        "id": 387205,
+        "title": "Chapter 195",
+        "chapter_number": 195,
+        "slug": "chapter-195",
+        "created_at": "2026-07-20T17:51:04.000000Z"
+      },
+      {
+        "id": 387204,
+        "title": "Chapter 194",
+        "chapter_number": 194,
+        "slug": "chapter-194",
+        "created_at": "2026-07-20T17:51:04.000000Z"
+      },
+      {
+        "id": 387203,
+        "title": "Chapter 193",
+        "chapter_number": 193,
+        "slug": "chapter-193",
+        "created_at": "2026-07-20T17:51:04.000000Z"
+      },
+      {
+        "id": 383320,
+        "title": "Chapter 192",
+        "chapter_number": 192,
+        "slug": "chapter-192",
+        "created_at": "2026-06-30T02:40:53.000000Z"
+      },
+      {
+        "id": 383319,
+        "title": "Chapter 191",
+        "chapter_number": 191,
+        "slug": "chapter-191",
+        "created_at": "2026-06-30T02:40:53.000000Z"
+      },
+      {
+        "id": 383318,
+        "title": "Chapter 190",
+        "chapter_number": 190,
+        "slug": "chapter-190",
+        "created_at": "2026-06-30T02:40:53.000000Z"
+      },
+      {
+        "id": 383189,
+        "title": "Chapter 189",
+        "chapter_number": 189,
+        "slug": "chapter-189",
+        "created_at": "2026-06-29T07:39:14.000000Z"
+      },
+      {
+        "id": 383188,
+        "title": "Chapter 188",
+        "chapter_number": 188,
+        "slug": "chapter-188",
+        "created_at": "2026-06-29T07:39:13.000000Z"
+      },
+      {
+        "id": 383187,
+        "title": "Chapter 187",
+        "chapter_number": 187,
+        "slug": "chapter-187",
+        "created_at": "2026-06-29T07:39:13.000000Z"
+      },
+      {
+        "id": 383085,
+        "title": "Chapter 186",
+        "chapter_number": 186,
+        "slug": "chapter-186",
+        "created_at": "2026-06-28T16:15:00.000000Z"
+      },
+      {
+        "id": 383084,
+        "title": "Chapter 185",
+        "chapter_number": 185,
+        "slug": "chapter-185",
+        "created_at": "2026-06-28T16:14:59.000000Z"
+      },
+      {
+        "id": 383083,
+        "title": "Chapter 184",
+        "chapter_number": 184,
+        "slug": "chapter-184",
+        "created_at": "2026-06-28T16:14:59.000000Z"
+      },
+      {
+        "id": 382865,
+        "title": "Chapter 183",
+        "chapter_number": 183,
+        "slug": "chapter-183",
+        "created_at": "2026-06-27T07:30:47.000000Z"
+      },
+      {
+        "id": 382864,
+        "title": "Chapter 182",
+        "chapter_number": 182,
+        "slug": "chapter-182",
+        "created_at": "2026-06-27T07:30:47.000000Z"
+      },
+      {
+        "id": 382863,
+        "title": "Chapter 181",
+        "chapter_number": 181,
+        "slug": "chapter-181",
+        "created_at": "2026-06-27T07:30:47.000000Z"
+      },
+      {
+        "id": 382563,
+        "title": "Chapter 180",
+        "chapter_number": 180,
+        "slug": "chapter-180",
+        "created_at": "2026-06-26T08:00:11.000000Z"
+      },
+      {
+        "id": 382562,
+        "title": "Chapter 179",
+        "chapter_number": 179,
+        "slug": "chapter-179",
+        "created_at": "2026-06-26T08:00:10.000000Z"
+      },
+      {
+        "id": 382561,
+        "title": "Chapter 178",
+        "chapter_number": 178,
+        "slug": "chapter-178",
+        "created_at": "2026-06-26T08:00:10.000000Z"
+      },
+      {
+        "id": 382491,
+        "title": "Chapter 177",
+        "chapter_number": 177,
+        "slug": "chapter-177",
+        "created_at": "2026-06-25T08:39:08.000000Z"
+      },
+      {
+        "id": 382490,
+        "title": "Chapter 176",
+        "chapter_number": 176,
+        "slug": "chapter-176",
+        "created_at": "2026-06-25T08:39:07.000000Z"
+      },
+      {
+        "id": 382489,
+        "title": "Chapter 175",
+        "chapter_number": 175,
+        "slug": "chapter-175",
+        "created_at": "2026-06-25T08:39:07.000000Z"
+      },
+      {
+        "id": 382331,
+        "title": "Chapter 174",
+        "chapter_number": 174,
+        "slug": "chapter-174",
+        "created_at": "2026-06-24T07:56:25.000000Z"
+      },
+      {
+        "id": 382330,
+        "title": "Chapter 173",
+        "chapter_number": 173,
+        "slug": "chapter-173",
+        "created_at": "2026-06-24T07:56:25.000000Z"
+      },
+      {
+        "id": 382329,
+        "title": "Chapter 172",
+        "chapter_number": 172,
+        "slug": "chapter-172",
+        "created_at": "2026-06-24T07:56:24.000000Z"
+      },
+      {
+        "id": 382109,
+        "title": "Chapter 171",
+        "chapter_number": 171,
+        "slug": "chapter-171",
+        "created_at": "2026-06-23T07:28:01.000000Z"
+      },
+      {
+        "id": 382108,
+        "title": "Chapter 170",
+        "chapter_number": 170,
+        "slug": "chapter-170",
+        "created_at": "2026-06-23T07:28:01.000000Z"
+      },
+      {
+        "id": 382107,
+        "title": "Chapter 169",
+        "chapter_number": 169,
+        "slug": "chapter-169",
+        "created_at": "2026-06-23T07:28:00.000000Z"
+      },
+      {
+        "id": 382106,
+        "title": "Chapter 168",
+        "chapter_number": 168,
+        "slug": "chapter-168",
+        "created_at": "2026-06-23T07:28:00.000000Z"
+      },
+      {
+        "id": 382105,
+        "title": "Chapter 167",
+        "chapter_number": 167,
+        "slug": "chapter-167",
+        "created_at": "2026-06-23T07:28:00.000000Z"
+      },
+      {
+        "id": 382104,
+        "title": "Chapter 166",
+        "chapter_number": 166,
+        "slug": "chapter-166",
+        "created_at": "2026-06-23T07:28:00.000000Z"
+      },
+      {
+        "id": 381762,
+        "title": "Chapter 165",
+        "chapter_number": 165,
+        "slug": "chapter-165",
+        "created_at": "2026-06-21T17:45:47.000000Z"
+      },
+      {
+        "id": 381761,
+        "title": "Chapter 164",
+        "chapter_number": 164,
+        "slug": "chapter-164",
+        "created_at": "2026-06-21T17:45:47.000000Z"
+      },
+      {
+        "id": 381566,
+        "title": "Chapter 163",
+        "chapter_number": 163,
+        "slug": "chapter-163",
+        "created_at": "2026-06-20T16:02:12.000000Z"
+      },
+      {
+        "id": 381565,
+        "title": "Chapter 162",
+        "chapter_number": 162,
+        "slug": "chapter-162",
+        "created_at": "2026-06-20T16:02:12.000000Z"
+      },
+      {
+        "id": 381564,
+        "title": "Chapter 161",
+        "chapter_number": 161,
+        "slug": "chapter-161",
+        "created_at": "2026-06-20T16:02:11.000000Z"
+      },
+      {
+        "id": 381272,
+        "title": "Chapter 159",
+        "chapter_number": 159,
+        "slug": "chapter-159",
+        "created_at": "2026-06-20T00:04:50.000000Z"
+      },
+      {
+        "id": 381271,
+        "title": "Chapter 158",
+        "chapter_number": 158,
+        "slug": "chapter-158",
+        "created_at": "2026-06-20T00:04:49.000000Z"
+      },
+      {
+        "id": 381270,
+        "title": "Chapter 157",
+        "chapter_number": 157,
+        "slug": "chapter-157",
+        "created_at": "2026-06-20T00:04:49.000000Z"
+      },
+      {
+        "id": 380680,
+        "title": "Chapter 156",
+        "chapter_number": 156,
+        "slug": "chapter-156",
+        "created_at": "2026-06-19T01:27:48.000000Z"
+      },
+      {
+        "id": 380679,
+        "title": "Chapter 155",
+        "chapter_number": 155,
+        "slug": "chapter-155",
+        "created_at": "2026-06-19T01:27:48.000000Z"
+      },
+      {
+        "id": 380678,
+        "title": "Chapter 154",
+        "chapter_number": 154,
+        "slug": "chapter-154",
+        "created_at": "2026-06-19T01:27:48.000000Z"
+      },
+      {
+        "id": 380677,
+        "title": "Chapter 153",
+        "chapter_number": 153,
+        "slug": "chapter-153",
+        "created_at": "2026-06-19T01:27:47.000000Z"
+      },
+      {
+        "id": 380676,
+        "title": "Chapter 152",
+        "chapter_number": 152,
+        "slug": "chapter-152",
+        "created_at": "2026-06-19T01:27:47.000000Z"
+      },
+      {
+        "id": 380675,
+        "title": "Chapter 151",
+        "chapter_number": 151,
+        "slug": "chapter-151",
+        "created_at": "2026-06-19T01:27:47.000000Z"
+      },
+      {
+        "id": 380674,
+        "title": "Chapter 150",
+        "chapter_number": 150,
+        "slug": "chapter-150",
+        "created_at": "2026-06-19T01:27:47.000000Z"
+      },
+      {
+        "id": 380673,
+        "title": "Chapter 149",
+        "chapter_number": 149,
+        "slug": "chapter-149",
+        "created_at": "2026-06-19T01:27:46.000000Z"
+      },
+      {
+        "id": 380672,
+        "title": "Chapter 148",
+        "chapter_number": 148,
+        "slug": "chapter-148",
+        "created_at": "2026-06-19T01:27:46.000000Z"
+      },
+      {
+        "id": 380282,
+        "title": "Chapter 147",
+        "chapter_number": 147,
+        "slug": "chapter-147",
+        "created_at": "2026-06-15T16:05:01.000000Z"
+      },
+      {
+        "id": 380281,
+        "title": "Chapter 146",
+        "chapter_number": 146,
+        "slug": "chapter-146",
+        "created_at": "2026-06-15T16:05:01.000000Z"
+      },
+      {
+        "id": 380280,
+        "title": "Chapter 145",
+        "chapter_number": 145,
+        "slug": "chapter-145",
+        "created_at": "2026-06-15T16:05:00.000000Z"
+      },
+      {
+        "id": 379670,
+        "title": "Chapter 144",
+        "chapter_number": 144,
+        "slug": "chapter-144",
+        "created_at": "2026-06-14T08:14:50.000000Z"
+      },
+      {
+        "id": 379669,
+        "title": "Chapter 143",
+        "chapter_number": 143,
+        "slug": "chapter-143",
+        "created_at": "2026-06-14T08:14:49.000000Z"
+      },
+      {
+        "id": 379668,
+        "title": "Chapter 142",
+        "chapter_number": 142,
+        "slug": "chapter-142",
+        "created_at": "2026-06-14T08:14:49.000000Z"
+      },
+      {
+        "id": 379667,
+        "title": "Chapter 141",
+        "chapter_number": 141,
+        "slug": "chapter-141",
+        "created_at": "2026-06-14T08:14:49.000000Z"
+      },
+      {
+        "id": 379666,
+        "title": "Chapter 140",
+        "chapter_number": 140,
+        "slug": "chapter-140",
+        "created_at": "2026-06-14T08:14:49.000000Z"
+      },
+      {
+        "id": 379665,
+        "title": "Chapter 139",
+        "chapter_number": 139,
+        "slug": "chapter-139",
+        "created_at": "2026-06-14T08:14:48.000000Z"
+      },
+      {
+        "id": 379664,
+        "title": "Chapter 138",
+        "chapter_number": 138,
+        "slug": "chapter-138",
+        "created_at": "2026-06-14T08:14:48.000000Z"
+      },
+      {
+        "id": 379663,
+        "title": "Chapter 137",
+        "chapter_number": 137,
+        "slug": "chapter-137",
+        "created_at": "2026-06-14T08:14:48.000000Z"
+      },
+      {
+        "id": 376753,
+        "title": "Chapter 136",
+        "chapter_number": 136,
+        "slug": "chapter-136",
+        "created_at": "2026-06-01T05:11:14.000000Z"
+      },
+      {
+        "id": 373909,
+        "title": "Chapter 135",
+        "chapter_number": 135,
+        "slug": "chapter-135",
+        "created_at": "2026-05-20T01:57:52.000000Z"
+      },
+      {
+        "id": 373908,
+        "title": "Chapter 134",
+        "chapter_number": 134,
+        "slug": "chapter-134",
+        "created_at": "2026-05-20T01:57:51.000000Z"
+      },
+      {
+        "id": 373907,
+        "title": "Chapter 133",
+        "chapter_number": 133,
+        "slug": "chapter-133",
+        "created_at": "2026-05-20T01:57:51.000000Z"
+      },
+      {
+        "id": 373906,
+        "title": "Chapter 132",
+        "chapter_number": 132,
+        "slug": "chapter-132",
+        "created_at": "2026-05-20T01:57:50.000000Z"
+      },
+      {
+        "id": 373905,
+        "title": "Chapter 131",
+        "chapter_number": 131,
+        "slug": "chapter-131",
+        "created_at": "2026-05-20T01:57:50.000000Z"
+      },
+      {
+        "id": 373904,
+        "title": "Chapter 130",
+        "chapter_number": 130,
+        "slug": "chapter-130",
+        "created_at": "2026-05-20T01:57:49.000000Z"
+      },
+      {
+        "id": 372275,
+        "title": "Chapter 129",
+        "chapter_number": 129,
+        "slug": "chapter-129",
+        "created_at": "2026-05-16T08:56:35.000000Z"
+      },
+      {
+        "id": 372274,
+        "title": "Chapter 128",
+        "chapter_number": 128,
+        "slug": "chapter-128",
+        "created_at": "2026-05-16T08:56:34.000000Z"
+      },
+      {
+        "id": 372011,
+        "title": "Chapter 127",
+        "chapter_number": 127,
+        "slug": "chapter-127",
+        "created_at": "2026-05-15T10:28:29.000000Z"
+      },
+      {
+        "id": 372010,
+        "title": "Chapter 126",
+        "chapter_number": 126,
+        "slug": "chapter-126",
+        "created_at": "2026-05-15T10:28:28.000000Z"
+      },
+      {
+        "id": 371868,
+        "title": "Chapter 125",
+        "chapter_number": 125,
+        "slug": "chapter-125",
+        "created_at": "2026-05-14T10:21:47.000000Z"
+      },
+      {
+        "id": 371867,
+        "title": "Chapter 124",
+        "chapter_number": 124,
+        "slug": "chapter-124",
+        "created_at": "2026-05-14T10:21:47.000000Z"
+      },
+      {
+        "id": 371866,
+        "title": "Chapter 123",
+        "chapter_number": 123,
+        "slug": "chapter-123",
+        "created_at": "2026-05-14T10:21:46.000000Z"
+      },
+      {
+        "id": 371865,
+        "title": "Chapter 122",
+        "chapter_number": 122,
+        "slug": "chapter-122",
+        "created_at": "2026-05-14T10:21:46.000000Z"
+      },
+      {
+        "id": 165103,
+        "title": "Chapter 121",
+        "chapter_number": 121,
+        "slug": "chapter-121",
+        "created_at": "2026-04-11T00:00:09.000000Z"
+      },
+      {
+        "id": 165105,
+        "title": "Chapter 120",
+        "chapter_number": 120,
+        "slug": "chapter-120",
+        "created_at": "2026-04-11T00:00:09.000000Z"
+      },
+      {
+        "id": 165108,
+        "title": "Chapter 119",
+        "chapter_number": 119,
+        "slug": "chapter-119",
+        "created_at": "2026-04-11T00:00:10.000000Z"
+      },
+      {
+        "id": 165111,
+        "title": "Chapter 118",
+        "chapter_number": 118,
+        "slug": "chapter-118",
+        "created_at": "2026-04-11T00:00:10.000000Z"
+      },
+      {
+        "id": 165114,
+        "title": "Chapter 117",
+        "chapter_number": 117,
+        "slug": "chapter-117",
+        "created_at": "2026-04-11T00:00:11.000000Z"
+      },
+      {
+        "id": 165117,
+        "title": "Chapter 116",
+        "chapter_number": 116,
+        "slug": "chapter-116",
+        "created_at": "2026-04-11T00:00:11.000000Z"
+      },
+      {
+        "id": 165119,
+        "title": "Chapter 115",
+        "chapter_number": 115,
+        "slug": "chapter-115",
+        "created_at": "2026-04-11T00:00:12.000000Z"
+      },
+      {
+        "id": 165121,
+        "title": "Chapter 114",
+        "chapter_number": 114,
+        "slug": "chapter-114",
+        "created_at": "2026-04-11T00:00:12.000000Z"
+      },
+      {
+        "id": 165123,
+        "title": "Chapter 113",
+        "chapter_number": 113,
+        "slug": "chapter-113",
+        "created_at": "2026-04-11T00:00:13.000000Z"
+      },
+      {
+        "id": 165126,
+        "title": "Chapter 112",
+        "chapter_number": 112,
+        "slug": "chapter-112",
+        "created_at": "2026-04-11T00:00:14.000000Z"
+      },
+      {
+        "id": 165128,
+        "title": "Chapter 111",
+        "chapter_number": 111,
+        "slug": "chapter-111",
+        "created_at": "2026-04-11T00:00:15.000000Z"
+      },
+      {
+        "id": 165130,
+        "title": "Chapter 110",
+        "chapter_number": 110,
+        "slug": "chapter-110",
+        "created_at": "2026-04-11T00:00:15.000000Z"
+      },
+      {
+        "id": 165132,
+        "title": "Chapter 109",
+        "chapter_number": 109,
+        "slug": "chapter-109",
+        "created_at": "2026-04-11T00:00:16.000000Z"
+      },
+      {
+        "id": 165134,
+        "title": "Chapter 108",
+        "chapter_number": 108,
+        "slug": "chapter-108",
+        "created_at": "2026-04-11T00:00:16.000000Z"
+      },
+      {
+        "id": 165136,
+        "title": "Chapter 107",
+        "chapter_number": 107,
+        "slug": "chapter-107",
+        "created_at": "2026-04-11T00:00:17.000000Z"
+      },
+      {
+        "id": 165138,
+        "title": "Chapter 106",
+        "chapter_number": 106,
+        "slug": "chapter-106",
+        "created_at": "2026-04-11T00:00:17.000000Z"
+      },
+      {
+        "id": 165140,
+        "title": "Chapter 105",
+        "chapter_number": 105,
+        "slug": "chapter-105",
+        "created_at": "2026-04-11T00:00:18.000000Z"
+      },
+      {
+        "id": 165142,
+        "title": "Chapter 103",
+        "chapter_number": 103,
+        "slug": "chapter-103",
+        "created_at": "2026-04-11T00:00:18.000000Z"
+      },
+      {
+        "id": 165144,
+        "title": "Chapter 102",
+        "chapter_number": 102,
+        "slug": "chapter-102",
+        "created_at": "2026-04-11T00:00:19.000000Z"
+      },
+      {
+        "id": 165146,
+        "title": "Chapter 100",
+        "chapter_number": 100,
+        "slug": "chapter-100",
+        "created_at": "2026-04-11T00:00:19.000000Z"
+      },
+      {
+        "id": 165148,
+        "title": "Chapter 99",
+        "chapter_number": 99,
+        "slug": "chapter-99",
+        "created_at": "2026-04-11T00:00:20.000000Z"
+      },
+      {
+        "id": 165150,
+        "title": "Chapter 98",
+        "chapter_number": 98,
+        "slug": "chapter-98",
+        "created_at": "2026-04-11T00:00:20.000000Z"
+      },
+      {
+        "id": 165152,
+        "title": "Chapter 97",
+        "chapter_number": 97,
+        "slug": "chapter-97",
+        "created_at": "2026-04-11T00:00:21.000000Z"
+      },
+      {
+        "id": 165154,
+        "title": "Chapter 96",
+        "chapter_number": 96,
+        "slug": "chapter-96",
+        "created_at": "2026-04-11T00:00:21.000000Z"
+      },
+      {
+        "id": 165156,
+        "title": "Chapter 95",
+        "chapter_number": 95,
+        "slug": "chapter-95",
+        "created_at": "2026-04-11T00:00:22.000000Z"
+      },
+      {
+        "id": 165158,
+        "title": "Chapter 94",
+        "chapter_number": 94,
+        "slug": "chapter-94",
+        "created_at": "2026-04-11T00:00:22.000000Z"
+      },
+      {
+        "id": 165160,
+        "title": "Chapter 93",
+        "chapter_number": 93,
+        "slug": "chapter-93",
+        "created_at": "2026-04-11T00:00:23.000000Z"
+      },
+      {
+        "id": 165162,
+        "title": "Chapter 92",
+        "chapter_number": 92,
+        "slug": "chapter-92",
+        "created_at": "2026-04-11T00:00:23.000000Z"
+      },
+      {
+        "id": 165164,
+        "title": "Chapter 91",
+        "chapter_number": 91,
+        "slug": "chapter-91",
+        "created_at": "2026-04-11T00:00:24.000000Z"
+      },
+      {
+        "id": 165166,
+        "title": "Chapter 90",
+        "chapter_number": 90,
+        "slug": "chapter-90",
+        "created_at": "2026-04-11T00:00:25.000000Z"
+      },
+      {
+        "id": 165168,
+        "title": "Chapter 89",
+        "chapter_number": 89,
+        "slug": "chapter-89",
+        "created_at": "2026-04-11T00:00:25.000000Z"
+      },
+      {
+        "id": 165170,
+        "title": "Chapter 88",
+        "chapter_number": 88,
+        "slug": "chapter-88",
+        "created_at": "2026-04-11T00:00:26.000000Z"
+      },
+      {
+        "id": 165172,
+        "title": "Chapter 87",
+        "chapter_number": 87,
+        "slug": "chapter-87",
+        "created_at": "2026-04-11T00:00:26.000000Z"
+      },
+      {
+        "id": 165174,
+        "title": "Chapter 86",
+        "chapter_number": 86,
+        "slug": "chapter-86",
+        "created_at": "2026-04-11T00:00:27.000000Z"
+      },
+      {
+        "id": 165176,
+        "title": "Chapter 85",
+        "chapter_number": 85,
+        "slug": "chapter-85",
+        "created_at": "2026-04-11T00:00:28.000000Z"
+      },
+      {
+        "id": 165178,
+        "title": "Chapter 84",
+        "chapter_number": 84,
+        "slug": "chapter-84",
+        "created_at": "2026-04-11T00:00:28.000000Z"
+      },
+      {
+        "id": 165179,
+        "title": "Chapter 83",
+        "chapter_number": 83,
+        "slug": "chapter-83",
+        "created_at": "2026-04-11T00:00:29.000000Z"
+      },
+      {
+        "id": 165181,
+        "title": "Chapter 82",
+        "chapter_number": 82,
+        "slug": "chapter-82",
+        "created_at": "2026-04-11T00:00:29.000000Z"
+      },
+      {
+        "id": 165183,
+        "title": "Chapter 81",
+        "chapter_number": 81,
+        "slug": "chapter-81",
+        "created_at": "2026-04-11T00:00:30.000000Z"
+      },
+      {
+        "id": 165185,
+        "title": "Chapter 80",
+        "chapter_number": 80,
+        "slug": "chapter-80",
+        "created_at": "2026-04-11T00:00:30.000000Z"
+      },
+      {
+        "id": 165187,
+        "title": "Chapter 79",
+        "chapter_number": 79,
+        "slug": "chapter-79",
+        "created_at": "2026-04-11T00:00:31.000000Z"
+      },
+      {
+        "id": 165189,
+        "title": "Chapter 78",
+        "chapter_number": 78,
+        "slug": "chapter-78",
+        "created_at": "2026-04-11T00:00:31.000000Z"
+      },
+      {
+        "id": 165191,
+        "title": "Chapter 77",
+        "chapter_number": 77,
+        "slug": "chapter-77",
+        "created_at": "2026-04-11T00:00:32.000000Z"
+      },
+      {
+        "id": 165193,
+        "title": "Chapter 76",
+        "chapter_number": 76,
+        "slug": "chapter-76",
+        "created_at": "2026-04-11T00:00:33.000000Z"
+      },
+      {
+        "id": 165195,
+        "title": "Chapter 75",
+        "chapter_number": 75,
+        "slug": "chapter-75",
+        "created_at": "2026-04-11T00:00:33.000000Z"
+      },
+      {
+        "id": 165197,
+        "title": "Chapter 74",
+        "chapter_number": 74,
+        "slug": "chapter-74",
+        "created_at": "2026-04-11T00:00:34.000000Z"
+      },
+      {
+        "id": 165199,
+        "title": "Chapter 73",
+        "chapter_number": 73,
+        "slug": "chapter-73",
+        "created_at": "2026-04-11T00:00:34.000000Z"
+      },
+      {
+        "id": 165201,
+        "title": "Chapter 72",
+        "chapter_number": 72,
+        "slug": "chapter-72",
+        "created_at": "2026-04-11T00:00:35.000000Z"
+      },
+      {
+        "id": 165204,
+        "title": "Chapter 71",
+        "chapter_number": 71,
+        "slug": "chapter-71",
+        "created_at": "2026-04-11T00:00:36.000000Z"
+      },
+      {
+        "id": 165206,
+        "title": "Chapter 70",
+        "chapter_number": 70,
+        "slug": "chapter-70",
+        "created_at": "2026-04-11T00:00:37.000000Z"
+      },
+      {
+        "id": 165208,
+        "title": "Chapter 69",
+        "chapter_number": 69,
+        "slug": "chapter-69",
+        "created_at": "2026-04-11T00:00:37.000000Z"
+      },
+      {
+        "id": 165210,
+        "title": "Chapter 68",
+        "chapter_number": 68,
+        "slug": "chapter-68",
+        "created_at": "2026-04-11T00:00:38.000000Z"
+      },
+      {
+        "id": 165212,
+        "title": "Chapter 67",
+        "chapter_number": 67,
+        "slug": "chapter-67",
+        "created_at": "2026-04-11T00:00:38.000000Z"
+      },
+      {
+        "id": 165214,
+        "title": "Chapter 66",
+        "chapter_number": 66,
+        "slug": "chapter-66",
+        "created_at": "2026-04-11T00:00:39.000000Z"
+      },
+      {
+        "id": 165216,
+        "title": "Chapter 65",
+        "chapter_number": 65,
+        "slug": "chapter-65",
+        "created_at": "2026-04-11T00:00:39.000000Z"
+      },
+      {
+        "id": 165219,
+        "title": "Chapter 64",
+        "chapter_number": 64,
+        "slug": "chapter-64",
+        "created_at": "2026-04-11T00:00:40.000000Z"
+      },
+      {
+        "id": 165222,
+        "title": "Chapter 63",
+        "chapter_number": 63,
+        "slug": "chapter-63",
+        "created_at": "2026-04-11T00:00:41.000000Z"
+      },
+      {
+        "id": 165225,
+        "title": "Chapter 62",
+        "chapter_number": 62,
+        "slug": "chapter-62",
+        "created_at": "2026-04-11T00:00:41.000000Z"
+      },
+      {
+        "id": 165228,
+        "title": "Chapter 61",
+        "chapter_number": 61,
+        "slug": "chapter-61",
+        "created_at": "2026-04-11T00:00:41.000000Z"
+      },
+      {
+        "id": 165231,
+        "title": "Chapter 60",
+        "chapter_number": 60,
+        "slug": "chapter-60",
+        "created_at": "2026-04-11T00:00:42.000000Z"
+      },
+      {
+        "id": 165233,
+        "title": "Chapter 59",
+        "chapter_number": 59,
+        "slug": "chapter-59",
+        "created_at": "2026-04-11T00:00:43.000000Z"
+      },
+      {
+        "id": 165236,
+        "title": "Chapter 58",
+        "chapter_number": 58,
+        "slug": "chapter-58",
+        "created_at": "2026-04-11T00:00:43.000000Z"
+      },
+      {
+        "id": 165240,
+        "title": "Chapter 57",
+        "chapter_number": 57,
+        "slug": "chapter-57",
+        "created_at": "2026-04-11T00:00:44.000000Z"
+      },
+      {
+        "id": 165242,
+        "title": "Chapter 56",
+        "chapter_number": 56,
+        "slug": "chapter-56",
+        "created_at": "2026-04-11T00:00:44.000000Z"
+      },
+      {
+        "id": 165246,
+        "title": "Chapter 55",
+        "chapter_number": 55,
+        "slug": "chapter-55",
+        "created_at": "2026-04-11T00:00:45.000000Z"
+      },
+      {
+        "id": 165249,
+        "title": "Chapter 54",
+        "chapter_number": 54,
+        "slug": "chapter-54",
+        "created_at": "2026-04-11T00:00:46.000000Z"
+      },
+      {
+        "id": 165253,
+        "title": "Chapter 53",
+        "chapter_number": 53,
+        "slug": "chapter-53",
+        "created_at": "2026-04-11T00:00:46.000000Z"
+      },
+      {
+        "id": 165256,
+        "title": "Chapter 52",
+        "chapter_number": 52,
+        "slug": "chapter-52",
+        "created_at": "2026-04-11T00:00:47.000000Z"
+      },
+      {
+        "id": 165260,
+        "title": "Chapter 51",
+        "chapter_number": 51,
+        "slug": "chapter-51",
+        "created_at": "2026-04-11T00:00:47.000000Z"
+      },
+      {
+        "id": 165263,
+        "title": "Chapter 50",
+        "chapter_number": 50,
+        "slug": "chapter-50",
+        "created_at": "2026-04-11T00:00:48.000000Z"
+      },
+      {
+        "id": 165266,
+        "title": "Chapter 49",
+        "chapter_number": 49,
+        "slug": "chapter-49",
+        "created_at": "2026-04-11T00:00:49.000000Z"
+      },
+      {
+        "id": 165269,
+        "title": "Chapter 48",
+        "chapter_number": 48,
+        "slug": "chapter-48",
+        "created_at": "2026-04-11T00:00:49.000000Z"
+      },
+      {
+        "id": 165272,
+        "title": "Chapter 47",
+        "chapter_number": 47,
+        "slug": "chapter-47",
+        "created_at": "2026-04-11T00:00:50.000000Z"
+      },
+      {
+        "id": 165275,
+        "title": "Chapter 46",
+        "chapter_number": 46,
+        "slug": "chapter-46",
+        "created_at": "2026-04-11T00:00:50.000000Z"
+      },
+      {
+        "id": 165278,
+        "title": "Chapter 45",
+        "chapter_number": 45,
+        "slug": "chapter-45",
+        "created_at": "2026-04-11T00:00:51.000000Z"
+      },
+      {
+        "id": 165281,
+        "title": "Chapter 44",
+        "chapter_number": 44,
+        "slug": "chapter-44",
+        "created_at": "2026-04-11T00:00:52.000000Z"
+      },
+      {
+        "id": 165284,
+        "title": "Chapter 43",
+        "chapter_number": 43,
+        "slug": "chapter-43",
+        "created_at": "2026-04-11T00:00:52.000000Z"
+      },
+      {
+        "id": 165287,
+        "title": "Chapter 42",
+        "chapter_number": 42,
+        "slug": "chapter-42",
+        "created_at": "2026-04-11T00:00:53.000000Z"
+      },
+      {
+        "id": 165289,
+        "title": "Chapter 41",
+        "chapter_number": 41,
+        "slug": "chapter-41",
+        "created_at": "2026-04-11T00:00:53.000000Z"
+      },
+      {
+        "id": 165292,
+        "title": "Chapter 40",
+        "chapter_number": 40,
+        "slug": "chapter-40",
+        "created_at": "2026-04-11T00:00:54.000000Z"
+      },
+      {
+        "id": 165295,
+        "title": "Chapter 39",
+        "chapter_number": 39,
+        "slug": "chapter-39",
+        "created_at": "2026-04-11T00:00:54.000000Z"
+      },
+      {
+        "id": 165298,
+        "title": "Chapter 38",
+        "chapter_number": 38,
+        "slug": "chapter-38",
+        "created_at": "2026-04-11T00:00:55.000000Z"
+      },
+      {
+        "id": 165301,
+        "title": "Chapter 37",
+        "chapter_number": 37,
+        "slug": "chapter-37",
+        "created_at": "2026-04-11T00:00:55.000000Z"
+      },
+      {
+        "id": 165303,
+        "title": "Chapter 36",
+        "chapter_number": 36,
+        "slug": "chapter-36",
+        "created_at": "2026-04-11T00:00:56.000000Z"
+      },
+      {
+        "id": 165306,
+        "title": "Chapter 35",
+        "chapter_number": 35,
+        "slug": "chapter-35",
+        "created_at": "2026-04-11T00:00:56.000000Z"
+      },
+      {
+        "id": 165309,
+        "title": "Chapter 34",
+        "chapter_number": 34,
+        "slug": "chapter-34",
+        "created_at": "2026-04-11T00:00:57.000000Z"
+      },
+      {
+        "id": 165312,
+        "title": "Chapter 33",
+        "chapter_number": 33,
+        "slug": "chapter-33",
+        "created_at": "2026-04-11T00:00:57.000000Z"
+      },
+      {
+        "id": 165315,
+        "title": "Chapter 32",
+        "chapter_number": 32,
+        "slug": "chapter-32",
+        "created_at": "2026-04-11T00:00:58.000000Z"
+      },
+      {
+        "id": 165318,
+        "title": "Chapter 31",
+        "chapter_number": 31,
+        "slug": "chapter-31",
+        "created_at": "2026-04-11T00:00:58.000000Z"
+      },
+      {
+        "id": 165321,
+        "title": "Chapter 30",
+        "chapter_number": 30,
+        "slug": "chapter-30",
+        "created_at": "2026-04-11T00:00:59.000000Z"
+      },
+      {
+        "id": 165323,
+        "title": "Chapter 29",
+        "chapter_number": 29,
+        "slug": "chapter-29",
+        "created_at": "2026-04-11T00:00:59.000000Z"
+      },
+      {
+        "id": 165326,
+        "title": "Chapter 28",
+        "chapter_number": 28,
+        "slug": "chapter-28",
+        "created_at": "2026-04-11T00:01:00.000000Z"
+      },
+      {
+        "id": 165329,
+        "title": "Chapter 27",
+        "chapter_number": 27,
+        "slug": "chapter-27",
+        "created_at": "2026-04-11T00:01:00.000000Z"
+      },
+      {
+        "id": 165332,
+        "title": "Chapter 26",
+        "chapter_number": 26,
+        "slug": "chapter-26",
+        "created_at": "2026-04-11T00:01:01.000000Z"
+      },
+      {
+        "id": 165336,
+        "title": "Chapter 25",
+        "chapter_number": 25,
+        "slug": "chapter-25",
+        "created_at": "2026-04-11T00:01:01.000000Z"
+      },
+      {
+        "id": 165340,
+        "title": "Chapter 24",
+        "chapter_number": 24,
+        "slug": "chapter-24",
+        "created_at": "2026-04-11T00:01:02.000000Z"
+      },
+      {
+        "id": 165343,
+        "title": "Chapter 23",
+        "chapter_number": 23,
+        "slug": "chapter-23",
+        "created_at": "2026-04-11T00:01:03.000000Z"
+      },
+      {
+        "id": 165347,
+        "title": "Chapter 22",
+        "chapter_number": 22,
+        "slug": "chapter-22",
+        "created_at": "2026-04-11T00:01:03.000000Z"
+      },
+      {
+        "id": 165352,
+        "title": "Chapter 21",
+        "chapter_number": 21,
+        "slug": "chapter-21",
+        "created_at": "2026-04-11T00:01:04.000000Z"
+      },
+      {
+        "id": 165356,
+        "title": "Chapter 20",
+        "chapter_number": 20,
+        "slug": "chapter-20",
+        "created_at": "2026-04-11T00:01:04.000000Z"
+      },
+      {
+        "id": 165359,
+        "title": "Chapter 19",
+        "chapter_number": 19,
+        "slug": "chapter-19",
+        "created_at": "2026-04-11T00:01:05.000000Z"
+      },
+      {
+        "id": 165363,
+        "title": "Chapter 18",
+        "chapter_number": 18,
+        "slug": "chapter-18",
+        "created_at": "2026-04-11T00:01:05.000000Z"
+      },
+      {
+        "id": 165367,
+        "title": "Chapter 17",
+        "chapter_number": 17,
+        "slug": "chapter-17",
+        "created_at": "2026-04-11T00:01:06.000000Z"
+      },
+      {
+        "id": 165371,
+        "title": "Chapter 16",
+        "chapter_number": 16,
+        "slug": "chapter-16",
+        "created_at": "2026-04-11T00:01:07.000000Z"
+      },
+      {
+        "id": 165374,
+        "title": "Chapter 15",
+        "chapter_number": 15,
+        "slug": "chapter-15",
+        "created_at": "2026-04-11T00:01:07.000000Z"
+      },
+      {
+        "id": 165378,
+        "title": "Chapter 14",
+        "chapter_number": 14,
+        "slug": "chapter-14",
+        "created_at": "2026-04-11T00:01:08.000000Z"
+      },
+      {
+        "id": 165382,
+        "title": "Chapter 13",
+        "chapter_number": 13,
+        "slug": "chapter-13",
+        "created_at": "2026-04-11T00:01:08.000000Z"
+      },
+      {
+        "id": 165386,
+        "title": "Chapter 12",
+        "chapter_number": 12,
+        "slug": "chapter-12",
+        "created_at": "2026-04-11T00:01:09.000000Z"
+      },
+      {
+        "id": 165390,
+        "title": "Chapter 11",
+        "chapter_number": 11,
+        "slug": "chapter-11",
+        "created_at": "2026-04-11T00:01:09.000000Z"
+      },
+      {
+        "id": 165394,
+        "title": "Chapter 10",
+        "chapter_number": 10,
+        "slug": "chapter-10",
+        "created_at": "2026-04-11T00:01:10.000000Z"
+      },
+      {
+        "id": 165398,
+        "title": "Chapter 9",
+        "chapter_number": 9,
+        "slug": "chapter-9",
+        "created_at": "2026-04-11T00:01:10.000000Z"
+      },
+      {
+        "id": 165402,
+        "title": "Chapter 8",
+        "chapter_number": 8,
+        "slug": "chapter-8",
+        "created_at": "2026-04-11T00:01:11.000000Z"
+      },
+      {
+        "id": 165406,
+        "title": "Chapter 7",
+        "chapter_number": 7,
+        "slug": "chapter-7",
+        "created_at": "2026-04-11T00:01:12.000000Z"
+      },
+      {
+        "id": 165409,
+        "title": "Chapter 6",
+        "chapter_number": 6,
+        "slug": "chapter-6",
+        "created_at": "2026-04-11T00:01:12.000000Z"
+      },
+      {
+        "id": 165413,
+        "title": "Chapter 5",
+        "chapter_number": 5,
+        "slug": "chapter-5",
+        "created_at": "2026-04-11T00:01:13.000000Z"
+      },
+      {
+        "id": 165418,
+        "title": "Chapter 4",
+        "chapter_number": 4,
+        "slug": "chapter-4",
+        "created_at": "2026-04-11T00:01:13.000000Z"
+      },
+      {
+        "id": 165421,
+        "title": "Chapter 3",
+        "chapter_number": 3,
+        "slug": "chapter-3",
+        "created_at": "2026-04-11T00:01:14.000000Z"
+      },
+      {
+        "id": 165427,
+        "title": "Chapter 2",
+        "chapter_number": 2,
+        "slug": "chapter-2",
+        "created_at": "2026-04-11T00:01:15.000000Z"
+      },
+      {
+        "id": 165430,
+        "title": "Chapter 1.2",
+        "chapter_number": 1.2,
+        "slug": "chapter-1-2",
+        "created_at": "2026-04-11T00:01:15.000000Z"
+      },
+      {
+        "id": 165433,
+        "title": "Chapter 1.1",
+        "chapter_number": 1.1,
+        "slug": "chapter-1-1",
+        "created_at": "2026-04-11T00:01:16.000000Z"
+      }
+    ],
+    "readChapterIds": []
+  },
+  "url": "/manga/batsu-harembatsu-harem/chapter/210",
+  "version": "1f9ea7ef0878b9a4129e7a3158970903",
+  "clearHistory": false,
+  "encryptHistory": false
+}

@@ -1,0 +1,79 @@
+{
+  "chapter": {
+    "name": "Chapter 180",
+    "id": 113228,
+    "number": "180",
+    "synopsis": null,
+    "image": "zTvDp0cG7n3pHEJv+S53MC68N+nVjAnT3Y2cnHAgc11EdUBVUKdMmAc6AwFd4SSTI4e3Dhb8U5SpTzmIw/F1vD71q2K7fBKd0zyvHTSaMQeODxtb0dyp9npregGZoTA6jsx+iyxdpE4A4eLMMnHfldNiiSMKPl7NPSa1qH8O4RuWQIEsudIah9uFu9SYU1mWpnknjjTd06Te5T+zr6po5bbog0iHrscCa3qOA4SEFQYkaQ6VJF1n9EBvakdNljot30PN6EmkRLpBR+3+OqZUcBwZ9PslZkAhkf369lpCX62AVxJFDIb2FJY0l/fgkuU9Gb0UFa50CXF3ehvOGo+pmDOwupfQRY4BPL9ch2cWNmYlG7BO57N2VG6j9hjrRG1pD3u5S4N+zYJ1JOznzBur58rwbMKcKToxN0ckkJq+t35irWQTvIWcf44XHUIR5Aeru0/8f2K/0/GRbdF7CzgAzVyyChK5cm3cZfEdJ1pquZEiKKFzZLa0W/y41SJqoquzCGbXScXM34k9q+6LSrb6iu1Yaovxb7AXtS9EkTsQoMTjo0skL2+watwrRKMvsxrtxXP2lXVUMjDNscYuCloHn1XcNDPpyezjsKH6+5X0DOwPpiKG3RADwG/S6rTecqxUCuhaYtFERTOSVqN7J+5L8pjz/Gh6mB2uHqDa+1dKAW+JI5ebu++/xfVBZQyn4/PAGjAvxFqAQDeeYsO+jT2L02u+qVzRuyHBWoWf6loF1s/slrKrO3dSkUhiu3WA8VRT6ZEJttpyzSl/S+vFZ7O8yXkn6BGOaHMnoD5ptfQUnSyDrMts2ihEbn/Hk/hrUY79FYb8tgTedM5NcWWxOZ3nzY6I7UxLc2zLZmHgudfxdJg=",
+    "thumbnail": null,
+    "views": "814775",
+    "date": " 8 January 2024",
+    "previous": {
+      "name": "Chapter 179",
+      "id": "113231",
+      "number": "179",
+      "date": " 8 January 2024"
+    },
+    "next": null,
+    "server": {
+      "server-1": "https://img.komiku.org"
+    }
+  },
+  "series": {
+    "id": 1308,
+    "title": "Solo Leveling",
+    "title_alt": "Penjelajah Solo",
+    "score": "8.7",
+    "date": "04 Maret 2018",
+    "total_views": "55720988",
+    "thumbnail": "https://thumbnail.komiku.org/uploads/manga/solo-leveling-sub-indo/manga_thumbnail-Head-I-Alone-Leveling.png",
+    "summary": [
+      "Sung Jinwoo berubah dari pemburu terlemah menjadi terkuat melalui kekuatan misterius.",
+      "Kisah tentang perjuangan mengatasi batas diri di dunia penuh monster.",
+      "Seorang pemburu lemah mendapatkan kekuatan luar biasa dan mengejar keadilan.",
+      "Perjalanan solo level up yang membentuk pahlawan tak terkalahkan.",
+      "Rahasia di balik dungeon dan pertumbuhan eksponensial seorang manusia biasa."
+    ],
+    "genre": [
+      {
+        "name": "Action",
+        "id": "action"
+      },
+      {
+        "name": "Adventure",
+        "id": "adventure"
+      },
+      {
+        "name": "Drama",
+        "id": "drama"
+      },
+      {
+        "name": "Fantasy",
+        "id": "fantasy"
+      },
+      {
+        "name": "Shounen",
+        "id": "shounen"
+      },
+      {
+        "name": "Super Power",
+        "id": "super-power"
+      }
+    ],
+    "ratemanga": [
+      {
+        "name": "15",
+        "id": "15"
+      }
+    ],
+    "tipe": [
+      {
+        "name": "Manhwa",
+        "id": "manhwa"
+      }
+    ]
+  },
+  "tes": {
+    "113231": false
+  }
+}

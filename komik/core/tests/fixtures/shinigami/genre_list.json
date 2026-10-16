@@ -1,0 +1,317 @@
+{
+  "retcode": 0,
+  "message": "success",
+  "meta": {
+    "request_id": "b311b0d6-7b3b-48ee-975b-85f31be2823d",
+    "timestamp": 1791888323431,
+    "process_time": "0ms"
+  },
+  "data": [
+    {
+      "taxonomy_id": 25,
+      "slug": "action",
+      "name": "Action",
+      "type": "Genre"
+    },
+    {
+      "taxonomy_id": 1755,
+      "slug": "adaptation",
+      "name": "Adaptation",
+      "type": "Genre"
+    },
+    {
+      "taxonomy_id": 184,
+      "slug": "adult",
+      "name": "Adult",
+      "type": "Genre"
+    },
+    {
+      "taxonomy_id": 26,
+      "slug": "adventure",
+      "name": "Adventure",
+      "type": "Genre"
+    },
+    {
+      "taxonomy_id": 17,
+      "slug": "comedy",
+      "name": "Comedy",
+      "type": "Genre"
+    },
+    {
+      "taxonomy_id": 116,
+      "slug": "cooking",
+      "name": "Cooking",
+      "type": "Genre"
+    },
+    {
+      "taxonomy_id": 1762,
+      "slug": "crime",
+      "name": "Crime",
+      "type": "Genre"
+    },
+    {
+      "taxonomy_id": 74,
+      "slug": "demon",
+      "name": "Demon",
+      "type": "Genre"
+    },
+    {
+      "taxonomy_id": 178,
+      "slug": "demons",
+      "name": "Demons",
+      "type": "Genre"
+    },
+    {
+      "taxonomy_id": 2251,
+      "slug": "dra-genre",
+      "name": "dra",
+      "type": "Genre"
+    },
+    {
+      "taxonomy_id": 35,
+      "slug": "drama",
+      "name": "Drama",
+      "type": "Genre"
+    },
+    {
+      "taxonomy_id": 65,
+      "slug": "ecchi",
+      "name": "Ecchi",
+      "type": "Genre"
+    },
+    {
+      "taxonomy_id": 27,
+      "slug": "fantasy",
+      "name": "Fantasy",
+      "type": "Genre"
+    },
+    {
+      "taxonomy_id": 1385,
+      "slug": "fight",
+      "name": "Fight",
+      "type": "Genre"
+    },
+    {
+      "taxonomy_id": 3265,
+      "slug": "fighting-genre",
+      "name": "Fighting",
+      "type": "Genre"
+    },
+    {
+      "taxonomy_id": 48,
+      "slug": "game",
+      "name": "Game",
+      "type": "Genre"
+    },
+    {
+      "taxonomy_id": 1969,
+      "slug": "gender-bender",
+      "name": "Gender Bender",
+      "type": "Genre"
+    },
+    {
+      "taxonomy_id": 66,
+      "slug": "harem",
+      "name": "Harem",
+      "type": "Genre"
+    },
+    {
+      "taxonomy_id": 235,
+      "slug": "historical",
+      "name": "Historical",
+      "type": "Genre"
+    },
+    {
+      "taxonomy_id": 45,
+      "slug": "horror",
+      "name": "Horror",
+      "type": "Genre"
+    },
+    {
+      "taxonomy_id": 103,
+      "slug": "isekai",
+      "name": "Isekai",
+      "type": "Genre"
+    },
+    {
+      "taxonomy_id": 2345,
+      "slug": "josei-genre",
+      "name": "Josei",
+      "type": "Genre"
+    },
+    {
+      "taxonomy_id": 75,
+      "slug": "latest",
+      "name": "Latest",
+      "type": "Genre"
+    },
+    {
+      "taxonomy_id": 2075,
+      "slug": "love",
+      "name": "Love",
+      "type": "Genre"
+    },
+    {
+      "taxonomy_id": 83,
+      "slug": "magic",
+      "name": "Magic",
+      "type": "Genre"
+    },
+    {
+      "taxonomy_id": 28,
+      "slug": "martial-arts",
+      "name": "Martial Arts",
+      "type": "Genre"
+    },
+    {
+      "taxonomy_id": 87,
+      "slug": "mature",
+      "name": "Mature",
+      "type": "Genre"
+    },
+    {
+      "taxonomy_id": 1704,
+      "slug": "mecha",
+      "name": "Mecha",
+      "type": "Genre"
+    },
+    {
+      "taxonomy_id": 78,
+      "slug": "medical",
+      "name": "Medical",
+      "type": "Genre"
+    },
+    {
+      "taxonomy_id": 29,
+      "slug": "murim",
+      "name": "Murim",
+      "type": "Genre"
+    },
+    {
+      "taxonomy_id": 418,
+      "slug": "mystery",
+      "name": "Mystery",
+      "type": "Genre"
+    },
+    {
+      "taxonomy_id": 18,
+      "slug": "philosophical",
+      "name": "Philosophical",
+      "type": "Genre"
+    },
+    {
+      "taxonomy_id": 136,
+      "slug": "psychological",
+      "name": "Psychological",
+      "type": "Genre"
+    },
+    {
+      "taxonomy_id": 1756,
+      "slug": "regression",
+      "name": "Regression",
+      "type": "Genre"
+    },
+    {
+      "taxonomy_id": 2771,
+      "slug": "reincarnation-genre",
+      "name": "Reincarnation",
+      "type": "Genre"
+    },
+    {
+      "taxonomy_id": 88,
+      "slug": "revenge",
+      "name": "Revenge",
+      "type": "Genre"
+    },
+    {
+      "taxonomy_id": 16,
+      "slug": "romance",
+      "name": "Romance",
+      "type": "Genre"
+    },
+    {
+      "taxonomy_id": 52,
+      "slug": "school-life",
+      "name": "School Life",
+      "type": "Genre"
+    },
+    {
+      "taxonomy_id": 301,
+      "slug": "sci-fi",
+      "name": "Sci-fi",
+      "type": "Genre"
+    },
+    {
+      "taxonomy_id": 41,
+      "slug": "seinen",
+      "name": "Seinen",
+      "type": "Genre"
+    },
+    {
+      "taxonomy_id": 218,
+      "slug": "shoujo",
+      "name": "Shoujo",
+      "type": "Genre"
+    },
+    {
+      "taxonomy_id": 95,
+      "slug": "shounen",
+      "name": "Shounen",
+      "type": "Genre"
+    },
+    {
+      "taxonomy_id": 19,
+      "slug": "slice-of-life",
+      "name": "Slice of Life",
+      "type": "Genre"
+    },
+    {
+      "taxonomy_id": 2045,
+      "slug": "smut",
+      "name": "Smut",
+      "type": "Genre"
+    },
+    {
+      "taxonomy_id": 22,
+      "slug": "sports",
+      "name": "Sports",
+      "type": "Genre"
+    },
+    {
+      "taxonomy_id": 56,
+      "slug": "supernatural",
+      "name": "Supernatural",
+      "type": "Genre"
+    },
+    {
+      "taxonomy_id": 96,
+      "slug": "supranatural",
+      "name": "Supranatural",
+      "type": "Genre"
+    },
+    {
+      "taxonomy_id": 1361,
+      "slug": "thriller",
+      "name": "Thriller",
+      "type": "Genre"
+    },
+    {
+      "taxonomy_id": 89,
+      "slug": "tragedy",
+      "name": "Tragedy",
+      "type": "Genre"
+    },
+    {
+      "taxonomy_id": 127,
+      "slug": "violence",
+      "name": "Violence",
+      "type": "Genre"
+    },
+    {
+      "taxonomy_id": 1433,
+      "slug": "wuxia",
+      "name": "Wuxia",
+      "type": "Genre"
+    }
+  ]
+}

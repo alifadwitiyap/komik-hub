@@ -1,0 +1,89 @@
+{
+  "retcode": 0,
+  "message": "success",
+  "meta": {
+    "request_id": "759819b2-9123-4d9e-b6e3-980539b29783",
+    "timestamp": 1791733173532,
+    "process_time": "0ms"
+  },
+  "data": {
+    "id": 288,
+    "manga_id": "48270276-bd79-4a46-b15e-fdd2cf5655b1",
+    "title": "One Piece",
+    "description": "Bercerita tentang seorang lakilaki bernama Monkey D Luffy yang menentang arti dari gelar bajak laut Daripada kesannama besar kejahatan kekerasan dia lebih terlihat seperti bajak laut rendahan yang suka bersenangsenang alasanLuffy menjadi bajak laut adalah tekadnya untuk berpetualang di lautan yang menyenangkan dan bertemu orangorangbaru dan menarik sertabersamasama mencari One Piece",
+    "alternative_title": "Updating",
+    "release_year": "1997",
+    "status": 1,
+    "cover_image_url": "https://assets.shngm.id/thumbnail/cover/f9325dbc0a80.jpeg",
+    "view_count": 5974437,
+    "user_rate": 9,
+    "cover_portrait_url": "",
+    "latest_chapter_id": "69211040-3c41-4fbc-9c57-c4f9b9cba64a",
+    "latest_chapter_number": 1195,
+    "latest_chapter_time": "2026-10-09T09:20:29Z",
+    "country_id": "JP",
+    "bookmark_count": 8946,
+    "rank": 9999,
+    "is_recommended": true,
+    "taxonomy": {
+      "Artist": [
+        {
+          "taxonomy_id": 1300,
+          "slug": "oda-eiichiro-0",
+          "name": "ODA Eiichiro"
+        }
+      ],
+      "Author": [
+        {
+          "taxonomy_id": 1142,
+          "slug": "oda-eiichiro",
+          "name": "Oda Eiichiro"
+        }
+      ],
+      "Format": [
+        {
+          "taxonomy_id": 9,
+          "slug": "manga",
+          "name": "Manga"
+        }
+      ],
+      "Genre": [
+        {
+          "taxonomy_id": 17,
+          "slug": "comedy",
+          "name": "Comedy"
+        },
+        {
+          "taxonomy_id": 25,
+          "slug": "action",
+          "name": "Action"
+        },
+        {
+          "taxonomy_id": 26,
+          "slug": "adventure",
+          "name": "Adventure"
+        },
+        {
+          "taxonomy_id": 27,
+          "slug": "fantasy",
+          "name": "Fantasy"
+        },
+        {
+          "taxonomy_id": 35,
+          "slug": "drama",
+          "name": "Drama"
+        }
+      ],
+      "Type": [
+        {
+          "taxonomy_id": 13,
+          "slug": "mirror",
+          "name": "Mirror"
+        }
+      ]
+    },
+    "created_at": "2024-11-23T21:40:09Z",
+    "updated_at": "2026-10-11T15:36:39Z",
+    "deleted_at": null
+  }
+}

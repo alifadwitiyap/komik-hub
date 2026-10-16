@@ -1,0 +1,227 @@
+[
+  {
+    "id": 2400,
+    "count": 15,
+    "description": "",
+    "link": "https://v7.kiryuu.to/genre/4-koma/",
+    "name": "4-Koma",
+    "slug": "4-koma",
+    "taxonomy": "genre",
+    "parent": 0,
+    "meta": [],
+    "_links": {
+      "self": [
+        {
+          "href": "https://v7.kiryuu.to/wp-json/wp/v2/genre/2400",
+          "targetHints": {
+            "allow": [
+              "GET"
+            ]
+          }
+        }
+      ],
+      "collection": [
+        {
+          "href": "https://v7.kiryuu.to/wp-json/wp/v2/genre"
+        }
+      ],
+      "about": [
+        {
+          "href": "https://v7.kiryuu.to/wp-json/wp/v2/taxonomies/genre"
+        }
+      ],
+      "wp:post_type": [
+        {
+          "href": "https://v7.kiryuu.to/wp-json/wp/v2/manga?genre=2400"
+        }
+      ],
+      "curies": [
+        {
+          "name": "wp",
+          "href": "https://api.w.org/{rel}",
+          "templated": true
+        }
+      ]
+    }
+  },
+  {
+    "id": 2,
+    "count": 4636,
+    "description": "",
+    "link": "https://v7.kiryuu.to/genre/action/",
+    "name": "Action",
+    "slug": "action",
+    "taxonomy": "genre",
+    "parent": 0,
+    "meta": [],
+    "_links": {
+      "self": [
+        {
+          "href": "https://v7.kiryuu.to/wp-json/wp/v2/genre/2",
+          "targetHints": {
+            "allow": [
+              "GET"
+            ]
+          }
+        }
+      ],
+      "collection": [
+        {
+          "href": "https://v7.kiryuu.to/wp-json/wp/v2/genre"
+        }
+      ],
+      "about": [
+        {
+          "href": "https://v7.kiryuu.to/wp-json/wp/v2/taxonomies/genre"
+        }
+      ],
+      "wp:post_type": [
+        {
+          "href": "https://v7.kiryuu.to/wp-json/wp/v2/manga?genre=2"
+        }
+      ],
+      "curies": [
+        {
+          "name": "wp",
+          "href": "https://api.w.org/{rel}",
+          "templated": true
+        }
+      ]
+    }
+  },
+  {
+    "id": 3475,
+    "count": 48,
+    "description": "",
+    "link": "https://v7.kiryuu.to/genre/adaptation/",
+    "name": "Adaptation",
+    "slug": "adaptation",
+    "taxonomy": "genre",
+    "parent": 0,
+    "meta": [],
+    "_links": {
+      "self": [
+        {
+          "href": "https://v7.kiryuu.to/wp-json/wp/v2/genre/3475",
+          "targetHints": {
+            "allow": [
+              "GET"
+            ]
+          }
+        }
+      ],
+      "collection": [
+        {
+          "href": "https://v7.kiryuu.to/wp-json/wp/v2/genre"
+        }
+      ],
+      "about": [
+        {
+          "href": "https://v7.kiryuu.to/wp-json/wp/v2/taxonomies/genre"
+        }
+      ],
+      "wp:post_type": [
+        {
+          "href": "https://v7.kiryuu.to/wp-json/wp/v2/manga?genre=3475"
+        }
+      ],
+      "curies": [
+        {
+          "name": "wp",
+          "href": "https://api.w.org/{rel}",
+          "templated": true
+        }
+      ]
+    }
+  },
+  {
+    "id": 128,
+    "count": 171,
+    "description": "",
+    "link": "https://v7.kiryuu.to/genre/adult/",
+    "name": "Adult",
+    "slug": "adult",
+    "taxonomy": "genre",
+    "parent": 0,
+    "meta": [],
+    "_links": {
+      "self": [
+        {
+          "href": "https://v7.kiryuu.to/wp-json/wp/v2/genre/128",
+          "targetHints": {
+            "allow": [
+              "GET"
+            ]
+          }
+        }
+      ],
+      "collection": [
+        {
+          "href": "https://v7.kiryuu.to/wp-json/wp/v2/genre"
+        }
+      ],
+      "about": [
+        {
+          "href": "https://v7.kiryuu.to/wp-json/wp/v2/taxonomies/genre"
+        }
+      ],
+      "wp:post_type": [
+        {
+          "href": "https://v7.kiryuu.to/wp-json/wp/v2/manga?genre=128"
+        }
+      ],
+      "curies": [
+        {
+          "name": "wp",
+          "href": "https://api.w.org/{rel}",
+          "templated": true
+        }
+      ]
+    }
+  },
+  {
+    "id": 3,
+    "count": 2536,
+    "description": "",
+    "link": "https://v7.kiryuu.to/genre/adventure/",
+    "name": "Adventure",
+    "slug": "adventure",
+    "taxonomy": "genre",
+    "parent": 0,
+    "meta": [],
+    "_links": {
+      "self": [
+        {
+          "href": "https://v7.kiryuu.to/wp-json/wp/v2/genre/3",
+          "targetHints": {
+            "allow": [
+              "GET"
+            ]
+          }
+        }
+      ],
+      "collection": [
+        {
+          "href": "https://v7.kiryuu.to/wp-json/wp/v2/genre"
+        }
+      ],
+      "about": [
+        {
+          "href": "https://v7.kiryuu.to/wp-json/wp/v2/taxonomies/genre"
+        }
+      ],
+      "wp:post_type": [
+        {
+          "href": "https://v7.kiryuu.to/wp-json/wp/v2/manga?genre=3"
+        }
+      ],
+      "curies": [
+        {
+          "name": "wp",
+          "href": "https://api.w.org/{rel}",
+          "templated": true
+        }
+      ]
+    }
+  }
+]

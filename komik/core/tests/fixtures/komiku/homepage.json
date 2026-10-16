@@ -1,0 +1,4387 @@
+{
+  "success": true,
+  "trending": {
+    "title": "Trending",
+    "more": null,
+    "data": [
+      {
+        "id": 6426,
+        "title": "One Piece",
+        "title_alt": "One Piece",
+        "score": "9",
+        "date": "19 Juli 1997",
+        "update_date": "4 hari lalu",
+        "author": "Eiichiro Oda",
+        "total_views": "61569843",
+        "thumbnail": "https://thumbnail.komiku.org/uploads/manga/komik-one-piece-indo/manga_thumbnail-Komik-One-Piece.jpg",
+        "cover": "https://thumbnail.komiku.org/uploads/manga/komik-one-piece-indo/manga_img_horizontal-Manga-One-Piece.jpg",
+        "other": [
+          {
+            "name": "Chapter &gt;100",
+            "id": "chapter-100"
+          },
+          {
+            "name": "Hot",
+            "id": "hot"
+          },
+          {
+            "name": "Project",
+            "id": "project"
+          },
+          {
+            "name": "Rekomendasi",
+            "id": "rekomendasi"
+          }
+        ],
+        "genreutama": [
+          {
+            "name": "Aksi",
+            "id": "aksi"
+          }
+        ],
+        "ratemanga": [
+          {
+            "name": "10",
+            "id": "10"
+          }
+        ],
+        "statusmanga": [
+          {
+            "name": "Ongoing",
+            "id": "ongoing"
+          }
+        ],
+        "tipe": [
+          {
+            "name": "Manga",
+            "id": "manga"
+          }
+        ],
+        "latest_chapter": [
+          {
+            "name": "Chapter 1195",
+            "id": 578843,
+            "number": "1195"
+          }
+        ]
+      },
+      {
+        "id": 6465,
+        "title": "One Punch Man",
+        "title_alt": "Sang Penghancur Satu Pukulan",
+        "score": "9",
+        "date": "3 Juni 2009",
+        "update_date": "6 hari lalu",
+        "author": "ONE",
+        "total_views": "36243864",
+        "thumbnail": "https://thumbnail.komiku.org/uploads/manga/manga-one-punch-man/manga_thumbnail-Komik-One-Punch-Man.jpg",
+        "cover": "https://thumbnail.komiku.org/uploads/manga/manga-one-punch-man/manga_img_horizontal-Manga-One-Punch-Man.png",
+        "other": [
+          {
+            "name": "Chapter &gt;100",
+            "id": "chapter-100"
+          },
+          {
+            "name": "Hot",
+            "id": "hot"
+          }
+        ],
+        "genreutama": [
+          {
+            "name": "Aksi",
+            "id": "aksi"
+          }
+        ],
+        "ratemanga": [
+          {
+            "name": "13",
+            "id": "13"
+          }
+        ],
+        "statusmanga": [
+          {
+            "name": "Ongoing",
+            "id": "ongoing"
+          }
+        ],
+        "tipe": [
+          {
+            "name": "Manga",
+            "id": "manga"
+          }
+        ],
+        "latest_chapter": [
+          {
+            "name": "Chapter 313",
+            "id": 578462,
+            "number": "313"
+          }
+        ]
+      },
+      {
+        "id": 5774,
+        "title": "Magic Emperor",
+        "title_alt": "Kaisar Sihir",
+        "score": "8",
+        "date": "17 Oktober 2019",
+        "update_date": "2 hari lalu",
+        "author": "Rui Tsukiyo",
+        "total_views": "35488139",
+        "thumbnail": "https://thumbnail.komiku.org/uploads/manga/magic-emperor/manga_thumbnail-Komik-Magic-Emperor.jpg",
+        "cover": "https://thumbnail.komiku.org/uploads/manga/magic-emperor/manga_img_horizontal-Manhua-Magic-Emperor.png",
+        "other": [
+          {
+            "name": "Berwarna",
+            "id": "berwarna"
+          },
+          {
+            "name": "Chapter &gt;100",
+            "id": "chapter-100"
+          },
+          {
+            "name": "Hot",
+            "id": "hot"
+          },
+          {
+            "name": "Project",
+            "id": "project"
+          },
+          {
+            "name": "Rekomendasi",
+            "id": "rekomendasi"
+          }
+        ],
+        "genreutama": [
+          {
+            "name": "Fantasi",
+            "id": "fantasi"
+          }
+        ],
+        "ratemanga": [
+          {
+            "name": "15",
+            "id": "15"
+          }
+        ],
+        "statusmanga": [
+          {
+            "name": "Ongoing",
+            "id": "ongoing"
+          }
+        ],
+        "tipe": [
+          {
+            "name": "Manhua",
+            "id": "manhua"
+          }
+        ],
+        "latest_chapter": [
+          {
+            "name": "Chapter 921",
+            "id": 579686,
+            "number": "921"
+          }
+        ]
+      },
+      {
+        "id": 6430,
+        "title": "Tales of Demons and Gods",
+        "title_alt": "Kisah Iblis dan Dewa",
+        "score": "8",
+        "date": "5 Februari 2017",
+        "update_date": "2 hari lalu",
+        "author": "Mad Snail",
+        "total_views": "35173948",
+        "thumbnail": "https://thumbnail.komiku.org/uploads/manga/tales-demons-gods/manga_thumbnail-Komik-Tales-of-Demons-and-Gods.jpg",
+        "cover": "https://thumbnail.komiku.org/uploads/manga/tales-demons-gods/manga_img_horizontal-Manhua-Tales-of-Demons-and-Gods.jpg",
+        "other": [
+          {
+            "name": "Berwarna",
+            "id": "berwarna"
+          },
+          {
+            "name": "Chapter &gt;100",
+            "id": "chapter-100"
+          },
+          {
+            "name": "Hot",
+            "id": "hot"
+          },
+          {
+            "name": "Project",
+            "id": "project"
+          },
+          {
+            "name": "Rekomendasi",
+            "id": "rekomendasi"
+          }
+        ],
+        "genreutama": [
+          {
+            "name": "Fantasi",
+            "id": "fantasi"
+          }
+        ],
+        "ratemanga": [
+          {
+            "name": "13",
+            "id": "13"
+          }
+        ],
+        "statusmanga": [
+          {
+            "name": "Ongoing",
+            "id": "ongoing"
+          }
+        ],
+        "tipe": [
+          {
+            "name": "Manhua",
+            "id": "manhua"
+          }
+        ],
+        "latest_chapter": [
+          {
+            "name": "Chapter 533.5",
+            "id": 579643,
+            "number": "533.5"
+          }
+        ]
+      },
+      {
+        "id": 6309,
+        "title": "Rebirth Of The Urban Immortal Cultivator",
+        "title_alt": "Kebangkitan Kultivator Abadi Perkotaan",
+        "score": "8.5",
+        "date": "10 Januari 2020",
+        "update_date": "3 hari lalu",
+        "author": "Jiang Biao",
+        "total_views": "33501079",
+        "thumbnail": "https://thumbnail.komiku.org/uploads/manga/rebirth-of-the-urban-immortal-cultivator/manga_thumbnail-Komik-Rebirth-Of-The-Urban-Immortal-Cultivator.jpg",
+        "cover": "https://thumbnail.komiku.org/uploads/manga/rebirth-of-the-urban-immortal-cultivator/manga_img_horizontal-Rebirth-Of-The-Urban-Immortal-Cultivator.gif",
+        "other": [
+          {
+            "name": "Berwarna",
+            "id": "berwarna"
+          },
+          {
+            "name": "Chapter &gt;100",
+            "id": "chapter-100"
+          },
+          {
+            "name": "Hot",
+            "id": "hot"
+          },
+          {
+            "name": "Project",
+            "id": "project"
+          }
+        ],
+        "genreutama": [
+          {
+            "name": "Aksi",
+            "id": "aksi"
+          }
+        ],
+        "ratemanga": [
+          {
+            "name": "13",
+            "id": "13"
+          }
+        ],
+        "statusmanga": [
+          {
+            "name": "Ongoing",
+            "id": "ongoing"
+          }
+        ],
+        "tipe": [
+          {
+            "name": "Manhua",
+            "id": "manhua"
+          }
+        ],
+        "latest_chapter": [
+          {
+            "name": "Chapter 1068",
+            "id": 579622,
+            "number": "1068"
+          }
+        ]
+      },
+      {
+        "id": 6419,
+        "title": "Black Clover",
+        "title_alt": "Semanggi Hitam",
+        "score": "8",
+        "date": "23 Februari 2015",
+        "update_date": "2 hari lalu",
+        "author": "Yūki Tabata",
+        "total_views": "29532841",
+        "thumbnail": "https://thumbnail.komiku.org/uploads/manga/black-clover-indonesia/manga_thumbnail-Manga-Black-Clover.jpg",
+        "cover": "https://thumbnail.komiku.org/uploads/manga/black-clover-indonesia/manga_img_horizontal-Manga-Black-Clover.jpg",
+        "other": [
+          {
+            "name": "Chapter &gt;100",
+            "id": "chapter-100"
+          },
+          {
+            "name": "Hot",
+            "id": "hot"
+          },
+          {
+            "name": "Project",
+            "id": "project"
+          },
+          {
+            "name": "Rekomendasi",
+            "id": "rekomendasi"
+          }
+        ],
+        "genreutama": [
+          {
+            "name": "Aksi",
+            "id": "aksi"
+          }
+        ],
+        "ratemanga": [
+          {
+            "name": "13",
+            "id": "13"
+          }
+        ],
+        "statusmanga": [
+          {
+            "name": "Ongoing",
+            "id": "ongoing"
+          }
+        ],
+        "tipe": [
+          {
+            "name": "Manga",
+            "id": "manga"
+          }
+        ],
+        "latest_chapter": [
+          {
+            "name": "Chapter 393",
+            "id": 580088,
+            "number": "393"
+          }
+        ]
+      },
+      {
+        "id": 4620,
+        "title": "Sakamoto Days",
+        "title_alt": "Kehidupan Baru Sakamoto",
+        "score": "8",
+        "date": "7 Oktober 2020",
+        "update_date": "1 hari lalu",
+        "author": "Yuto Suzuki",
+        "total_views": "24148375",
+        "thumbnail": "https://thumbnail.komiku.org/uploads/manga/sakamoto-days/manga_thumbnail-Manga-Sakamoto-Days.jpg",
+        "cover": "https://thumbnail.komiku.org/uploads/manga/sakamoto-days/manga_img_horizontal-Komik-Sakamoto-Days.jpg",
+        "other": [
+          {
+            "name": "Chapter &gt;100",
+            "id": "chapter-100"
+          },
+          {
+            "name": "Hot",
+            "id": "hot"
+          },
+          {
+            "name": "Project",
+            "id": "project"
+          }
+        ],
+        "genreutama": [
+          {
+            "name": "Komedi",
+            "id": "komedi"
+          }
+        ],
+        "ratemanga": [
+          {
+            "name": "15",
+            "id": "15"
+          }
+        ],
+        "statusmanga": [
+          {
+            "name": "Ongoing",
+            "id": "ongoing"
+          }
+        ],
+        "tipe": [
+          {
+            "name": "Manga",
+            "id": "manga"
+          }
+        ],
+        "latest_chapter": [
+          {
+            "name": "Chapter 278",
+            "id": 580403,
+            "number": "278"
+          }
+        ]
+      },
+      {
+        "id": 6451,
+        "title": "God of Martial Arts",
+        "title_alt": "Dewa Seni Bela Diri",
+        "score": "8",
+        "date": "15 Oktober 2019",
+        "update_date": "21 jam lalu",
+        "author": "Jolly Jae",
+        "total_views": "20901993",
+        "thumbnail": "https://thumbnail.komiku.org/uploads/manga/god-of-martial-arts/manga_thumbnail-Komik-God-of-Martial-Arts.jpg",
+        "cover": "https://thumbnail.komiku.org/uploads/manga/god-of-martial-arts/manga_img_horizontal-Manhua-God-of-Martial-Arts.png",
+        "other": [
+          {
+            "name": "Berwarna",
+            "id": "berwarna"
+          },
+          {
+            "name": "Chapter &gt;100",
+            "id": "chapter-100"
+          },
+          {
+            "name": "Crazy Update",
+            "id": "crazy-update"
+          },
+          {
+            "name": "Hot",
+            "id": "hot"
+          },
+          {
+            "name": "Project",
+            "id": "project"
+          },
+          {
+            "name": "Rekomendasi",
+            "id": "rekomendasi"
+          }
+        ],
+        "genreutama": [
+          {
+            "name": "Isekai",
+            "id": "isekai"
+          }
+        ],
+        "ratemanga": [
+          {
+            "name": "13",
+            "id": "13"
+          }
+        ],
+        "statusmanga": [
+          {
+            "name": "Ongoing",
+            "id": "ongoing"
+          }
+        ],
+        "tipe": [
+          {
+            "name": "Manhua",
+            "id": "manhua"
+          }
+        ],
+        "latest_chapter": [
+          {
+            "name": "Chapter 1216",
+            "id": 580593,
+            "number": "1216"
+          }
+        ]
+      },
+      {
+        "id": 3998,
+        "title": "DANDADAN",
+        "title_alt": "Dandanan",
+        "score": "7.5",
+        "date": "28 Februari 2017",
+        "update_date": "20 jam lalu",
+        "author": "Nugroho Joko Prasetyo",
+        "total_views": "20606112",
+        "thumbnail": "https://thumbnail.komiku.org/uploads/manga/dandadan/manga_thumbnail-Manga-DANDADAN.jpg",
+        "cover": "https://thumbnail.komiku.org/uploads/manga/dandadan/manga_img_horizontal-Komik-DANDADAN.jpg",
+        "other": [
+          {
+            "name": "Chapter &gt;100",
+            "id": "chapter-100"
+          },
+          {
+            "name": "Hot",
+            "id": "hot"
+          },
+          {
+            "name": "Project",
+            "id": "project"
+          }
+        ],
+        "genreutama": [
+          {
+            "name": "Fiksi Sains",
+            "id": "fiksi-sains"
+          }
+        ],
+        "ratemanga": [
+          {
+            "name": "15",
+            "id": "15"
+          }
+        ],
+        "statusmanga": [
+          {
+            "name": "Ongoing",
+            "id": "ongoing"
+          }
+        ],
+        "tipe": [
+          {
+            "name": "Manga",
+            "id": "manga"
+          }
+        ],
+        "latest_chapter": [
+          {
+            "name": "Chapter 248",
+            "id": 580638,
+            "number": "248"
+          }
+        ]
+      },
+      {
+        "id": 1462,
+        "title": "Wind Breaker (NII Satoru)",
+        "title_alt": "Penakluk Angin",
+        "score": "8",
+        "date": "13 September 2015",
+        "update_date": "6 hari lalu",
+        "author": "Nii Satoru",
+        "total_views": "20062091",
+        "thumbnail": "https://thumbnail.komiku.org/uploads/manga/wind-breaker-nii-satoru-indo/manga_thumbnail-Head-Wind-Breaker-NII-Satoru.jpg",
+        "cover": "https://thumbnail.komiku.org/uploads/manga/wind-breaker-nii-satoru-indo/manga_img_horizontal-Back-Wind-Breaker-NII-Satoru.jpg",
+        "other": [
+          {
+            "name": "Chapter &gt;100",
+            "id": "chapter-100"
+          },
+          {
+            "name": "Hot",
+            "id": "hot"
+          },
+          {
+            "name": "Project",
+            "id": "project"
+          }
+        ],
+        "genreutama": [
+          {
+            "name": "Aksi",
+            "id": "aksi"
+          }
+        ],
+        "ratemanga": [
+          {
+            "name": "15",
+            "id": "15"
+          }
+        ],
+        "statusmanga": [
+          {
+            "name": "Ongoing",
+            "id": "ongoing"
+          }
+        ],
+        "tipe": [
+          {
+            "name": "Manga",
+            "id": "manga"
+          }
+        ],
+        "latest_chapter": [
+          {
+            "name": "Chapter 231",
+            "id": 578464,
+            "number": "231"
+          }
+        ]
+      },
+      {
+        "id": 4182,
+        "title": "The Ultimate of All Ages",
+        "title_alt": "Yang Terunggul di Semua Usia",
+        "score": "7.5",
+        "date": "15 Februari 2010",
+        "update_date": "1 hari lalu",
+        "author": "Masashi Kishimoto",
+        "total_views": "13831685",
+        "thumbnail": "https://thumbnail.komiku.org/uploads/manga/the-ultimate-of-all-ages/manga_thumbnail-Manhua-The-Ultimate-of-All-Ages.jpg",
+        "cover": "https://thumbnail.komiku.org/uploads/manga/the-ultimate-of-all-ages/manga_img_horizontal-Komik-The-Ultimate-of-All-Ages.png",
+        "other": [
+          {
+            "name": "Berwarna",
+            "id": "berwarna"
+          },
+          {
+            "name": "Chapter &gt;100",
+            "id": "chapter-100"
+          },
+          {
+            "name": "Crazy Update",
+            "id": "crazy-update"
+          },
+          {
+            "name": "Hot",
+            "id": "hot"
+          },
+          {
+            "name": "Project",
+            "id": "project"
+          }
+        ],
+        "genreutama": [
+          {
+            "name": "Fantasi",
+            "id": "fantasi"
+          }
+        ],
+        "ratemanga": [
+          {
+            "name": "15",
+            "id": "15"
+          }
+        ],
+        "statusmanga": [
+          {
+            "name": "Ongoing",
+            "id": "ongoing"
+          }
+        ],
+        "tipe": [
+          {
+            "name": "Manhua",
+            "id": "manhua"
+          }
+        ],
+        "latest_chapter": [
+          {
+            "name": "Chapter 574",
+            "id": 580409,
+            "number": "574"
+          }
+        ]
+      },
+      {
+        "id": 4273,
+        "title": "Solo Max-Level Newbie",
+        "title_alt": "Solo Pemula Level Maksimal",
+        "score": "8",
+        "date": "7 April 2020",
+        "update_date": "2 hari lalu",
+        "author": "Chu-Gong",
+        "total_views": "10565877",
+        "thumbnail": "https://thumbnail.komiku.org/uploads/manga/131241-solo-max-level-newbie/manga_thumbnail-Manhwa-Solo-Max-Level-Newbie.jpg",
+        "cover": "https://thumbnail.komiku.org/uploads/manga/131241-solo-max-level-newbie/manga_img_horizontal-Komik-Solo-Max-Level-Newbie.jpg",
+        "other": [
+          {
+            "name": "Berwarna",
+            "id": "berwarna"
+          },
+          {
+            "name": "Chapter &gt;100",
+            "id": "chapter-100"
+          },
+          {
+            "name": "Hot",
+            "id": "hot"
+          },
+          {
+            "name": "Project",
+            "id": "project"
+          },
+          {
+            "name": "Rekomendasi",
+            "id": "rekomendasi"
+          }
+        ],
+        "genreutama": [
+          {
+            "name": "Fantasi",
+            "id": "fantasi"
+          }
+        ],
+        "ratemanga": [
+          {
+            "name": "15",
+            "id": "15"
+          }
+        ],
+        "statusmanga": [
+          {
+            "name": "Ongoing",
+            "id": "ongoing"
+          }
+        ],
+        "tipe": [
+          {
+            "name": "Manhwa",
+            "id": "manhwa"
+          }
+        ],
+        "latest_chapter": [
+          {
+            "name": "Chapter 280",
+            "id": 579732,
+            "number": "280"
+          }
+        ]
+      },
+      {
+        "id": 1678,
+        "title": "Apex Future Martial Arts",
+        "title_alt": "Seni Bela Diri Masa Depan Apex",
+        "score": "8",
+        "date": "3 Juni 2018",
+        "update_date": "4 hari lalu",
+        "author": "Satou Ryuuto",
+        "total_views": "10543310",
+        "thumbnail": "https://thumbnail.komiku.org/uploads/manga/apex-future-martial-arts/manga_thumbnail-Apex-Future-Martial-Arts-1.jpg",
+        "cover": "https://thumbnail.komiku.org/uploads/manga/apex-future-martial-arts/manga_img_horizontal-Apex-Future-Martial-Arts-2.png",
+        "other": [
+          {
+            "name": "Berwarna",
+            "id": "berwarna"
+          },
+          {
+            "name": "Chapter &gt;100",
+            "id": "chapter-100"
+          },
+          {
+            "name": "Hot",
+            "id": "hot"
+          },
+          {
+            "name": "Project",
+            "id": "project"
+          }
+        ],
+        "genreutama": [
+          {
+            "name": "Aksi",
+            "id": "aksi"
+          }
+        ],
+        "ratemanga": [
+          {
+            "name": "10",
+            "id": "10"
+          }
+        ],
+        "statusmanga": [
+          {
+            "name": "Ongoing",
+            "id": "ongoing"
+          }
+        ],
+        "tipe": [
+          {
+            "name": "Manhua",
+            "id": "manhua"
+          }
+        ],
+        "latest_chapter": [
+          {
+            "name": "Chapter 359",
+            "id": 578932,
+            "number": "359"
+          }
+        ]
+      },
+      {
+        "id": 3254,
+        "title": "Evolution Begins With A Big Tree",
+        "title_alt": "Evolusi Dimulai Dari Pohon Besar",
+        "score": "8",
+        "date": "12 Januari 2023",
+        "update_date": "20 jam lalu",
+        "author": "Andria Yuda",
+        "total_views": "10508335",
+        "thumbnail": "https://thumbnail.komiku.org/uploads/manga/evolution-begins-with-a-big-tree/manga_thumbnail-Manhua-Evolution-Begins-With-A-Big-Tree.jpg",
+        "cover": "https://thumbnail.komiku.org/uploads/manga/evolution-begins-with-a-big-tree/manga_img_horizontal-Komik-Evolution-Begins-With-A-Big-Tree.jpg",
+        "other": [
+          {
+            "name": "Berwarna",
+            "id": "berwarna"
+          },
+          {
+            "name": "Chapter &gt;100",
+            "id": "chapter-100"
+          },
+          {
+            "name": "Hot",
+            "id": "hot"
+          },
+          {
+            "name": "Project",
+            "id": "project"
+          }
+        ],
+        "genreutama": [
+          {
+            "name": "Fantasi",
+            "id": "fantasi"
+          }
+        ],
+        "ratemanga": [
+          {
+            "name": "15",
+            "id": "15"
+          }
+        ],
+        "statusmanga": [
+          {
+            "name": "Ongoing",
+            "id": "ongoing"
+          }
+        ],
+        "tipe": [
+          {
+            "name": "Manhua",
+            "id": "manhua"
+          }
+        ],
+        "latest_chapter": [
+          {
+            "name": "Chapter 538",
+            "id": 580662,
+            "number": "538"
+          }
+        ]
+      },
+      {
+        "id": 1486,
+        "title": "Disastrous Necromancer",
+        "title_alt": "Necromancer Bencana",
+        "score": "7",
+        "date": "29 Juni 2023",
+        "update_date": "3 jam lalu",
+        "author": "Yomana Yomana",
+        "total_views": "8967884",
+        "thumbnail": "https://thumbnail.komiku.org/uploads/manga/disastrous-necromancer/manga_thumbnail-Head-Disastrous-Necromancer.jpeg",
+        "cover": "https://thumbnail.komiku.org/uploads/manga/disastrous-necromancer/manga_img_horizontal-Back-Disastrous-Necromancer.jpg",
+        "other": [
+          {
+            "name": "Berwarna",
+            "id": "berwarna"
+          },
+          {
+            "name": "Chapter &gt;100",
+            "id": "chapter-100"
+          },
+          {
+            "name": "Hot",
+            "id": "hot"
+          },
+          {
+            "name": "Project",
+            "id": "project"
+          }
+        ],
+        "genreutama": [
+          {
+            "name": "Fantasi",
+            "id": "fantasi"
+          }
+        ],
+        "ratemanga": [
+          {
+            "name": "15",
+            "id": "15"
+          }
+        ],
+        "statusmanga": [
+          {
+            "name": "Ongoing",
+            "id": "ongoing"
+          }
+        ],
+        "tipe": [
+          {
+            "name": "Manhua",
+            "id": "manhua"
+          }
+        ],
+        "latest_chapter": [
+          {
+            "name": "Chapter 313",
+            "id": 580812,
+            "number": "313"
+          }
+        ]
+      },
+      {
+        "id": 3691,
+        "title": "All Hail the Sect Leader",
+        "title_alt": "All Hail Sang Pemimpin Sekte",
+        "score": "8.5",
+        "date": "12 Maret 2020",
+        "update_date": "3 hari lalu",
+        "author": "Bu Xi",
+        "total_views": "8473133",
+        "thumbnail": "https://thumbnail.komiku.org/uploads/manga/all-hail-the-sect-leader/manga_thumbnail-Manhua-All-Hail-the-Sect-Leader.jpg",
+        "cover": "https://thumbnail.komiku.org/uploads/manga/all-hail-the-sect-leader/manga_img_horizontal-Komik-All-Hail-the-Sect-Leader.jpg",
+        "other": [
+          {
+            "name": "Berwarna",
+            "id": "berwarna"
+          },
+          {
+            "name": "Chapter &gt;100",
+            "id": "chapter-100"
+          },
+          {
+            "name": "Hot",
+            "id": "hot"
+          },
+          {
+            "name": "Project",
+            "id": "project"
+          },
+          {
+            "name": "Rekomendasi",
+            "id": "rekomendasi"
+          }
+        ],
+        "genreutama": [
+          {
+            "name": "Fantasi",
+            "id": "fantasi"
+          }
+        ],
+        "ratemanga": [
+          {
+            "name": "15",
+            "id": "15"
+          }
+        ],
+        "statusmanga": [
+          {
+            "name": "Ongoing",
+            "id": "ongoing"
+          }
+        ],
+        "tipe": [
+          {
+            "name": "Manhua",
+            "id": "manhua"
+          }
+        ],
+        "latest_chapter": [
+          {
+            "name": "Chapter 554",
+            "id": 579624,
+            "number": "554"
+          }
+        ]
+      }
+    ]
+  },
+  "hot": {
+    "title": "HOT",
+    "more": "https://index.komikid.org/manga/?other=hot",
+    "data": [
+      {
+        "id": 1395,
+        "title": "Savior of Divine Blood ~Draw Out 0.00000001% to Become the Strongest~",
+        "title_alt": "Penyelamat Darah Ilahi Mengambil 0,00000001 Persen untuk Menjadi Terkuat",
+        "score": "8.5",
+        "date": "25 Desember 2022",
+        "update_date": "2 menit lalu",
+        "author": "Mochi Buday",
+        "total_views": "1301907",
+        "thumbnail": "https://thumbnail.komiku.org/uploads/manga/savior-of-divine-blood-draw-out-0-00000001-to-become-the-strongest/manga_thumbnail-Head-Savior-of-Divine-Blood-Draw-Out-0.00000001-to-Become-the-Strongest.jpg",
+        "cover": "https://thumbnail.komiku.org/uploads/manga/savior-of-divine-blood-draw-out-0-00000001-to-become-the-strongest/manga_img_horizontal-Back-Savior-of-Divine-Blood-Draw-Out-0.00000001-to-Become-the-Strongest.jpg",
+        "other": [
+          {
+            "name": "Berwarna",
+            "id": "berwarna"
+          },
+          {
+            "name": "Chapter &gt;100",
+            "id": "chapter-100"
+          },
+          {
+            "name": "Hot",
+            "id": "hot"
+          },
+          {
+            "name": "Project",
+            "id": "project"
+          },
+          {
+            "name": "Rekomendasi",
+            "id": "rekomendasi"
+          }
+        ],
+        "genreutama": [
+          {
+            "name": "Fantasi",
+            "id": "fantasi"
+          }
+        ],
+        "ratemanga": [
+          {
+            "name": "13",
+            "id": "13"
+          }
+        ],
+        "statusmanga": [
+          {
+            "name": "Ongoing",
+            "id": "ongoing"
+          }
+        ],
+        "tipe": [
+          {
+            "name": "Manga",
+            "id": "manga"
+          }
+        ],
+        "latest_chapter": [
+          {
+            "name": "Chapter 180",
+            "id": 578585,
+            "number": "180"
+          }
+        ]
+      },
+      {
+        "id": 759,
+        "title": "The Regressed Genius Player’s Legendary Weapon Creation",
+        "title_alt": "Senjata Legendaris Sang Jenius yang Mundur",
+        "score": "8",
+        "date": "15 Januari 2020",
+        "update_date": "16 menit lalu",
+        "author": "Dark Schritte",
+        "total_views": "969906",
+        "thumbnail": "https://thumbnail.komiku.org/uploads/manga/the-regressed-genius-players-legendary-weapon-creation/manga_thumbnail-A2-The-Regressed-Genius-Players-Legendary-Weapon-Creation.jpg",
+        "cover": "https://thumbnail.komiku.org/uploads/manga/the-regressed-genius-players-legendary-weapon-creation/manga_img_horizontal-A1-The-Regressed-Genius-Players-Legendary-Weapon-Creation.jpg",
+        "other": [
+          {
+            "name": "Berwarna",
+            "id": "berwarna"
+          },
+          {
+            "name": "Hot",
+            "id": "hot"
+          }
+        ],
+        "genreutama": [
+          {
+            "name": "Fantasi",
+            "id": "fantasi"
+          }
+        ],
+        "ratemanga": [
+          {
+            "name": "13",
+            "id": "13"
+          }
+        ],
+        "statusmanga": [
+          {
+            "name": "Ongoing",
+            "id": "ongoing"
+          }
+        ],
+        "tipe": [
+          {
+            "name": "Manhwa",
+            "id": "manhwa"
+          }
+        ],
+        "latest_chapter": [
+          {
+            "name": "Chapter 99",
+            "id": 580846,
+            "number": "99"
+          }
+        ]
+      },
+      {
+        "id": 1173,
+        "title": "I Really Don’t Want to Learn Forbidden Spells",
+        "title_alt": "Aku Sungguh Tidak Ingin Mempelajari Mantra Terlarang",
+        "score": "7.8",
+        "date": "15 Februari 2023",
+        "update_date": "16 menit lalu",
+        "author": "Tariq Rashid",
+        "total_views": "2899521",
+        "thumbnail": "https://thumbnail.komiku.org/uploads/manga/i-really-dont-want-to-learn-forbidden-spells/manga_thumbnail-Head-I-Really-Dont-Want-to-Learn-Forbidden-Spells.jpg",
+        "cover": "https://thumbnail.komiku.org/uploads/manga/i-really-dont-want-to-learn-forbidden-spells/manga_img_horizontal-Back-I-Really-Dont-Want-to-Learn-Forbidden-Spells.jpg",
+        "other": [
+          {
+            "name": "Berwarna",
+            "id": "berwarna"
+          },
+          {
+            "name": "Chapter &gt;100",
+            "id": "chapter-100"
+          },
+          {
+            "name": "Hot",
+            "id": "hot"
+          }
+        ],
+        "genreutama": [
+          {
+            "name": "Fantasi",
+            "id": "fantasi"
+          }
+        ],
+        "ratemanga": [
+          {
+            "name": "13",
+            "id": "13"
+          }
+        ],
+        "statusmanga": [
+          {
+            "name": "Ongoing",
+            "id": "ongoing"
+          }
+        ],
+        "tipe": [
+          {
+            "name": "Manhua",
+            "id": "manhua"
+          }
+        ],
+        "latest_chapter": [
+          {
+            "name": "Chapter 180",
+            "id": 580848,
+            "number": "180"
+          }
+        ]
+      },
+      {
+        "id": 4554,
+        "title": "King Account At The Start",
+        "title_alt": "Akun Raja Di Awal",
+        "score": "8",
+        "date": "20 Januari 2021",
+        "update_date": "16 menit lalu",
+        "author": "Anselmo Sound",
+        "total_views": "3045353",
+        "thumbnail": "https://thumbnail.komiku.org/uploads/manga/king-account-at-the-start/manga_thumbnail-Manhua-King-Account-At-The-Start.jpg",
+        "cover": "https://thumbnail.komiku.org/uploads/manga/king-account-at-the-start/manga_img_horizontal-Komik-King-Account-At-The-Start.jpg",
+        "other": [
+          {
+            "name": "Berwarna",
+            "id": "berwarna"
+          },
+          {
+            "name": "Chapter &gt;100",
+            "id": "chapter-100"
+          },
+          {
+            "name": "Hot",
+            "id": "hot"
+          }
+        ],
+        "genreutama": [
+          {
+            "name": "Fantasi",
+            "id": "fantasi"
+          }
+        ],
+        "ratemanga": [
+          {
+            "name": "15",
+            "id": "15"
+          }
+        ],
+        "statusmanga": [
+          {
+            "name": "Ongoing",
+            "id": "ongoing"
+          }
+        ],
+        "tipe": [
+          {
+            "name": "Manhua",
+            "id": "manhua"
+          }
+        ],
+        "latest_chapter": [
+          {
+            "name": "Chapter 359",
+            "id": 580845,
+            "number": "359"
+          }
+        ]
+      },
+      {
+        "id": 357115,
+        "title": "Cosmic Heavenly Demon 3077",
+        "title_alt": "Iblis Surgawi Kosmik",
+        "score": "8.5",
+        "date": "10 Juni 2019",
+        "update_date": "16 menit lalu",
+        "author": "BLACK AJIN",
+        "total_views": "570781",
+        "thumbnail": "https://thumbnail.komiku.org/img/upload/cosmic_heavenly_demon_3077/img_682ef6528046f5.18367565.jpg",
+        "cover": "https://thumbnail.komiku.org/img/upload/cosmic_heavenly_demon_3077/img_682ef652800800.11159864.jpg",
+        "other": [
+          {
+            "name": "Berwarna",
+            "id": "berwarna"
+          },
+          {
+            "name": "Chapter &gt;100",
+            "id": "chapter-100"
+          },
+          {
+            "name": "Hot",
+            "id": "hot"
+          }
+        ],
+        "genreutama": [
+          {
+            "name": "Fantasi",
+            "id": "fantasi"
+          }
+        ],
+        "ratemanga": [
+          {
+            "name": "13",
+            "id": "13"
+          }
+        ],
+        "statusmanga": [
+          {
+            "name": "Ongoing",
+            "id": "ongoing"
+          }
+        ],
+        "tipe": [
+          {
+            "name": "Manhwa",
+            "id": "manhwa"
+          }
+        ],
+        "latest_chapter": [
+          {
+            "name": "Chapter 109",
+            "id": 580850,
+            "number": "109"
+          }
+        ]
+      },
+      {
+        "id": 410449,
+        "title": "Infinite Evolution Starting from Zero",
+        "title_alt": "Evolusi Tak Terbatas Bermula dari Nol",
+        "score": "8.9",
+        "date": "25 Desember 2019",
+        "update_date": "17 menit lalu",
+        "author": "桃乐茜ci",
+        "total_views": "619405",
+        "thumbnail": "https://thumbnail.komiku.org/img/upload/infinite_evolution_starting_from_zero/img_68ca5c8bb87d01.68140710.jpg",
+        "cover": "https://thumbnail.komiku.org/img/upload/infinite_evolution_starting_from_zero/img_68ca5c8bb83363.45709957.jpg",
+        "other": [
+          {
+            "name": "Berwarna",
+            "id": "berwarna"
+          },
+          {
+            "name": "Chapter &gt;100",
+            "id": "chapter-100"
+          },
+          {
+            "name": "Hot",
+            "id": "hot"
+          },
+          {
+            "name": "Project",
+            "id": "project"
+          }
+        ],
+        "genreutama": [
+          {
+            "name": "Fantasi",
+            "id": "fantasi"
+          }
+        ],
+        "ratemanga": [
+          {
+            "name": "13",
+            "id": "13"
+          }
+        ],
+        "statusmanga": [
+          {
+            "name": "Ongoing",
+            "id": "ongoing"
+          }
+        ],
+        "tipe": [
+          {
+            "name": "Manhua",
+            "id": "manhua"
+          }
+        ],
+        "latest_chapter": [
+          {
+            "name": "Chapter 134",
+            "id": 580843,
+            "number": "134"
+          }
+        ]
+      },
+      {
+        "id": 688,
+        "title": "Surviving as a Genius on Borrowed Time",
+        "title_alt": "Bertahan Hidup sebagai Jenius dengan Waktu Pinjaman",
+        "score": "8",
+        "date": "1 April 2023",
+        "update_date": "47 menit lalu",
+        "author": "Noh Yae-won",
+        "total_views": "792523",
+        "thumbnail": "https://thumbnail.komiku.org/uploads/manga/surviving-as-a-genius-on-borrowed-time/manga_thumbnail-A2-Surviving-as-a-Genius-on-Borrowed-Time.jpg",
+        "cover": "https://thumbnail.komiku.org/uploads/manga/surviving-as-a-genius-on-borrowed-time/manga_img_horizontal-A1-Surviving-as-a-Genius-on-Borrowed-Time.jpg",
+        "other": [
+          {
+            "name": "Berwarna",
+            "id": "berwarna"
+          },
+          {
+            "name": "Hot",
+            "id": "hot"
+          },
+          {
+            "name": "Project",
+            "id": "project"
+          },
+          {
+            "name": "Rekomendasi",
+            "id": "rekomendasi"
+          }
+        ],
+        "genreutama": [
+          {
+            "name": "Martial Arts",
+            "id": "martial-arts"
+          }
+        ],
+        "ratemanga": [
+          {
+            "name": "13",
+            "id": "13"
+          }
+        ],
+        "statusmanga": [
+          {
+            "name": "Ongoing",
+            "id": "ongoing"
+          }
+        ],
+        "tipe": [
+          {
+            "name": "Manhwa",
+            "id": "manhwa"
+          }
+        ],
+        "latest_chapter": [
+          {
+            "name": "Chapter 96",
+            "id": 580827,
+            "number": "96"
+          }
+        ]
+      },
+      {
+        "id": 713,
+        "title": "All My Alter Egos Are Tycoons",
+        "title_alt": "Semua Alter Egos Aku Adalah Konglomerat",
+        "score": "8.5",
+        "date": "27 April 2023",
+        "update_date": "1 jam lalu",
+        "author": "Siwook",
+        "total_views": "1206344",
+        "thumbnail": "https://thumbnail.komiku.org/uploads/manga/all-my-alter-egos-are-tycoons/manga_thumbnail-A2-All-My-Alter-Egos-Are-Tycoons.jpg",
+        "cover": "https://thumbnail.komiku.org/uploads/manga/all-my-alter-egos-are-tycoons/manga_img_horizontal-A1-All-My-Alter-Egos-Are-Tycoons.jpg",
+        "other": [
+          {
+            "name": "Berwarna",
+            "id": "berwarna"
+          },
+          {
+            "name": "Hot",
+            "id": "hot"
+          },
+          {
+            "name": "Project",
+            "id": "project"
+          },
+          {
+            "name": "Rekomendasi",
+            "id": "rekomendasi"
+          }
+        ],
+        "genreutama": [
+          {
+            "name": "Fantasi",
+            "id": "fantasi"
+          }
+        ],
+        "ratemanga": [
+          {
+            "name": "13",
+            "id": "13"
+          }
+        ],
+        "statusmanga": [
+          {
+            "name": "Ongoing",
+            "id": "ongoing"
+          }
+        ],
+        "tipe": [
+          {
+            "name": "Manhwa",
+            "id": "manhwa"
+          }
+        ],
+        "latest_chapter": [
+          {
+            "name": "Chapter 100",
+            "id": 580825,
+            "number": "100"
+          }
+        ]
+      }
+    ]
+  },
+  "terbaru": {
+    "title": "Update Terbaru",
+    "more": "https://index.komikid.org/manga/",
+    "data": [
+      {
+        "id": 575432,
+        "title": "Ore Wa Benkyo Ga Shitai Dake Nanoni!",
+        "title_alt": "",
+        "score": 7,
+        "date": "",
+        "update_date": "17 detik lalu",
+        "author": "",
+        "total_views": "0",
+        "thumbnail": "https://thumbnail.komiku.org/new/img/images/2026/09/28/20260928090013_049b606d358fb4e5_9d88795d.webp",
+        "cover": "https://thumbnail.komiku.org/new/img/images/2026/09/28/20260928084725_1e2afa93f4cc0711_f477c0cd.webp",
+        "other": [],
+        "genreutama": [
+          {
+            "name": "Komedi",
+            "id": "komedi"
+          }
+        ],
+        "ratemanga": [
+          {
+            "name": "15",
+            "id": "15"
+          }
+        ],
+        "statusmanga": [
+          {
+            "name": "Ongoing",
+            "id": "ongoing"
+          }
+        ],
+        "tipe": [
+          {
+            "name": "Manga",
+            "id": "manga"
+          }
+        ],
+        "latest_chapter": [
+          {
+            "name": "Chapter 4",
+            "id": 580865,
+            "number": "4"
+          }
+        ]
+      },
+      {
+        "id": 3909,
+        "title": "Craft Game no Nouryoku de Isekai Kouryaku!!",
+        "title_alt": "Strategi Dunia Lain dengan Kemampuan Craft Game",
+        "score": "7.5",
+        "date": "4 April 2020",
+        "update_date": "1 menit lalu",
+        "author": "Hotomura",
+        "total_views": "471774",
+        "thumbnail": "https://thumbnail.komiku.org/uploads/manga/craft-game-no-nouryoku-de-isekai-kouryaku/manga_thumbnail-Komik-Craft-Game-no-Nouryoku-de-Isekai-Kouryaku.jpg",
+        "cover": "https://thumbnail.komiku.org/uploads/manga/craft-game-no-nouryoku-de-isekai-kouryaku/manga_img_horizontal-Manga-Craft-Game-no-Nouryoku-de-Isekai-Kouryaku.jpg",
+        "other": [],
+        "genreutama": [
+          {
+            "name": "Isekai",
+            "id": "isekai"
+          }
+        ],
+        "ratemanga": [
+          {
+            "name": "15",
+            "id": "15"
+          }
+        ],
+        "statusmanga": [
+          {
+            "name": "Ongoing",
+            "id": "ongoing"
+          }
+        ],
+        "tipe": [
+          {
+            "name": "Manga",
+            "id": "manga"
+          }
+        ],
+        "latest_chapter": [
+          {
+            "name": "Chapter 61",
+            "id": 580860,
+            "number": "61"
+          }
+        ]
+      },
+      {
+        "id": 354829,
+        "title": "The Magic Tower's Problem Child",
+        "title_alt": "Anak Nakal Menara Ajaib",
+        "score": "8",
+        "date": "17 September 2021",
+        "update_date": "1 menit lalu",
+        "author": "YANGYANG",
+        "total_views": "224147",
+        "thumbnail": "https://thumbnail.komiku.org/img/upload/the_magic_tower_s/img_682c2791bdc974.13625931.jpg",
+        "cover": "https://thumbnail.komiku.org/img/upload/the_magic_tower_s/img_682c2791bd97d7.67730125.jpg",
+        "other": [
+          {
+            "name": "Berwarna",
+            "id": "berwarna"
+          },
+          {
+            "name": "Rekomendasi",
+            "id": "rekomendasi"
+          }
+        ],
+        "genreutama": [
+          {
+            "name": "Fantasi",
+            "id": "fantasi"
+          }
+        ],
+        "ratemanga": [
+          {
+            "name": "13",
+            "id": "13"
+          }
+        ],
+        "statusmanga": [
+          {
+            "name": "Ongoing",
+            "id": "ongoing"
+          }
+        ],
+        "tipe": [
+          {
+            "name": "Manhwa",
+            "id": "manhwa"
+          }
+        ],
+        "latest_chapter": [
+          {
+            "name": "Chapter 66",
+            "id": 580863,
+            "number": "66"
+          }
+        ]
+      },
+      {
+        "id": 360477,
+        "title": "The Genius Who Sees Through the World",
+        "title_alt": "Jenius yang Melihat Dunia dengan Jelas",
+        "score": "8",
+        "date": "15 Mei 2021",
+        "update_date": "1 menit lalu",
+        "author": "GRIM",
+        "total_views": "342548",
+        "thumbnail": "https://thumbnail.komiku.org/img/upload/the_genius_who_sees_through_the_world/img_683588331bf3b9.40833122.jpg",
+        "cover": "https://thumbnail.komiku.org/img/upload/the_genius_who_sees_through_the_world/img_683588331bc060.18410608.jpg",
+        "other": [
+          {
+            "name": "Berwarna",
+            "id": "berwarna"
+          }
+        ],
+        "genreutama": [
+          {
+            "name": "Supernatural",
+            "id": "supernatural"
+          }
+        ],
+        "ratemanga": [
+          {
+            "name": "13",
+            "id": "13"
+          }
+        ],
+        "statusmanga": [
+          {
+            "name": "Ongoing",
+            "id": "ongoing"
+          }
+        ],
+        "tipe": [
+          {
+            "name": "Manhwa",
+            "id": "manhwa"
+          }
+        ],
+        "latest_chapter": [
+          {
+            "name": "Chapter 66",
+            "id": 577114,
+            "number": "66"
+          }
+        ]
+      },
+      {
+        "id": 480101,
+        "title": "Tonari no Futomomo-san",
+        "title_alt": null,
+        "score": "7",
+        "date": "20 Agustus 2017",
+        "update_date": "1 menit lalu",
+        "author": "Yomu",
+        "total_views": "6575",
+        "thumbnail": "https://thumbnail.komiku.org/new/img/images/2026/04/03/20260403054520_61c02e61f883a897_c1209753.webp",
+        "cover": "https://thumbnail.komiku.org/new/img/images/2026/04/03/20260403053113_9b987166e5368645_9f8e9ae7.webp",
+        "other": [],
+        "genreutama": [
+          {
+            "name": "Komedi",
+            "id": "komedi"
+          }
+        ],
+        "ratemanga": [
+          {
+            "name": "17",
+            "id": "17"
+          }
+        ],
+        "statusmanga": [],
+        "tipe": [
+          {
+            "name": "Manga",
+            "id": "manga"
+          }
+        ],
+        "latest_chapter": [
+          {
+            "name": "Chapter 7",
+            "id": 580861,
+            "number": "7"
+          }
+        ]
+      },
+      {
+        "id": 509830,
+        "title": "Endless Yearning",
+        "title_alt": null,
+        "score": "-",
+        "date": "-",
+        "update_date": "1 menit lalu",
+        "author": "-",
+        "total_views": "3638",
+        "thumbnail": "https://thumbnail.komiku.org/new/img/images/2026/06/02/20260602123025_ad41405ae03bdebc_283fa235.jpg",
+        "cover": "https://thumbnail.komiku.org/new/img/images/2026/06/02/20260602122112_3bb33b6c2dce1474_5986ce61.jpg",
+        "other": [
+          {
+            "name": "Berwarna",
+            "id": "berwarna"
+          }
+        ],
+        "genreutama": [
+          {
+            "name": "Romantis",
+            "id": "romantis"
+          }
+        ],
+        "ratemanga": [
+          {
+            "name": "17",
+            "id": "17"
+          }
+        ],
+        "statusmanga": [
+          {
+            "name": "Ongoing",
+            "id": "ongoing"
+          }
+        ],
+        "tipe": [
+          {
+            "name": "Manhwa",
+            "id": "manhwa"
+          }
+        ],
+        "latest_chapter": [
+          {
+            "name": "Chapter 31",
+            "id": 580862,
+            "number": "31"
+          }
+        ]
+      },
+      {
+        "id": 1395,
+        "title": "Savior of Divine Blood ~Draw Out 0.00000001% to Become the Strongest~",
+        "title_alt": "Penyelamat Darah Ilahi Mengambil 0,00000001 Persen untuk Menjadi Terkuat",
+        "score": "8.5",
+        "date": "25 Desember 2022",
+        "update_date": "2 menit lalu",
+        "author": "Mochi Buday",
+        "total_views": "1301907",
+        "thumbnail": "https://thumbnail.komiku.org/uploads/manga/savior-of-divine-blood-draw-out-0-00000001-to-become-the-strongest/manga_thumbnail-Head-Savior-of-Divine-Blood-Draw-Out-0.00000001-to-Become-the-Strongest.jpg",
+        "cover": "https://thumbnail.komiku.org/uploads/manga/savior-of-divine-blood-draw-out-0-00000001-to-become-the-strongest/manga_img_horizontal-Back-Savior-of-Divine-Blood-Draw-Out-0.00000001-to-Become-the-Strongest.jpg",
+        "other": [
+          {
+            "name": "Berwarna",
+            "id": "berwarna"
+          },
+          {
+            "name": "Chapter &gt;100",
+            "id": "chapter-100"
+          },
+          {
+            "name": "Hot",
+            "id": "hot"
+          },
+          {
+            "name": "Project",
+            "id": "project"
+          },
+          {
+            "name": "Rekomendasi",
+            "id": "rekomendasi"
+          }
+        ],
+        "genreutama": [
+          {
+            "name": "Fantasi",
+            "id": "fantasi"
+          }
+        ],
+        "ratemanga": [
+          {
+            "name": "13",
+            "id": "13"
+          }
+        ],
+        "statusmanga": [
+          {
+            "name": "Ongoing",
+            "id": "ongoing"
+          }
+        ],
+        "tipe": [
+          {
+            "name": "Manga",
+            "id": "manga"
+          }
+        ],
+        "latest_chapter": [
+          {
+            "name": "Chapter 180",
+            "id": 578585,
+            "number": "180"
+          }
+        ]
+      },
+      {
+        "id": 500512,
+        "title": "Who Let Him Cultivate Immortality?!",
+        "title_alt": null,
+        "score": "-",
+        "date": "-",
+        "update_date": "15 menit lalu",
+        "author": "-",
+        "total_views": "19290",
+        "thumbnail": "https://thumbnail.komiku.org/new/img/images/2026/05/19/20260519180025_e223cffb49cb25c1_f20fe5bf.webp",
+        "cover": "https://thumbnail.komiku.org/new/img/images/2026/05/19/20260519175720_85c92701eb77d8b2_49261c2a.webp",
+        "other": [
+          {
+            "name": "Berwarna",
+            "id": "berwarna"
+          }
+        ],
+        "genreutama": [
+          {
+            "name": "Martial Arts",
+            "id": "martial-arts"
+          }
+        ],
+        "ratemanga": [
+          {
+            "name": "13",
+            "id": "13"
+          }
+        ],
+        "statusmanga": [],
+        "tipe": [
+          {
+            "name": "Manhua",
+            "id": "manhua"
+          }
+        ],
+        "latest_chapter": [
+          {
+            "name": "Chapter 31",
+            "id": 580851,
+            "number": "31"
+          }
+        ]
+      },
+      {
+        "id": 759,
+        "title": "The Regressed Genius Player’s Legendary Weapon Creation",
+        "title_alt": "Senjata Legendaris Sang Jenius yang Mundur",
+        "score": "8",
+        "date": "15 Januari 2020",
+        "update_date": "16 menit lalu",
+        "author": "Dark Schritte",
+        "total_views": "969906",
+        "thumbnail": "https://thumbnail.komiku.org/uploads/manga/the-regressed-genius-players-legendary-weapon-creation/manga_thumbnail-A2-The-Regressed-Genius-Players-Legendary-Weapon-Creation.jpg",
+        "cover": "https://thumbnail.komiku.org/uploads/manga/the-regressed-genius-players-legendary-weapon-creation/manga_img_horizontal-A1-The-Regressed-Genius-Players-Legendary-Weapon-Creation.jpg",
+        "other": [
+          {
+            "name": "Berwarna",
+            "id": "berwarna"
+          },
+          {
+            "name": "Hot",
+            "id": "hot"
+          }
+        ],
+        "genreutama": [
+          {
+            "name": "Fantasi",
+            "id": "fantasi"
+          }
+        ],
+        "ratemanga": [
+          {
+            "name": "13",
+            "id": "13"
+          }
+        ],
+        "statusmanga": [
+          {
+            "name": "Ongoing",
+            "id": "ongoing"
+          }
+        ],
+        "tipe": [
+          {
+            "name": "Manhwa",
+            "id": "manhwa"
+          }
+        ],
+        "latest_chapter": [
+          {
+            "name": "Chapter 99",
+            "id": 580846,
+            "number": "99"
+          }
+        ]
+      },
+      {
+        "id": 1173,
+        "title": "I Really Don’t Want to Learn Forbidden Spells",
+        "title_alt": "Aku Sungguh Tidak Ingin Mempelajari Mantra Terlarang",
+        "score": "7.8",
+        "date": "15 Februari 2023",
+        "update_date": "16 menit lalu",
+        "author": "Tariq Rashid",
+        "total_views": "2899521",
+        "thumbnail": "https://thumbnail.komiku.org/uploads/manga/i-really-dont-want-to-learn-forbidden-spells/manga_thumbnail-Head-I-Really-Dont-Want-to-Learn-Forbidden-Spells.jpg",
+        "cover": "https://thumbnail.komiku.org/uploads/manga/i-really-dont-want-to-learn-forbidden-spells/manga_img_horizontal-Back-I-Really-Dont-Want-to-Learn-Forbidden-Spells.jpg",
+        "other": [
+          {
+            "name": "Berwarna",
+            "id": "berwarna"
+          },
+          {
+            "name": "Chapter &gt;100",
+            "id": "chapter-100"
+          },
+          {
+            "name": "Hot",
+            "id": "hot"
+          }
+        ],
+        "genreutama": [
+          {
+            "name": "Fantasi",
+            "id": "fantasi"
+          }
+        ],
+        "ratemanga": [
+          {
+            "name": "13",
+            "id": "13"
+          }
+        ],
+        "statusmanga": [
+          {
+            "name": "Ongoing",
+            "id": "ongoing"
+          }
+        ],
+        "tipe": [
+          {
+            "name": "Manhua",
+            "id": "manhua"
+          }
+        ],
+        "latest_chapter": [
+          {
+            "name": "Chapter 180",
+            "id": 580848,
+            "number": "180"
+          }
+        ]
+      },
+      {
+        "id": 4554,
+        "title": "King Account At The Start",
+        "title_alt": "Akun Raja Di Awal",
+        "score": "8",
+        "date": "20 Januari 2021",
+        "update_date": "16 menit lalu",
+        "author": "Anselmo Sound",
+        "total_views": "3045353",
+        "thumbnail": "https://thumbnail.komiku.org/uploads/manga/king-account-at-the-start/manga_thumbnail-Manhua-King-Account-At-The-Start.jpg",
+        "cover": "https://thumbnail.komiku.org/uploads/manga/king-account-at-the-start/manga_img_horizontal-Komik-King-Account-At-The-Start.jpg",
+        "other": [
+          {
+            "name": "Berwarna",
+            "id": "berwarna"
+          },
+          {
+            "name": "Chapter &gt;100",
+            "id": "chapter-100"
+          },
+          {
+            "name": "Hot",
+            "id": "hot"
+          }
+        ],
+        "genreutama": [
+          {
+            "name": "Fantasi",
+            "id": "fantasi"
+          }
+        ],
+        "ratemanga": [
+          {
+            "name": "15",
+            "id": "15"
+          }
+        ],
+        "statusmanga": [
+          {
+            "name": "Ongoing",
+            "id": "ongoing"
+          }
+        ],
+        "tipe": [
+          {
+            "name": "Manhua",
+            "id": "manhua"
+          }
+        ],
+        "latest_chapter": [
+          {
+            "name": "Chapter 359",
+            "id": 580845,
+            "number": "359"
+          }
+        ]
+      },
+      {
+        "id": 357115,
+        "title": "Cosmic Heavenly Demon 3077",
+        "title_alt": "Iblis Surgawi Kosmik",
+        "score": "8.5",
+        "date": "10 Juni 2019",
+        "update_date": "16 menit lalu",
+        "author": "BLACK AJIN",
+        "total_views": "570781",
+        "thumbnail": "https://thumbnail.komiku.org/img/upload/cosmic_heavenly_demon_3077/img_682ef6528046f5.18367565.jpg",
+        "cover": "https://thumbnail.komiku.org/img/upload/cosmic_heavenly_demon_3077/img_682ef652800800.11159864.jpg",
+        "other": [
+          {
+            "name": "Berwarna",
+            "id": "berwarna"
+          },
+          {
+            "name": "Chapter &gt;100",
+            "id": "chapter-100"
+          },
+          {
+            "name": "Hot",
+            "id": "hot"
+          }
+        ],
+        "genreutama": [
+          {
+            "name": "Fantasi",
+            "id": "fantasi"
+          }
+        ],
+        "ratemanga": [
+          {
+            "name": "13",
+            "id": "13"
+          }
+        ],
+        "statusmanga": [
+          {
+            "name": "Ongoing",
+            "id": "ongoing"
+          }
+        ],
+        "tipe": [
+          {
+            "name": "Manhwa",
+            "id": "manhwa"
+          }
+        ],
+        "latest_chapter": [
+          {
+            "name": "Chapter 109",
+            "id": 580850,
+            "number": "109"
+          }
+        ]
+      },
+      {
+        "id": 410449,
+        "title": "Infinite Evolution Starting from Zero",
+        "title_alt": "Evolusi Tak Terbatas Bermula dari Nol",
+        "score": "8.9",
+        "date": "25 Desember 2019",
+        "update_date": "17 menit lalu",
+        "author": "桃乐茜ci",
+        "total_views": "619405",
+        "thumbnail": "https://thumbnail.komiku.org/img/upload/infinite_evolution_starting_from_zero/img_68ca5c8bb87d01.68140710.jpg",
+        "cover": "https://thumbnail.komiku.org/img/upload/infinite_evolution_starting_from_zero/img_68ca5c8bb83363.45709957.jpg",
+        "other": [
+          {
+            "name": "Berwarna",
+            "id": "berwarna"
+          },
+          {
+            "name": "Chapter &gt;100",
+            "id": "chapter-100"
+          },
+          {
+            "name": "Hot",
+            "id": "hot"
+          },
+          {
+            "name": "Project",
+            "id": "project"
+          }
+        ],
+        "genreutama": [
+          {
+            "name": "Fantasi",
+            "id": "fantasi"
+          }
+        ],
+        "ratemanga": [
+          {
+            "name": "13",
+            "id": "13"
+          }
+        ],
+        "statusmanga": [
+          {
+            "name": "Ongoing",
+            "id": "ongoing"
+          }
+        ],
+        "tipe": [
+          {
+            "name": "Manhua",
+            "id": "manhua"
+          }
+        ],
+        "latest_chapter": [
+          {
+            "name": "Chapter 134",
+            "id": 580843,
+            "number": "134"
+          }
+        ]
+      },
+      {
+        "id": 355725,
+        "title": "A Strange But Effective Villainess Life",
+        "title_alt": "Kehidupan Wanita Jahat yang Aneh Namun Efektif",
+        "score": "8",
+        "date": "5 Januari 2022",
+        "update_date": "31 menit lalu",
+        "author": "Hwang Seok Jin",
+        "total_views": "55077",
+        "thumbnail": "https://thumbnail.komiku.org/img/upload/a_strange_but_effective_villainess_life/img_682d64a69b4d70.09118256.jpg",
+        "cover": "https://thumbnail.komiku.org/img/upload/a_strange_but_effective_villainess_life/img_682d64a69b1518.78295471.jpg",
+        "other": [
+          {
+            "name": "Berwarna",
+            "id": "berwarna"
+          },
+          {
+            "name": "Rekomendasi",
+            "id": "rekomendasi"
+          }
+        ],
+        "genreutama": [
+          {
+            "name": "Fantasi",
+            "id": "fantasi"
+          }
+        ],
+        "ratemanga": [
+          {
+            "name": "13",
+            "id": "13"
+          }
+        ],
+        "statusmanga": [
+          {
+            "name": "Ongoing",
+            "id": "ongoing"
+          }
+        ],
+        "tipe": [
+          {
+            "name": "Manhwa",
+            "id": "manhwa"
+          }
+        ],
+        "latest_chapter": [
+          {
+            "name": "Chapter 58",
+            "id": 580836,
+            "number": "58"
+          }
+        ]
+      },
+      {
+        "id": 545847,
+        "title": "Now It’s Your Turn To Regret",
+        "title_alt": null,
+        "score": "-",
+        "date": "-",
+        "update_date": "31 menit lalu",
+        "author": "-",
+        "total_views": "871",
+        "thumbnail": "https://thumbnail.komiku.org/new/img/images/2026/08/09/20260809144510_808a473fbb2acfa8_aa985cd7.jpg",
+        "cover": "https://thumbnail.komiku.org/new/img/images/2026/08/09/20260809144227_62785aa5ce0d2e19_b63f72bc.jpg",
+        "other": [
+          {
+            "name": "Berwarna",
+            "id": "berwarna"
+          }
+        ],
+        "genreutama": [
+          {
+            "name": "Drama",
+            "id": "drama"
+          }
+        ],
+        "ratemanga": [
+          {
+            "name": "17",
+            "id": "17"
+          }
+        ],
+        "statusmanga": [],
+        "tipe": [
+          {
+            "name": "Manhwa",
+            "id": "manhwa"
+          }
+        ],
+        "latest_chapter": [
+          {
+            "name": "Chapter 17",
+            "id": 580837,
+            "number": "17"
+          }
+        ]
+      },
+      {
+        "id": 392593,
+        "title": "A Cadet Becomes A Prophet?!",
+        "title_alt": "Seorang Taruna Menjadi Utusan??",
+        "score": "8",
+        "date": "12 Februari 2019",
+        "update_date": "32 menit lalu",
+        "author": "Cheongcho",
+        "total_views": "138284",
+        "thumbnail": "https://thumbnail.komiku.org/img/upload/a_cadet_becomes_a_prophet__/img_686782099397f9.40254406.jpg",
+        "cover": "https://thumbnail.komiku.org/img/upload/a_cadet_becomes_a_prophet__/img_68678209933d84.88703590.jpg",
+        "other": [
+          {
+            "name": "Berwarna",
+            "id": "berwarna"
+          },
+          {
+            "name": "Project",
+            "id": "project"
+          },
+          {
+            "name": "Rekomendasi",
+            "id": "rekomendasi"
+          }
+        ],
+        "genreutama": [
+          {
+            "name": "Fantasi",
+            "id": "fantasi"
+          }
+        ],
+        "ratemanga": [
+          {
+            "name": "13",
+            "id": "13"
+          }
+        ],
+        "statusmanga": [
+          {
+            "name": "Ongoing",
+            "id": "ongoing"
+          }
+        ],
+        "tipe": [
+          {
+            "name": "Manhwa",
+            "id": "manhwa"
+          }
+        ],
+        "latest_chapter": [
+          {
+            "name": "Chapter 64",
+            "id": 580835,
+            "number": "64"
+          }
+        ]
+      },
+      {
+        "id": 522179,
+        "title": "I Became the Most Terrifying Stepmother in History?!",
+        "title_alt": "",
+        "score": "-",
+        "date": "-",
+        "update_date": "46 menit lalu",
+        "author": "-",
+        "total_views": "13161",
+        "thumbnail": "https://thumbnail.komiku.org/new/img/images/2026/06/26/20260626133011_e7d265435b969308_1a00ec73.jpg",
+        "cover": "https://thumbnail.komiku.org/new/img/images/2026/06/26/20260626131803_0a9b7a519237e06f_dbd064fb.jpg",
+        "other": [
+          {
+            "name": "Berwarna",
+            "id": "berwarna"
+          }
+        ],
+        "genreutama": [
+          {
+            "name": "Isekai",
+            "id": "isekai"
+          }
+        ],
+        "ratemanga": [
+          {
+            "name": "13",
+            "id": "13"
+          }
+        ],
+        "statusmanga": [
+          {
+            "name": "Ongoing",
+            "id": "ongoing"
+          }
+        ],
+        "tipe": [
+          {
+            "name": "Manhwa",
+            "id": "manhwa"
+          }
+        ],
+        "latest_chapter": [
+          {
+            "name": "Chapter 35",
+            "id": 580830,
+            "number": "35"
+          }
+        ]
+      },
+      {
+        "id": 560009,
+        "title": "Get Out of My Romance Fantasy",
+        "title_alt": null,
+        "score": "-",
+        "date": "-",
+        "update_date": "46 menit lalu",
+        "author": "-",
+        "total_views": "116",
+        "thumbnail": "https://thumbnail.komiku.org/new/img/images/2026/08/27/20260827011516_347ad518853a30ad_82eaee06.jpg",
+        "cover": "https://thumbnail.komiku.org/new/img/images/2026/08/27/20260827011051_cfa97e891dc449cf_f3538ec5.jpg",
+        "other": [
+          {
+            "name": "Berwarna",
+            "id": "berwarna"
+          }
+        ],
+        "genreutama": [
+          {
+            "name": "Fantasi",
+            "id": "fantasi"
+          }
+        ],
+        "ratemanga": [
+          {
+            "name": "13",
+            "id": "13"
+          }
+        ],
+        "statusmanga": [
+          {
+            "name": "Ongoing",
+            "id": "ongoing"
+          }
+        ],
+        "tipe": [
+          {
+            "name": "Manhwa",
+            "id": "manhwa"
+          }
+        ],
+        "latest_chapter": [
+          {
+            "name": "Chapter 25",
+            "id": 580829,
+            "number": "25"
+          }
+        ]
+      },
+      {
+        "id": 688,
+        "title": "Surviving as a Genius on Borrowed Time",
+        "title_alt": "Bertahan Hidup sebagai Jenius dengan Waktu Pinjaman",
+        "score": "8",
+        "date": "1 April 2023",
+        "update_date": "47 menit lalu",
+        "author": "Noh Yae-won",
+        "total_views": "792523",
+        "thumbnail": "https://thumbnail.komiku.org/uploads/manga/surviving-as-a-genius-on-borrowed-time/manga_thumbnail-A2-Surviving-as-a-Genius-on-Borrowed-Time.jpg",
+        "cover": "https://thumbnail.komiku.org/uploads/manga/surviving-as-a-genius-on-borrowed-time/manga_img_horizontal-A1-Surviving-as-a-Genius-on-Borrowed-Time.jpg",
+        "other": [
+          {
+            "name": "Berwarna",
+            "id": "berwarna"
+          },
+          {
+            "name": "Hot",
+            "id": "hot"
+          },
+          {
+            "name": "Project",
+            "id": "project"
+          },
+          {
+            "name": "Rekomendasi",
+            "id": "rekomendasi"
+          }
+        ],
+        "genreutama": [
+          {
+            "name": "Martial Arts",
+            "id": "martial-arts"
+          }
+        ],
+        "ratemanga": [
+          {
+            "name": "13",
+            "id": "13"
+          }
+        ],
+        "statusmanga": [
+          {
+            "name": "Ongoing",
+            "id": "ongoing"
+          }
+        ],
+        "tipe": [
+          {
+            "name": "Manhwa",
+            "id": "manhwa"
+          }
+        ],
+        "latest_chapter": [
+          {
+            "name": "Chapter 96",
+            "id": 580827,
+            "number": "96"
+          }
+        ]
+      },
+      {
+        "id": 443611,
+        "title": "World-Saving Is A Skill",
+        "title_alt": "Keahlian Menyelamatkan Dunia",
+        "score": "7.5",
+        "date": "10 Mei 2022",
+        "update_date": "47 menit lalu",
+        "author": "KYUNGHAK",
+        "total_views": "72819",
+        "thumbnail": "https://thumbnail.komiku.org/img/upload/world-saving_is_a_skill/img_695b3a2b6986d1.07808809.webp",
+        "cover": "https://thumbnail.komiku.org/img/upload/world-saving_is_a_skill/img_695b3a2b693e53.02129159.jpg",
+        "other": [
+          {
+            "name": "Berwarna",
+            "id": "berwarna"
+          },
+          {
+            "name": "Project",
+            "id": "project"
+          },
+          {
+            "name": "Rekomendasi",
+            "id": "rekomendasi"
+          }
+        ],
+        "genreutama": [
+          {
+            "name": "Fantasi",
+            "id": "fantasi"
+          }
+        ],
+        "ratemanga": [
+          {
+            "name": "13",
+            "id": "13"
+          }
+        ],
+        "statusmanga": [
+          {
+            "name": "Ongoing",
+            "id": "ongoing"
+          }
+        ],
+        "tipe": [
+          {
+            "name": "Manhwa",
+            "id": "manhwa"
+          }
+        ],
+        "latest_chapter": [
+          {
+            "name": "Chapter 46",
+            "id": 580828,
+            "number": "46"
+          }
+        ]
+      }
+    ]
+  },
+  "genre": {
+    "fantasy": {
+      "title": "Fantasi",
+      "more": "https://index.komikid.org/manga/?genre=fantasy",
+      "data": [
+        {
+          "id": 3096,
+          "title": "Since My Previous Life Was A Wise Man I Can Afford To Live",
+          "title_alt": "Karena Hidupku Sebelumnya Sebagai Orang Bijak Aku Bisa Hidup Dengan Nyaman",
+          "score": "8.5",
+          "date": "19 Mei 2020",
+          "update_date": "4 minggu lalu",
+          "author": "Hwaryoung",
+          "total_views": "465921",
+          "thumbnail": "https://thumbnail.komiku.org/uploads/manga/since-my-previous-life-was-a-wise-man-i-can-afford-to-live/manga_thumbnail-Manga-Since-My-Previous-Life-Was-A-Wise-Man-I-Can-Afford-To-Live.jpg",
+          "cover": "https://thumbnail.komiku.org/uploads/manga/since-my-previous-life-was-a-wise-man-i-can-afford-to-live/manga_img_horizontal-Komik-Since-My-Previous-Life-Was-A-Wise-Man-I-Can-Afford-To-Live-scaled.jpg",
+          "other": [
+            {
+              "name": "Rekomendasi",
+              "id": "rekomendasi"
+            }
+          ],
+          "genreutama": [
+            {
+              "name": "Fantasi",
+              "id": "fantasi"
+            }
+          ],
+          "ratemanga": [
+            {
+              "name": "15",
+              "id": "15"
+            }
+          ],
+          "statusmanga": [
+            {
+              "name": "Ongoing",
+              "id": "ongoing"
+            }
+          ],
+          "tipe": [
+            {
+              "name": "Manga",
+              "id": "manga"
+            }
+          ]
+        },
+        {
+          "id": 6309,
+          "title": "Rebirth Of The Urban Immortal Cultivator",
+          "title_alt": "Kebangkitan Kultivator Abadi Perkotaan",
+          "score": "8.5",
+          "date": "10 Januari 2020",
+          "update_date": "3 hari lalu",
+          "author": "Jiang Biao",
+          "total_views": "33501079",
+          "thumbnail": "https://thumbnail.komiku.org/uploads/manga/rebirth-of-the-urban-immortal-cultivator/manga_thumbnail-Komik-Rebirth-Of-The-Urban-Immortal-Cultivator.jpg",
+          "cover": "https://thumbnail.komiku.org/uploads/manga/rebirth-of-the-urban-immortal-cultivator/manga_img_horizontal-Rebirth-Of-The-Urban-Immortal-Cultivator.gif",
+          "other": [
+            {
+              "name": "Berwarna",
+              "id": "berwarna"
+            },
+            {
+              "name": "Chapter &gt;100",
+              "id": "chapter-100"
+            },
+            {
+              "name": "Hot",
+              "id": "hot"
+            },
+            {
+              "name": "Project",
+              "id": "project"
+            }
+          ],
+          "genreutama": [
+            {
+              "name": "Aksi",
+              "id": "aksi"
+            }
+          ],
+          "ratemanga": [
+            {
+              "name": "13",
+              "id": "13"
+            }
+          ],
+          "statusmanga": [
+            {
+              "name": "Ongoing",
+              "id": "ongoing"
+            }
+          ],
+          "tipe": [
+            {
+              "name": "Manhua",
+              "id": "manhua"
+            }
+          ]
+        },
+        {
+          "id": 503193,
+          "title": "I Only Need the Duke’s Child",
+          "title_alt": null,
+          "score": "8",
+          "date": "-",
+          "update_date": "6 hari lalu",
+          "author": "-",
+          "total_views": "18302",
+          "thumbnail": "https://thumbnail.komiku.org/new/img/images/2026/05/24/20260524181527_fb6e0dd48e4399c4_c634f36f.jpg",
+          "cover": "https://thumbnail.komiku.org/new/img/images/2026/05/24/20260524180158_757bcd028682c688_a83cfa78.jpg",
+          "other": [
+            {
+              "name": "Berwarna",
+              "id": "berwarna"
+            }
+          ],
+          "genreutama": [
+            {
+              "name": "Romantis",
+              "id": "romantis"
+            }
+          ],
+          "ratemanga": [
+            {
+              "name": "13",
+              "id": "13"
+            }
+          ],
+          "statusmanga": [
+            {
+              "name": "Ongoing",
+              "id": "ongoing"
+            }
+          ],
+          "tipe": [
+            {
+              "name": "Manhwa",
+              "id": "manhwa"
+            }
+          ]
+        },
+        {
+          "id": 4597,
+          "title": "Isekai no Binbou Nouka ni Tensei Shitanode, Renga o Tsukutte Shiro o Tateru Koto ni Shimashita",
+          "title_alt": "Terlahir Kembali Sebagai Petani Miskin di Dunia Lain, Aku Memutuskan Membuat Bata dan Membangun Kastil",
+          "score": "7.5",
+          "date": "15 April 2022",
+          "update_date": "1 jam lalu",
+          "author": "Haku Yuu",
+          "total_views": "153195",
+          "thumbnail": "https://thumbnail.komiku.org/uploads/manga/isekai-no-binbou-nouka-ni-tensei-shitanode-renga-o-tsukutte-shiro-o-tateru-koto-ni-shimashita/manga_thumbnail-Manga-Isekai-no-Binbou-Nouka-ni-Tensei-Shitanode-Renga-o-Tsukutte-Shiro-o-Tateru-Koto-ni-Shimashita.jpeg",
+          "cover": "https://thumbnail.komiku.org/uploads/manga/isekai-no-binbou-nouka-ni-tensei-shitanode-renga-o-tsukutte-shiro-o-tateru-koto-ni-shimashita/manga_img_horizontal-Komik-Isekai-no-Binbou-Nouka-ni-Tensei-Shitanode-Renga-o-Tsukutte-Shiro-o-Tateru-Koto-ni-Shimashita.jpg",
+          "other": [],
+          "genreutama": [
+            {
+              "name": "Isekai",
+              "id": "isekai"
+            }
+          ],
+          "ratemanga": [
+            {
+              "name": "15",
+              "id": "15"
+            }
+          ],
+          "statusmanga": [
+            {
+              "name": "Ongoing",
+              "id": "ongoing"
+            }
+          ],
+          "tipe": [
+            {
+              "name": "Manga",
+              "id": "manga"
+            }
+          ]
+        },
+        {
+          "id": 772,
+          "title": "The Regressed Mercenary’s Machinations",
+          "title_alt": "Strategi Si Prajurit Mundur",
+          "score": "8.5",
+          "date": "15 Januari 2023",
+          "update_date": "18 jam lalu",
+          "author": "Kang Yi Seong",
+          "total_views": "3825122",
+          "thumbnail": "https://thumbnail.komiku.org/uploads/manga/the-regressed-mercenarys-machinations/manga_thumbnail-A2-The-Regressed-Mercenarys-Machinations.jpg",
+          "cover": "https://thumbnail.komiku.org/uploads/manga/the-regressed-mercenarys-machinations/manga_img_horizontal-A1-The-Regressed-Mercenarys-Machinations.jpg",
+          "other": [
+            {
+              "name": "Berwarna",
+              "id": "berwarna"
+            },
+            {
+              "name": "Chapter &gt;100",
+              "id": "chapter-100"
+            },
+            {
+              "name": "Hot",
+              "id": "hot"
+            }
+          ],
+          "genreutama": [
+            {
+              "name": "Fantasi",
+              "id": "fantasi"
+            }
+          ],
+          "ratemanga": [
+            {
+              "name": "13",
+              "id": "13"
+            }
+          ],
+          "statusmanga": [
+            {
+              "name": "Ongoing",
+              "id": "ongoing"
+            }
+          ],
+          "tipe": [
+            {
+              "name": "Manhwa",
+              "id": "manhwa"
+            }
+          ]
+        },
+        {
+          "id": 433881,
+          "title": "High-Martial World: One Hand to Overwhelm Three Thousand Emperors!",
+          "title_alt": "Dunia Kungfu Tinggi: Satu Tangan Mengalahkan Tiga Ribu Kaisar",
+          "score": "7.5",
+          "date": "13 Juni 2018",
+          "update_date": "1 hari lalu",
+          "author": "Tian Can Tu Dou",
+          "total_views": "239359",
+          "thumbnail": "https://thumbnail.komiku.org/img/upload/high-martial_world__one_hand_to_overwhelm_three_thousand_emperors_/img_6932ac75acb573.00617305.png",
+          "cover": "https://thumbnail.komiku.org/img/upload/high-martial_world__one_hand_to_overwhelm_three_thousand_emperors_/img_6932ac75abf961.73066563.png",
+          "other": [
+            {
+              "name": "Berwarna",
+              "id": "berwarna"
+            },
+            {
+              "name": "Rekomendasi",
+              "id": "rekomendasi"
+            }
+          ],
+          "genreutama": [
+            {
+              "name": "Martial Arts",
+              "id": "martial-arts"
+            }
+          ],
+          "ratemanga": [
+            {
+              "name": "13",
+              "id": "13"
+            }
+          ],
+          "statusmanga": [
+            {
+              "name": "Ongoing",
+              "id": "ongoing"
+            }
+          ],
+          "tipe": [
+            {
+              "name": "Manhua",
+              "id": "manhua"
+            }
+          ]
+        },
+        {
+          "id": 404365,
+          "title": "The Yellow-haired Villain in Female Main Character’s Novel wants Happiness",
+          "title_alt": "Penjahat Berambut Kuning dalam Novel Tokoh Utama Perempuan Ingin Bahagia",
+          "score": "8",
+          "date": "15 Maret 2021",
+          "update_date": "23 jam lalu",
+          "author": "Lee Hye",
+          "total_views": "687985",
+          "thumbnail": "https://thumbnail.komiku.org/img/upload/the_yellow-haired_villain_in_female_main_character___s/img_68a829f123cbb2.31921571.jpg",
+          "cover": "https://thumbnail.komiku.org/img/upload/the_yellow-haired_villain_in_female_main_character___s/img_68a829f1239c07.85850393.jpg",
+          "other": [
+            {
+              "name": "Berwarna",
+              "id": "berwarna"
+            },
+            {
+              "name": "Hot",
+              "id": "hot"
+            }
+          ],
+          "genreutama": [
+            {
+              "name": "Fantasi",
+              "id": "fantasi"
+            }
+          ],
+          "ratemanga": [
+            {
+              "name": "15",
+              "id": "15"
+            }
+          ],
+          "statusmanga": [
+            {
+              "name": "Ongoing",
+              "id": "ongoing"
+            }
+          ],
+          "tipe": [
+            {
+              "name": "Manhua",
+              "id": "manhua"
+            }
+          ]
+        },
+        {
+          "id": 4915,
+          "title": "Isekai Yurutto Survival Seikatsu",
+          "title_alt": "Kehidupan Santai Bertahan Hidup di Dunia Isekai",
+          "score": "7",
+          "date": "20 Agustus 2021",
+          "update_date": "2 hari lalu",
+          "author": "Mitsuaki Matsumoto",
+          "total_views": "574126",
+          "thumbnail": "https://thumbnail.komiku.org/uploads/manga/isekai-yurutto-survival-seikatsu/manga_thumbnail-Manga-Isekai-Yurutto-Survival-Seikatsu.jpg",
+          "cover": "https://thumbnail.komiku.org/uploads/manga/isekai-yurutto-survival-seikatsu/manga_img_horizontal-Komik-Isekai-Yurutto-Survival-Seikatsu.png",
+          "other": [
+            {
+              "name": "Hot",
+              "id": "hot"
+            }
+          ],
+          "genreutama": [
+            {
+              "name": "Romantis",
+              "id": "romantis"
+            }
+          ],
+          "ratemanga": [
+            {
+              "name": "17",
+              "id": "17"
+            }
+          ],
+          "statusmanga": [
+            {
+              "name": "Ongoing",
+              "id": "ongoing"
+            }
+          ],
+          "tipe": [
+            {
+              "name": "Manga",
+              "id": "manga"
+            }
+          ]
+        }
+      ]
+    },
+    "adventure": {
+      "title": "Petualangan",
+      "more": "https://index.komikid.org/manga/?genre=adventure",
+      "data": [
+        {
+          "id": 1043,
+          "title": "Margrave’s Bastard Son was The Emperor",
+          "title_alt": "Anak Haram Margrave Adalah Kaisar",
+          "score": "8",
+          "date": "12 Januari 2022",
+          "update_date": "4 jam lalu",
+          "author": "Jeff Wheeler",
+          "total_views": "1344906",
+          "thumbnail": "https://thumbnail.komiku.org/img/upload/margrave___s_bastard_son_was_the_emperor/img_689d74b3ca9101.34657199.jpg",
+          "cover": "https://thumbnail.komiku.org/uploads/manga/margraves-bastard-son-was-the-emperor/manga_img_horizontal-A1-Margraves-Bastard-Son-was-The-Emperor.jpg",
+          "other": [
+            {
+              "name": "Berwarna",
+              "id": "berwarna"
+            },
+            {
+              "name": "Chapter &gt;100",
+              "id": "chapter-100"
+            },
+            {
+              "name": "Hot",
+              "id": "hot"
+            }
+          ],
+          "genreutama": [
+            {
+              "name": "Fantasi",
+              "id": "fantasi"
+            }
+          ],
+          "ratemanga": [
+            {
+              "name": "13",
+              "id": "13"
+            }
+          ],
+          "statusmanga": [
+            {
+              "name": "Ongoing",
+              "id": "ongoing"
+            }
+          ],
+          "tipe": [
+            {
+              "name": "Manhwa",
+              "id": "manhwa"
+            }
+          ]
+        },
+        {
+          "id": 1160,
+          "title": "My Exclusive Tower Guide",
+          "title_alt": "Panduan Eksklusif Menara Pribadiku",
+          "score": "8",
+          "date": "15 Januari 2020",
+          "update_date": "1 hari lalu",
+          "author": "Jessica Lee",
+          "total_views": "1534870",
+          "thumbnail": "https://thumbnail.komiku.org/uploads/manga/my-exclusive-tower-guide/manga_thumbnail-Head-My-Exclusive-Tower-Guide.jpg",
+          "cover": "https://thumbnail.komiku.org/uploads/manga/my-exclusive-tower-guide/manga_img_horizontal-Back-My-Exclusive-Tower-Guide.jpg",
+          "other": [
+            {
+              "name": "Berwarna",
+              "id": "berwarna"
+            },
+            {
+              "name": "Chapter &gt;100",
+              "id": "chapter-100"
+            },
+            {
+              "name": "Hot",
+              "id": "hot"
+            },
+            {
+              "name": "Project",
+              "id": "project"
+            },
+            {
+              "name": "Rekomendasi",
+              "id": "rekomendasi"
+            }
+          ],
+          "genreutama": [
+            {
+              "name": "Fantasi",
+              "id": "fantasi"
+            }
+          ],
+          "ratemanga": [
+            {
+              "name": "13",
+              "id": "13"
+            }
+          ],
+          "statusmanga": [
+            {
+              "name": "Ongoing",
+              "id": "ongoing"
+            }
+          ],
+          "tipe": [
+            {
+              "name": "Manhwa",
+              "id": "manhwa"
+            }
+          ]
+        },
+        {
+          "id": 5659,
+          "title": "Monster no Goshujin-sama",
+          "title_alt": "Tuan Monster",
+          "score": "8.7",
+          "date": "3 Desember 2018",
+          "update_date": "2 hari lalu",
+          "author": "Chen Xiao Hui",
+          "total_views": "418189",
+          "thumbnail": "https://thumbnail.komiku.org/uploads/manga/monster-no-goshujin-sama/manga_thumbnail-Komik-Monster-no-Goshujin-sama.jpg",
+          "cover": "https://thumbnail.komiku.org/uploads/manga/monster-no-goshujin-sama/manga_img_horizontal-Manga-Monster-no-Goshujin-sama.jpg",
+          "other": [
+            {
+              "name": "Chapter &gt;100",
+              "id": "chapter-100"
+            }
+          ],
+          "genreutama": [
+            {
+              "name": "Isekai",
+              "id": "isekai"
+            }
+          ],
+          "ratemanga": [
+            {
+              "name": "15",
+              "id": "15"
+            }
+          ],
+          "statusmanga": [
+            {
+              "name": "Ongoing",
+              "id": "ongoing"
+            }
+          ],
+          "tipe": [
+            {
+              "name": "Manga",
+              "id": "manga"
+            }
+          ]
+        },
+        {
+          "id": 1744,
+          "title": "Infinite Mage",
+          "title_alt": "Penyihir Tanpa Batas",
+          "score": "8",
+          "date": "12 Februari 2019",
+          "update_date": "7 hari lalu",
+          "author": "Joo Dong-Geun",
+          "total_views": "4110467",
+          "thumbnail": "https://thumbnail.komiku.org/uploads/manga/infinite-mage/manga_thumbnail-Mage-1.png",
+          "cover": "https://thumbnail.komiku.org/uploads/manga/infinite-mage/manga_img_horizontal-Mage-2.png",
+          "other": [
+            {
+              "name": "Berwarna",
+              "id": "berwarna"
+            },
+            {
+              "name": "Chapter &gt;100",
+              "id": "chapter-100"
+            },
+            {
+              "name": "Hot",
+              "id": "hot"
+            },
+            {
+              "name": "Project",
+              "id": "project"
+            },
+            {
+              "name": "Rekomendasi",
+              "id": "rekomendasi"
+            }
+          ],
+          "genreutama": [
+            {
+              "name": "Aksi",
+              "id": "aksi"
+            }
+          ],
+          "ratemanga": [
+            {
+              "name": "10",
+              "id": "10"
+            }
+          ],
+          "statusmanga": [
+            {
+              "name": "Ongoing",
+              "id": "ongoing"
+            }
+          ],
+          "tipe": [
+            {
+              "name": "Manhwa",
+              "id": "manhwa"
+            }
+          ]
+        },
+        {
+          "id": 529050,
+          "title": "Ichiokunen Shugyou no Mujikaku Kensei",
+          "title_alt": null,
+          "score": "8",
+          "date": "-",
+          "update_date": "2 minggu lalu",
+          "author": "-",
+          "total_views": "7249",
+          "thumbnail": "https://thumbnail.komiku.org/new/img/images/2026/07/08/20260708194512_c2d114817b6c810f_8ceb9764.jpg",
+          "cover": "https://thumbnail.komiku.org/new/img/images/2026/07/08/20260708193545_56685c2b075802d6_8fc9fafb.jpg",
+          "other": [
+            {
+              "name": "Crazy Update",
+              "id": "crazy-update"
+            }
+          ],
+          "genreutama": [
+            {
+              "name": "Fantasi",
+              "id": "fantasi"
+            }
+          ],
+          "ratemanga": [
+            {
+              "name": "13",
+              "id": "13"
+            }
+          ],
+          "statusmanga": [
+            {
+              "name": "Ongoing",
+              "id": "ongoing"
+            }
+          ],
+          "tipe": [
+            {
+              "name": "Manga",
+              "id": "manga"
+            }
+          ]
+        },
+        {
+          "id": 493075,
+          "title": "Akumade Taidana Akuyaku Kizoku",
+          "title_alt": null,
+          "score": "8",
+          "date": "Tidak diketahui",
+          "update_date": "3 minggu lalu",
+          "author": "Tidak diketahui",
+          "total_views": "17184",
+          "thumbnail": "https://thumbnail.komiku.org/new/img/images/2026/05/04/20260504221605_3e23488d758ddaf7_90d5262c.webp",
+          "cover": "https://thumbnail.komiku.org/new/img/images/2026/05/04/20260504220739_a44b2f56b3bf24ee_afffaa2b.webp",
+          "other": [],
+          "genreutama": [
+            {
+              "name": "Fantasi",
+              "id": "fantasi"
+            }
+          ],
+          "ratemanga": [
+            {
+              "name": "13",
+              "id": "13"
+            }
+          ],
+          "statusmanga": [],
+          "tipe": [
+            {
+              "name": "Manga",
+              "id": "manga"
+            }
+          ]
+        },
+        {
+          "id": 6036,
+          "title": "Tono no Kanri o Shite Miyou",
+          "title_alt": "Mari Mengatur Tono",
+          "score": "7",
+          "date": "24 Februari 2019",
+          "update_date": "3 minggu lalu",
+          "author": "Eiji Masuda",
+          "total_views": "588412",
+          "thumbnail": "https://thumbnail.komiku.org/uploads/manga/tono-no-kanri-o-shite-miyou/manga_thumbnail-Komik-Tono-no-Kanri-o-Shite-Miyou.jpg",
+          "cover": "https://thumbnail.komiku.org/uploads/manga/tono-no-kanri-o-shite-miyou/manga_img_horizontal-Manga-Tono-no-Kanri-o-Shite-Miyou.jpg",
+          "other": [
+            {
+              "name": "Hot",
+              "id": "hot"
+            },
+            {
+              "name": "Rekomendasi",
+              "id": "rekomendasi"
+            }
+          ],
+          "genreutama": [
+            {
+              "name": "Isekai",
+              "id": "isekai"
+            }
+          ],
+          "ratemanga": [
+            {
+              "name": "17",
+              "id": "17"
+            }
+          ],
+          "statusmanga": [
+            {
+              "name": "Ongoing",
+              "id": "ongoing"
+            }
+          ],
+          "tipe": [
+            {
+              "name": "Manga",
+              "id": "manga"
+            }
+          ]
+        },
+        {
+          "id": 563392,
+          "title": "The Crimson Dragon Martial Emperor",
+          "title_alt": null,
+          "score": 7,
+          "date": null,
+          "update_date": "7 hari lalu",
+          "author": null,
+          "total_views": "0",
+          "thumbnail": "https://thumbnail.komiku.org/new/img/images/2026/09/06/20260906004511_dcc8cdda04e812ff_6c8ea4e1.jpg",
+          "cover": "https://thumbnail.komiku.org/new/img/images/2026/09/03/20260903163924_a76d986b2ea05b97_bb510e4a.jpg",
+          "other": [
+            {
+              "name": "Berwarna",
+              "id": "berwarna"
+            }
+          ],
+          "genreutama": [
+            {
+              "name": "Martial Arts",
+              "id": "martial-arts"
+            }
+          ],
+          "ratemanga": [
+            {
+              "name": "15",
+              "id": "15"
+            }
+          ],
+          "statusmanga": [],
+          "tipe": [
+            {
+              "name": "Manhua",
+              "id": "manhua"
+            }
+          ]
+        }
+      ]
+    },
+    "isekai": {
+      "title": "Isekai",
+      "more": "https://index.komikid.org/manga/?genreutama=isekai",
+      "data": null
+    }
+  },
+  "status": {
+    "end": {
+      "title": "Tamat",
+      "more": "https://index.komikid.org/manga/?statusmanga=end",
+      "data": [
+        {
+          "id": 426496,
+          "title": "A Romcom About a Black Witch and a Zombie",
+          "title_alt": "Komedi Romantis Tentang Penyihir Hitam dan Zombie",
+          "score": "8.5",
+          "date": "3 Juni 2022",
+          "update_date": "11 bulan lalu",
+          "author": "Wanhui",
+          "total_views": "275",
+          "thumbnail": "https://thumbnail.komiku.org/img/upload/a_romcom_about_a_black_witch_and_a_zombie/img_69216d8ed36863.04442900.jpg",
+          "cover": "https://thumbnail.komiku.org/img/upload/a_romcom_about_a_black_witch_and_a_zombie/img_69216d8ed31a92.63536906.jpg",
+          "other": [
+            {
+              "name": "Rekomendasi",
+              "id": "rekomendasi"
+            }
+          ],
+          "genreutama": [
+            {
+              "name": "Romantis",
+              "id": "romantis"
+            }
+          ],
+          "ratemanga": [
+            {
+              "name": "13",
+              "id": "13"
+            }
+          ],
+          "statusmanga": [
+            {
+              "name": "End",
+              "id": "end"
+            }
+          ],
+          "tipe": [
+            {
+              "name": "Manga",
+              "id": "manga"
+            }
+          ]
+        },
+        {
+          "id": 4806,
+          "title": "Black Bullet",
+          "title_alt": "Peluru Hitam",
+          "score": "7.5",
+          "date": "4 September 2011",
+          "update_date": "1 tahun lalu",
+          "author": "Shiden Kanzaki",
+          "total_views": "7547",
+          "thumbnail": "https://thumbnail.komiku.org/uploads/manga/black-bullet/manga_thumbnail-Manga-Black-Bullet.jpg",
+          "cover": "https://thumbnail.komiku.org/uploads/manga/black-bullet/manga_img_horizontal-Komik-Black-Bullet.jpg",
+          "other": [],
+          "genreutama": [
+            {
+              "name": "Aksi",
+              "id": "aksi"
+            }
+          ],
+          "ratemanga": [
+            {
+              "name": "15",
+              "id": "15"
+            }
+          ],
+          "statusmanga": [
+            {
+              "name": "End",
+              "id": "end"
+            }
+          ],
+          "tipe": [
+            {
+              "name": "Manga",
+              "id": "manga"
+            }
+          ]
+        },
+        {
+          "id": 5675,
+          "title": "Goodbye! Isekai Tensei",
+          "title_alt": "Selamat Tinggal! Reinkarnasi di Dunia Lain",
+          "score": "7.8",
+          "date": "22 Mei 2019",
+          "update_date": "1 tahun lalu",
+          "author": "Kazuha Kishimoto",
+          "total_views": "46906",
+          "thumbnail": "https://thumbnail.komiku.org/uploads/manga/goodbye-isekai-tensei/manga_thumbnail-Komik-Goodbye-Isekai-Tensei.jpg",
+          "cover": "https://thumbnail.komiku.org/uploads/manga/goodbye-isekai-tensei/manga_img_horizontal-Manga-Goodbye-Isekai-Tensei.jpg",
+          "other": [],
+          "genreutama": [
+            {
+              "name": "Fantasi",
+              "id": "fantasi"
+            }
+          ],
+          "ratemanga": [
+            {
+              "name": "15",
+              "id": "15"
+            }
+          ],
+          "statusmanga": [
+            {
+              "name": "End",
+              "id": "end"
+            }
+          ],
+          "tipe": [
+            {
+              "name": "Manga",
+              "id": "manga"
+            }
+          ]
+        },
+        {
+          "id": 6450,
+          "title": "Martial God’s Space",
+          "title_alt": "Ruang Tempur Dewa Martial",
+          "score": "8",
+          "date": "20 Februari 2019",
+          "update_date": "1 tahun lalu",
+          "author": "Xin Feng",
+          "total_views": "1346272",
+          "thumbnail": "https://thumbnail.komiku.org/uploads/manga/martial-gods-space/manga_thumbnail-Komik-Martial-Gods-Space.jpg",
+          "cover": "https://thumbnail.komiku.org/uploads/manga/martial-gods-space/manga_img_horizontal-Manhua-Martial-Gods-Space.png",
+          "other": [
+            {
+              "name": "Berwarna",
+              "id": "berwarna"
+            },
+            {
+              "name": "Hot",
+              "id": "hot"
+            }
+          ],
+          "genreutama": [
+            {
+              "name": "Fantasi",
+              "id": "fantasi"
+            }
+          ],
+          "ratemanga": [
+            {
+              "name": "13",
+              "id": "13"
+            }
+          ],
+          "statusmanga": [
+            {
+              "name": "End",
+              "id": "end"
+            }
+          ],
+          "tipe": [
+            {
+              "name": "Manhua",
+              "id": "manhua"
+            }
+          ]
+        },
+        {
+          "id": 5026,
+          "title": "Tokyo Ghoul",
+          "title_alt": "Tokyo Ghoul",
+          "score": "8",
+          "date": "08 Juli 2011",
+          "update_date": "1 tahun lalu",
+          "author": "Sui Ishida",
+          "total_views": "771812",
+          "thumbnail": "https://thumbnail.komiku.org/uploads/manga/tokyo-ghoul/manga_thumbnail-Manga-Tokyo-Ghoul.jpg",
+          "cover": "https://thumbnail.komiku.org/uploads/manga/tokyo-ghoul/manga_img_horizontal-Komik-Tokyo-Ghoul.jpg",
+          "other": [
+            {
+              "name": "Chapter &gt;100",
+              "id": "chapter-100"
+            },
+            {
+              "name": "Hot",
+              "id": "hot"
+            }
+          ],
+          "genreutama": [
+            {
+              "name": "Aksi",
+              "id": "aksi"
+            }
+          ],
+          "ratemanga": [
+            {
+              "name": "15",
+              "id": "15"
+            }
+          ],
+          "statusmanga": [
+            {
+              "name": "End",
+              "id": "end"
+            }
+          ],
+          "tipe": [
+            {
+              "name": "Manga",
+              "id": "manga"
+            }
+          ]
+        },
+        {
+          "id": 2886,
+          "title": "Eiyuu Kyoushitsu",
+          "title_alt": "Kelas Pahlawan",
+          "score": "7.5",
+          "date": "12 Desember 2019",
+          "update_date": "5 bulan lalu",
+          "author": "Rikyu Yagi",
+          "total_views": "76234",
+          "thumbnail": "https://thumbnail.komiku.org/uploads/manga/eiyuu-kyoushitsu/manga_thumbnail-Manga-Eiyuu-Kyoushitsu.jpg",
+          "cover": "https://thumbnail.komiku.org/uploads/manga/eiyuu-kyoushitsu/manga_img_horizontal-Komik-Eiyuu-Kyoushitsu.jpg",
+          "other": [],
+          "genreutama": [
+            {
+              "name": "Aksi",
+              "id": "aksi"
+            }
+          ],
+          "ratemanga": [
+            {
+              "name": "15",
+              "id": "15"
+            }
+          ],
+          "statusmanga": [
+            {
+              "name": "End",
+              "id": "end"
+            }
+          ],
+          "tipe": [
+            {
+              "name": "Manga",
+              "id": "manga"
+            }
+          ]
+        },
+        {
+          "id": 4933,
+          "title": "Kenshin no Succeed",
+          "title_alt": "Kenshin yang Berhasil",
+          "score": "7.5",
+          "date": "19 November 2023",
+          "update_date": "1 tahun lalu",
+          "author": "Victor Bayu Pratama",
+          "total_views": "3899",
+          "thumbnail": "https://thumbnail.komiku.org/uploads/manga/kenshin-no-succeed/manga_thumbnail-Manga-Kenshin-no-Succeed.jpg",
+          "cover": "https://thumbnail.komiku.org/uploads/manga/kenshin-no-succeed/manga_img_horizontal-Komik-Kenshin-no-Succeed.jpg",
+          "other": [],
+          "genreutama": [
+            {
+              "name": "Aksi",
+              "id": "aksi"
+            }
+          ],
+          "ratemanga": [
+            {
+              "name": "17",
+              "id": "17"
+            }
+          ],
+          "statusmanga": [
+            {
+              "name": "End",
+              "id": "end"
+            }
+          ],
+          "tipe": [
+            {
+              "name": "Manga",
+              "id": "manga"
+            }
+          ]
+        },
+        {
+          "id": 5917,
+          "title": "Koharu no Hibi",
+          "title_alt": "Hari-hari Koharu",
+          "score": "7.5",
+          "date": "1 Januari 2004",
+          "update_date": "1 tahun lalu",
+          "author": "Maki Sasaki",
+          "total_views": "35380",
+          "thumbnail": "https://thumbnail.komiku.org/uploads/manga/koharu-no-hibi/manga_thumbnail-Komik-Koharu-no-Hibi.jpg",
+          "cover": "https://thumbnail.komiku.org/uploads/manga/koharu-no-hibi/manga_img_horizontal-Manga-Koharu-no-Hibi.png",
+          "other": [],
+          "genreutama": [
+            {
+              "name": "Romantis",
+              "id": "romantis"
+            }
+          ],
+          "ratemanga": [
+            {
+              "name": "17",
+              "id": "17"
+            }
+          ],
+          "statusmanga": [
+            {
+              "name": "End",
+              "id": "end"
+            }
+          ],
+          "tipe": [
+            {
+              "name": "Manga",
+              "id": "manga"
+            }
+          ]
+        }
+      ]
+    },
+    "baru": {
+      "title": "Baru",
+      "more": "https://index.komikid.org/manga/?orderby=date",
+      "data": [
+        {
+          "id": 580495,
+          "title": "Rewriting My Third Life",
+          "title_alt": null,
+          "score": 7,
+          "date": null,
+          "update_date": "21 jam lalu",
+          "author": null,
+          "total_views": "0",
+          "thumbnail": "https://thumbnail.komiku.org/new/img/images/2026/10/12/20261012223028_328a2a8b00294100_6248f0dd.jpg",
+          "cover": "https://thumbnail.komiku.org/new/img/images/2026/10/12/20261012221515_cf26db8e0d505a3a_95e38376.jpg",
+          "other": [
+            {
+              "name": "Berwarna",
+              "id": "berwarna"
+            },
+            {
+              "name": "Crazy Update",
+              "id": "crazy-update"
+            }
+          ],
+          "genreutama": [
+            {
+              "name": "Fantasi",
+              "id": "fantasi"
+            }
+          ],
+          "ratemanga": [
+            {
+              "name": "13",
+              "id": "13"
+            }
+          ],
+          "statusmanga": [],
+          "tipe": [
+            {
+              "name": "Manhwa",
+              "id": "manhwa"
+            }
+          ]
+        },
+        {
+          "id": 580496,
+          "title": "Hiding My Identity From My Husband",
+          "title_alt": null,
+          "score": 7,
+          "date": null,
+          "update_date": "21 jam lalu",
+          "author": null,
+          "total_views": "0",
+          "thumbnail": "https://thumbnail.komiku.org/new/img/images/2026/10/12/20261012223016_ae796a79dcc2de1a_4a852c39.jpg",
+          "cover": "https://thumbnail.komiku.org/new/img/images/2026/10/12/20261012221502_b87d87b00606a998_54bc1dd4.jpg",
+          "other": [
+            {
+              "name": "Berwarna",
+              "id": "berwarna"
+            },
+            {
+              "name": "Crazy Update",
+              "id": "crazy-update"
+            }
+          ],
+          "genreutama": [
+            {
+              "name": "Romantis",
+              "id": "romantis"
+            }
+          ],
+          "ratemanga": [
+            {
+              "name": "15",
+              "id": "15"
+            }
+          ],
+          "statusmanga": [],
+          "tipe": [
+            {
+              "name": "Manhwa",
+              "id": "manhwa"
+            }
+          ]
+        },
+        {
+          "id": 580497,
+          "title": "The Sacrificial Princess Ran Away and was Devotedly Adored",
+          "title_alt": null,
+          "score": 7,
+          "date": null,
+          "update_date": "21 jam lalu",
+          "author": null,
+          "total_views": "0",
+          "thumbnail": "https://thumbnail.komiku.org/new/img/images/2026/10/12/20261012221527_f5503a5dca3763a3_7eede2d8.jpg",
+          "cover": "https://thumbnail.komiku.org/new/img/images/2026/10/12/20261012221448_1075e65981532858_08f13633.jpg",
+          "other": [
+            {
+              "name": "Berwarna",
+              "id": "berwarna"
+            }
+          ],
+          "genreutama": [
+            {
+              "name": "Romantis",
+              "id": "romantis"
+            }
+          ],
+          "ratemanga": [
+            {
+              "name": "15",
+              "id": "15"
+            }
+          ],
+          "statusmanga": [],
+          "tipe": [
+            {
+              "name": "Manhwa",
+              "id": "manhwa"
+            }
+          ]
+        },
+        {
+          "id": 580556,
+          "title": "Kuro no Jiku",
+          "title_alt": null,
+          "score": 7,
+          "date": null,
+          "update_date": "21 jam lalu",
+          "author": null,
+          "total_views": "0",
+          "thumbnail": "https://thumbnail.komiku.org/new/img/images/2026/10/12/20261012221516_8c2be4b24dd736ea_0547ca19.jpg",
+          "cover": "https://thumbnail.komiku.org/new/img/images/2026/10/12/20261012221428_ab0d7ddc0b5a7fb1_46081ce0.jpg",
+          "other": [],
+          "genreutama": [
+            {
+              "name": "Aksi",
+              "id": "aksi"
+            }
+          ],
+          "ratemanga": [
+            {
+              "name": "15",
+              "id": "15"
+            }
+          ],
+          "statusmanga": [
+            {
+              "name": "Ongoing",
+              "id": "ongoing"
+            }
+          ],
+          "tipe": [
+            {
+              "name": "Manga",
+              "id": "manga"
+            }
+          ]
+        },
+        {
+          "id": 580372,
+          "title": "Youjo na Majo to Mori no Kuma-san: Isekai de Potion Tsukutte Nonbiri Slow Life ga Shitai no jaga?",
+          "title_alt": null,
+          "score": 7,
+          "date": null,
+          "update_date": "1 hari lalu",
+          "author": null,
+          "total_views": "0",
+          "thumbnail": "https://thumbnail.komiku.org/new/img/images/2026/10/12/20261012140014_3a57e817660a8194_6116df16.webp",
+          "cover": "https://thumbnail.komiku.org/new/img/images/2026/10/12/20261012135921_1cb61e0b8b9e5597_0aee0599.webp",
+          "other": [],
+          "genreutama": [
+            {
+              "name": "Isekai",
+              "id": "isekai"
+            }
+          ],
+          "ratemanga": [
+            {
+              "name": "13",
+              "id": "13"
+            }
+          ],
+          "statusmanga": [
+            {
+              "name": "Ongoing",
+              "id": "ongoing"
+            }
+          ],
+          "tipe": [
+            {
+              "name": "Manga",
+              "id": "manga"
+            }
+          ]
+        },
+        {
+          "id": 580036,
+          "title": "Taidana Akuyaku Ouji ni Tensei Shita Ore, Aku no Oppai Oukoku o Kizuku",
+          "title_alt": null,
+          "score": 7,
+          "date": null,
+          "update_date": "2 hari lalu",
+          "author": null,
+          "total_views": "0",
+          "thumbnail": "https://thumbnail.komiku.org/new/img/images/2026/10/11/20261011234524_57ae185efceb2f55_7d790812.webp",
+          "cover": "https://thumbnail.komiku.org/new/img/images/2026/10/11/20261011233605_8361b66eecf87d63_18488a7b.webp",
+          "other": [],
+          "genreutama": [
+            {
+              "name": "Isekai",
+              "id": "isekai"
+            }
+          ],
+          "ratemanga": [
+            {
+              "name": "15",
+              "id": "15"
+            }
+          ],
+          "statusmanga": [
+            {
+              "name": "Ongoing",
+              "id": "ongoing"
+            }
+          ],
+          "tipe": [
+            {
+              "name": "Manga",
+              "id": "manga"
+            }
+          ]
+        },
+        {
+          "id": 580053,
+          "title": "The Unintentionally Ideal Adopted Daughter",
+          "title_alt": null,
+          "score": 7,
+          "date": null,
+          "update_date": "10 jam lalu",
+          "author": null,
+          "total_views": "0",
+          "thumbnail": "https://thumbnail.komiku.org/new/img/images/2026/10/11/20261011234514_9d2908de37dca433_907adc9f.webp",
+          "cover": "https://thumbnail.komiku.org/new/img/images/2026/10/11/20261011233551_4aec0d34fce66d3d_4d6946e4.webp",
+          "other": [
+            {
+              "name": "Berwarna",
+              "id": "berwarna"
+            },
+            {
+              "name": "Chapter &gt;100",
+              "id": "chapter-100"
+            },
+            {
+              "name": "Crazy Update",
+              "id": "crazy-update"
+            }
+          ],
+          "genreutama": [
+            {
+              "name": "Fantasi",
+              "id": "fantasi"
+            }
+          ],
+          "ratemanga": [
+            {
+              "name": "15",
+              "id": "15"
+            }
+          ],
+          "statusmanga": [
+            {
+              "name": "Ongoing",
+              "id": "ongoing"
+            }
+          ],
+          "tipe": [
+            {
+              "name": "Manhwa",
+              "id": "manhwa"
+            }
+          ]
+        },
+        {
+          "id": 579547,
+          "title": "The Terminally Ill Lady Fakes a Job with the Villain Family",
+          "title_alt": null,
+          "score": 7,
+          "date": null,
+          "update_date": "2 hari lalu",
+          "author": null,
+          "total_views": "0",
+          "thumbnail": "https://thumbnail.komiku.org/new/img/images/2026/10/10/20261010233022_a7031aaac96cc365_398ec6b9.png",
+          "cover": "https://thumbnail.komiku.org/new/img/images/2026/10/10/20261010231749_1b39d2a5622b1402_52821cf1.png",
+          "other": [
+            {
+              "name": "Berwarna",
+              "id": "berwarna"
+            }
+          ],
+          "genreutama": [
+            {
+              "name": "Romantis",
+              "id": "romantis"
+            }
+          ],
+          "ratemanga": [
+            {
+              "name": "15",
+              "id": "15"
+            }
+          ],
+          "statusmanga": [
+            {
+              "name": "Ongoing",
+              "id": "ongoing"
+            }
+          ],
+          "tipe": [
+            {
+              "name": "Manhwa",
+              "id": "manhwa"
+            }
+          ]
+        }
+      ]
+    }
+  },
+  "recommendation": {
+    "title": "Update Rekomendasi",
+    "more": "https://index.komikid.org/manga/?other=hot,rekomendasi",
+    "data": [
+      {
+        "id": 538960,
+        "title": "The Wind Mage",
+        "title_alt": "",
+        "score": "-",
+        "date": "-",
+        "update_date": "3 minggu lalu",
+        "author": "바람의 마도사",
+        "total_views": "3908",
+        "thumbnail": "https://thumbnail.komiku.org/new/img/images/2026/07/30/20260730161513_31b973ff570f4f52_e69d6c8b.jpg",
+        "cover": "https://thumbnail.komiku.org/new/img/images/2026/07/30/20260730160028_58f8cf4747a86c69_3b30b6b4.jpg",
+        "other": [
+          {
+            "name": "Berwarna",
+            "id": "berwarna"
+          },
+          {
+            "name": "Rekomendasi",
+            "id": "rekomendasi"
+          }
+        ],
+        "summary": [
+          ""
+        ],
+        "genreutama": [
+          {
+            "name": "Fantasi",
+            "id": "fantasi"
+          }
+        ],
+        "ratemanga": [
+          {
+            "name": "13",
+            "id": "13"
+          }
+        ],
+        "statusmanga": [
+          {
+            "name": "Ongoing",
+            "id": "ongoing"
+          }
+        ],
+        "tipe": [
+          {
+            "name": "Manhwa",
+            "id": "manhwa"
+          }
+        ]
+      },
+      {
+        "id": 408083,
+        "title": "Face Genius, 0 Year-Old Top Star",
+        "title_alt": "Bintang Top Seribu Wajah Usia Nol Tahun",
+        "score": "8",
+        "date": "10 April 2023",
+        "update_date": "4 hari lalu",
+        "author": "Gomu Gomu",
+        "total_views": "27046",
+        "thumbnail": "https://thumbnail.komiku.org/img/upload/face_genius__0_year-old_top_star/img_68bff884b4f1a1.94021241.jpg",
+        "cover": "https://thumbnail.komiku.org/img/upload/face_genius__0_year-old_top_star/img_68bff884b4c977.73048696.jpg",
+        "other": [
+          {
+            "name": "Berwarna",
+            "id": "berwarna"
+          },
+          {
+            "name": "Rekomendasi",
+            "id": "rekomendasi"
+          }
+        ],
+        "summary": [
+          "Seorang bayi menjadi bintang terbesar di dunia hiburan dengan pesona yang luar biasa.",
+          "Perjalanan seorang anak muda menghadapi dunia hiburan yang penuh persaingan dan tantangan.",
+          "Kisah tentang ketekunan dan bakat alami dalam mempertahankan posisi sebagai top star.",
+          "Dukungan keluarga dan teman menjadi kunci keberhasilan si kecil di tengah tekanan industri hiburan.",
+          "Bintang muda yang baru lahir menunjukkan bahwa usia bukan halangan untuk meraih mimpi besar."
+        ],
+        "genreutama": [
+          {
+            "name": "Drama",
+            "id": "drama"
+          }
+        ],
+        "ratemanga": [
+          {
+            "name": "13",
+            "id": "13"
+          }
+        ],
+        "statusmanga": [
+          {
+            "name": "Ongoing",
+            "id": "ongoing"
+          }
+        ],
+        "tipe": [
+          {
+            "name": "Manhwa",
+            "id": "manhwa"
+          }
+        ]
+      },
+      {
+        "id": 3953,
+        "title": "Kanojo no Tomodachi",
+        "title_alt": "Teman Perempuan",
+        "score": "7.5",
+        "date": "30 Maret 2018",
+        "update_date": "2 minggu lalu",
+        "author": "Kazuki Minamoto",
+        "total_views": "5862830",
+        "thumbnail": "https://thumbnail.komiku.org/uploads/manga/kanojo-no-tomodachi/manga_thumbnail-Manga-Kanojo-no-Tomodachi.jpg",
+        "cover": "https://thumbnail.komiku.org/uploads/manga/kanojo-no-tomodachi/manga_img_horizontal-Komik-Kanojo-no-Tomodachi.jpg",
+        "other": [
+          {
+            "name": "Chapter &gt;100",
+            "id": "chapter-100"
+          },
+          {
+            "name": "Crazy Update",
+            "id": "crazy-update"
+          },
+          {
+            "name": "Hot",
+            "id": "hot"
+          }
+        ],
+        "summary": [
+          "Persahabatan yang mulai diuji oleh perasaan yang tak terduga.",
+          "Seorang remaja menemukan arti baru dari kedekatan dengan teman perempuannya.",
+          "Kisah yang menggambarkan perubahan hubungan dari sahabat menjadi lebih dari sekadar teman.",
+          "Konflik batin antara menjaga persahabatan atau mengikuti hati.",
+          "Perjalanan emosional menemukan cinta dalam balutan persahabatan masa kecil."
+        ],
+        "genreutama": [
+          {
+            "name": "Romantis",
+            "id": "romantis"
+          }
+        ],
+        "ratemanga": [
+          {
+            "name": "17",
+            "id": "17"
+          }
+        ],
+        "statusmanga": [
+          {
+            "name": "Ongoing",
+            "id": "ongoing"
+          }
+        ],
+        "tipe": [
+          {
+            "name": "Manga",
+            "id": "manga"
+          }
+        ]
+      },
+      {
+        "id": 3947,
+        "title": "Return of The Greatest Lancer",
+        "title_alt": "Kembalinya Ksatria Terhebat",
+        "score": "8",
+        "date": "20 September 2023",
+        "update_date": "5 hari lalu",
+        "author": "KIM DONG RYUNG",
+        "total_views": "1404107",
+        "thumbnail": "https://thumbnail.komiku.org/uploads/manga/return-of-the-greatest-lancer/manga_thumbnail-Manhwa-Return-of-The-Greatest-Lancer.jpg",
+        "cover": "https://thumbnail.komiku.org/uploads/manga/return-of-the-greatest-lancer/manga_img_horizontal-Komik-Return-of-The-Greatest-Lancer.jpg",
+        "other": [
+          {
+            "name": "Berwarna",
+            "id": "berwarna"
+          },
+          {
+            "name": "Chapter &gt;100",
+            "id": "chapter-100"
+          },
+          {
+            "name": "Hot",
+            "id": "hot"
+          },
+          {
+            "name": "Project",
+            "id": "project"
+          },
+          {
+            "name": "Rekomendasi",
+            "id": "rekomendasi"
+          }
+        ],
+        "summary": [
+          "Ksatria legendaris kembali dari masa lalu untuk menyelamatkan negerinya.",
+          "Perjuangan epik seorang pahlawan menghadapi ancaman baru yang mengerikan.",
+          "Petualangan penuh aksi untuk mengembalikan kedamaian di dunia yang kacau.",
+          "Pertarungan antara kebaikan dan kejahatan yang menentukan masa depan.",
+          "Cerita tentang keberanian dan persahabatan dalam menghadapi tantangan besar."
+        ],
+        "genreutama": [
+          {
+            "name": "Fantasi",
+            "id": "fantasi"
+          }
+        ],
+        "ratemanga": [
+          {
+            "name": "15",
+            "id": "15"
+          }
+        ],
+        "statusmanga": [
+          {
+            "name": "Ongoing",
+            "id": "ongoing"
+          }
+        ],
+        "tipe": [
+          {
+            "name": "Manhwa",
+            "id": "manhwa"
+          }
+        ]
+      },
+      {
+        "id": 430133,
+        "title": "Monopolizing All Opportunities",
+        "title_alt": "Menguasai Semua Peluang",
+        "score": "8",
+        "date": "14 April 2024",
+        "update_date": "4 hari lalu",
+        "author": "Seungri",
+        "total_views": "91147",
+        "thumbnail": "https://thumbnail.komiku.org/img/upload/monopolizing_all_opportunities/img_693153a8ee38a7.54002167.jpg",
+        "cover": "https://thumbnail.komiku.org/img/upload/monopolizing_all_opportunities/img_693153a8ee0600.20312176.jpg",
+        "other": [
+          {
+            "name": "Berwarna",
+            "id": "berwarna"
+          },
+          {
+            "name": "Project",
+            "id": "project"
+          },
+          {
+            "name": "Rekomendasi",
+            "id": "rekomendasi"
+          }
+        ],
+        "summary": [
+          "Seorang pemuda berambisi memanfaatkan setiap peluang untuk mencapai sukses.",
+          "Perjalanan tentang ketekunan dan strategi dalam meraih mimpi.",
+          "Pembelajaran pentingnya kerja keras di tengah persaingan sengit.",
+          "Transformasi pribadi melalui tantangan dan kesempatan hidup.",
+          "Inspirasi bagi generasi muda untuk tidak melewatkan peluang berharga."
+        ],
+        "genreutama": [
+          {
+            "name": "Fantasi",
+            "id": "fantasi"
+          }
+        ],
+        "ratemanga": [
+          {
+            "name": "13",
+            "id": "13"
+          }
+        ],
+        "statusmanga": [
+          {
+            "name": "Ongoing",
+            "id": "ongoing"
+          }
+        ],
+        "tipe": [
+          {
+            "name": "Manhwa",
+            "id": "manhwa"
+          }
+        ]
+      },
+      {
+        "id": 423318,
+        "title": "Haimiya-senpai wa Kowakute Kawaii",
+        "title_alt": "Haimiya-senpai Itu Menakutkan Tapi Menggemaskan",
+        "score": "7.8",
+        "date": "20 April 2023",
+        "update_date": "5 hari lalu",
+        "author": "ichimaru",
+        "total_views": "537180",
+        "thumbnail": "https://thumbnail.komiku.org/img/upload/haimiya-senpai_wa_kowakute_kawaii/img_690ef597ead4d7.84819415.jpg",
+        "cover": "https://thumbnail.komiku.org/img/upload/haimiya-senpai_wa_kowakute_kawaii/img_690ef597ea95d1.16124029.jpg",
+        "other": [
+          {
+            "name": "Hot",
+            "id": "hot"
+          },
+          {
+            "name": "Project",
+            "id": "project"
+          },
+          {
+            "name": "Rekomendasi",
+            "id": "rekomendasi"
+          }
+        ],
+        "summary": [
+          "Senior yang menakutkan ternyata punya sisi paling menggemaskan di sekolah",
+          "Perjalanan mengenal sosok Haimiya-senpai yang berbeda dari bayangan teman-temannya",
+          "Kisah persahabatan unik antara junior berani dan senior yang misterius",
+          "Bagaimana Haimiya-senpai menunjukkan bahwa ketakutan bisa berubah jadi kekaguman",
+          "Sisi lembut tersembunyi di balik ekspresi yang menakutkan penuh kejutan dan tawa"
+        ],
+        "genreutama": [
+          {
+            "name": "Romantis",
+            "id": "romantis"
+          }
+        ],
+        "ratemanga": [
+          {
+            "name": "13",
+            "id": "13"
+          }
+        ],
+        "statusmanga": [
+          {
+            "name": "Ongoing",
+            "id": "ongoing"
+          }
+        ],
+        "tipe": [
+          {
+            "name": "Manga",
+            "id": "manga"
+          }
+        ]
+      },
+      {
+        "id": 3945,
+        "title": "Return of the Legend",
+        "title_alt": "Kembalinya Legenda",
+        "score": "8",
+        "date": "17 Februari 2019",
+        "update_date": "1 hari lalu",
+        "author": "Jeon Geuk-jin",
+        "total_views": "3228325",
+        "thumbnail": "https://thumbnail.komiku.org/uploads/manga/return-of-the-legend/manga_thumbnail-Head-Return-of-the-Legend.jpg",
+        "cover": "https://thumbnail.komiku.org/uploads/manga/return-of-the-legend/manga_img_horizontal-Back-Return-of-the-Legend.jpg",
+        "other": [
+          {
+            "name": "Berwarna",
+            "id": "berwarna"
+          },
+          {
+            "name": "Chapter &gt;100",
+            "id": "chapter-100"
+          },
+          {
+            "name": "Hot",
+            "id": "hot"
+          },
+          {
+            "name": "Project",
+            "id": "project"
+          }
+        ],
+        "summary": [
+          "Seorang pahlawan legendaris kembali setelah lama menghilang untuk melindungi dunia dari ancaman baru.",
+          "Legenda lama berhadapan dengan musuh yang lebih kuat sambil menemukan kekuatan baru dalam dirinya.",
+          "Generasi muda terinspirasi oleh kembalinya sang legenda untuk menghadapi konflik dan tantangan.",
+          "Petualangan epik seorang pahlawan mengungkap rahasia masa lalu dan menentukan masa depan dunia.",
+          "Kisah tentang keberanian, persahabatan, dan kekuatan dalam menghadapi perubahan zaman."
+        ],
+        "genreutama": [
+          {
+            "name": "Drama",
+            "id": "drama"
+          }
+        ],
+        "ratemanga": [
+          {
+            "name": "15",
+            "id": "15"
+          }
+        ],
+        "statusmanga": [
+          {
+            "name": "Ongoing",
+            "id": "ongoing"
+          }
+        ],
+        "tipe": [
+          {
+            "name": "Manhwa",
+            "id": "manhwa"
+          }
+        ]
+      },
+      {
+        "id": 3922,
+        "title": "Heavenly Demon Cultivation Simulation",
+        "title_alt": "Simulasi Kultivasi Setan Surgawi",
+        "score": "8.5",
+        "date": "30 Desember 2021",
+        "update_date": "4 hari lalu",
+        "author": "PARKTae-jun",
+        "total_views": "1142816",
+        "thumbnail": "https://thumbnail.komiku.org/uploads/manga/heavenly-demon-cultivation-simulation/manga_thumbnail-Manhwa-Heavenly-Demon-Cultivation-Simulation.jpg",
+        "cover": "https://thumbnail.komiku.org/uploads/manga/heavenly-demon-cultivation-simulation/manga_img_horizontal-Komik-Heavenly-Demon-Cultivation-Simulation.jpg",
+        "other": [
+          {
+            "name": "Berwarna",
+            "id": "berwarna"
+          },
+          {
+            "name": "Chapter &gt;100",
+            "id": "chapter-100"
+          },
+          {
+            "name": "Hot",
+            "id": "hot"
+          },
+          {
+            "name": "Project",
+            "id": "project"
+          },
+          {
+            "name": "Rekomendasi",
+            "id": "rekomendasi"
+          }
+        ],
+        "summary": [
+          "Seorang pemuda mendapatkan kesempatan kedua untuk mengubah nasibnya melalui simulasi kultivasi yang menantang.",
+          "Perjalanan Xie Xi dalam dunia kultivasi penuh intrik dan pertarungan memacu adrenalin.",
+          "Kisah tentang kekuatan, balas dendam, dan pembelajaran di dunia kultivasi yang keras.",
+          "Simulasi kultivasi ini mengajarkan bahwa kekuatan sejati berasal dari pemahaman dan hubungan.",
+          "Perjalanan penuh strategi dan aksi dalam dunia fantasi yang memikat pemain berat kultivasi."
+        ],
+        "genreutama": [
+          {
+            "name": "Fantasi",
+            "id": "fantasi"
+          }
+        ],
+        "ratemanga": [
+          {
+            "name": "15",
+            "id": "15"
+          }
+        ],
+        "statusmanga": [
+          {
+            "name": "Ongoing",
+            "id": "ongoing"
+          }
+        ],
+        "tipe": [
+          {
+            "name": "Manhwa",
+            "id": "manhwa"
+          }
+        ]
+      }
+    ]
+  }
+}

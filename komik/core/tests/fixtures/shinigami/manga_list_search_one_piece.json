@@ -1,0 +1,426 @@
+{
+  "retcode": 0,
+  "message": "success",
+  "meta": {
+    "request_id": "b4ebef38-7935-49fc-8165-c754c33ca125",
+    "timestamp": 1791895003709,
+    "process_time": "2ms",
+    "page": 1,
+    "page_size": 5,
+    "total_page": 5,
+    "total_record": 24
+  },
+  "data": [
+    {
+      "alternative_title": "Updating",
+      "bookmark_count": 8954,
+      "country_id": "JP",
+      "cover_image_url": "https://assets.shngm.id/thumbnail/cover/f9325dbc0a80.jpeg",
+      "cover_portrait_url": "",
+      "created_at": "2024-11-23T21:40:09Z",
+      "deleted_at": null,
+      "description": "Bercerita tentang seorang lakilaki bernama Monkey D Luffy yang menentang arti dari gelar bajak laut Daripada kesannama besar kejahatan kekerasan dia lebih terlihat seperti bajak laut rendahan yang suka bersenangsenang alasanLuffy menjadi bajak laut adalah tekadnya untuk berpetualang di lautan yang menyenangkan dan bertemu orangorangbaru dan menarik sertabersamasama mencari One Piece",
+      "is_recommended": true,
+      "latest_chapter_id": "69211040-3c41-4fbc-9c57-c4f9b9cba64a",
+      "latest_chapter_number": 1195,
+      "latest_chapter_time": "2026-10-09T09:20:29Z",
+      "manga_id": "48270276-bd79-4a46-b15e-fdd2cf5655b1",
+      "rank": 9999,
+      "release_year": "1997",
+      "status": 1,
+      "taxonomy": {
+        "Artist": [
+          {
+            "name": "ODA Eiichiro",
+            "slug": "oda-eiichiro-0"
+          }
+        ],
+        "Author": [
+          {
+            "name": "Oda Eiichiro",
+            "slug": "oda-eiichiro"
+          }
+        ],
+        "Format": [
+          {
+            "name": "Manga",
+            "slug": "manga"
+          }
+        ],
+        "Genre": [
+          {
+            "name": "Comedy",
+            "slug": "comedy"
+          },
+          {
+            "name": "Action",
+            "slug": "action"
+          },
+          {
+            "name": "Adventure",
+            "slug": "adventure"
+          },
+          {
+            "name": "Fantasy",
+            "slug": "fantasy"
+          },
+          {
+            "name": "Drama",
+            "slug": "drama"
+          }
+        ],
+        "Type": [
+          {
+            "name": "Mirror",
+            "slug": "mirror"
+          }
+        ]
+      },
+      "title": "One Piece",
+      "updated_at": "2026-10-13T11:44:23Z",
+      "user_rate": 9,
+      "view_count": 5980318
+    },
+    {
+      "alternative_title": "Updating",
+      "bookmark_count": 5142,
+      "country_id": "jp",
+      "cover_image_url": "https://assets.shngm.id/thumbnail/cover/c28e5f097294.jpeg",
+      "cover_portrait_url": "",
+      "created_at": "2024-11-23T15:48:12Z",
+      "deleted_at": null,
+      "description": "Saitama dulunya hanyalah lelaki biasa dalam dunia dimana pahlawan menjadi sebuah pekerjaan Tetapi ketika Ia bertemu dengan seorang anak lelaki yang sedang diserang monster dia mengingat citacita masa kecilnya untuk menjadi pahlawan Lalu dia berlatih setiap hari hingga semua rambutnya rontok Saitama pun menjadi pahlawan yang kuat tetapi ada satu hal yang mencemaskan dia Yaitu dia menjadi terlalu kuat hingga dia dapat mengalahkan setiap monster hanya dengan satu tinjuan",
+      "is_recommended": true,
+      "latest_chapter_id": "24469c4f-b488-4905-a94b-a03f1d29a7bc",
+      "latest_chapter_number": 311,
+      "latest_chapter_time": "2026-09-10T06:46:57Z",
+      "manga_id": "b112f871-7ea4-4adb-a311-711ae31a1e1f",
+      "rank": 9999,
+      "release_year": "2012",
+      "status": 1,
+      "taxonomy": {
+        "Author": [
+          {
+            "name": "ONE (Story)",
+            "slug": "one-story"
+          },
+          {
+            "name": "Yusuke Murata (Art)",
+            "slug": "yusuke-murata-art"
+          }
+        ],
+        "Format": [
+          {
+            "name": "Manga",
+            "slug": "manga"
+          }
+        ],
+        "Genre": [
+          {
+            "name": "Comedy",
+            "slug": "comedy"
+          },
+          {
+            "name": "Action",
+            "slug": "action"
+          },
+          {
+            "name": "Adventure",
+            "slug": "adventure"
+          },
+          {
+            "name": "Fantasy",
+            "slug": "fantasy"
+          }
+        ],
+        "Type": [
+          {
+            "name": "Mirror",
+            "slug": "mirror"
+          }
+        ]
+      },
+      "title": "One Punch Man",
+      "updated_at": "2026-10-13T11:44:23Z",
+      "user_rate": 9,
+      "view_count": 3186654
+    },
+    {
+      "alternative_title": "일보신권",
+      "bookmark_count": 1803,
+      "country_id": "KR",
+      "cover_image_url": "https://assets.shngm.id/thumbnail/image/1ca8ebad-2df3-47b2-b29e-f9c907ca05e9.jpg",
+      "cover_portrait_url": "",
+      "created_at": "2025-03-12T00:38:00Z",
+      "deleted_at": null,
+      "description": "Terlahir sebagai putra dari keluarga kaya, ‘Jang Geon’ ditakdirkan untuk mengalami kehancuran. Untuk mengubah nasibnya, ia harus menjalani kehidupan sederhana di bawah bimbingan seorang biksu yang berbudi luhur.\n\nDiberikan kepada biksu hemat ‘Gyeongmok’ di Kuil Shaolin, Jang Geon menghabiskan hari-harinya dengan jubah katun kasar, hampir tidak bisa bertahan dengan nasi…\n\nSambil menahan lapar dan membatasi pergerakan dalam kesehariannya, ia menemukan seni bela diri dan berhasil menerapkan pola pikir hematnya…?",
+      "is_recommended": false,
+      "latest_chapter_id": "e6de161d-d9fc-4267-a828-734500bf0982",
+      "latest_chapter_number": 44,
+      "latest_chapter_time": "2025-04-10T02:30:30Z",
+      "manga_id": "bd07faef-3105-41e0-9a37-c73d954d27e3",
+      "rank": 9999,
+      "release_year": "2024",
+      "status": 1,
+      "taxonomy": {
+        "Artist": [
+          {
+            "name": "Seobi",
+            "slug": "seobi"
+          },
+          {
+            "name": "Sinieo",
+            "slug": "sinieo-0"
+          }
+        ],
+        "Author": [
+          {
+            "name": "Leoul",
+            "slug": "leoul"
+          }
+        ],
+        "Format": [
+          {
+            "name": "Manhwa",
+            "slug": "manhwa"
+          }
+        ],
+        "Genre": [
+          {
+            "name": "Action",
+            "slug": "action"
+          },
+          {
+            "name": "Fantasy",
+            "slug": "fantasy"
+          },
+          {
+            "name": "Martial Arts",
+            "slug": "martial-arts"
+          },
+          {
+            "name": "Drama",
+            "slug": "drama"
+          },
+          {
+            "name": "Historical",
+            "slug": "historical"
+          }
+        ],
+        "Type": [
+          {
+            "name": "Mirror",
+            "slug": "mirror"
+          }
+        ]
+      },
+      "title": "One Step Divine Fist",
+      "updated_at": "2026-10-13T11:44:22Z",
+      "user_rate": 7.5,
+      "view_count": 471493
+    },
+    {
+      "alternative_title": "어느 날 언니가 죽었다",
+      "bookmark_count": 236,
+      "country_id": "KR",
+      "cover_image_url": "https://assets.shngm.id/thumbnail/cover/banner_1784360493567_fcr7vg.jpg",
+      "cover_portrait_url": "",
+      "created_at": "2026-07-18T07:41:36Z",
+      "deleted_at": null,
+      "description": "Setelah kakaknya ditemukan tewas sebagai pengantin terbaru seorang pangeran monster yang diasingkan, Louanne ditugaskan untuk menggantikannya dan berharap dapat mengungkap kebenaran. Pangeran tersebut awalnya menolak dirinya, tetapi dengan kekuatan magisnya, ia mulai menyembuhkan lukanya setiap malam sambil menyembunyikan lukanya sendiri. Sementara itu, paman jahatnya, yang memanfaatkan kemampuannya untuk menjalankan skema medis di rumah, mulai runtuh. Apakah Louanne benar-benar telah melarikan diri dari keluarganya yang terkutuk, ataukah dia justru terjebak dalam sesuatu yang lebih gelap di Sable Manor?",
+      "is_recommended": false,
+      "latest_chapter_id": "886d586e-be76-497b-bd91-0a77278cc8b7",
+      "latest_chapter_number": 68,
+      "latest_chapter_time": "2026-08-02T08:18:39Z",
+      "manga_id": "00c79a1d-647e-4d15-9758-09c1562b3e7b",
+      "rank": 9999,
+      "release_year": "2025",
+      "status": 1,
+      "taxonomy": {
+        "Artist": [
+          {
+            "name": "Myo Myo",
+            "slug": "myo-myo-artist"
+          }
+        ],
+        "Author": [
+          {
+            "name": "RAIN (II)",
+            "slug": "rain-ii-author"
+          },
+          {
+            "name": "Tuttori",
+            "slug": "tuttori-author"
+          }
+        ],
+        "Format": [
+          {
+            "name": "Manhwa",
+            "slug": "manhwa"
+          }
+        ],
+        "Genre": [
+          {
+            "name": "Romance",
+            "slug": "romance"
+          },
+          {
+            "name": "Fantasy",
+            "slug": "fantasy"
+          },
+          {
+            "name": "Drama",
+            "slug": "drama"
+          },
+          {
+            "name": "Mystery",
+            "slug": "mystery"
+          },
+          {
+            "name": "Josei",
+            "slug": "josei-genre"
+          }
+        ],
+        "Type": [
+          {
+            "name": "Mirror",
+            "slug": "mirror"
+          }
+        ]
+      },
+      "title": "One Day, My Sister Died",
+      "updated_at": "2026-10-13T09:47:17Z",
+      "user_rate": 7,
+      "view_count": 15621
+    },
+    {
+      "alternative_title": "Master Baek, the One Hit Teacher, One Hit Teacher, Master Baek",
+      "bookmark_count": 7697,
+      "country_id": "KR",
+      "cover_image_url": "https://assets.shngm.id/thumbnail/cover/c4a4383ad7c0.jpeg",
+      "cover_portrait_url": "",
+      "created_at": "2024-11-23T21:45:08Z",
+      "deleted_at": null,
+      "description": "Dia belajar seni bela diri terkuat hanya untuk dibunuh dan bereinkarnasi sebagai petugas desa pedesaan sebagai Tuan Baek Guru Satu Pukulan",
+      "is_recommended": false,
+      "latest_chapter_id": "3d99bed9-a56c-4e47-90f7-3626b7a9cae3",
+      "latest_chapter_number": 163,
+      "latest_chapter_time": "2026-09-28T18:32:18Z",
+      "manga_id": "5be6f8c4-28a2-4d1d-88c9-e169d544f707",
+      "rank": 9999,
+      "release_year": "2021",
+      "status": 1,
+      "taxonomy": {
+        "Artist": [
+          {
+            "name": "ORIBORI",
+            "slug": "oribori"
+          }
+        ],
+        "Author": [
+          {
+            "name": "Ganjjajang",
+            "slug": "ganjjajang"
+          }
+        ],
+        "Format": [
+          {
+            "name": "Manhwa",
+            "slug": "manhwa"
+          }
+        ],
+        "Genre": [
+          {
+            "name": "Action",
+            "slug": "action"
+          },
+          {
+            "name": "Fantasy",
+            "slug": "fantasy"
+          },
+          {
+            "name": "Drama",
+            "slug": "drama"
+          }
+        ],
+        "Type": [
+          {
+            "name": "Mirror",
+            "slug": "mirror"
+          }
+        ]
+      },
+      "title": "Number One Star Instructor Master Baek",
+      "updated_at": "2026-10-13T11:44:22Z",
+      "user_rate": 0,
+      "view_count": 3825074
+    }
+  ],
+  "facet": {
+    "release_year": {
+      "1997": 1,
+      "2006": 1,
+      "2012": 1,
+      "2021": 1,
+      "2024": 1
+    },
+    "taxonomy.Artist.name": {
+      "Almond Bread": 1,
+      "HARA Yasuhisa": 1,
+      "ODA Eiichiro": 1,
+      "ORIBORI": 1,
+      "pawa": 1
+    },
+    "taxonomy.Artist.slug": {
+      "almond-bread": 1,
+      "hara-yasuhisa": 1,
+      "oda-eiichiro-0": 1,
+      "oribori": 1,
+      "pawa": 1
+    },
+    "taxonomy.Author.name": {
+      "Hara": 1,
+      "ONE (Story)": 1,
+      "Oda Eiichiro": 1,
+      "Yasuhisa (Story & Art)": 1,
+      "Yusuke Murata (Art)": 1
+    },
+    "taxonomy.Author.slug": {
+      "hara": 1,
+      "oda-eiichiro": 1,
+      "one-story": 1,
+      "yasuhisa-story-art": 1,
+      "yusuke-murata-art": 1
+    },
+    "taxonomy.Format.name": {
+      "Manga": 6,
+      "Manhua": 5,
+      "Manhwa": 13
+    },
+    "taxonomy.Format.slug": {
+      "manga": 6,
+      "manhua": 5,
+      "manhwa": 13
+    },
+    "taxonomy.Genre.name": {
+      "Action": 2,
+      "Adventure": 1,
+      "Comedy": 1,
+      "Drama": 1,
+      "Fantasy": 1
+    },
+    "taxonomy.Genre.slug": {
+      "action": 2,
+      "adventure": 1,
+      "comedy": 1,
+      "drama": 1,
+      "fantasy": 1
+    },
+    "taxonomy.Type.name": {
+      "Mirror": 24
+    },
+    "taxonomy.Type.slug": {
+      "mirror": 24
+    }
+  }
+}

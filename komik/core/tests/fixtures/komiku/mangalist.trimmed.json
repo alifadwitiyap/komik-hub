@@ -1,0 +1,299 @@
+{
+ "success": true,
+ "message": "Anime list retrieved successfully",
+ "_fixture_note": "Slice 50KB (HTTP Range bytes=0-51199) dari full ~5.6MB. Bucket = huruf awal (#, A, B, ...). Disimpan 1 entry per bucket sebagai proof struktur; field entry identik dengan full response.",
+ "data": {
+  "#": [
+   {
+    "id": 522670,
+    "title": "#Rabu kome-suki to kossori tsunagaritai",
+    "title_alt": "",
+    "score": "-",
+    "date": "-",
+    "author": "-",
+    "total_views": "521",
+    "thumbnail": "https://thumbnail.komiku.org/new/img/images/2026/06/27/20260627140026_41e7c78383942870_58d068f2.jpg",
+    "cover": "https://thumbnail.komiku.org/new/img/images/2026/06/27/20260627135354_a7de4032f74f0e8f_874370e5.jpg",
+    "other": [],
+    "genreutama": [
+     {
+      "name": "Romantis",
+      "id": "romantis"
+     }
+    ],
+    "ratemanga": [
+     {
+      "name": "13",
+      "id": "13"
+     }
+    ],
+    "statusmanga": [
+     {
+      "name": "Completed",
+      "id": "completed"
+     }
+    ],
+    "tipe": [
+     {
+      "name": "Manga",
+      "id": "manga"
+     }
+    ]
+   }
+  ],
+  "&": [
+   {
+    "id": 563252,
+    "title": "\"Maou Taoshita Shi Kaeru Ka\"",
+    "title_alt": "",
+    "score": 7,
+    "date": "",
+    "author": "",
+    "total_views": "0",
+    "thumbnail": "https://thumbnail.komiku.org/new/img/images/2026/09/06/20260906003146_54074ba8a2ad82dc_1054e5f8.jpg",
+    "cover": "https://thumbnail.komiku.org/new/img/images/2026/09/02/20260902230803_540498e29c8dd847_0f4e29ee.jpg",
+    "other": [],
+    "genreutama": [
+     {
+      "name": "Fantasi",
+      "id": "fantasi"
+     }
+    ],
+    "ratemanga": [
+     {
+      "name": "13",
+      "id": "13"
+     }
+    ],
+    "statusmanga": [
+     {
+      "name": "Ongoing",
+      "id": "ongoing"
+     }
+    ],
+    "tipe": [
+     {
+      "name": "Manga",
+      "id": "manga"
+     }
+    ]
+   }
+  ],
+  "+": [
+   {
+    "id": 3620,
+    "title": "+99 Wooden Stick",
+    "title_alt": "Tongkat Kayu Plus Sembilan Puluh Sembilan",
+    "score": "7",
+    "date": "01 Januari 2016",
+    "author": "Ryu Kim",
+    "total_views": "754640",
+    "thumbnail": "https://thumbnail.komiku.org/uploads/manga/99-wooden-stick/manga_thumbnail-Manhwa-99-Wooden-Stick.jpg",
+    "cover": "https://thumbnail.komiku.org/uploads/manga/99-wooden-stick/manga_img_horizontal-Komik-99-Wooden-Stick.jpg",
+    "other": [
+     {
+      "name": "Berwarna",
+      "id": "berwarna"
+     },
+     {
+      "name": "Chapter &gt;100",
+      "id": "chapter-100"
+     },
+     {
+      "name": "Hot",
+      "id": "hot"
+     }
+    ],
+    "genreutama": [
+     {
+      "name": "Aksi",
+      "id": "aksi"
+     }
+    ],
+    "ratemanga": [
+     {
+      "name": "15",
+      "id": "15"
+     }
+    ],
+    "statusmanga": [
+     {
+      "name": "Ongoing",
+      "id": "ongoing"
+     }
+    ],
+    "tipe": [
+     {
+      "name": "Manhwa",
+      "id": "manhwa"
+     }
+    ]
+   }
+  ],
+  "-": [
+   {
+    "id": 3063,
+    "title": "-50kg Cinderella",
+    "title_alt": "Cinderella Turun Berat Badan 50 Kilogram",
+    "score": "8",
+    "date": "1 Januari 2021",
+    "author": "Jung Min-a",
+    "total_views": "15595",
+    "thumbnail": "https://thumbnail.komiku.org/uploads/manga/50kg-cinderella/manga_thumbnail-50kg-Cinderella-Cover.jpg",
+    "cover": "https://thumbnail.komiku.org/uploads/manga/50kg-cinderella/manga_img_horizontal-50kg-Cinderella-Panjang.png",
+    "other": [],
+    "genreutama": [
+     {
+      "name": "Drama",
+      "id": "drama"
+     }
+    ],
+    "ratemanga": [
+     {
+      "name": "15",
+      "id": "15"
+     }
+    ],
+    "statusmanga": [
+     {
+      "name": "Ongoing",
+      "id": "ongoing"
+     }
+    ],
+    "tipe": [
+     {
+      "name": "Manga",
+      "id": "manga"
+     }
+    ]
+   }
+  ],
+  ".": [
+   {
+    "id": 6304,
+    "title": ".hack//G.U.+",
+    "title_alt": "Petualangan .hack//G.U.+",
+    "score": "7",
+    "date": "4 Juli 2006",
+    "author": "Toshihiro Kawamoto",
+    "total_views": "8610",
+    "thumbnail": "https://thumbnail.komiku.org/uploads/manga/hack-g-u/manga_thumbnail-Komik-hackGU.jpg",
+    "cover": "https://thumbnail.komiku.org/uploads/manga/hack-g-u/manga_img_horizontal-Manga-hackGU.jpg",
+    "other": [],
+    "genreutama": [
+     {
+      "name": "Fantasi",
+      "id": "fantasi"
+     }
+    ],
+    "ratemanga": [
+     {
+      "name": "15",
+      "id": "15"
+     }
+    ],
+    "statusmanga": [
+     {
+      "name": "Ongoing",
+      "id": "ongoing"
+     }
+    ],
+    "tipe": [
+     {
+      "name": "Manga",
+      "id": "manga"
+     }
+    ]
+   }
+  ],
+  "0": [
+   {
+    "id": 3251,
+    "title": "0 Magic, a High Spirit, and a Demonic Sword",
+    "title_alt": "Nol Sihir, Roh Tinggi, dan Pedang Iblis",
+    "score": "7.5",
+    "date": "01 Juli 2021",
+    "author": "Hong Melona",
+    "total_views": "1266",
+    "thumbnail": "https://thumbnail.komiku.org/uploads/manga/0-magic-a-high-spirit-and-a-demonic-sword/manga_thumbnail-Manga-0-Magic-a-High-Spirit-and-a-Demonic-Sword.jpg",
+    "cover": "https://thumbnail.komiku.org/uploads/manga/0-magic-a-high-spirit-and-a-demonic-sword/manga_img_horizontal-Komik-0-Magic-a-High-Spirit-and-a-Demonic-Sword.jpg",
+    "other": [],
+    "genreutama": [
+     {
+      "name": "Fantasi",
+      "id": "fantasi"
+     }
+    ],
+    "ratemanga": [
+     {
+      "name": "15",
+      "id": "15"
+     }
+    ],
+    "statusmanga": [
+     {
+      "name": "Ongoing",
+      "id": "ongoing"
+     }
+    ],
+    "tipe": [
+     {
+      "name": "Manga",
+      "id": "manga"
+     }
+    ]
+   }
+  ],
+  "1": [
+   {
+    "id": 1388,
+    "title": "1 Million Times Attack Speed",
+    "title_alt": "Serangan Kecepatan Satu Juta Kali",
+    "score": "8",
+    "date": "15 Juli 2021",
+    "author": "Park Yoon Dae",
+    "total_views": "3234952",
+    "thumbnail": "https://thumbnail.komiku.org/uploads/manga/1-million-times-attack-speed/manga_thumbnail-1-Million-Times-Attack-Speed.png",
+    "cover": "https://thumbnail.komiku.org/uploads/manga/1-million-times-attack-speed/manga_img_horizontal-Back-1-Million-Times-Attack-Speed.jpg",
+    "other": [
+     {
+      "name": "Berwarna",
+      "id": "berwarna"
+     },
+     {
+      "name": "Chapter &gt;100",
+      "id": "chapter-100"
+     },
+     {
+      "name": "Hot",
+      "id": "hot"
+     }
+    ],
+    "genreutama": [
+     {
+      "name": "Fantasi",
+      "id": "fantasi"
+     }
+    ],
+    "ratemanga": [
+     {
+      "name": "13",
+      "id": "13"
+     }
+    ],
+    "statusmanga": [
+     {
+      "name": "Ongoing",
+      "id": "ongoing"
+     }
+    ],
+    "tipe": [
+     {
+      "name": "Manhua",
+      "id": "manhua"
+     }
+    ]
+   }
+  ]
+ }
+}

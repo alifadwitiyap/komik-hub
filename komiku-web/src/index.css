@@ -1,0 +1,155 @@
+@import 'tailwindcss';
+
+/* ---------------------------------------------------------------------------
+   Tema Komiku+ v2.3.0 — nilai diekstrak dari APK (resources.arsc):
+   colorPrimary #0077b6 · colorAccent #935bab · greys · night #282828.
+   Font asli: BR Hendrix (display) + Nunito Sans (body) dari assets/font APK.
+   --------------------------------------------------------------------------- */
+@font-face {
+  font-family: 'Nunito Sans';
+  src: url('/fonts/NunitoSans-Regular.ttf') format('truetype');
+  font-weight: 400;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'BR Hendrix';
+  src: url('/fonts/BRHendrix-Regular.otf') format('opentype');
+  font-weight: 400;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'BR Hendrix';
+  src: url('/fonts/BRHendrix-SemiBold.otf') format('opentype');
+  font-weight: 600;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'BR Hendrix';
+  src: url('/fonts/BRHendrix-Bold.otf') format('opentype');
+  font-weight: 700;
+  font-display: swap;
+}
+
+@theme {
+  /* warna app (terang) — dipetakan ke token ink-* lama supaya komponen lain
+     ikut bertema tanpa dirombak: page bg terang, kartu putih, teks gelap. */
+  --color-ink-950: #f1f4f7; /* page background   */
+  --color-ink-900: #ffffff; /* card / surface    */
+  --color-ink-850: #eef1f5;
+  --color-ink-800: #e3e7ec; /* border / divider  */
+  --color-ink-700: #c6ccd4;
+  --color-ink-600: #9aa2ac;
+  --color-ink-500: #6f7681; /* secondary text    */
+  --color-ink-400: #8a929d;
+  --color-ink-300: #4b5563;
+  --color-ink-200: #2b3340;
+  --color-ink-100: #161c26;
+
+  /* brand: biru Komiku+ (colorPrimary) */
+  --color-brand-amber: #0077b6;
+  --color-brand-amber-soft: #4d9fd6;
+  --color-brand-amber-dim: #b3d9ef;
+
+  /* aksen ungu Komiku+ (colorAccent) */
+  --color-brand-red: #935bab;
+  --color-brand-red-dark: #784290;
+  --color-brand-red-soft: #eedcff;
+
+  /* status kesehatan sumber (pill TopBar) — kontras cukup di surface terang */
+  --color-healthy: #15803d; /* sumber sehat   */
+  --color-warn: #b45309;    /* sebagian mati  */
+  --color-danger: #b91c1c;  /* semua/nol mati */
+
+  /* netral gelap khusus reader (night mode) */
+  --color-night: #282828;
+  --color-night-dark: #131313;
+  --color-grey-d: #999999;
+  --color-grey-l: #dcdcdc;
+
+  --font-sans: 'Nunito Sans', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-display: 'BR Hendrix', 'Nunito Sans', ui-sans-serif, system-ui, sans-serif;
+}
+
+:root {
+  color-scheme: dark;
+}
+
+/* ---------------------------------------------------------------------------
+   Mode gelap — SATU blok ini yang mengubah seluruh app.
+
+   Semua komponen memakai token `ink-*`, dan utility Tailwind v4 dikompilasi
+   ke `var(--color-ink-*)`. Jadi memetakan ulang variabelnya di bawah `.dark`
+   sudah membalik seluruh permukaan — tidak perlu `dark:` di setiap komponen.
+
+   Angka sengaja dipilih agar "10 menjadi 900 dan seterusnya" tetap masuk akal:
+   ink-950 (page) jadi gelap pekat, ink-900 (kartu) sedikit diangkat, ink-100
+   (teks utama) jadi terang. Arah brand tidak diubah (biru/ungu tetap).
+   --------------------------------------------------------------------------- */
+.dark {
+  --color-ink-950: #0d1117; /* page background   */
+  --color-ink-900: #161c26; /* card / surface    */
+  --color-ink-850: #1c2431;
+  --color-ink-800: #2b3546; /* border / divider  */
+  --color-ink-700: #3a4759;
+  --color-ink-600: #5b6779; /* secondary text    */
+  --color-ink-500: #8794a6;
+  --color-ink-400: #9aa6b6;
+  --color-ink-300: #c2ccda;
+  --color-ink-200: #dde5ef;
+  --color-ink-100: #f2f5f9;
+
+  /* status: versi terang supaya kontras cukup di surface gelap */
+  --color-healthy: #4ade80;
+  --color-warn: #fbbf24;
+  --color-danger: #f87171;
+}
+
+/* Transisi warna halus saat tema ditukar (200ms) — hanya properti warna,
+   bukan layout, supaya scroll dan gambar tidak ikut beranimasi. */
+body,
+.dark body {
+  transition: background-color 200ms ease, color 200ms ease;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  @apply bg-ink-950 text-ink-200 font-sans antialiased;
+  /* cegah rubber-band saat scroll panjang di iOS */
+  overscroll-behavior-y: none;
+}
+
+/* scrollbar tipis gelap */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--color-ink-700);
+  border-radius: 9999px;
+}
+
+/* baris kartu menyamping: sembunyikan scrollbar */
+.no-bar {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.no-bar::-webkit-scrollbar {
+  display: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}

@@ -1,0 +1,42 @@
+[package]
+name = "komiku-server"
+version = "0.1.0"
+edition = "2021"
+description = "Backend proxy + cache untuk komiku-web (Komiku+ / KomikId mobile API)"
+
+[dependencies]
+axum = "0.7"
+tokio = { version = "1", features = ["full"] }
+# native-tls (SChannel di Windows) dipilih, BUKAN rustls: rustls menarik crate `ring`
+# yang butuh cl.exe, dan cl.exe juga gagal karena TMP relatif dari wrapper terminal.
+reqwest = { version = "0.12", default-features = false, features = ["default-tls", "json"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+anyhow = "1"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+tower-http = { version = "0.5", features = ["cors", "fs"] }
+tower = { version = "0.5", features = ["util"] }
+
+# unified multi-source: 4 sumber manga (komiku/mangaku/shinigami/kiryuu)
+# di balik satu core. Path dep ke workspace D:/project/komik (core lib).
+komik-core = { path = "../komik/core" }
+
+# PDF unduhan (rak buku): halaman non-JPEG di-decode lalu re-encode JPEG.
+# Versi & alasan sama dengan komik/cli (core & server tetap lean tanpa ini).
+image = "0.25"
+
+# kripto: seeds + dekripsi payload AES-256-CBC/PKCS7, PBKDF2-HMAC-SHA1
+aes = "0.8"
+cbc = "0.1"
+hmac = "0.12"
+sha1 = "0.10"
+hex = "0.4"
+base64 = "0.22"
+
+# cache katalog A-Z (5.6 MB) di memory
+once_cell = "1"
+
+[profile.release]
+lto = true
+strip = true

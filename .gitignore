@@ -1,0 +1,58 @@
+# Repo komik-hub: hanya 4 direktori yang dipakai build (komiku-server/, komik/,
+# komiku-web/, deploy/). Semua sibling project lain di D:/project diabaikan.
+
+# --- Rust build artifacts ---
+**/target/
+**/target-laneA/
+**/target-laneA-server/
+**/Cargo.lock.orig
+
+# --- node/vite ---
+**/node_modules/
+**/dist/
+**/.vite/
+
+# --- tooling / local state ---
+.omh/
+.hermes/
+.hermes-tmp.*
+graphify-out/
+**/graphify-out/
+qa/
+old/
+archived/
+
+# --- logs / scratch ---
+*.log
+komiku-server/data/
+komiku-server/downloads/
+*.stackdump
+
+# --- heavy sibling projects (bukan bagian repo ini) ---
+3d-html-site/
+akata/
+alif-3d-portfolio/
+alif-pixel-portfolio/
+getcontact-cli/
+hermes-webui/
+jev-explainer-video/
+komiku-apk/
+komiku-re/
+OpenIntelligentUI/
+PortaText/
+porto-website-persona5-alif/
+pwtest/
+scroll-craft-demo/
+unword/
+WA-Bulk/
+zombie-city-zx25r/
+zqa-blank/
+bot-discord.txt
+
+# --- VM disk images ---
+*.vhdx
+*.vhd
+*.iso
+
+# --- deploy scratch ---
+deploy/seed/.seeded

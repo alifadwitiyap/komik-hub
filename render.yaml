@@ -1,0 +1,24 @@
+# render.yaml — Blueprint deploy Komik Hub ke Render Free (tanpa kartu).
+# Cara pakai: push repo ke GitHub → Render Dashboard → New → Blueprint → pilih
+# repo ini → Apply. Render membaca file ini dan membuat service otomatis.
+#
+# Setelah service dibuat, isi env BASIC_AUTH_HASH di dashboard
+# (sync: false = sengaja tidak ditulis di file; hash dibuat via
+#  `sh deploy/make-auth-hash.sh 'password'`).
+services:
+  - type: web
+    name: komik-hub
+    runtime: docker
+    plan: free
+    region: singapore
+    # Build context = root repo (butuh komiku-server/ + komik/core + komiku-web/).
+    dockerfilePath: ./deploy/Dockerfile
+    dockerContext: .
+    healthCheckPath: /healthz
+    envVars:
+      - key: BASIC_AUTH_USER
+        value: alif
+      - key: BASIC_AUTH_HASH
+        sync: false
+      - key: RUST_LOG
+        value: info

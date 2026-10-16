@@ -1,0 +1,22 @@
+{
+  "items": [
+    {
+      "series_title": "One Piece",
+      "chapter_title": "Chapter 1194",
+      "size_bytes": 6123319,
+      "evicted_at": 1791961604121
+    },
+    {
+      "series_title": "One Piece",
+      "chapter_title": "Chapter 1193",
+      "size_bytes": 8733193,
+      "evicted_at": 1791961604121
+    },
+    {
+      "series_title": "One Piece",
+      "chapter_title": "Chapter 1192",
+      "size_bytes": 6097153,
+      "evicted_at": 1791961604121
+    }
+  ]
+}

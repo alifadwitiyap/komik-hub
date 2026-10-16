@@ -1,0 +1,2175 @@
+{
+  "component": "Manga/Index",
+  "props": {
+    "errors": {},
+    "auth": {
+      "user": null
+    },
+    "flash": {
+      "success": null,
+      "error": null
+    },
+    "isImpersonating": false,
+    "siteSettings": {
+      "site_name": "Mangaku",
+      "site_slug": "anime",
+      "favicon": "/storage/settings/nf7ljg2QLYQEDXp7Mg0O31bVKcFIJSLgEmRkZpRM.png",
+      "logo_icon": "sparkles",
+      "logo_color": "#3b82f6",
+      "footer_description": "Mangaku tempat baca komik, manga, manhwa, manhua, novel, serta anime subtitle Indonesia dengan update chapter dan episode terbaru setiap hari. Temukan cerita seru dari berbagai genre populer seperti action, romance, fantasy, isekai, comedy, adventure, mystery, dan drama. Nikmati kualitas gambar yang optimal, proses pemuatan yang cepat, serta antarmuka yang nyaman untuk digunakan kapan saja melalui desktop maupun smartphone.",
+      "footer_copyright": "",
+      "footer_credit": "Dibuat dengan ❤ Mangaku",
+      "nav_links": [
+        {
+          "label": "Beranda",
+          "href": "/"
+        },
+        {
+          "label": "Ingat Selalu Mangaku.lol",
+          "href": "/"
+        }
+      ],
+      "legal_links": [
+        {
+          "label": "Terms of Service",
+          "href": "/terms"
+        },
+        {
+          "label": "Privacy Policy",
+          "href": "/privacy"
+        },
+        {
+          "label": "DMCA",
+          "href": "/dmca"
+        },
+        {
+          "label": "Kontak Kami",
+          "href": "/contact"
+        }
+      ],
+      "social_facebook": "",
+      "social_twitter": "",
+      "social_instagram": "",
+      "show_visitor_stats": false,
+      "discord_enabled": false,
+      "discord_url": "https://discord.gg/u7D9BPtmS",
+      "discord_title": "Join Our Discord",
+      "discord_description": "Bergabunglah dengan server Discord kami untuk update terbaru, diskusi anime, dan dukungan langsung dari tim.",
+      "google_login_enabled": true,
+      "google_client_id": "671135248891-oun3nmd1gqhpea4mqujj0hm51p85gm30.apps.googleusercontent.com",
+      "google_client_secret": "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",
+      "logo_image": null,
+      "hero_slider_enabled": false,
+      "error_404_image": "/storage/settings/XFx62aLs5z2x46gBmWQ8WcOBc0G7E89E9wfEPxlw.png",
+      "footer_image": "/storage/settings/VgZcJXiRl6n5yB4eGyRJwqDjy6UCwhdoB69Lmzf4.png",
+      "komiku_url": "https://komiku.org",
+      "kanna_api_url": "https://api.satulagi.my.id",
+      "novel_source_domain": "https://novel.kiryuuid.net",
+      "novel_api_url": "https://novel.kiryuuid.net/wp-json/kiryuu/v1",
+      "novel_cover_hotlink": true,
+      "novel_chapter_mode": "live_api",
+      "site_tagline": "Streaming Anime"
+    },
+    "og": {
+      "title": "Mangaku",
+      "description": "Nonton anime streaming subtitle Indonesia terlengkap dan terupdate setiap hari.",
+      "image": null,
+      "url": "https://mangaku.lol/manga",
+      "type": "website"
+    },
+    "pendingReports": {
+      "count": 0,
+      "recent": []
+    },
+    "ads": [],
+    "mangas": {
+      "current_page": 1,
+      "data": [
+        {
+          "id": 7069,
+          "title": "Mandragora tte Baretara Toubatsu desu ka?: Hana no Majo no Hohoemi wa Kanchigai no Tane o Maku",
+          "slug": "mandragora-tte-baretara-toubatsu-desu-ka-hana-no-majo-no-hohoemi-wa-kanchigai-no-tane-o-maku",
+          "synopsis": "Di dunia di mana makhluk ajaib diburu, seorang mandragora menyamar sebagai penyihir bunga yang kalem dan helpful. Ia membuka kios ramuan kecil di tepi kota, menyembuhkan luka dengan herbal dan menenangkan monster hutan dengan kelopak yang ia panggil. Masalahnya, legenda bilang mandragora harus ditumpas, jadi identitas aslinya wajib dirahasiakan. Setiap kali ia berusaha low profile, tindakannya justru terlihat super hebat sehingga semua orang salah paham dan menganggapnya pahlawan misterius.\nKetika seorang ksatria pemula dikirim untuk menyelidiki keberadaan mandragora di sekitar kota, ia malah terpesona oleh kebaikan sang penyihir bunga. Rangkaian misi guild, tanaman liar yang overpowered, dan momen nyaris ketahuan memicu komedi kesalahpahaman yang intens tapi wholesome. Di antara tawa dan deg-degan, sang mandragora belajar menumbuhkan keberanian untuk melindungi kebunnya, sementara benih-benih perasaan diam-diam tumbuh di hati orang-orang yang dulu siap memburunya.",
+          "status": "Ongoing",
+          "source_url": "https://komiku.org/manga/mandragora-tte-baretara-toubatsu-desu-ka-hana-no-majo-no-hohoemi-wa-kanchigai-no-tane-o-maku/",
+          "poster": "https://thumbnail.komiku.org/new/img/images/2026/05/13/20260513163132_b3194aee653ed8b4_894e7319.jpg?w=500",
+          "type": "Manga",
+          "author": "-",
+          "artist": "-",
+          "is_featured": 0,
+          "rating": null,
+          "release_year": 2026,
+          "views_count": 278,
+          "created_at": "2026-05-13T07:04:06.000000Z",
+          "updated_at": "2026-10-11T05:46:24.000000Z",
+          "genres": [
+            {
+              "id": 3,
+              "name": "Comedy",
+              "slug": "comedy",
+              "icon": "😂",
+              "created_at": "2026-03-23T06:39:14.000000Z",
+              "updated_at": "2026-03-23T06:39:14.000000Z",
+              "pivot": {
+                "manga_id": 7069,
+                "genre_id": 3
+              }
+            },
+            {
+              "id": 6,
+              "name": "Fantasy",
+              "slug": "fantasy",
+              "icon": "🪄",
+              "created_at": "2026-03-23T06:39:14.000000Z",
+              "updated_at": "2026-03-23T06:39:14.000000Z",
+              "pivot": {
+                "manga_id": 7069,
+                "genre_id": 6
+              }
+            },
+            {
+              "id": 32,
+              "name": "Shoujo",
+              "slug": "shoujo",
+              "icon": null,
+              "created_at": "2026-03-23T15:30:59.000000Z",
+              "updated_at": "2026-03-23T15:30:59.000000Z",
+              "pivot": {
+                "manga_id": 7069,
+                "genre_id": 32
+              }
+            },
+            {
+              "id": 15,
+              "name": "Slice of Life",
+              "slug": "slice-of-life",
+              "icon": "🍱",
+              "created_at": "2026-03-23T06:39:14.000000Z",
+              "updated_at": "2026-03-23T06:39:14.000000Z",
+              "pivot": {
+                "manga_id": 7069,
+                "genre_id": 15
+              }
+            }
+          ],
+          "last_chapter": {
+            "id": 405506,
+            "manga_id": 7069,
+            "title": "Chapter 9.2",
+            "slug": "chapter-9-2",
+            "chapter_number": 9.2,
+            "source_url": "https://komiku.org/mandragora-tte-baretara-toubatsu-desu-ka-hana-no-majo-no-hohoemi-wa-kanchigai-no-tane-o-maku-chapter-9-2/",
+            "content": null,
+            "views_count": 1,
+            "created_at": "2026-09-24T20:19:43.000000Z",
+            "updated_at": "2026-10-03T17:20:40.000000Z"
+          }
+        },
+        {
+          "id": 2165,
+          "title": "Batsu Harem",
+          "slug": "batsu-harembatsu-harem",
+          "synopsis": "Batsu Harem mengikuti kisah seorang pria muda yang secara tak terduga terlibat dalam situasi di mana ia dikelilingi oleh banyak wanita dengan kepribadian yang berbeda-beda. Konflik dan dinamika sosial muncul saat ia mencoba memahami perasaannya sendiri dan hubungan yang berkembang antara mereka. \nCerita berkembang dengan memperlihatkan bagaimana protagonis menghadapi tantangan dan dilema emosional sekaligus tumbuh dan belajar tentang pentingnya kejujuran serta pengertian dalam hubungan interpersonal yang rumit.",
+          "status": "Ongoing",
+          "source_url": "https://komiku.org/manga/batsu-hare/",
+          "poster": "https://thumbnail.komiku.org/uploads/manga/batsu-hare/manga_thumbnail-Manga-Batsu-Hare.jpg?w=500",
+          "type": "Manga",
+          "author": "-",
+          "artist": "-",
+          "is_featured": 0,
+          "rating": "10.0",
+          "release_year": 2026,
+          "views_count": 180469,
+          "created_at": "2026-04-11T00:00:08.000000Z",
+          "updated_at": "2026-10-13T12:37:15.000000Z",
+          "genres": [
+            {
+              "id": 3,
+              "name": "Comedy",
+              "slug": "comedy",
+              "icon": "😂",
+              "created_at": "2026-03-23T06:39:14.000000Z",
+              "updated_at": "2026-03-23T06:39:14.000000Z",
+              "pivot": {
+                "manga_id": 2165,
+                "genre_id": 3
+              }
+            },
+            {
+              "id": 4,
+              "name": "Drama",
+              "slug": "drama",
+              "icon": "🎭",
+              "created_at": "2026-03-23T06:39:14.000000Z",
+              "updated_at": "2026-03-23T06:39:14.000000Z",
+              "pivot": {
+                "manga_id": 2165,
+                "genre_id": 4
+              }
+            },
+            {
+              "id": 5,
+              "name": "Ecchi",
+              "slug": "ecchi",
+              "icon": "🔞",
+              "created_at": "2026-03-23T06:39:14.000000Z",
+              "updated_at": "2026-03-23T06:39:14.000000Z",
+              "pivot": {
+                "manga_id": 2165,
+                "genre_id": 5
+              }
+            },
+            {
+              "id": 34,
+              "name": "Harem",
+              "slug": "harem",
+              "icon": null,
+              "created_at": "2026-03-23T15:31:50.000000Z",
+              "updated_at": "2026-03-23T15:31:50.000000Z",
+              "pivot": {
+                "manga_id": 2165,
+                "genre_id": 34
+              }
+            },
+            {
+              "id": 13,
+              "name": "Romance",
+              "slug": "romance",
+              "icon": "❤️",
+              "created_at": "2026-03-23T06:39:14.000000Z",
+              "updated_at": "2026-03-23T06:39:14.000000Z",
+              "pivot": {
+                "manga_id": 2165,
+                "genre_id": 13
+              }
+            },
+            {
+              "id": 25,
+              "name": "Seinen",
+              "slug": "seinen",
+              "icon": null,
+              "created_at": "2026-03-23T08:31:28.000000Z",
+              "updated_at": "2026-03-23T08:31:28.000000Z",
+              "pivot": {
+                "manga_id": 2165,
+                "genre_id": 25
+              }
+            }
+          ],
+          "last_chapter": {
+            "id": 404866,
+            "manga_id": 2165,
+            "title": "Chapter 210",
+            "slug": "chapter-210",
+            "chapter_number": 210,
+            "source_url": "https://komiku.org/batsu-harem-chapter-210/",
+            "content": null,
+            "views_count": 989,
+            "created_at": "2026-09-21T08:04:17.000000Z",
+            "updated_at": "2026-10-13T12:37:15.000000Z"
+          }
+        },
+        {
+          "id": 2800,
+          "title": "Inkya no Boku ni Batsu Game ni Kokuhaku Shitekita Hazu no Gyaru ga, Doumitemo Boku ni Betahore Desu",
+          "slug": "inkya-no-boku-ni-batsu-game-ni-kokuhaku-shitekita-hazu-no-gyaru-ga-doumitemo-boku-ni-betahore-desuinkya-no-boku-ni-batsu-game-ni-kokuhaku-shitekita-hazu-no-gyaru-ga-doumitemo-boku-ni-betahore-desu",
+          "synopsis": "Cerita ini berpusat pada seorang remaja yang secara tidak sengaja menjadi pusat perhatian seorang gadis dengan gaya gyaru yang selama ini tampak acuh. Semua bermula ketika gadis tersebut mengikuti sebuah game hukuman, di mana ia harus mengaku cinta kepada si tokoh utama. Namun, mengakuinya dalam kondisi game ternyata justru memicu perasaan asli yang membuatnya menjadi sangat dekat dan sulit ditinggalkan oleh sang tokoh utama.\n\nInteraksi mereka yang awalnya hanyalah bagian dari game berubah menjadi hubungan yang penuh dengan kehangatan dan kejutan. Si tokoh utama mulai menyadari sisi lain dari gadis gyaru yang selama ini tersembunyi di balik penampilannya yang ceria dan percaya diri. Cerita berkembang dengan dinamika hubungan yang lucu sekaligus menyentuh, menunjukkan bagaimana cinta bisa datang dalam situasi yang paling tidak terduga.",
+          "status": "Ongoing",
+          "source_url": "https://komiku.org/manga/inkya-no-boku-ni-batsu-game-ni-kokuhaku-shitekita-hazu-no-gyaru-ga-doumitemo-boku-ni-betahore-desu/",
+          "poster": "https://thumbnail.komiku.org/uploads/manga/inkya-no-boku-ni-batsu-game-ni-kokuhaku-shitekita-hazu-no-gyaru-ga-doumitemo-boku-ni-betahore-desu/manga_thumbnail-Manga-Inkya-no-Boku-ni-Batsu-Game-ni-Kokuhaku-Shitekita-Hazu-no-Gyaru-ga-Doumitemo-Boku-ni-Betahore-Desu.jpg?w=500",
+          "type": "Manga",
+          "author": "-",
+          "artist": "-",
+          "is_featured": 0,
+          "rating": "0.0",
+          "release_year": 2026,
+          "views_count": 721,
+          "created_at": "2026-05-01T05:24:56.000000Z",
+          "updated_at": "2026-10-11T04:40:29.000000Z",
+          "genres": [
+            {
+              "id": 3,
+              "name": "Comedy",
+              "slug": "comedy",
+              "icon": "😂",
+              "created_at": "2026-03-23T06:39:14.000000Z",
+              "updated_at": "2026-03-23T06:39:14.000000Z",
+              "pivot": {
+                "manga_id": 2800,
+                "genre_id": 3
+              }
+            },
+            {
+              "id": 4,
+              "name": "Drama",
+              "slug": "drama",
+              "icon": "🎭",
+              "created_at": "2026-03-23T06:39:14.000000Z",
+              "updated_at": "2026-03-23T06:39:14.000000Z",
+              "pivot": {
+                "manga_id": 2800,
+                "genre_id": 4
+              }
+            },
+            {
+              "id": 13,
+              "name": "Romance",
+              "slug": "romance",
+              "icon": "❤️",
+              "created_at": "2026-03-23T06:39:14.000000Z",
+              "updated_at": "2026-03-23T06:39:14.000000Z",
+              "pivot": {
+                "manga_id": 2800,
+                "genre_id": 13
+              }
+            },
+            {
+              "id": 24,
+              "name": "School life",
+              "slug": "school-life",
+              "icon": null,
+              "created_at": "2026-03-23T08:31:28.000000Z",
+              "updated_at": "2026-03-23T08:31:28.000000Z",
+              "pivot": {
+                "manga_id": 2800,
+                "genre_id": 24
+              }
+            },
+            {
+              "id": 27,
+              "name": "Shounen",
+              "slug": "shounen",
+              "icon": null,
+              "created_at": "2026-03-23T08:33:13.000000Z",
+              "updated_at": "2026-03-23T08:33:13.000000Z",
+              "pivot": {
+                "manga_id": 2800,
+                "genre_id": 27
+              }
+            },
+            {
+              "id": 15,
+              "name": "Slice of Life",
+              "slug": "slice-of-life",
+              "icon": "🍱",
+              "created_at": "2026-03-23T06:39:14.000000Z",
+              "updated_at": "2026-03-23T06:39:14.000000Z",
+              "pivot": {
+                "manga_id": 2800,
+                "genre_id": 15
+              }
+            }
+          ],
+          "last_chapter": {
+            "id": 399691,
+            "manga_id": 2800,
+            "title": "Chapter 30",
+            "slug": "chapter-30",
+            "chapter_number": 30,
+            "source_url": "https://komiku.org/inkya-no-boku-ni-batsu-game-ni-kokuhaku-shitekita-hazu-no-gyaru-ga-doumitemo-boku-ni-betahore-desu-chapter-30/",
+            "content": null,
+            "views_count": 5,
+            "created_at": "2026-09-02T07:50:45.000000Z",
+            "updated_at": "2026-10-03T23:06:24.000000Z"
+          }
+        },
+        {
+          "id": 4495,
+          "title": "Yuusha Kei ni Shosu: Choubatsu Yūsha 9004-tai Keimu Kiroku",
+          "slug": "yuusha-kei-ni-shosu-choubatsu-yusha-9004-tai-keimu-kiroku",
+          "synopsis": "Cerita ini mengikuti petualangan anggota Satuan Pengawal Pahlawan 9004, sebuah kelompok khusus yang bertugas mengawasi dan menangkap para pahlawan yang dianggap berbahaya bagi masyarakat. Fokus utama adalah pada seorang anggota yang menghadapi dilema moral saat harus menangkap pahlawan yang dulunya dianggap sebagai pahlawan sejati oleh banyak orang.\n\nSelama misinya, anggota tersebut menemukan sisi gelap dan rahasia yang tersembunyi di balik tindakan para pahlawan. Konflik antara keadilan dan loyalitas pun menjadi pusat kisah, mengajak pembaca untuk memikirkan arti sebenarnya dari seorang pahlawan dan hukum yang mengatur mereka.",
+          "status": "Ongoing",
+          "source_url": "https://komiku.org/manga/yuusha-kei-ni-shosu-choubatsu-yusha-9004-tai-keimu-kiroku/",
+          "poster": "https://thumbnail.komiku.org/uploads/manga/yuusha-kei-ni-shosu-choubatsu-yusha-9004-tai-keimu-kiroku/manga_thumbnail-Yuusha-Cover.jpg?w=500",
+          "type": "Manga",
+          "author": "-",
+          "artist": "-",
+          "is_featured": 0,
+          "rating": null,
+          "release_year": 2026,
+          "views_count": 100,
+          "created_at": "2026-05-10T04:51:02.000000Z",
+          "updated_at": "2026-10-11T10:58:46.000000Z",
+          "genres": [
+            {
+              "id": 1,
+              "name": "Action",
+              "slug": "action",
+              "icon": "⚔️",
+              "created_at": "2026-03-23T06:39:14.000000Z",
+              "updated_at": "2026-03-23T06:39:14.000000Z",
+              "pivot": {
+                "manga_id": 4495,
+                "genre_id": 1
+              }
+            },
+            {
+              "id": 2,
+              "name": "Adventure",
+              "slug": "adventure",
+              "icon": "🗺️",
+              "created_at": "2026-03-23T06:39:14.000000Z",
+              "updated_at": "2026-03-23T06:39:14.000000Z",
+              "pivot": {
+                "manga_id": 4495,
+                "genre_id": 2
+              }
+            },
+            {
+              "id": 6,
+              "name": "Fantasy",
+              "slug": "fantasy",
+              "icon": "🪄",
+              "created_at": "2026-03-23T06:39:14.000000Z",
+              "updated_at": "2026-03-23T06:39:14.000000Z",
+              "pivot": {
+                "manga_id": 4495,
+                "genre_id": 6
+              }
+            },
+            {
+              "id": 25,
+              "name": "Seinen",
+              "slug": "seinen",
+              "icon": null,
+              "created_at": "2026-03-23T08:31:28.000000Z",
+              "updated_at": "2026-03-23T08:31:28.000000Z",
+              "pivot": {
+                "manga_id": 4495,
+                "genre_id": 25
+              }
+            }
+          ],
+          "last_chapter": {
+            "id": 390458,
+            "manga_id": 4495,
+            "title": "Chapter 15",
+            "slug": "chapter-15",
+            "chapter_number": 15,
+            "source_url": "https://komiku.org/yuusha-kei-ni-shosu-choubatsu-yusha-9004-tai-keimu-kiroku-chapter-15/",
+            "content": null,
+            "views_count": 2,
+            "created_at": "2026-07-31T21:40:53.000000Z",
+            "updated_at": "2026-10-03T13:36:05.000000Z"
+          }
+        },
+        {
+          "id": 3057,
+          "title": "Kouryakuhon o Kushi Suru Saikyou no Mahoutsukai ~”meirei sa sero” to wa Iwa Senai Oreryuu Mao Tobatsu Saizen Ruuto ~",
+          "slug": "kouryakuhon-o-kushi-suru-saikyou-no-mahoutsukai-meirei-sa-sero-to-wa-iwa-senai-oreryuu-mao-tobatsu-saizen-ruuto",
+          "synopsis": "Dalam dunia di mana kekuatan sihir menjadi penentu utama dalam pertempuran dan pengaruh, seorang penyihir terkuat memanfaatkan buku panduan strategi sebagai senjata rahasianya. Meskipun perintah eksplisit 'jangan ikuti' tercantum dalam buku tersebut, dia mengambil jalan sendiri untuk mengalahkan musuh dan mengatasi tantangan yang menghadangnya dengan cara yang tak terduga.\n\nCerita ini mengikuti perjalanan Mao, seorang penyihir dengan kemampuan luar biasa, yang menentang aturan dan konvensi demi mengejar tujuan pribadinya. Melalui kecerdasan dan strateginya, dia berusaha menaklukkan dunia sihir sambil menghadapi konflik internal dan eksternal yang sulit, mempertahankan prinsip dan kekuatannya di setiap langkahnya.",
+          "status": "Ongoing",
+          "source_url": "https://komiku.org/manga/kouryakuhon-o-kushi-suru-saikyou-no-mahoutsukai-meirei-sa-sero-to-wa-iwa-senai-oreryuu-mao-tobatsu-saizen-ruuto-indonesia/",
+          "poster": "https://thumbnail.komiku.org/uploads/manga/kouryakuhon-o-kushi-suru-saikyou-no-mahoutsukai-meirei-sa-sero-to-wa-iwa-senai-oreryuu-mao-tobatsu-saizen-ruuto-indonesia/manga_thumbnail-Komik-Kouryakuhon-o-Kushi-Suru-Saikyou-no-Mahoutsukai-meirei-sa-sero-to-wa-Iwa-Senai-Oreryuu-Mao-Tobatsu-Saizen-Ruuto-.jpg?w=500",
+          "type": "Manga",
+          "author": "-",
+          "artist": "-",
+          "is_featured": 0,
+          "rating": null,
+          "release_year": 2026,
+          "views_count": 428,
+          "created_at": "2026-05-10T03:08:40.000000Z",
+          "updated_at": "2026-10-11T03:44:00.000000Z",
+          "genres": [
+            {
+              "id": 2,
+              "name": "Adventure",
+              "slug": "adventure",
+              "icon": "🗺️",
+              "created_at": "2026-03-23T06:39:14.000000Z",
+              "updated_at": "2026-03-23T06:39:14.000000Z",
+              "pivot": {
+                "manga_id": 3057,
+                "genre_id": 2
+              }
+            },
+            {
+              "id": 4,
+              "name": "Drama",
+              "slug": "drama",
+              "icon": "🎭",
+              "created_at": "2026-03-23T06:39:14.000000Z",
+              "updated_at": "2026-03-23T06:39:14.000000Z",
+              "pivot": {
+                "manga_id": 3057,
+                "genre_id": 4
+              }
+            },
+            {
+              "id": 6,
+              "name": "Fantasy",
+              "slug": "fantasy",
+              "icon": "🪄",
+              "created_at": "2026-03-23T06:39:14.000000Z",
+              "updated_at": "2026-03-23T06:39:14.000000Z",
+              "pivot": {
+                "manga_id": 3057,
+                "genre_id": 6
+              }
+            },
+            {
+              "id": 27,
+              "name": "Shounen",
+              "slug": "shounen",
+              "icon": null,
+              "created_at": "2026-03-23T08:33:13.000000Z",
+              "updated_at": "2026-03-23T08:33:13.000000Z",
+              "pivot": {
+                "manga_id": 3057,
+                "genre_id": 27
+              }
+            }
+          ],
+          "last_chapter": {
+            "id": 381831,
+            "manga_id": 3057,
+            "title": "Chapter 73",
+            "slug": "chapter-73",
+            "chapter_number": 73,
+            "source_url": "https://komiku.org/kouryakuhon-o-kushi-suru-saikyou-no-mahoutsukai-meirei-sa-sero-to-wa-iwa-senai-oreryuu-mao-tobatsu-saizen-ruuto-chapter-73/",
+            "content": null,
+            "views_count": 5,
+            "created_at": "2026-06-21T17:46:26.000000Z",
+            "updated_at": "2026-10-03T19:52:43.000000Z"
+          }
+        },
+        {
+          "id": 4138,
+          "title": "Tsumi to Batsu no Spica",
+          "slug": "tsumi-to-batsu-no-spica",
+          "synopsis": "Tsumi to Batsu no Spica mengisahkan kehidupan seorang remaja bernama Spica yang menghadapi pergulatan batin menyusul keputusan penting yang mengubah jalan hidupnya. Ia dihadapkan pada dilema antara mempertahankan nilai moral atau mengikuti keinginan pribadi yang bisa membahayakan dirinya. Sepanjang cerita, Spica berusaha memahami konsekuensi pilihan tersebut sambil mencari jati diri dan keadilan bagi dirinya sendiri.\n\nDalam perjalanannya, Spica bertemu dengan berbagai karakter yang mempengaruhi pandangannya terhadap dunia dan diri sendiri. Melalui konflik dan peristiwa dramatis yang terjadi, cerita ini menggambarkan bagaimana perjuangan internal dan eksternal dapat membentuk karakter dan keputusan seseorang, menunjukkan kompleksitas manusia dalam menghadapi dosa dan hukuman yang mungkin datang.",
+          "status": "Ongoing",
+          "source_url": "https://komiku.org/manga/tsumi-to-batsu-no-spica/",
+          "poster": "https://thumbnail.komiku.org/img/upload/tsumi_to_batsu_no_spica/img_685207797d0643.44728572.jpg?w=500",
+          "type": "Manga",
+          "author": "-",
+          "artist": "-",
+          "is_featured": 0,
+          "rating": null,
+          "release_year": 2026,
+          "views_count": 215,
+          "created_at": "2026-05-10T04:33:20.000000Z",
+          "updated_at": "2026-10-13T06:53:38.000000Z",
+          "genres": [
+            {
+              "id": 4,
+              "name": "Drama",
+              "slug": "drama",
+              "icon": "🎭",
+              "created_at": "2026-03-23T06:39:14.000000Z",
+              "updated_at": "2026-03-23T06:39:14.000000Z",
+              "pivot": {
+                "manga_id": 4138,
+                "genre_id": 4
+              }
+            },
+            {
+              "id": 44,
+              "name": "Mature",
+              "slug": "mature",
+              "icon": null,
+              "created_at": "2026-03-23T15:48:50.000000Z",
+              "updated_at": "2026-03-23T15:48:50.000000Z",
+              "pivot": {
+                "manga_id": 4138,
+                "genre_id": 44
+              }
+            },
+            {
+              "id": 11,
+              "name": "Mystery",
+              "slug": "mystery",
+              "icon": "🔍",
+              "created_at": "2026-03-23T06:39:14.000000Z",
+              "updated_at": "2026-03-23T06:39:14.000000Z",
+              "pivot": {
+                "manga_id": 4138,
+                "genre_id": 11
+              }
+            },
+            {
+              "id": 12,
+              "name": "Psychological",
+              "slug": "psychological",
+              "icon": "🧠",
+              "created_at": "2026-03-23T06:39:14.000000Z",
+              "updated_at": "2026-03-23T06:39:14.000000Z",
+              "pivot": {
+                "manga_id": 4138,
+                "genre_id": 12
+              }
+            },
+            {
+              "id": 24,
+              "name": "School life",
+              "slug": "school-life",
+              "icon": null,
+              "created_at": "2026-03-23T08:31:28.000000Z",
+              "updated_at": "2026-03-23T08:31:28.000000Z",
+              "pivot": {
+                "manga_id": 4138,
+                "genre_id": 24
+              }
+            },
+            {
+              "id": 25,
+              "name": "Seinen",
+              "slug": "seinen",
+              "icon": null,
+              "created_at": "2026-03-23T08:31:28.000000Z",
+              "updated_at": "2026-03-23T08:31:28.000000Z",
+              "pivot": {
+                "manga_id": 4138,
+                "genre_id": 25
+              }
+            },
+            {
+              "id": 17,
+              "name": "Supernatural",
+              "slug": "supernatural",
+              "icon": "🔮",
+              "created_at": "2026-03-23T06:39:14.000000Z",
+              "updated_at": "2026-03-23T06:39:14.000000Z",
+              "pivot": {
+                "manga_id": 4138,
+                "genre_id": 17
+              }
+            }
+          ],
+          "last_chapter": {
+            "id": 372279,
+            "manga_id": 4138,
+            "title": "Chapter 37",
+            "slug": "chapter-37",
+            "chapter_number": 37,
+            "source_url": "https://komiku.org/tsumi-to-batsu-no-spica-chapter-37/",
+            "content": null,
+            "views_count": 6,
+            "created_at": "2026-05-16T08:56:58.000000Z",
+            "updated_at": "2026-10-02T04:14:14.000000Z"
+          }
+        },
+        {
+          "id": 3218,
+          "title": "Maou Toubatsu Shita Ato, Medachitakunai node Guild Master ni Natta",
+          "slug": "maou-toubatsu-shita-ato-medachitakunai-node-guild-master-ni-natta",
+          "synopsis": "Setelah berhasil menaklukkan Raja Iblis, protagonis memilih hidup yang tenang dan tidak ingin mendapat perhatian lebih. Untuk menghindari sorotan, dia memutuskan menjadi pemimpin guild yang sederhana, menjalankan aktivitasnya dengan cara yang tidak mencolok. Namun, sebagai guild master, dia tetap berhadapan dengan berbagai tantangan dan anggota yang unik.\n\nMeskipun tidak mencari ketenaran, keahliannya yang luar biasa membuatnya tetap menjadi pusat perhatian. Kisah ini menggambarkan perjuangan protagonis dalam menjaga keseimbangan antara keinginan hidup biasa dan tanggung jawab besar sebagai pemimpin. Di tengah berbagai konflik, dia belajar arti sebenarnya dari kepemimpinan dan persahabatan.",
+          "status": "Ongoing",
+          "source_url": "https://komiku.org/manga/maou-toubatsu-shita-ato-medachitakunai-node-guild-master-ni-natta/",
+          "poster": "https://thumbnail.komiku.org/uploads/manga/maou-toubatsu-shita-ato-medachitakunai-node-guild-master-ni-natta/manga_thumbnail-Komik-Maou-Toubatsu-Shita-Ato-Medachitakunai-node-Guild-Master-ni-Natta.jpg?w=500",
+          "type": "Manga",
+          "author": "-",
+          "artist": "-",
+          "is_featured": 0,
+          "rating": null,
+          "release_year": 2026,
+          "views_count": 482,
+          "created_at": "2026-05-10T03:25:28.000000Z",
+          "updated_at": "2026-10-11T05:43:06.000000Z",
+          "genres": [
+            {
+              "id": 1,
+              "name": "Action",
+              "slug": "action",
+              "icon": "⚔️",
+              "created_at": "2026-03-23T06:39:14.000000Z",
+              "updated_at": "2026-03-23T06:39:14.000000Z",
+              "pivot": {
+                "manga_id": 3218,
+                "genre_id": 1
+              }
+            },
+            {
+              "id": 2,
+              "name": "Adventure",
+              "slug": "adventure",
+              "icon": "🗺️",
+              "created_at": "2026-03-23T06:39:14.000000Z",
+              "updated_at": "2026-03-23T06:39:14.000000Z",
+              "pivot": {
+                "manga_id": 3218,
+                "genre_id": 2
+              }
+            },
+            {
+              "id": 3,
+              "name": "Comedy",
+              "slug": "comedy",
+              "icon": "😂",
+              "created_at": "2026-03-23T06:39:14.000000Z",
+              "updated_at": "2026-03-23T06:39:14.000000Z",
+              "pivot": {
+                "manga_id": 3218,
+                "genre_id": 3
+              }
+            },
+            {
+              "id": 5,
+              "name": "Ecchi",
+              "slug": "ecchi",
+              "icon": "🔞",
+              "created_at": "2026-03-23T06:39:14.000000Z",
+              "updated_at": "2026-03-23T06:39:14.000000Z",
+              "pivot": {
+                "manga_id": 3218,
+                "genre_id": 5
+              }
+            },
+            {
+              "id": 6,
+              "name": "Fantasy",
+              "slug": "fantasy",
+              "icon": "🪄",
+              "created_at": "2026-03-23T06:39:14.000000Z",
+              "updated_at": "2026-03-23T06:39:14.000000Z",
+              "pivot": {
+                "manga_id": 3218,
+                "genre_id": 6
+              }
+            },
+            {
+              "id": 27,
+              "name": "Shounen",
+              "slug": "shounen",
+              "icon": null,
+              "created_at": "2026-03-23T08:33:13.000000Z",
+              "updated_at": "2026-03-23T08:33:13.000000Z",
+              "pivot": {
+                "manga_id": 3218,
+                "genre_id": 27
+              }
+            },
+            {
+              "id": 17,
+              "name": "Supernatural",
+              "slug": "supernatural",
+              "icon": "🔮",
+              "created_at": "2026-03-23T06:39:14.000000Z",
+              "updated_at": "2026-03-23T06:39:14.000000Z",
+              "pivot": {
+                "manga_id": 3218,
+                "genre_id": 17
+              }
+            }
+          ],
+          "last_chapter": {
+            "id": 372012,
+            "manga_id": 3218,
+            "title": "Chapter 74",
+            "slug": "chapter-74",
+            "chapter_number": 74,
+            "source_url": "https://komiku.org/maou-toubatsu-shita-ato-medachitakunai-node-guild-master-ni-natta-chapter-74/",
+            "content": null,
+            "views_count": 5,
+            "created_at": "2026-05-15T10:28:35.000000Z",
+            "updated_at": "2026-10-03T02:51:16.000000Z"
+          }
+        },
+        {
+          "id": 6381,
+          "title": "Zenjikuu Senbatsu Saijaku Saiteihen Ketteisen",
+          "slug": "zenjikuu-senbatsu-saijaku-saiteihen-ketteisen",
+          "synopsis": "Dalam dunia Zenjikuu, para pejuang dari berbagai kerajaan bertanding untuk menentukan siapa yang terkuat. Cerita ini mengikuti perjalanan seorang pemuda yang awalnya dianggap paling lemah namun memiliki tekad kuat untuk membalikkan keadaan dan mencapai puncak. Melalui latihan keras dan strategi cerdas, dia mulai menarik perhatian para kompetitor lain.\n\nSaat pertarungan semakin sengit, protagonis harus menghadapi berbagai musuh kuat serta aliansi yang tidak terduga. Dengan mengandalkan kekuatan batin dan kepercayaan pada teman-temannya, dia berusaha mengubah takdir yang sudah dituliskan dan membuktikan bahwa kekuatan sejati datang dari keberanian dan semangat juang yang tak pernah padam.",
+          "status": "Ongoing",
+          "source_url": "https://komiku.org/manga/zenjikuu-senbatsu-saijaku-saiteihen-ketteisen/",
+          "poster": "https://thumbnail.komiku.org/uploads/manga/zenjikuu-senbatsu-saijaku-saiteihen-ketteisen/manga_thumbnail-Zenjikuu-Senbatsu-Saijaku-Saiteihen-Ketteisen-1.jpg?w=500",
+          "type": "Manga",
+          "author": "-",
+          "artist": "-",
+          "is_featured": 0,
+          "rating": null,
+          "release_year": 2026,
+          "views_count": 22,
+          "created_at": "2026-05-10T05:48:09.000000Z",
+          "updated_at": "2026-10-11T10:56:00.000000Z",
+          "genres": [
+            {
+              "id": 1,
+              "name": "Action",
+              "slug": "action",
+              "icon": "⚔️",
+              "created_at": "2026-03-23T06:39:14.000000Z",
+              "updated_at": "2026-03-23T06:39:14.000000Z",
+              "pivot": {
+                "manga_id": 6381,
+                "genre_id": 1
+              }
+            },
+            {
+              "id": 2,
+              "name": "Adventure",
+              "slug": "adventure",
+              "icon": "🗺️",
+              "created_at": "2026-03-23T06:39:14.000000Z",
+              "updated_at": "2026-03-23T06:39:14.000000Z",
+              "pivot": {
+                "manga_id": 6381,
+                "genre_id": 2
+              }
+            },
+            {
+              "id": 4,
+              "name": "Drama",
+              "slug": "drama",
+              "icon": "🎭",
+              "created_at": "2026-03-23T06:39:14.000000Z",
+              "updated_at": "2026-03-23T06:39:14.000000Z",
+              "pivot": {
+                "manga_id": 6381,
+                "genre_id": 4
+              }
+            },
+            {
+              "id": 6,
+              "name": "Fantasy",
+              "slug": "fantasy",
+              "icon": "🪄",
+              "created_at": "2026-03-23T06:39:14.000000Z",
+              "updated_at": "2026-03-23T06:39:14.000000Z",
+              "pivot": {
+                "manga_id": 6381,
+                "genre_id": 6
+              }
+            },
+            {
+              "id": 43,
+              "name": "Isekai",
+              "slug": "isekai",
+              "icon": null,
+              "created_at": "2026-03-23T15:46:14.000000Z",
+              "updated_at": "2026-03-23T15:46:14.000000Z",
+              "pivot": {
+                "manga_id": 6381,
+                "genre_id": 43
+              }
+            },
+            {
+              "id": 14,
+              "name": "Sci-Fi",
+              "slug": "sci-fi",
+              "icon": "🚀",
+              "created_at": "2026-03-23T06:39:14.000000Z",
+              "updated_at": "2026-03-23T06:39:14.000000Z",
+              "pivot": {
+                "manga_id": 6381,
+                "genre_id": 14
+              }
+            },
+            {
+              "id": 27,
+              "name": "Shounen",
+              "slug": "shounen",
+              "icon": null,
+              "created_at": "2026-03-23T08:33:13.000000Z",
+              "updated_at": "2026-03-23T08:33:13.000000Z",
+              "pivot": {
+                "manga_id": 6381,
+                "genre_id": 27
+              }
+            }
+          ],
+          "last_chapter": {
+            "id": 315904,
+            "manga_id": 6381,
+            "title": "Chapter 1",
+            "slug": "chapter-1",
+            "chapter_number": 1,
+            "source_url": "https://komiku.org/zenjikuu-senbatsu-saijaku-saiteihen-ketteisen-chapter-01/",
+            "content": null,
+            "views_count": 6,
+            "created_at": "2026-05-10T05:48:10.000000Z",
+            "updated_at": "2026-10-03T06:09:14.000000Z"
+          }
+        },
+        {
+          "id": 6171,
+          "title": "Batsu-Gyaru",
+          "slug": "batsu-gyaru",
+          "synopsis": "Batsu-Gyaru mengisahkan tentang seorang gadis remaja yang dikenal sebagai 'gyaru' dengan sikap nakal dan pemberontak. Ia sering kali menghadapi berbagai masalah dan tantangan di sekolah serta lingkungan sosialnya, tetapi di balik semua itu, ia memiliki hati yang baik dan ingin diterima oleh teman-temannya. \n\nCerita berkembang ketika ia mulai berinteraksi dengan karakter lain yang membantu mengubah pandangannya tentang kehidupan dan persahabatan. Melalui perjalanan emosional dan berbagai pengalaman, ia belajar arti dari pengertian, kerja sama, dan tumbuh menjadi pribadi yang lebih dewasa tanpa harus menghilangkan jati dirinya.",
+          "status": "Ongoing",
+          "source_url": "https://komiku.org/manga/batsu-gyaru/",
+          "poster": "https://thumbnail.komiku.org/uploads/manga/batsu-gyaru/manga_thumbnail-Manga-Batsu-Gyaru.jpg?w=500",
+          "type": "Manga",
+          "author": "-",
+          "artist": "-",
+          "is_featured": 0,
+          "rating": null,
+          "release_year": 2026,
+          "views_count": 21,
+          "created_at": "2026-05-10T05:43:59.000000Z",
+          "updated_at": "2026-10-10T22:35:42.000000Z",
+          "genres": [
+            {
+              "id": 13,
+              "name": "Romance",
+              "slug": "romance",
+              "icon": "❤️",
+              "created_at": "2026-03-23T06:39:14.000000Z",
+              "updated_at": "2026-03-23T06:39:14.000000Z",
+              "pivot": {
+                "manga_id": 6171,
+                "genre_id": 13
+              }
+            },
+            {
+              "id": 24,
+              "name": "School life",
+              "slug": "school-life",
+              "icon": null,
+              "created_at": "2026-03-23T08:31:28.000000Z",
+              "updated_at": "2026-03-23T08:31:28.000000Z",
+              "pivot": {
+                "manga_id": 6171,
+                "genre_id": 24
+              }
+            },
+            {
+              "id": 25,
+              "name": "Seinen",
+              "slug": "seinen",
+              "icon": null,
+              "created_at": "2026-03-23T08:31:28.000000Z",
+              "updated_at": "2026-03-23T08:31:28.000000Z",
+              "pivot": {
+                "manga_id": 6171,
+                "genre_id": 25
+              }
+            }
+          ],
+          "last_chapter": {
+            "id": 315160,
+            "manga_id": 6171,
+            "title": "Chapter .1",
+            "slug": "chapter-0-1",
+            "chapter_number": 0.1,
+            "source_url": "https://komiku.org/batsu-gyaru-chapter-00-1/",
+            "content": null,
+            "views_count": 7,
+            "created_at": "2026-05-10T05:44:01.000000Z",
+            "updated_at": "2026-09-30T09:36:45.000000Z"
+          }
+        },
+        {
+          "id": 5231,
+          "title": "Akatsuki no Majo Reishi wa Jiyu ni Ikitai Mao Tobatsu o Oeta Node, Nonbiri o Mise o Hirakimasu",
+          "slug": "akatsuki-no-majo-reishi-wa-jiyu-ni-ikitai-mao-tobatsu-o-oeta-node-nonbiri-o-mise-o-hirakimasu",
+          "synopsis": "Cerita ini mengisahkan seorang penyihir bernama Akatsuki yang berhasil melarikan diri dari masa lalu kelamnya sebagai terpidana atas pemberontakan iblis. Setelah terbebas dari hukuman yang membatasi kebebasannya, dia memutuskan untuk menjalani kehidupan baru dengan membuka sebuah toko kecil sebagai tempat mencari ketenangan.\n\nDi tengah perjalanan menjalankan toko, Akatsuki menghadapi berbagai tantangan dan bertemu dengan beragam karakter yang membantunya mengatasi masa lalu serta menyusun masa depan yang dia impikan. Dengan sikap santai dan tekad kuat, dia menunjukkan bahwa kebebasan sejati adalah saat kita bisa hidup tanpa beban masa lalu.",
+          "status": "Ongoing",
+          "source_url": "https://komiku.org/manga/akatsuki-no-majo-reishi-wa-jiyu-ni-ikitai-mao-tobatsu-o-oeta-node-nonbiri-o-mise-o-hirakimasu/",
+          "poster": "https://thumbnail.komiku.org/img/upload/akatsuki_no_majo_reishi_wa_jiyu_ni_ikitai_mao_tobatsu_o_oeta_node__nonbiri_o_mise_o_hirakimasu/img_68bff9ebd6cc58.09244315.jpg?w=500",
+          "type": "Manga",
+          "author": "-",
+          "artist": "-",
+          "is_featured": 0,
+          "rating": null,
+          "release_year": 2026,
+          "views_count": 57,
+          "created_at": "2026-05-10T05:19:54.000000Z",
+          "updated_at": "2026-10-10T22:06:36.000000Z",
+          "genres": [
+            {
+              "id": 2,
+              "name": "Adventure",
+              "slug": "adventure",
+              "icon": "🗺️",
+              "created_at": "2026-03-23T06:39:14.000000Z",
+              "updated_at": "2026-03-23T06:39:14.000000Z",
+              "pivot": {
+                "manga_id": 5231,
+                "genre_id": 2
+              }
+            },
+            {
+              "id": 3,
+              "name": "Comedy",
+              "slug": "comedy",
+              "icon": "😂",
+              "created_at": "2026-03-23T06:39:14.000000Z",
+              "updated_at": "2026-03-23T06:39:14.000000Z",
+              "pivot": {
+                "manga_id": 5231,
+                "genre_id": 3
+              }
+            },
+            {
+              "id": 4,
+              "name": "Drama",
+              "slug": "drama",
+              "icon": "🎭",
+              "created_at": "2026-03-23T06:39:14.000000Z",
+              "updated_at": "2026-03-23T06:39:14.000000Z",
+              "pivot": {
+                "manga_id": 5231,
+                "genre_id": 4
+              }
+            },
+            {
+              "id": 6,
+              "name": "Fantasy",
+              "slug": "fantasy",
+              "icon": "🪄",
+              "created_at": "2026-03-23T06:39:14.000000Z",
+              "updated_at": "2026-03-23T06:39:14.000000Z",
+              "pivot": {
+                "manga_id": 5231,
+                "genre_id": 6
+              }
+            },
+            {
+              "id": 39,
+              "name": "Magic",
+              "slug": "magic",
+              "icon": null,
+              "created_at": "2026-03-23T15:40:23.000000Z",
+              "updated_at": "2026-03-23T15:40:23.000000Z",
+              "pivot": {
+                "manga_id": 5231,
+                "genre_id": 39
+              }
+            },
+            {
+              "id": 13,
+              "name": "Romance",
+              "slug": "romance",
+              "icon": "❤️",
+              "created_at": "2026-03-23T06:39:14.000000Z",
+              "updated_at": "2026-03-23T06:39:14.000000Z",
+              "pivot": {
+                "manga_id": 5231,
+                "genre_id": 13
+              }
+            },
+            {
+              "id": 32,
+              "name": "Shoujo",
+              "slug": "shoujo",
+              "icon": null,
+              "created_at": "2026-03-23T15:30:59.000000Z",
+              "updated_at": "2026-03-23T15:30:59.000000Z",
+              "pivot": {
+                "manga_id": 5231,
+                "genre_id": 32
+              }
+            },
+            {
+              "id": 15,
+              "name": "Slice of Life",
+              "slug": "slice-of-life",
+              "icon": "🍱",
+              "created_at": "2026-03-23T06:39:14.000000Z",
+              "updated_at": "2026-03-23T06:39:14.000000Z",
+              "pivot": {
+                "manga_id": 5231,
+                "genre_id": 15
+              }
+            }
+          ],
+          "last_chapter": {
+            "id": 307386,
+            "manga_id": 5231,
+            "title": "Chapter 12",
+            "slug": "chapter-12",
+            "chapter_number": 12,
+            "source_url": "https://komiku.org/akatsuki-no-majo-reishi-wa-jiyu-ni-ikitai-mao-tobatsu-o-oeta-node-nonbiri-o-mise-o-hirakimasu-chapter-12/",
+            "content": null,
+            "views_count": 4,
+            "created_at": "2026-05-10T05:19:55.000000Z",
+            "updated_at": "2026-10-03T20:07:09.000000Z"
+          }
+        },
+        {
+          "id": 4459,
+          "title": "Guild No Uketsukejou Desu Ga, Zangyou Wa Lyananode Boss Wo Solo Tobatsu Shiyou To Omoimasu",
+          "slug": "guild-no-uketsukejou-desu-ga-zangyou-wa-lyananode-boss-wo-solo-tobatsu-shiyou-to-omoimasu",
+          "synopsis": "Cerita ini mengikuti kehidupan seorang pegawai yang bekerja di kantor penerimaan guild. Meskipun terlihat sebagai pekerjaan biasa, dia harus sering lembur akibat beban kerja yang datang terus menerus dari bosnya yang menuntut. Konflik batin mulai tumbuh saat dia merasa perlakuan bosnya sudah melewati batas kewajaran.\n\nKetika tekanan kerja mencapai puncaknya, pegawai tersebut memutuskan untuk mengambil langkah ekstrem dengan merencanakan sebuah aksi solo untuk menuntaskan masalah besar yang menurutnya berasal dari atasannya. Perjalanan ini membawa berbagai tantangan dan membuka rahasia di balik dunia guild, menguji batas ketangguhan dan moralnya.",
+          "status": "Ongoing",
+          "source_url": "https://komiku.org/manga/guild-no-uketsukejou-desu-ga-zangyou-wa-lyananode-boss-wo-solo-tobatsu-shiyou-to-omoimasu/",
+          "poster": "https://thumbnail.komiku.org/uploads/manga/guild-no-uketsukejou-desu-ga-zangyou-wa-lyananode-boss-wo-solo-tobatsu-shiyou-to-omoimasu/manga_thumbnail-Guild-No-Uketsukejou-Desu-Ga-Zangyou-Wa-Lyananode-Boss-Wo-Solo-Tobatsu-Shiyou-To-Omoimasu-1.png?w=500",
+          "type": "Manga",
+          "author": "-",
+          "artist": "-",
+          "is_featured": 0,
+          "rating": null,
+          "release_year": 2026,
+          "views_count": 58,
+          "created_at": "2026-05-10T04:49:51.000000Z",
+          "updated_at": "2026-10-11T01:00:23.000000Z",
+          "genres": [
+            {
+              "id": 1,
+              "name": "Action",
+              "slug": "action",
+              "icon": "⚔️",
+              "created_at": "2026-03-23T06:39:14.000000Z",
+              "updated_at": "2026-03-23T06:39:14.000000Z",
+              "pivot": {
+                "manga_id": 4459,
+                "genre_id": 1
+              }
+            },
+            {
+              "id": 2,
+              "name": "Adventure",
+              "slug": "adventure",
+              "icon": "🗺️",
+              "created_at": "2026-03-23T06:39:14.000000Z",
+              "updated_at": "2026-03-23T06:39:14.000000Z",
+              "pivot": {
+                "manga_id": 4459,
+                "genre_id": 2
+              }
+            },
+            {
+              "id": 3,
+              "name": "Comedy",
+              "slug": "comedy",
+              "icon": "😂",
+              "created_at": "2026-03-23T06:39:14.000000Z",
+              "updated_at": "2026-03-23T06:39:14.000000Z",
+              "pivot": {
+                "manga_id": 4459,
+                "genre_id": 3
+              }
+            },
+            {
+              "id": 6,
+              "name": "Fantasy",
+              "slug": "fantasy",
+              "icon": "🪄",
+              "created_at": "2026-03-23T06:39:14.000000Z",
+              "updated_at": "2026-03-23T06:39:14.000000Z",
+              "pivot": {
+                "manga_id": 4459,
+                "genre_id": 6
+              }
+            },
+            {
+              "id": 27,
+              "name": "Shounen",
+              "slug": "shounen",
+              "icon": null,
+              "created_at": "2026-03-23T08:33:13.000000Z",
+              "updated_at": "2026-03-23T08:33:13.000000Z",
+              "pivot": {
+                "manga_id": 4459,
+                "genre_id": 27
+              }
+            }
+          ],
+          "last_chapter": {
+            "id": 293967,
+            "manga_id": 4459,
+            "title": "Chapter 8",
+            "slug": "chapter-8",
+            "chapter_number": 8,
+            "source_url": "https://komiku.org/guild-no-uketsukejou-desu-ga-zangyou-wa-lyananode-boss-wo-solo-tobatsu-shiyou-to-omoimasu-chapter-8/",
+            "content": null,
+            "views_count": 7,
+            "created_at": "2026-05-10T04:49:52.000000Z",
+            "updated_at": "2026-10-03T15:42:52.000000Z"
+          }
+        },
+        {
+          "id": 4158,
+          "title": "Yuusha No Kawari Ni Maou Toubatsu Shitara Tegara O Yokodoroi Saremashita",
+          "slug": "yuusha-no-kawari-ni-maou-toubatsu-shitara-tegara-o-yokodoroi-saremashita",
+          "synopsis": "Ketika pahlawan asli tidak mampu mengalahkan Raja Iblis yang mengancam dunia, seorang pengganti berdiri untuk menyelamatkan umat manusia. Namun perjuangannya berakhir tragis saat dia justru dijebak dan dihukum oleh Raja Iblis yang ternyata punya rencana gelap sendiri. Kisah ini mengikuti bagaimana sang pengganti berjuang menghadapi pengkhianatan serta kutukan yang membuatnya menjadi sosok yang tak terduga.\n\nDalam perjalanan penuh liku dan aksi ini, sang protagonis harus mengatasi stigma sebagai musuh dan mencari cara untuk membebaskan dirinya dari kutukan. Selain pertarungan fisik, cerita juga mengeksplorasi konflik batin dan drama antara kekuatan sihir dan moral, memberi warna baru dalam genre fantasi dan petualangan ini.",
+          "status": "Ongoing",
+          "source_url": "https://komiku.org/manga/yuusha-no-kawari-ni-maou-toubatsu-shitara-tegara-o-yokodoroi-saremashita/",
+          "poster": "https://thumbnail.komiku.org/uploads/manga/yuusha-no-kawari-ni-maou-toubatsu-shitara-tegara-o-yokodoroi-saremashita/manga_thumbnail-Komik-Yuusha-No-Kawari-Ni-Maou-Toubatsu-Shitara-Tegara-O-Yokodoroi-Saremashita.jpg?w=500",
+          "type": "Manga",
+          "author": "-",
+          "artist": "-",
+          "is_featured": 0,
+          "rating": null,
+          "release_year": 2026,
+          "views_count": 71,
+          "created_at": "2026-05-10T04:34:16.000000Z",
+          "updated_at": "2026-10-11T10:58:27.000000Z",
+          "genres": [
+            {
+              "id": 1,
+              "name": "Action",
+              "slug": "action",
+              "icon": "⚔️",
+              "created_at": "2026-03-23T06:39:14.000000Z",
+              "updated_at": "2026-03-23T06:39:14.000000Z",
+              "pivot": {
+                "manga_id": 4158,
+                "genre_id": 1
+              }
+            },
+            {
+              "id": 2,
+              "name": "Adventure",
+              "slug": "adventure",
+              "icon": "🗺️",
+              "created_at": "2026-03-23T06:39:14.000000Z",
+              "updated_at": "2026-03-23T06:39:14.000000Z",
+              "pivot": {
+                "manga_id": 4158,
+                "genre_id": 2
+              }
+            },
+            {
+              "id": 3,
+              "name": "Comedy",
+              "slug": "comedy",
+              "icon": "😂",
+              "created_at": "2026-03-23T06:39:14.000000Z",
+              "updated_at": "2026-03-23T06:39:14.000000Z",
+              "pivot": {
+                "manga_id": 4158,
+                "genre_id": 3
+              }
+            },
+            {
+              "id": 6,
+              "name": "Fantasy",
+              "slug": "fantasy",
+              "icon": "🪄",
+              "created_at": "2026-03-23T06:39:14.000000Z",
+              "updated_at": "2026-03-23T06:39:14.000000Z",
+              "pivot": {
+                "manga_id": 4158,
+                "genre_id": 6
+              }
+            },
+            {
+              "id": 34,
+              "name": "Harem",
+              "slug": "harem",
+              "icon": null,
+              "created_at": "2026-03-23T15:31:50.000000Z",
+              "updated_at": "2026-03-23T15:31:50.000000Z",
+              "pivot": {
+                "manga_id": 4158,
+                "genre_id": 34
+              }
+            },
+            {
+              "id": 25,
+              "name": "Seinen",
+              "slug": "seinen",
+              "icon": null,
+              "created_at": "2026-03-23T08:31:28.000000Z",
+              "updated_at": "2026-03-23T08:31:28.000000Z",
+              "pivot": {
+                "manga_id": 4158,
+                "genre_id": 25
+              }
+            },
+            {
+              "id": 15,
+              "name": "Slice of Life",
+              "slug": "slice-of-life",
+              "icon": "🍱",
+              "created_at": "2026-03-23T06:39:14.000000Z",
+              "updated_at": "2026-03-23T06:39:14.000000Z",
+              "pivot": {
+                "manga_id": 4158,
+                "genre_id": 15
+              }
+            }
+          ],
+          "last_chapter": {
+            "id": 285825,
+            "manga_id": 4158,
+            "title": "Chapter 10",
+            "slug": "chapter-10",
+            "chapter_number": 10,
+            "source_url": "https://komiku.org/yuusha-no-kawari-ni-maou-toubatsu-shitara-tegara-o-yokodoroi-saremashita-chapter-10/",
+            "content": null,
+            "views_count": 4,
+            "created_at": "2026-05-10T04:34:17.000000Z",
+            "updated_at": "2026-10-03T14:29:03.000000Z"
+          }
+        }
+      ],
+      "first_page_url": "https://mangaku.lol/manga?search=batsu&page=1",
+      "from": 1,
+      "last_page": 1,
+      "last_page_url": "https://mangaku.lol/manga?search=batsu&page=1",
+      "links": [
+        {
+          "url": null,
+          "label": "&laquo; Previous",
+          "active": false
+        },
+        {
+          "url": "https://mangaku.lol/manga?search=batsu&page=1",
+          "label": "1",
+          "active": true
+        },
+        {
+          "url": null,
+          "label": "Next &raquo;",
+          "active": false
+        }
+      ],
+      "next_page_url": null,
+      "path": "https://mangaku.lol/manga",
+      "per_page": 24,
+      "prev_page_url": null,
+      "to": 12,
+      "total": 12
+    },
+    "genres": [
+      {
+        "id": 1,
+        "name": "Action",
+        "slug": "action",
+        "icon": "⚔️",
+        "created_at": "2026-03-23T06:39:14.000000Z",
+        "updated_at": "2026-03-23T06:39:14.000000Z"
+      },
+      {
+        "id": 2,
+        "name": "Adventure",
+        "slug": "adventure",
+        "icon": "🗺️",
+        "created_at": "2026-03-23T06:39:14.000000Z",
+        "updated_at": "2026-03-23T06:39:14.000000Z"
+      },
+      {
+        "id": 3,
+        "name": "Comedy",
+        "slug": "comedy",
+        "icon": "😂",
+        "created_at": "2026-03-23T06:39:14.000000Z",
+        "updated_at": "2026-03-23T06:39:14.000000Z"
+      },
+      {
+        "id": 4,
+        "name": "Drama",
+        "slug": "drama",
+        "icon": "🎭",
+        "created_at": "2026-03-23T06:39:14.000000Z",
+        "updated_at": "2026-03-23T06:39:14.000000Z"
+      },
+      {
+        "id": 5,
+        "name": "Ecchi",
+        "slug": "ecchi",
+        "icon": "🔞",
+        "created_at": "2026-03-23T06:39:14.000000Z",
+        "updated_at": "2026-03-23T06:39:14.000000Z"
+      },
+      {
+        "id": 6,
+        "name": "Fantasy",
+        "slug": "fantasy",
+        "icon": "🪄",
+        "created_at": "2026-03-23T06:39:14.000000Z",
+        "updated_at": "2026-03-23T06:39:14.000000Z"
+      },
+      {
+        "id": 7,
+        "name": "Horror",
+        "slug": "horror",
+        "icon": "👻",
+        "created_at": "2026-03-23T06:39:14.000000Z",
+        "updated_at": "2026-03-23T06:39:14.000000Z"
+      },
+      {
+        "id": 8,
+        "name": "Mahou Shoujo",
+        "slug": "mahou-shoujo",
+        "icon": "✨",
+        "created_at": "2026-03-23T06:39:14.000000Z",
+        "updated_at": "2026-03-23T06:39:14.000000Z"
+      },
+      {
+        "id": 9,
+        "name": "Mecha",
+        "slug": "mecha",
+        "icon": "🤖",
+        "created_at": "2026-03-23T06:39:14.000000Z",
+        "updated_at": "2026-03-23T06:39:14.000000Z"
+      },
+      {
+        "id": 10,
+        "name": "Music",
+        "slug": "music",
+        "icon": "🎵",
+        "created_at": "2026-03-23T06:39:14.000000Z",
+        "updated_at": "2026-03-23T06:39:14.000000Z"
+      },
+      {
+        "id": 11,
+        "name": "Mystery",
+        "slug": "mystery",
+        "icon": "🔍",
+        "created_at": "2026-03-23T06:39:14.000000Z",
+        "updated_at": "2026-03-23T06:39:14.000000Z"
+      },
+      {
+        "id": 12,
+        "name": "Psychological",
+        "slug": "psychological",
+        "icon": "🧠",
+        "created_at": "2026-03-23T06:39:14.000000Z",
+        "updated_at": "2026-03-23T06:39:14.000000Z"
+      },
+      {
+        "id": 13,
+        "name": "Romance",
+        "slug": "romance",
+        "icon": "❤️",
+        "created_at": "2026-03-23T06:39:14.000000Z",
+        "updated_at": "2026-03-23T06:39:14.000000Z"
+      },
+      {
+        "id": 14,
+        "name": "Sci-Fi",
+        "slug": "sci-fi",
+        "icon": "🚀",
+        "created_at": "2026-03-23T06:39:14.000000Z",
+        "updated_at": "2026-03-23T06:39:14.000000Z"
+      },
+      {
+        "id": 15,
+        "name": "Slice of Life",
+        "slug": "slice-of-life",
+        "icon": "🍱",
+        "created_at": "2026-03-23T06:39:14.000000Z",
+        "updated_at": "2026-03-23T06:39:14.000000Z"
+      },
+      {
+        "id": 16,
+        "name": "Sports",
+        "slug": "sports",
+        "icon": "⚽",
+        "created_at": "2026-03-23T06:39:14.000000Z",
+        "updated_at": "2026-03-23T06:39:14.000000Z"
+      },
+      {
+        "id": 17,
+        "name": "Supernatural",
+        "slug": "supernatural",
+        "icon": "🔮",
+        "created_at": "2026-03-23T06:39:14.000000Z",
+        "updated_at": "2026-03-23T06:39:14.000000Z"
+      },
+      {
+        "id": 18,
+        "name": "Thriller",
+        "slug": "thriller",
+        "icon": "🔪",
+        "created_at": "2026-03-23T06:39:14.000000Z",
+        "updated_at": "2026-03-23T06:39:14.000000Z"
+      },
+      {
+        "id": 19,
+        "name": "Genius",
+        "slug": "genius",
+        "icon": null,
+        "created_at": "2026-03-23T07:54:49.000000Z",
+        "updated_at": "2026-03-23T07:54:49.000000Z"
+      },
+      {
+        "id": 20,
+        "name": "MC Rebirth",
+        "slug": "mc-rebirth",
+        "icon": null,
+        "created_at": "2026-03-23T07:54:49.000000Z",
+        "updated_at": "2026-03-23T07:54:49.000000Z"
+      },
+      {
+        "id": 21,
+        "name": "Blacksmith",
+        "slug": "blacksmith",
+        "icon": null,
+        "created_at": "2026-03-23T07:55:41.000000Z",
+        "updated_at": "2026-03-23T07:55:41.000000Z"
+      },
+      {
+        "id": 22,
+        "name": "Regression",
+        "slug": "regression",
+        "icon": null,
+        "created_at": "2026-03-23T07:55:41.000000Z",
+        "updated_at": "2026-03-23T07:55:41.000000Z"
+      },
+      {
+        "id": 23,
+        "name": "Reincarnation",
+        "slug": "reincarnation",
+        "icon": null,
+        "created_at": "2026-03-23T08:31:28.000000Z",
+        "updated_at": "2026-03-23T08:31:28.000000Z"
+      },
+      {
+        "id": 24,
+        "name": "School life",
+        "slug": "school-life",
+        "icon": null,
+        "created_at": "2026-03-23T08:31:28.000000Z",
+        "updated_at": "2026-03-23T08:31:28.000000Z"
+      },
+      {
+        "id": 25,
+        "name": "Seinen",
+        "slug": "seinen",
+        "icon": null,
+        "created_at": "2026-03-23T08:31:28.000000Z",
+        "updated_at": "2026-03-23T08:31:28.000000Z"
+      },
+      {
+        "id": 26,
+        "name": "Martial Arts",
+        "slug": "martial-arts",
+        "icon": null,
+        "created_at": "2026-03-23T08:31:53.000000Z",
+        "updated_at": "2026-03-23T08:31:53.000000Z"
+      },
+      {
+        "id": 27,
+        "name": "Shounen",
+        "slug": "shounen",
+        "icon": null,
+        "created_at": "2026-03-23T08:33:13.000000Z",
+        "updated_at": "2026-03-23T08:33:13.000000Z"
+      },
+      {
+        "id": 28,
+        "name": "Gender Bender",
+        "slug": "gender-bender",
+        "icon": null,
+        "created_at": "2026-03-23T08:35:38.000000Z",
+        "updated_at": "2026-03-23T08:35:38.000000Z"
+      },
+      {
+        "id": 29,
+        "name": "Tragedy",
+        "slug": "tragedy",
+        "icon": null,
+        "created_at": "2026-03-23T08:35:38.000000Z",
+        "updated_at": "2026-03-23T08:35:38.000000Z"
+      },
+      {
+        "id": 30,
+        "name": "apocalypse",
+        "slug": "apocalypse",
+        "icon": null,
+        "created_at": "2026-03-23T09:22:25.000000Z",
+        "updated_at": "2026-03-23T09:22:25.000000Z"
+      },
+      {
+        "id": 31,
+        "name": "System",
+        "slug": "system",
+        "icon": null,
+        "created_at": "2026-03-23T09:22:25.000000Z",
+        "updated_at": "2026-03-23T09:22:25.000000Z"
+      },
+      {
+        "id": 32,
+        "name": "Shoujo",
+        "slug": "shoujo",
+        "icon": null,
+        "created_at": "2026-03-23T15:30:59.000000Z",
+        "updated_at": "2026-03-23T15:30:59.000000Z"
+      },
+      {
+        "id": 33,
+        "name": "Cooking",
+        "slug": "cooking",
+        "icon": null,
+        "created_at": "2026-03-23T15:31:12.000000Z",
+        "updated_at": "2026-03-23T15:31:12.000000Z"
+      },
+      {
+        "id": 34,
+        "name": "Harem",
+        "slug": "harem",
+        "icon": null,
+        "created_at": "2026-03-23T15:31:50.000000Z",
+        "updated_at": "2026-03-23T15:31:50.000000Z"
+      },
+      {
+        "id": 35,
+        "name": "School",
+        "slug": "school",
+        "icon": null,
+        "created_at": "2026-03-23T15:34:06.000000Z",
+        "updated_at": "2026-03-23T15:34:06.000000Z"
+      },
+      {
+        "id": 36,
+        "name": "Historical",
+        "slug": "historical",
+        "icon": null,
+        "created_at": "2026-03-23T15:34:25.000000Z",
+        "updated_at": "2026-03-23T15:34:25.000000Z"
+      },
+      {
+        "id": 37,
+        "name": "Josei",
+        "slug": "josei",
+        "icon": null,
+        "created_at": "2026-03-23T15:38:06.000000Z",
+        "updated_at": "2026-03-23T15:38:06.000000Z"
+      },
+      {
+        "id": 38,
+        "name": "Shoujo Ai",
+        "slug": "shoujo-ai",
+        "icon": null,
+        "created_at": "2026-03-23T15:38:43.000000Z",
+        "updated_at": "2026-03-23T15:38:43.000000Z"
+      },
+      {
+        "id": 39,
+        "name": "Magic",
+        "slug": "magic",
+        "icon": null,
+        "created_at": "2026-03-23T15:40:23.000000Z",
+        "updated_at": "2026-03-23T15:40:23.000000Z"
+      },
+      {
+        "id": 40,
+        "name": "Villainess",
+        "slug": "villainess",
+        "icon": null,
+        "created_at": "2026-03-23T15:40:23.000000Z",
+        "updated_at": "2026-03-23T15:40:23.000000Z"
+      },
+      {
+        "id": 41,
+        "name": "Strategy",
+        "slug": "strategy",
+        "icon": null,
+        "created_at": "2026-03-23T15:41:10.000000Z",
+        "updated_at": "2026-03-23T15:41:10.000000Z"
+      },
+      {
+        "id": 42,
+        "name": "Medical",
+        "slug": "medical",
+        "icon": null,
+        "created_at": "2026-03-23T15:41:24.000000Z",
+        "updated_at": "2026-03-23T15:41:24.000000Z"
+      },
+      {
+        "id": 43,
+        "name": "Isekai",
+        "slug": "isekai",
+        "icon": null,
+        "created_at": "2026-03-23T15:46:14.000000Z",
+        "updated_at": "2026-03-23T15:46:14.000000Z"
+      },
+      {
+        "id": 44,
+        "name": "Mature",
+        "slug": "mature",
+        "icon": null,
+        "created_at": "2026-03-23T15:48:50.000000Z",
+        "updated_at": "2026-03-23T15:48:50.000000Z"
+      },
+      {
+        "id": 45,
+        "name": "Demons",
+        "slug": "demons",
+        "icon": null,
+        "created_at": "2026-03-23T15:58:50.000000Z",
+        "updated_at": "2026-03-23T15:58:50.000000Z"
+      },
+      {
+        "id": 46,
+        "name": "Gore",
+        "slug": "gore",
+        "icon": null,
+        "created_at": "2026-03-23T15:58:50.000000Z",
+        "updated_at": "2026-03-23T15:58:50.000000Z"
+      },
+      {
+        "id": 47,
+        "name": "Adult",
+        "slug": "adult",
+        "icon": null,
+        "created_at": "2026-03-27T04:19:21.000000Z",
+        "updated_at": "2026-03-27T04:19:21.000000Z"
+      },
+      {
+        "id": 48,
+        "name": "Yuri",
+        "slug": "yuri",
+        "icon": null,
+        "created_at": "2026-03-27T04:19:21.000000Z",
+        "updated_at": "2026-03-27T04:19:21.000000Z"
+      },
+      {
+        "id": 49,
+        "name": "Crime",
+        "slug": "crime",
+        "icon": null,
+        "created_at": "2026-03-27T04:55:02.000000Z",
+        "updated_at": "2026-03-27T04:55:02.000000Z"
+      },
+      {
+        "id": 50,
+        "name": "Game",
+        "slug": "game",
+        "icon": null,
+        "created_at": "2026-03-27T05:47:13.000000Z",
+        "updated_at": "2026-03-27T05:47:13.000000Z"
+      },
+      {
+        "id": 51,
+        "name": "Dark Fantasy",
+        "slug": "dark-fantasy",
+        "icon": null,
+        "created_at": "2026-03-27T08:55:58.000000Z",
+        "updated_at": "2026-03-27T08:55:58.000000Z"
+      },
+      {
+        "id": 52,
+        "name": "One Shot",
+        "slug": "one-shot",
+        "icon": null,
+        "created_at": "2026-03-27T10:32:15.000000Z",
+        "updated_at": "2026-03-27T10:32:15.000000Z"
+      },
+      {
+        "id": 53,
+        "name": "Police",
+        "slug": "police",
+        "icon": null,
+        "created_at": "2026-03-29T20:36:00.000000Z",
+        "updated_at": "2026-03-29T20:36:00.000000Z"
+      },
+      {
+        "id": 54,
+        "name": "Monsters",
+        "slug": "monsters",
+        "icon": null,
+        "created_at": "2026-03-31T17:24:12.000000Z",
+        "updated_at": "2026-03-31T17:24:12.000000Z"
+      },
+      {
+        "id": 55,
+        "name": "Military",
+        "slug": "military",
+        "icon": null,
+        "created_at": "2026-03-31T18:36:10.000000Z",
+        "updated_at": "2026-03-31T18:36:10.000000Z"
+      },
+      {
+        "id": 56,
+        "name": "Super Power",
+        "slug": "super-power",
+        "icon": null,
+        "created_at": "2026-03-31T22:52:41.000000Z",
+        "updated_at": "2026-03-31T22:52:41.000000Z"
+      },
+      {
+        "id": 57,
+        "name": "Smut",
+        "slug": "smut",
+        "icon": null,
+        "created_at": "2026-04-01T00:26:02.000000Z",
+        "updated_at": "2026-04-01T00:26:02.000000Z"
+      },
+      {
+        "id": 58,
+        "name": "Slow Life",
+        "slug": "slow-life",
+        "icon": null,
+        "created_at": "2026-04-01T00:42:26.000000Z",
+        "updated_at": "2026-04-01T00:42:26.000000Z"
+      },
+      {
+        "id": 59,
+        "name": "Beasts",
+        "slug": "beasts",
+        "icon": null,
+        "created_at": "2026-04-01T00:43:54.000000Z",
+        "updated_at": "2026-04-01T00:43:54.000000Z"
+      },
+      {
+        "id": 60,
+        "name": "Manhwa",
+        "slug": "manhwa",
+        "icon": null,
+        "created_at": "2026-04-01T00:43:54.000000Z",
+        "updated_at": "2026-04-01T00:43:54.000000Z"
+      },
+      {
+        "id": 61,
+        "name": "Revenge",
+        "slug": "revenge",
+        "icon": null,
+        "created_at": "2026-04-01T02:00:50.000000Z",
+        "updated_at": "2026-04-01T02:00:50.000000Z"
+      },
+      {
+        "id": 62,
+        "name": "Murim",
+        "slug": "murim",
+        "icon": null,
+        "created_at": "2026-04-01T02:05:28.000000Z",
+        "updated_at": "2026-04-01T02:05:28.000000Z"
+      },
+      {
+        "id": 63,
+        "name": "Manga",
+        "slug": "manga",
+        "icon": null,
+        "created_at": "2026-04-01T02:15:07.000000Z",
+        "updated_at": "2026-04-01T02:15:07.000000Z"
+      },
+      {
+        "id": 64,
+        "name": "Comic",
+        "slug": "comic",
+        "icon": null,
+        "created_at": "2026-04-01T03:30:54.000000Z",
+        "updated_at": "2026-04-01T03:30:54.000000Z"
+      },
+      {
+        "id": 65,
+        "name": "Shoujo(G)",
+        "slug": "shoujog",
+        "icon": null,
+        "created_at": "2026-04-01T04:00:00.000000Z",
+        "updated_at": "2026-04-01T04:00:00.000000Z"
+      },
+      {
+        "id": 66,
+        "name": "Webtoon",
+        "slug": "webtoon",
+        "icon": null,
+        "created_at": "2026-04-01T04:00:00.000000Z",
+        "updated_at": "2026-04-01T04:00:00.000000Z"
+      },
+      {
+        "id": 67,
+        "name": "Swormanship",
+        "slug": "swormanship",
+        "icon": null,
+        "created_at": "2026-04-01T04:03:28.000000Z",
+        "updated_at": "2026-04-01T04:03:28.000000Z"
+      },
+      {
+        "id": 68,
+        "name": "Ghosts",
+        "slug": "ghosts",
+        "icon": null,
+        "created_at": "2026-04-01T05:01:08.000000Z",
+        "updated_at": "2026-04-01T05:01:08.000000Z"
+      },
+      {
+        "id": 69,
+        "name": "Shounen Ai",
+        "slug": "shounen-ai",
+        "icon": null,
+        "created_at": "2026-04-02T16:06:05.000000Z",
+        "updated_at": "2026-04-02T16:06:05.000000Z"
+      },
+      {
+        "id": 70,
+        "name": "Sport",
+        "slug": "sport",
+        "icon": null,
+        "created_at": "2026-04-09T17:08:49.000000Z",
+        "updated_at": "2026-04-09T17:08:49.000000Z"
+      },
+      {
+        "id": 71,
+        "name": "Knight",
+        "slug": "knight",
+        "icon": null,
+        "created_at": "2026-04-30T09:39:59.000000Z",
+        "updated_at": "2026-04-30T09:39:59.000000Z"
+      },
+      {
+        "id": 72,
+        "name": "Sword Fight",
+        "slug": "sword-fight",
+        "icon": null,
+        "created_at": "2026-04-30T09:39:59.000000Z",
+        "updated_at": "2026-04-30T09:39:59.000000Z"
+      },
+      {
+        "id": 79,
+        "name": "Doujinshi",
+        "slug": "doujinshi",
+        "icon": null,
+        "created_at": "2026-05-10T05:06:47.000000Z",
+        "updated_at": "2026-05-10T05:06:47.000000Z"
+      },
+      {
+        "id": 85,
+        "name": "Academy",
+        "slug": "academy",
+        "icon": null,
+        "created_at": "2026-05-18T00:52:45.000000Z",
+        "updated_at": "2026-05-18T00:52:45.000000Z"
+      },
+      {
+        "id": 88,
+        "name": "Webtoons",
+        "slug": "webtoons",
+        "icon": null,
+        "created_at": "2026-06-13T08:03:07.000000Z",
+        "updated_at": "2026-06-13T08:03:07.000000Z"
+      },
+      {
+        "id": 90,
+        "name": "Korea",
+        "slug": "korea",
+        "icon": null,
+        "created_at": "2026-06-16T00:37:12.000000Z",
+        "updated_at": "2026-06-16T00:37:12.000000Z"
+      },
+      {
+        "id": 93,
+        "name": "Xuanhuan",
+        "slug": "xuanhuan",
+        "icon": null,
+        "created_at": "2026-06-16T03:34:24.000000Z",
+        "updated_at": "2026-06-16T03:34:24.000000Z"
+      },
+      {
+        "id": 94,
+        "name": "Eastern",
+        "slug": "eastern",
+        "icon": null,
+        "created_at": "2026-06-16T03:50:38.000000Z",
+        "updated_at": "2026-06-16T03:50:38.000000Z"
+      },
+      {
+        "id": 95,
+        "name": "Xianxia",
+        "slug": "xianxia",
+        "icon": null,
+        "created_at": "2026-06-16T03:52:55.000000Z",
+        "updated_at": "2026-06-16T03:52:55.000000Z"
+      },
+      {
+        "id": 96,
+        "name": "Wuxia",
+        "slug": "wuxia",
+        "icon": null,
+        "created_at": "2026-06-16T03:53:02.000000Z",
+        "updated_at": "2026-06-16T03:53:02.000000Z"
+      },
+      {
+        "id": 104,
+        "name": "Chinese",
+        "slug": "chinese",
+        "icon": null,
+        "created_at": "2026-06-16T05:19:59.000000Z",
+        "updated_at": "2026-06-16T05:19:59.000000Z"
+      },
+      {
+        "id": 105,
+        "name": "Novel",
+        "slug": "novel",
+        "icon": null,
+        "created_at": "2026-06-16T05:19:59.000000Z",
+        "updated_at": "2026-06-16T05:19:59.000000Z"
+      },
+      {
+        "id": 119,
+        "name": "Immortals",
+        "slug": "immortals",
+        "icon": null,
+        "created_at": "2026-06-16T05:20:08.000000Z",
+        "updated_at": "2026-06-16T05:20:08.000000Z"
+      },
+      {
+        "id": 1555,
+        "name": "Genderswap",
+        "slug": "genderswap",
+        "icon": null,
+        "created_at": "2026-06-27T07:30:35.000000Z",
+        "updated_at": "2026-06-27T07:30:35.000000Z"
+      },
+      {
+        "id": 1556,
+        "name": "Video Games",
+        "slug": "video-games",
+        "icon": null,
+        "created_at": "2026-06-27T07:30:35.000000Z",
+        "updated_at": "2026-06-27T07:30:35.000000Z"
+      },
+      {
+        "id": 1557,
+        "name": "Oneshot",
+        "slug": "oneshot",
+        "icon": null,
+        "created_at": "2026-06-27T07:30:59.000000Z",
+        "updated_at": "2026-06-27T07:30:59.000000Z"
+      },
+      {
+        "id": 1558,
+        "name": "Time Travel",
+        "slug": "time-travel",
+        "icon": null,
+        "created_at": "2026-06-29T07:38:55.000000Z",
+        "updated_at": "2026-06-29T07:38:55.000000Z"
+      },
+      {
+        "id": 1559,
+        "name": "Gyaru",
+        "slug": "gyaru",
+        "icon": null,
+        "created_at": "2026-07-02T05:23:58.000000Z",
+        "updated_at": "2026-07-02T05:23:58.000000Z"
+      },
+      {
+        "id": 1560,
+        "name": "Demon",
+        "slug": "demon",
+        "icon": null,
+        "created_at": "2026-07-03T00:49:48.000000Z",
+        "updated_at": "2026-07-03T00:49:48.000000Z"
+      },
+      {
+        "id": 1561,
+        "name": "Reverse Harem",
+        "slug": "reverse-harem",
+        "icon": null,
+        "created_at": "2026-07-03T01:00:03.000000Z",
+        "updated_at": "2026-07-03T01:00:03.000000Z"
+      },
+      {
+        "id": 1562,
+        "name": "China",
+        "slug": "china",
+        "icon": null,
+        "created_at": "2026-07-08T01:07:52.000000Z",
+        "updated_at": "2026-07-08T01:07:52.000000Z"
+      },
+      {
+        "id": 1563,
+        "name": "Completed",
+        "slug": "completed",
+        "icon": null,
+        "created_at": "2026-07-08T01:07:52.000000Z",
+        "updated_at": "2026-07-08T01:07:52.000000Z"
+      },
+      {
+        "id": 1564,
+        "name": "Tamat",
+        "slug": "tamat",
+        "icon": null,
+        "created_at": "2026-07-08T01:07:52.000000Z",
+        "updated_at": "2026-07-08T01:07:52.000000Z"
+      },
+      {
+        "id": 1565,
+        "name": "Jepang",
+        "slug": "jepang",
+        "icon": null,
+        "created_at": "2026-07-08T01:08:56.000000Z",
+        "updated_at": "2026-07-08T01:08:56.000000Z"
+      },
+      {
+        "id": 1566,
+        "name": "HTL",
+        "slug": "htl",
+        "icon": null,
+        "created_at": "2026-07-08T01:09:16.000000Z",
+        "updated_at": "2026-07-08T01:09:16.000000Z"
+      },
+      {
+        "id": 1567,
+        "name": "Girls' Love",
+        "slug": "girls-love",
+        "icon": null,
+        "created_at": "2026-07-11T08:50:09.000000Z",
+        "updated_at": "2026-07-11T08:50:09.000000Z"
+      },
+      {
+        "id": 1568,
+        "name": "Crossdressing",
+        "slug": "crossdressing",
+        "icon": null,
+        "created_at": "2026-07-22T02:52:28.000000Z",
+        "updated_at": "2026-07-22T02:52:28.000000Z"
+      },
+      {
+        "id": 1569,
+        "name": "Entertainment",
+        "slug": "entertainment",
+        "icon": null,
+        "created_at": "2026-07-25T18:59:45.000000Z",
+        "updated_at": "2026-07-25T18:59:45.000000Z"
+      },
+      {
+        "id": 1570,
+        "name": "Martial Art",
+        "slug": "martial-art",
+        "icon": null,
+        "created_at": "2026-08-04T22:41:13.000000Z",
+        "updated_at": "2026-08-04T22:41:13.000000Z"
+      },
+      {
+        "id": 1571,
+        "name": "Survival",
+        "slug": "survival",
+        "icon": null,
+        "created_at": "2026-08-04T22:41:13.000000Z",
+        "updated_at": "2026-08-04T22:41:13.000000Z"
+      },
+      {
+        "id": 1572,
+        "name": "Long Strip",
+        "slug": "long-strip",
+        "icon": null,
+        "created_at": "2026-08-09T03:34:48.000000Z",
+        "updated_at": "2026-08-09T03:34:48.000000Z"
+      },
+      {
+        "id": 1573,
+        "name": "Fanfiction",
+        "slug": "fanfiction",
+        "icon": null,
+        "created_at": "2026-08-14T07:24:28.000000Z",
+        "updated_at": "2026-08-14T07:24:28.000000Z"
+      },
+      {
+        "id": 1574,
+        "name": "Monster",
+        "slug": "monster",
+        "icon": null,
+        "created_at": "2026-08-20T23:45:50.000000Z",
+        "updated_at": "2026-08-20T23:45:50.000000Z"
+      },
+      {
+        "id": 1575,
+        "name": "Fight",
+        "slug": "fight",
+        "icon": null,
+        "created_at": "2026-08-21T23:42:45.000000Z",
+        "updated_at": "2026-08-21T23:42:45.000000Z"
+      },
+      {
+        "id": 1576,
+        "name": "Monster girls",
+        "slug": "monster-girls",
+        "icon": null,
+        "created_at": "2026-09-05T21:43:51.000000Z",
+        "updated_at": "2026-09-05T21:43:51.000000Z"
+      },
+      {
+        "id": 1577,
+        "name": "4-Koma",
+        "slug": "4-koma",
+        "icon": null,
+        "created_at": "2026-09-07T15:37:56.000000Z",
+        "updated_at": "2026-09-07T15:37:56.000000Z"
+      }
+    ],
+    "filters": {
+      "search": "batsu"
+    }
+  },
+  "url": "/manga?search=batsu",
+  "version": "1f9ea7ef0878b9a4129e7a3158970903",
+  "clearHistory": false,
+  "encryptHistory": false
+}

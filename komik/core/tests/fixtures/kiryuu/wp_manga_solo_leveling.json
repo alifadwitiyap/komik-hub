@@ -1,0 +1,1415 @@
+[
+  {
+    "id": 278284,
+    "date": "2021-06-10T00:19:19",
+    "date_gmt": "2021-06-09T17:19:19",
+    "guid": {
+      "rendered": "https://kiryuu02.com/?post_type=manga&#038;p=278284"
+    },
+    "modified": "2026-05-12T15:46:21",
+    "modified_gmt": "2026-05-12T08:46:21",
+    "slug": "solo-leveling",
+    "status": "publish",
+    "type": "manga",
+    "link": "https://v7.kiryuu.to/manga/solo-leveling/",
+    "title": {
+      "rendered": "Solo Leveling"
+    },
+    "content": {
+      "rendered": "<p>E-class hunter Jinwoo Sung is the weakest of them all. Looked down on by everyone, he has no money, no abilities to speak of, and no other job prospects. So when his party finds a hidden dungeon, he&#8217;s determined to use this chance to change his life for the better&#8230;but the opportunity he finds is a bit different from what he had in mind&#8230;Original Webtoon:KakaoPage, DaumOfficial English Translation:Yen Press (Volumes), Tappytoon, Pocket Comics, Tapas, Webnovel,Official Translations:Japanese, Thai, Indonesian, S.Chinese, T.Chinese, German</p>\n",
+      "protected": false
+    },
+    "excerpt": {
+      "rendered": "<p>E-class hunter Jinwoo Sung is the weakest of them all. Looked down on by everyone, he has no money, no abilities to speak of, and no other job prospects. So when his party finds a hidden dungeon, he&#8217;s determined to use this chance to change his life for the better&#8230;but the opportunity he finds is [&hellip;]</p>\n",
+      "protected": false
+    },
+    "featured_media": 425256,
+    "comment_status": "open",
+    "ping_status": "closed",
+    "template": "",
+    "manga-status": [
+      8680
+    ],
+    "manga-type": [
+      8679
+    ],
+    "genre": [
+      2,
+      3,
+      11,
+      4,
+      5,
+      3613
+    ],
+    "series-author": [
+      14061,
+      14062,
+      14063
+    ],
+    "artist": [
+      14064,
+      10323
+    ],
+    "class_list": [
+      "post-278284",
+      "manga",
+      "type-manga",
+      "status-publish",
+      "has-post-thumbnail",
+      "hentry",
+      "status-completed",
+      "type-manhwa",
+      "genre-action",
+      "genre-adventure",
+      "genre-drama",
+      "genre-fantasy",
+      "genre-shounen",
+      "genre-super-power",
+      "series-author-chugong",
+      "series-author-h-goon",
+      "series-author-ki-soryeong",
+      "artist-jang-seong-rak-redice-studio",
+      "artist-redice-studio"
+    ],
+    "metadata": {
+      "meta": {
+        "alternative_title": "Na Honjaman Level-Up, Only I Level Up, Ore Dake Level Up na Ken, Тільки я візьму новий рівень, تکرو, 俺だけレベルアップな件, 我独自升级, 나 혼자만 레벨업",
+        "released": "2018",
+        "score": "9",
+        "background": "http://425302",
+        "project": "1",
+        "search_index": "Solo Leveling, Na Honjaman Level-Up, Only I Level Up, Ore Dake Level Up na Ken, Тільки я візьму новий рівень, تکرو, 俺だけレベルアップな件, 我独自升级, 나 혼자만 레벨업",
+        "thumbnail": "https://v7.kiryuu.to/wp-content/uploads/2021/06/08-374020-cbiyLkVi.png"
+      },
+      "tax": [
+        {
+          "term_id": 2,
+          "name": "Action",
+          "slug": "action",
+          "term_group": 0,
+          "term_taxonomy_id": 2,
+          "taxonomy": "genre",
+          "description": "",
+          "parent": 0,
+          "count": 4636,
+          "filter": "raw"
+        },
+        {
+          "term_id": 3,
+          "name": "Adventure",
+          "slug": "adventure",
+          "term_group": 0,
+          "term_taxonomy_id": 3,
+          "taxonomy": "genre",
+          "description": "",
+          "parent": 0,
+          "count": 2536,
+          "filter": "raw"
+        },
+        {
+          "term_id": 14061,
+          "name": "Chugong",
+          "slug": "chugong",
+          "term_group": 0,
+          "term_taxonomy_id": 14096,
+          "taxonomy": "series-author",
+          "description": "",
+          "parent": 0,
+          "count": 1,
+          "filter": "raw"
+        },
+        {
+          "term_id": 8680,
+          "name": "Completed",
+          "slug": "completed",
+          "term_group": 0,
+          "term_taxonomy_id": 8715,
+          "taxonomy": "status",
+          "description": "",
+          "parent": 0,
+          "count": 698,
+          "filter": "raw"
+        },
+        {
+          "term_id": 11,
+          "name": "Drama",
+          "slug": "drama",
+          "term_group": 0,
+          "term_taxonomy_id": 11,
+          "taxonomy": "genre",
+          "description": "",
+          "parent": 0,
+          "count": 3344,
+          "filter": "raw"
+        },
+        {
+          "term_id": 4,
+          "name": "Fantasy",
+          "slug": "fantasy",
+          "term_group": 0,
+          "term_taxonomy_id": 4,
+          "taxonomy": "genre",
+          "description": "",
+          "parent": 0,
+          "count": 4915,
+          "filter": "raw"
+        },
+        {
+          "term_id": 14062,
+          "name": "H-goon",
+          "slug": "h-goon",
+          "term_group": 0,
+          "term_taxonomy_id": 14097,
+          "taxonomy": "series-author",
+          "description": "",
+          "parent": 0,
+          "count": 1,
+          "filter": "raw"
+        },
+        {
+          "term_id": 14064,
+          "name": "JANG Seong-rak (redice studio)",
+          "slug": "jang-seong-rak-redice-studio",
+          "term_group": 0,
+          "term_taxonomy_id": 14099,
+          "taxonomy": "artist",
+          "description": "",
+          "parent": 0,
+          "count": 1,
+          "filter": "raw"
+        },
+        {
+          "term_id": 14063,
+          "name": "KI Soryeong",
+          "slug": "ki-soryeong",
+          "term_group": 0,
+          "term_taxonomy_id": 14098,
+          "taxonomy": "series-author",
+          "description": "",
+          "parent": 0,
+          "count": 1,
+          "filter": "raw"
+        },
+        {
+          "term_id": 8679,
+          "name": "Manhwa",
+          "slug": "manhwa",
+          "term_group": 0,
+          "term_taxonomy_id": 8714,
+          "taxonomy": "type",
+          "description": "",
+          "parent": 0,
+          "count": 2058,
+          "filter": "raw"
+        },
+        {
+          "term_id": 10323,
+          "name": "Redice Studio",
+          "slug": "redice-studio",
+          "term_group": 0,
+          "term_taxonomy_id": 10358,
+          "taxonomy": "artist",
+          "description": "",
+          "parent": 0,
+          "count": 15,
+          "filter": "raw"
+        },
+        {
+          "term_id": 5,
+          "name": "Shounen",
+          "slug": "shounen",
+          "term_group": 0,
+          "term_taxonomy_id": 5,
+          "taxonomy": "genre",
+          "description": "",
+          "parent": 0,
+          "count": 3309,
+          "filter": "raw"
+        },
+        {
+          "term_id": 3613,
+          "name": "Super Power",
+          "slug": "super-power",
+          "term_group": 0,
+          "term_taxonomy_id": 3613,
+          "taxonomy": "genre",
+          "description": "",
+          "parent": 0,
+          "count": 16,
+          "filter": "raw"
+        }
+      ]
+    },
+    "_links": {
+      "self": [
+        {
+          "href": "https://v7.kiryuu.to/wp-json/wp/v2/manga/278284",
+          "targetHints": {
+            "allow": [
+              "GET"
+            ]
+          }
+        }
+      ],
+      "collection": [
+        {
+          "href": "https://v7.kiryuu.to/wp-json/wp/v2/manga"
+        }
+      ],
+      "about": [
+        {
+          "href": "https://v7.kiryuu.to/wp-json/wp/v2/types/manga"
+        }
+      ],
+      "replies": [
+        {
+          "embeddable": true,
+          "href": "https://v7.kiryuu.to/wp-json/wp/v2/comments?post=278284"
+        }
+      ],
+      "wp:featuredmedia": [
+        {
+          "embeddable": true,
+          "href": "https://v7.kiryuu.to/wp-json/wp/v2/media/425256"
+        }
+      ],
+      "wp:attachment": [
+        {
+          "href": "https://v7.kiryuu.to/wp-json/wp/v2/media?parent=278284"
+        }
+      ],
+      "wp:term": [
+        {
+          "taxonomy": "status",
+          "embeddable": true,
+          "href": "https://v7.kiryuu.to/wp-json/wp/v2/manga-status?post=278284"
+        },
+        {
+          "taxonomy": "type",
+          "embeddable": true,
+          "href": "https://v7.kiryuu.to/wp-json/wp/v2/manga-type?post=278284"
+        },
+        {
+          "taxonomy": "genre",
+          "embeddable": true,
+          "href": "https://v7.kiryuu.to/wp-json/wp/v2/genre?post=278284"
+        },
+        {
+          "taxonomy": "series-author",
+          "embeddable": true,
+          "href": "https://v7.kiryuu.to/wp-json/wp/v2/series-author?post=278284"
+        },
+        {
+          "taxonomy": "artist",
+          "embeddable": true,
+          "href": "https://v7.kiryuu.to/wp-json/wp/v2/artist?post=278284"
+        }
+      ],
+      "curies": [
+        {
+          "name": "wp",
+          "href": "https://api.w.org/{rel}",
+          "templated": true
+        }
+      ]
+    },
+    "_embedded": {
+      "replies": [
+        [
+          {
+            "id": 294475,
+            "parent": 0,
+            "author": 57282,
+            "author_name": "Lexxt",
+            "author_url": "",
+            "date": "2026-08-14T15:52:17",
+            "content": {
+              "rendered": "<p>Start</p>\n"
+            },
+            "link": "https://v7.kiryuu.to/manga/solo-leveling/#comment-294475",
+            "type": "comment",
+            "author_avatar_urls": {
+              "24": "https://secure.gravatar.com/avatar/f72591e631d6e5ef512eb90685c4ea76fda8fc374b0b8283472fed74c1f0732a?s=24&d=mm&r=g",
+              "48": "https://secure.gravatar.com/avatar/f72591e631d6e5ef512eb90685c4ea76fda8fc374b0b8283472fed74c1f0732a?s=48&d=mm&r=g",
+              "96": "https://secure.gravatar.com/avatar/f72591e631d6e5ef512eb90685c4ea76fda8fc374b0b8283472fed74c1f0732a?s=96&d=mm&r=g"
+            },
+            "_links": {
+              "self": [
+                {
+                  "href": "https://v7.kiryuu.to/wp-json/wp/v2/comments/294475",
+                  "targetHints": {
+                    "allow": [
+                      "GET"
+                    ]
+                  }
+                }
+              ],
+              "collection": [
+                {
+                  "href": "https://v7.kiryuu.to/wp-json/wp/v2/comments"
+                }
+              ],
+              "author": [
+                {
+                  "embeddable": true,
+                  "href": "https://v7.kiryuu.to/wp-json/wp/v2/users/57282"
+                }
+              ],
+              "up": [
+                {
+                  "embeddable": true,
+                  "post_type": "manga",
+                  "href": "https://v7.kiryuu.to/wp-json/wp/v2/manga/278284"
+                }
+              ]
+            }
+          },
+          {
+            "id": 251843,
+            "parent": 0,
+            "author": 40587,
+            "author_name": "Wildan Alvida Susanto",
+            "author_url": "",
+            "date": "2026-06-13T14:22:43",
+            "content": {
+              "rendered": "<p>mantap min</p>\n"
+            },
+            "link": "https://v7.kiryuu.to/manga/solo-leveling/#comment-251843",
+            "type": "comment",
+            "author_avatar_urls": {
+              "24": "https://secure.gravatar.com/avatar/cd2637328a604b93b208e16f2e9ef7b77f39893265b98ad6cd3ebb1b799c7bba?s=24&d=mm&r=g",
+              "48": "https://secure.gravatar.com/avatar/cd2637328a604b93b208e16f2e9ef7b77f39893265b98ad6cd3ebb1b799c7bba?s=48&d=mm&r=g",
+              "96": "https://secure.gravatar.com/avatar/cd2637328a604b93b208e16f2e9ef7b77f39893265b98ad6cd3ebb1b799c7bba?s=96&d=mm&r=g"
+            },
+            "_links": {
+              "self": [
+                {
+                  "href": "https://v7.kiryuu.to/wp-json/wp/v2/comments/251843",
+                  "targetHints": {
+                    "allow": [
+                      "GET"
+                    ]
+                  }
+                }
+              ],
+              "collection": [
+                {
+                  "href": "https://v7.kiryuu.to/wp-json/wp/v2/comments"
+                }
+              ],
+              "author": [
+                {
+                  "embeddable": true,
+                  "href": "https://v7.kiryuu.to/wp-json/wp/v2/users/40587"
+                }
+              ],
+              "up": [
+                {
+                  "embeddable": true,
+                  "post_type": "manga",
+                  "href": "https://v7.kiryuu.to/wp-json/wp/v2/manga/278284"
+                }
+              ]
+            }
+          },
+          {
+            "id": 221795,
+            "parent": 0,
+            "author": 1,
+            "author_name": "kiryuu",
+            "author_url": "",
+            "date": "2026-04-13T02:00:02",
+            "content": {
+              "rendered": "<p>tuesting</p>\n"
+            },
+            "link": "https://v7.kiryuu.to/manga/solo-leveling/#comment-221795",
+            "type": "comment",
+            "author_avatar_urls": {
+              "24": "https://secure.gravatar.com/avatar/c4f9fce46b58db6a935bf7eaed2d4022d9a7e99284b68f6ca028f0e858f9e23a?s=24&d=mm&r=g",
+              "48": "https://secure.gravatar.com/avatar/c4f9fce46b58db6a935bf7eaed2d4022d9a7e99284b68f6ca028f0e858f9e23a?s=48&d=mm&r=g",
+              "96": "https://secure.gravatar.com/avatar/c4f9fce46b58db6a935bf7eaed2d4022d9a7e99284b68f6ca028f0e858f9e23a?s=96&d=mm&r=g"
+            },
+            "_links": {
+              "self": [
+                {
+                  "href": "https://v7.kiryuu.to/wp-json/wp/v2/comments/221795",
+                  "targetHints": {
+                    "allow": [
+                      "GET"
+                    ]
+                  }
+                }
+              ],
+              "collection": [
+                {
+                  "href": "https://v7.kiryuu.to/wp-json/wp/v2/comments"
+                }
+              ],
+              "author": [
+                {
+                  "embeddable": true,
+                  "href": "https://v7.kiryuu.to/wp-json/wp/v2/users/1"
+                }
+              ],
+              "up": [
+                {
+                  "embeddable": true,
+                  "post_type": "manga",
+                  "href": "https://v7.kiryuu.to/wp-json/wp/v2/manga/278284"
+                }
+              ]
+            }
+          },
+          {
+            "id": 190072,
+            "parent": 0,
+            "author": 2887,
+            "author_name": "n3m0",
+            "author_url": "",
+            "date": "2026-02-05T14:26:38",
+            "content": {
+              "rendered": "<p>baca ulang yang ke 3xnya&#8230;. </p>\n"
+            },
+            "link": "https://v7.kiryuu.to/manga/solo-leveling/#comment-190072",
+            "type": "comment",
+            "author_avatar_urls": {
+              "24": "https://secure.gravatar.com/avatar/11041250662448ddc3d7e6b3038ea5c5031f52f51cb50a52535b9ddcbcff7612?s=24&d=mm&r=g",
+              "48": "https://secure.gravatar.com/avatar/11041250662448ddc3d7e6b3038ea5c5031f52f51cb50a52535b9ddcbcff7612?s=48&d=mm&r=g",
+              "96": "https://secure.gravatar.com/avatar/11041250662448ddc3d7e6b3038ea5c5031f52f51cb50a52535b9ddcbcff7612?s=96&d=mm&r=g"
+            },
+            "_links": {
+              "self": [
+                {
+                  "href": "https://v7.kiryuu.to/wp-json/wp/v2/comments/190072",
+                  "targetHints": {
+                    "allow": [
+                      "GET"
+                    ]
+                  }
+                }
+              ],
+              "collection": [
+                {
+                  "href": "https://v7.kiryuu.to/wp-json/wp/v2/comments"
+                }
+              ],
+              "author": [
+                {
+                  "embeddable": true,
+                  "href": "https://v7.kiryuu.to/wp-json/wp/v2/users/2887"
+                }
+              ],
+              "up": [
+                {
+                  "embeddable": true,
+                  "post_type": "manga",
+                  "href": "https://v7.kiryuu.to/wp-json/wp/v2/manga/278284"
+                }
+              ]
+            }
+          },
+          {
+            "id": 160468,
+            "parent": 0,
+            "author": 27052,
+            "author_name": "Roy52",
+            "author_url": "",
+            "date": "2025-12-11T19:42:12",
+            "content": {
+              "rendered": "<p>8,5/10, baru kali ini baca manga sampe tamat, eh malah anaknya lanjut, thanks min </p>\n"
+            },
+            "link": "https://v7.kiryuu.to/manga/solo-leveling/#comment-160468",
+            "type": "comment",
+            "author_avatar_urls": {
+              "24": "https://secure.gravatar.com/avatar/590b2a7057d55b8310dae7debea88f51e557da2d7e39582b2ef7963193b36357?s=24&d=mm&r=g",
+              "48": "https://secure.gravatar.com/avatar/590b2a7057d55b8310dae7debea88f51e557da2d7e39582b2ef7963193b36357?s=48&d=mm&r=g",
+              "96": "https://secure.gravatar.com/avatar/590b2a7057d55b8310dae7debea88f51e557da2d7e39582b2ef7963193b36357?s=96&d=mm&r=g"
+            },
+            "_links": {
+              "self": [
+                {
+                  "href": "https://v7.kiryuu.to/wp-json/wp/v2/comments/160468",
+                  "targetHints": {
+                    "allow": [
+                      "GET"
+                    ]
+                  }
+                }
+              ],
+              "collection": [
+                {
+                  "href": "https://v7.kiryuu.to/wp-json/wp/v2/comments"
+                }
+              ],
+              "author": [
+                {
+                  "embeddable": true,
+                  "href": "https://v7.kiryuu.to/wp-json/wp/v2/users/27052"
+                }
+              ],
+              "up": [
+                {
+                  "embeddable": true,
+                  "post_type": "manga",
+                  "href": "https://v7.kiryuu.to/wp-json/wp/v2/manga/278284"
+                }
+              ]
+            }
+          },
+          {
+            "id": 55631,
+            "parent": 0,
+            "author": 11738,
+            "author_name": "M E N",
+            "author_url": "",
+            "date": "2025-08-31T14:43:55",
+            "content": {
+              "rendered": "<p>Done✅</p>\n"
+            },
+            "link": "https://v7.kiryuu.to/manga/solo-leveling/#comment-55631",
+            "type": "comment",
+            "author_avatar_urls": {
+              "24": "https://secure.gravatar.com/avatar/fd65b8672df4ecf5b41f1fe69df39398909c70f6b83de63a4a8dbc7a7ab2818a?s=24&d=mm&r=g",
+              "48": "https://secure.gravatar.com/avatar/fd65b8672df4ecf5b41f1fe69df39398909c70f6b83de63a4a8dbc7a7ab2818a?s=48&d=mm&r=g",
+              "96": "https://secure.gravatar.com/avatar/fd65b8672df4ecf5b41f1fe69df39398909c70f6b83de63a4a8dbc7a7ab2818a?s=96&d=mm&r=g"
+            },
+            "_links": {
+              "self": [
+                {
+                  "href": "https://v7.kiryuu.to/wp-json/wp/v2/comments/55631",
+                  "targetHints": {
+                    "allow": [
+                      "GET"
+                    ]
+                  }
+                }
+              ],
+              "collection": [
+                {
+                  "href": "https://v7.kiryuu.to/wp-json/wp/v2/comments"
+                }
+              ],
+              "author": [
+                {
+                  "embeddable": true,
+                  "href": "https://v7.kiryuu.to/wp-json/wp/v2/users/11738"
+                }
+              ],
+              "up": [
+                {
+                  "embeddable": true,
+                  "post_type": "manga",
+                  "href": "https://v7.kiryuu.to/wp-json/wp/v2/manga/278284"
+                }
+              ]
+            }
+          },
+          {
+            "id": 40512,
+            "parent": 0,
+            "author": 17450,
+            "author_name": "Skuypet",
+            "author_url": "",
+            "date": "2025-07-18T04:29:27",
+            "content": {
+              "rendered": "<p>Nikmati saja, bagi sebagian orang pertarungan pertarungan solo leveling di anime itu sangat luar biasa sih, manjain mata banget, kalau untuk kurang dapatnya nuansa ke korea annya itu balik lagi ke diri masing-masing, toh memang mereka (korea) mau kerjasama dgn jepang untuk menghasilkan karya yg luar biasa itu (anime).</p>\n"
+            },
+            "link": "https://v7.kiryuu.to/manga/solo-leveling/#comment-40512",
+            "type": "comment",
+            "author_avatar_urls": {
+              "24": "https://secure.gravatar.com/avatar/29ac77960f8b3723a236287dc14af9bde8cfbdc6c2d995863c1fcbd61acf2840?s=24&d=mm&r=g",
+              "48": "https://secure.gravatar.com/avatar/29ac77960f8b3723a236287dc14af9bde8cfbdc6c2d995863c1fcbd61acf2840?s=48&d=mm&r=g",
+              "96": "https://secure.gravatar.com/avatar/29ac77960f8b3723a236287dc14af9bde8cfbdc6c2d995863c1fcbd61acf2840?s=96&d=mm&r=g"
+            },
+            "_links": {
+              "self": [
+                {
+                  "href": "https://v7.kiryuu.to/wp-json/wp/v2/comments/40512",
+                  "targetHints": {
+                    "allow": [
+                      "GET"
+                    ]
+                  }
+                }
+              ],
+              "collection": [
+                {
+                  "href": "https://v7.kiryuu.to/wp-json/wp/v2/comments"
+                }
+              ],
+              "author": [
+                {
+                  "embeddable": true,
+                  "href": "https://v7.kiryuu.to/wp-json/wp/v2/users/17450"
+                }
+              ],
+              "up": [
+                {
+                  "embeddable": true,
+                  "post_type": "manga",
+                  "href": "https://v7.kiryuu.to/wp-json/wp/v2/manga/278284"
+                }
+              ]
+            }
+          },
+          {
+            "id": 2791,
+            "parent": 0,
+            "author": 5201,
+            "author_name": "Fira",
+            "author_url": "",
+            "date": "2025-03-07T10:14:57",
+            "content": {
+              "rendered": "<p>Baru mau mulai</p>\n"
+            },
+            "link": "https://v7.kiryuu.to/manga/solo-leveling/#comment-2791",
+            "type": "comment",
+            "author_avatar_urls": {
+              "24": "https://secure.gravatar.com/avatar/f73c258ce9cbe1f1a02c1d6890aa9d65d982bf6e2550de3b4e9a852fa1ba2513?s=24&d=mm&r=g",
+              "48": "https://secure.gravatar.com/avatar/f73c258ce9cbe1f1a02c1d6890aa9d65d982bf6e2550de3b4e9a852fa1ba2513?s=48&d=mm&r=g",
+              "96": "https://secure.gravatar.com/avatar/f73c258ce9cbe1f1a02c1d6890aa9d65d982bf6e2550de3b4e9a852fa1ba2513?s=96&d=mm&r=g"
+            },
+            "_links": {
+              "self": [
+                {
+                  "href": "https://v7.kiryuu.to/wp-json/wp/v2/comments/2791",
+                  "targetHints": {
+                    "allow": [
+                      "GET"
+                    ]
+                  }
+                }
+              ],
+              "collection": [
+                {
+                  "href": "https://v7.kiryuu.to/wp-json/wp/v2/comments"
+                }
+              ],
+              "author": [
+                {
+                  "embeddable": true,
+                  "href": "https://v7.kiryuu.to/wp-json/wp/v2/users/5201"
+                }
+              ],
+              "up": [
+                {
+                  "embeddable": true,
+                  "post_type": "manga",
+                  "href": "https://v7.kiryuu.to/wp-json/wp/v2/manga/278284"
+                }
+              ]
+            }
+          },
+          {
+            "id": 1231,
+            "parent": 0,
+            "author": 213,
+            "author_name": "ↁ𝐮𝐜𝐤𝐞𝐫⌘",
+            "author_url": "",
+            "date": "2025-02-28T12:18:31",
+            "content": {
+              "rendered": "<p>Reread gess</p>\n"
+            },
+            "link": "https://v7.kiryuu.to/manga/solo-leveling/#comment-1231",
+            "type": "comment",
+            "author_avatar_urls": {
+              "24": "https://secure.gravatar.com/avatar/30433ae923b01004a431a4ce0cd1b04b614dd1a3665db9abf41bf8082a074a55?s=24&d=mm&r=g",
+              "48": "https://secure.gravatar.com/avatar/30433ae923b01004a431a4ce0cd1b04b614dd1a3665db9abf41bf8082a074a55?s=48&d=mm&r=g",
+              "96": "https://secure.gravatar.com/avatar/30433ae923b01004a431a4ce0cd1b04b614dd1a3665db9abf41bf8082a074a55?s=96&d=mm&r=g"
+            },
+            "_links": {
+              "self": [
+                {
+                  "href": "https://v7.kiryuu.to/wp-json/wp/v2/comments/1231",
+                  "targetHints": {
+                    "allow": [
+                      "GET"
+                    ]
+                  }
+                }
+              ],
+              "collection": [
+                {
+                  "href": "https://v7.kiryuu.to/wp-json/wp/v2/comments"
+                }
+              ],
+              "author": [
+                {
+                  "embeddable": true,
+                  "href": "https://v7.kiryuu.to/wp-json/wp/v2/users/213"
+                }
+              ],
+              "up": [
+                {
+                  "embeddable": true,
+                  "post_type": "manga",
+                  "href": "https://v7.kiryuu.to/wp-json/wp/v2/manga/278284"
+                }
+              ]
+            }
+          }
+        ]
+      ],
+      "wp:featuredmedia": [
+        {
+          "id": 425256,
+          "date": "2023-01-14T14:32:52",
+          "slug": "08-2",
+          "type": "attachment",
+          "link": "https://v7.kiryuu.to/manga/solo-leveling/08-2/",
+          "title": {
+            "rendered": "08"
+          },
+          "author": 12,
+          "featured_media": 0,
+          "caption": {
+            "rendered": ""
+          },
+          "alt_text": "",
+          "media_type": "image",
+          "mime_type": "image/png",
+          "media_details": {
+            "width": 720,
+            "height": 973,
+            "file": "2021/06/08-374020-cbiyLkVi.png",
+            "filesize": 1971475,
+            "sizes": {
+              "medium": {
+                "file": "08-374020-cbiyLkVi-222x300.png",
+                "width": 222,
+                "height": 300,
+                "filesize": 159644,
+                "mime_type": "image/png",
+                "source_url": "https://v7.kiryuu.to/wp-content/uploads/2021/06/08-374020-cbiyLkVi-222x300.png"
+              },
+              "thumbnail": {
+                "file": "08-374020-cbiyLkVi-111x150.png",
+                "width": 111,
+                "height": 150,
+                "filesize": 45737,
+                "mime_type": "image/png",
+                "source_url": "https://v7.kiryuu.to/wp-content/uploads/2021/06/08-374020-cbiyLkVi-111x150.png"
+              },
+              "full": {
+                "file": "08-374020-cbiyLkVi.png",
+                "width": 720,
+                "height": 973,
+                "mime_type": "image/png",
+                "source_url": "https://v7.kiryuu.to/wp-content/uploads/2021/06/08-374020-cbiyLkVi.png"
+              }
+            },
+            "image_meta": {
+              "aperture": "0",
+              "credit": "",
+              "camera": "",
+              "caption": "",
+              "created_timestamp": "0",
+              "copyright": "",
+              "focal_length": "0",
+              "iso": "0",
+              "shutter_speed": "0",
+              "title": "",
+              "orientation": "0",
+              "keywords": []
+            }
+          },
+          "source_url": "https://v7.kiryuu.to/wp-content/uploads/2021/06/08-374020-cbiyLkVi.png",
+          "_links": {
+            "self": [
+              {
+                "href": "https://v7.kiryuu.to/wp-json/wp/v2/media/425256",
+                "targetHints": {
+                  "allow": [
+                    "GET"
+                  ]
+                }
+              }
+            ],
+            "collection": [
+              {
+                "href": "https://v7.kiryuu.to/wp-json/wp/v2/media"
+              }
+            ],
+            "about": [
+              {
+                "href": "https://v7.kiryuu.to/wp-json/wp/v2/types/attachment"
+              }
+            ],
+            "author": [
+              {
+                "embeddable": true,
+                "href": "https://v7.kiryuu.to/wp-json/wp/v2/users/12"
+              }
+            ],
+            "replies": [
+              {
+                "embeddable": true,
+                "href": "https://v7.kiryuu.to/wp-json/wp/v2/comments?post=425256"
+              }
+            ],
+            "wp:attached-to": [
+              {
+                "embeddable": true,
+                "post_type": "manga",
+                "id": 278284,
+                "href": "https://v7.kiryuu.to/wp-json/wp/v2/manga/278284"
+              }
+            ],
+            "curies": [
+              {
+                "name": "wp",
+                "href": "https://api.w.org/{rel}",
+                "templated": true
+              }
+            ]
+          }
+        }
+      ],
+      "wp:term": [
+        [
+          {
+            "id": 8680,
+            "link": "https://v7.kiryuu.to/manga-status/completed/",
+            "name": "Completed",
+            "slug": "completed",
+            "taxonomy": "status",
+            "_links": {
+              "self": [
+                {
+                  "href": "https://v7.kiryuu.to/wp-json/wp/v2/manga-status/8680",
+                  "targetHints": {
+                    "allow": [
+                      "GET"
+                    ]
+                  }
+                }
+              ],
+              "collection": [
+                {
+                  "href": "https://v7.kiryuu.to/wp-json/wp/v2/manga-status"
+                }
+              ],
+              "about": [
+                {
+                  "href": "https://v7.kiryuu.to/wp-json/wp/v2/taxonomies/status"
+                }
+              ],
+              "wp:post_type": [
+                {
+                  "href": "https://v7.kiryuu.to/wp-json/wp/v2/manga?manga-status=8680"
+                }
+              ],
+              "curies": [
+                {
+                  "name": "wp",
+                  "href": "https://api.w.org/{rel}",
+                  "templated": true
+                }
+              ]
+            }
+          }
+        ],
+        [
+          {
+            "id": 8679,
+            "link": "https://v7.kiryuu.to/manga-type/manhwa/",
+            "name": "Manhwa",
+            "slug": "manhwa",
+            "taxonomy": "type",
+            "_links": {
+              "self": [
+                {
+                  "href": "https://v7.kiryuu.to/wp-json/wp/v2/manga-type/8679",
+                  "targetHints": {
+                    "allow": [
+                      "GET"
+                    ]
+                  }
+                }
+              ],
+              "collection": [
+                {
+                  "href": "https://v7.kiryuu.to/wp-json/wp/v2/manga-type"
+                }
+              ],
+              "about": [
+                {
+                  "href": "https://v7.kiryuu.to/wp-json/wp/v2/taxonomies/type"
+                }
+              ],
+              "wp:post_type": [
+                {
+                  "href": "https://v7.kiryuu.to/wp-json/wp/v2/manga?manga-type=8679"
+                }
+              ],
+              "curies": [
+                {
+                  "name": "wp",
+                  "href": "https://api.w.org/{rel}",
+                  "templated": true
+                }
+              ]
+            }
+          }
+        ],
+        [
+          {
+            "id": 2,
+            "link": "https://v7.kiryuu.to/genre/action/",
+            "name": "Action",
+            "slug": "action",
+            "taxonomy": "genre",
+            "_links": {
+              "self": [
+                {
+                  "href": "https://v7.kiryuu.to/wp-json/wp/v2/genre/2",
+                  "targetHints": {
+                    "allow": [
+                      "GET"
+                    ]
+                  }
+                }
+              ],
+              "collection": [
+                {
+                  "href": "https://v7.kiryuu.to/wp-json/wp/v2/genre"
+                }
+              ],
+              "about": [
+                {
+                  "href": "https://v7.kiryuu.to/wp-json/wp/v2/taxonomies/genre"
+                }
+              ],
+              "wp:post_type": [
+                {
+                  "href": "https://v7.kiryuu.to/wp-json/wp/v2/manga?genre=2"
+                }
+              ],
+              "curies": [
+                {
+                  "name": "wp",
+                  "href": "https://api.w.org/{rel}",
+                  "templated": true
+                }
+              ]
+            }
+          },
+          {
+            "id": 3,
+            "link": "https://v7.kiryuu.to/genre/adventure/",
+            "name": "Adventure",
+            "slug": "adventure",
+            "taxonomy": "genre",
+            "_links": {
+              "self": [
+                {
+                  "href": "https://v7.kiryuu.to/wp-json/wp/v2/genre/3",
+                  "targetHints": {
+                    "allow": [
+                      "GET"
+                    ]
+                  }
+                }
+              ],
+              "collection": [
+                {
+                  "href": "https://v7.kiryuu.to/wp-json/wp/v2/genre"
+                }
+              ],
+              "about": [
+                {
+                  "href": "https://v7.kiryuu.to/wp-json/wp/v2/taxonomies/genre"
+                }
+              ],
+              "wp:post_type": [
+                {
+                  "href": "https://v7.kiryuu.to/wp-json/wp/v2/manga?genre=3"
+                }
+              ],
+              "curies": [
+                {
+                  "name": "wp",
+                  "href": "https://api.w.org/{rel}",
+                  "templated": true
+                }
+              ]
+            }
+          },
+          {
+            "id": 11,
+            "link": "https://v7.kiryuu.to/genre/drama/",
+            "name": "Drama",
+            "slug": "drama",
+            "taxonomy": "genre",
+            "_links": {
+              "self": [
+                {
+                  "href": "https://v7.kiryuu.to/wp-json/wp/v2/genre/11",
+                  "targetHints": {
+                    "allow": [
+                      "GET"
+                    ]
+                  }
+                }
+              ],
+              "collection": [
+                {
+                  "href": "https://v7.kiryuu.to/wp-json/wp/v2/genre"
+                }
+              ],
+              "about": [
+                {
+                  "href": "https://v7.kiryuu.to/wp-json/wp/v2/taxonomies/genre"
+                }
+              ],
+              "wp:post_type": [
+                {
+                  "href": "https://v7.kiryuu.to/wp-json/wp/v2/manga?genre=11"
+                }
+              ],
+              "curies": [
+                {
+                  "name": "wp",
+                  "href": "https://api.w.org/{rel}",
+                  "templated": true
+                }
+              ]
+            }
+          },
+          {
+            "id": 4,
+            "link": "https://v7.kiryuu.to/genre/fantasy/",
+            "name": "Fantasy",
+            "slug": "fantasy",
+            "taxonomy": "genre",
+            "_links": {
+              "self": [
+                {
+                  "href": "https://v7.kiryuu.to/wp-json/wp/v2/genre/4",
+                  "targetHints": {
+                    "allow": [
+                      "GET"
+                    ]
+                  }
+                }
+              ],
+              "collection": [
+                {
+                  "href": "https://v7.kiryuu.to/wp-json/wp/v2/genre"
+                }
+              ],
+              "about": [
+                {
+                  "href": "https://v7.kiryuu.to/wp-json/wp/v2/taxonomies/genre"
+                }
+              ],
+              "wp:post_type": [
+                {
+                  "href": "https://v7.kiryuu.to/wp-json/wp/v2/manga?genre=4"
+                }
+              ],
+              "curies": [
+                {
+                  "name": "wp",
+                  "href": "https://api.w.org/{rel}",
+                  "templated": true
+                }
+              ]
+            }
+          },
+          {
+            "id": 5,
+            "link": "https://v7.kiryuu.to/genre/shounen/",
+            "name": "Shounen",
+            "slug": "shounen",
+            "taxonomy": "genre",
+            "_links": {
+              "self": [
+                {
+                  "href": "https://v7.kiryuu.to/wp-json/wp/v2/genre/5",
+                  "targetHints": {
+                    "allow": [
+                      "GET"
+                    ]
+                  }
+                }
+              ],
+              "collection": [
+                {
+                  "href": "https://v7.kiryuu.to/wp-json/wp/v2/genre"
+                }
+              ],
+              "about": [
+                {
+                  "href": "https://v7.kiryuu.to/wp-json/wp/v2/taxonomies/genre"
+                }
+              ],
+              "wp:post_type": [
+                {
+                  "href": "https://v7.kiryuu.to/wp-json/wp/v2/manga?genre=5"
+                }
+              ],
+              "curies": [
+                {
+                  "name": "wp",
+                  "href": "https://api.w.org/{rel}",
+                  "templated": true
+                }
+              ]
+            }
+          },
+          {
+            "id": 3613,
+            "link": "https://v7.kiryuu.to/genre/super-power/",
+            "name": "Super Power",
+            "slug": "super-power",
+            "taxonomy": "genre",
+            "_links": {
+              "self": [
+                {
+                  "href": "https://v7.kiryuu.to/wp-json/wp/v2/genre/3613",
+                  "targetHints": {
+                    "allow": [
+                      "GET"
+                    ]
+                  }
+                }
+              ],
+              "collection": [
+                {
+                  "href": "https://v7.kiryuu.to/wp-json/wp/v2/genre"
+                }
+              ],
+              "about": [
+                {
+                  "href": "https://v7.kiryuu.to/wp-json/wp/v2/taxonomies/genre"
+                }
+              ],
+              "wp:post_type": [
+                {
+                  "href": "https://v7.kiryuu.to/wp-json/wp/v2/manga?genre=3613"
+                }
+              ],
+              "curies": [
+                {
+                  "name": "wp",
+                  "href": "https://api.w.org/{rel}",
+                  "templated": true
+                }
+              ]
+            }
+          }
+        ],
+        [
+          {
+            "id": 14061,
+            "link": "https://v7.kiryuu.to/series-author/chugong/",
+            "name": "Chugong",
+            "slug": "chugong",
+            "taxonomy": "series-author",
+            "_links": {
+              "self": [
+                {
+                  "href": "https://v7.kiryuu.to/wp-json/wp/v2/series-author/14061",
+                  "targetHints": {
+                    "allow": [
+                      "GET"
+                    ]
+                  }
+                }
+              ],
+              "collection": [
+                {
+                  "href": "https://v7.kiryuu.to/wp-json/wp/v2/series-author"
+                }
+              ],
+              "about": [
+                {
+                  "href": "https://v7.kiryuu.to/wp-json/wp/v2/taxonomies/series-author"
+                }
+              ],
+              "wp:post_type": [
+                {
+                  "href": "https://v7.kiryuu.to/wp-json/wp/v2/manga?series-author=14061"
+                }
+              ],
+              "curies": [
+                {
+                  "name": "wp",
+                  "href": "https://api.w.org/{rel}",
+                  "templated": true
+                }
+              ]
+            }
+          },
+          {
+            "id": 14062,
+            "link": "https://v7.kiryuu.to/series-author/h-goon/",
+            "name": "H-goon",
+            "slug": "h-goon",
+            "taxonomy": "series-author",
+            "_links": {
+              "self": [
+                {
+                  "href": "https://v7.kiryuu.to/wp-json/wp/v2/series-author/14062",
+                  "targetHints": {
+                    "allow": [
+                      "GET"
+                    ]
+                  }
+                }
+              ],
+              "collection": [
+                {
+                  "href": "https://v7.kiryuu.to/wp-json/wp/v2/series-author"
+                }
+              ],
+              "about": [
+                {
+                  "href": "https://v7.kiryuu.to/wp-json/wp/v2/taxonomies/series-author"
+                }
+              ],
+              "wp:post_type": [
+                {
+                  "href": "https://v7.kiryuu.to/wp-json/wp/v2/manga?series-author=14062"
+                }
+              ],
+              "curies": [
+                {
+                  "name": "wp",
+                  "href": "https://api.w.org/{rel}",
+                  "templated": true
+                }
+              ]
+            }
+          },
+          {
+            "id": 14063,
+            "link": "https://v7.kiryuu.to/series-author/ki-soryeong/",
+            "name": "KI Soryeong",
+            "slug": "ki-soryeong",
+            "taxonomy": "series-author",
+            "_links": {
+              "self": [
+                {
+                  "href": "https://v7.kiryuu.to/wp-json/wp/v2/series-author/14063",
+                  "targetHints": {
+                    "allow": [
+                      "GET"
+                    ]
+                  }
+                }
+              ],
+              "collection": [
+                {
+                  "href": "https://v7.kiryuu.to/wp-json/wp/v2/series-author"
+                }
+              ],
+              "about": [
+                {
+                  "href": "https://v7.kiryuu.to/wp-json/wp/v2/taxonomies/series-author"
+                }
+              ],
+              "wp:post_type": [
+                {
+                  "href": "https://v7.kiryuu.to/wp-json/wp/v2/manga?series-author=14063"
+                }
+              ],
+              "curies": [
+                {
+                  "name": "wp",
+                  "href": "https://api.w.org/{rel}",
+                  "templated": true
+                }
+              ]
+            }
+          }
+        ],
+        [
+          {
+            "id": 14064,
+            "link": "https://v7.kiryuu.to/artist/jang-seong-rak-redice-studio/",
+            "name": "JANG Seong-rak (redice studio)",
+            "slug": "jang-seong-rak-redice-studio",
+            "taxonomy": "artist",
+            "_links": {
+              "self": [
+                {
+                  "href": "https://v7.kiryuu.to/wp-json/wp/v2/artist/14064",
+                  "targetHints": {
+                    "allow": [
+                      "GET"
+                    ]
+                  }
+                }
+              ],
+              "collection": [
+                {
+                  "href": "https://v7.kiryuu.to/wp-json/wp/v2/artist"
+                }
+              ],
+              "about": [
+                {
+                  "href": "https://v7.kiryuu.to/wp-json/wp/v2/taxonomies/artist"
+                }
+              ],
+              "wp:post_type": [
+                {
+                  "href": "https://v7.kiryuu.to/wp-json/wp/v2/manga?artist=14064"
+                }
+              ],
+              "curies": [
+                {
+                  "name": "wp",
+                  "href": "https://api.w.org/{rel}",
+                  "templated": true
+                }
+              ]
+            }
+          },
+          {
+            "id": 10323,
+            "link": "https://v7.kiryuu.to/artist/redice-studio/",
+            "name": "Redice Studio",
+            "slug": "redice-studio",
+            "taxonomy": "artist",
+            "_links": {
+              "self": [
+                {
+                  "href": "https://v7.kiryuu.to/wp-json/wp/v2/artist/10323",
+                  "targetHints": {
+                    "allow": [
+                      "GET"
+                    ]
+                  }
+                }
+              ],
+              "collection": [
+                {
+                  "href": "https://v7.kiryuu.to/wp-json/wp/v2/artist"
+                }
+              ],
+              "about": [
+                {
+                  "href": "https://v7.kiryuu.to/wp-json/wp/v2/taxonomies/artist"
+                }
+              ],
+              "wp:post_type": [
+                {
+                  "href": "https://v7.kiryuu.to/wp-json/wp/v2/manga?artist=10323"
+                }
+              ],
+              "curies": [
+                {
+                  "name": "wp",
+                  "href": "https://api.w.org/{rel}",
+                  "templated": true
+                }
+              ]
+            }
+          }
+        ]
+      ]
+    }
+  }
+]

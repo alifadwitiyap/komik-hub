@@ -1,0 +1,11 @@
+# Build Rust di host ini butuh penyesuaian khusus — lihat `scripts/build.sh`.
+#
+# Masalah: wrapper terminal Hermes menyuntik TMP/TEMP berbentuk RELATIF
+# (mis. "C:\d\project\komiku-server\src\.hermes-tmp.8TIVU9") ke proses anak.
+# Path itu tidak pernah ada, jadi link.exe selalu gagal LNK1104 — bukan bug kode.
+#
+# Solusi: link.exe dibungkus `linkw.bat` (path absolut di bawah) yang memaksa
+# TMP absolut ("C:\rusttmp") sebelum memanggil linker asli. Khusus build di
+# host ini; di Linux/macOS key `linker` ini diabaikan.
+[target.x86_64-pc-windows-msvc]
+linker = "D:\\project\\komiku-server\\linkw.bat"

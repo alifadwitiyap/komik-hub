@@ -1,0 +1,3351 @@
+{
+  "component": "Manga/Index",
+  "props": {
+    "errors": {},
+    "auth": {
+      "user": null
+    },
+    "flash": {
+      "success": null,
+      "error": null
+    },
+    "isImpersonating": false,
+    "siteSettings": {
+      "site_name": "Mangaku",
+      "site_slug": "anime",
+      "favicon": "/storage/settings/nf7ljg2QLYQEDXp7Mg0O31bVKcFIJSLgEmRkZpRM.png",
+      "logo_icon": "sparkles",
+      "logo_color": "#3b82f6",
+      "footer_description": "Mangaku tempat baca komik, manga, manhwa, manhua, novel, serta anime subtitle Indonesia dengan update chapter dan episode terbaru setiap hari. Temukan cerita seru dari berbagai genre populer seperti action, romance, fantasy, isekai, comedy, adventure, mystery, dan drama. Nikmati kualitas gambar yang optimal, proses pemuatan yang cepat, serta antarmuka yang nyaman untuk digunakan kapan saja melalui desktop maupun smartphone.",
+      "footer_copyright": "",
+      "footer_credit": "Dibuat dengan ❤ Mangaku",
+      "nav_links": [
+        {
+          "label": "Beranda",
+          "href": "/"
+        },
+        {
+          "label": "Ingat Selalu Mangaku.lol",
+          "href": "/"
+        }
+      ],
+      "legal_links": [
+        {
+          "label": "Terms of Service",
+          "href": "/terms"
+        },
+        {
+          "label": "Privacy Policy",
+          "href": "/privacy"
+        },
+        {
+          "label": "DMCA",
+          "href": "/dmca"
+        },
+        {
+          "label": "Kontak Kami",
+          "href": "/contact"
+        }
+      ],
+      "social_facebook": "",
+      "social_twitter": "",
+      "social_instagram": "",
+      "show_visitor_stats": false,
+      "discord_enabled": false,
+      "discord_url": "https://discord.gg/u7D9BPtmS",
+      "discord_title": "Join Our Discord",
+      "discord_description": "Bergabunglah dengan server Discord kami untuk update terbaru, diskusi anime, dan dukungan langsung dari tim.",
+      "google_login_enabled": true,
+      "google_client_id": "671135248891-oun3nmd1gqhpea4mqujj0hm51p85gm30.apps.googleusercontent.com",
+      "google_client_secret": "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",
+      "logo_image": null,
+      "hero_slider_enabled": false,
+      "error_404_image": "/storage/settings/XFx62aLs5z2x46gBmWQ8WcOBc0G7E89E9wfEPxlw.png",
+      "footer_image": "/storage/settings/VgZcJXiRl6n5yB4eGyRJwqDjy6UCwhdoB69Lmzf4.png",
+      "komiku_url": "https://komiku.org",
+      "kanna_api_url": "https://api.satulagi.my.id",
+      "novel_source_domain": "https://novel.kiryuuid.net",
+      "novel_api_url": "https://novel.kiryuuid.net/wp-json/kiryuu/v1",
+      "novel_cover_hotlink": true,
+      "novel_chapter_mode": "live_api",
+      "site_tagline": "Streaming Anime"
+    },
+    "og": {
+      "title": "Mangaku",
+      "description": "Nonton anime streaming subtitle Indonesia terlengkap dan terupdate setiap hari.",
+      "image": null,
+      "url": "https://mangaku.lol/manga",
+      "type": "website"
+    },
+    "pendingReports": {
+      "count": 0,
+      "recent": []
+    },
+    "ads": [],
+    "mangas": {
+      "current_page": 1,
+      "data": [
+        {
+          "id": 2165,
+          "title": "Batsu Harem",
+          "slug": "batsu-harembatsu-harem",
+          "synopsis": "Batsu Harem mengikuti kisah seorang pria muda yang secara tak terduga terlibat dalam situasi di mana ia dikelilingi oleh banyak wanita dengan kepribadian yang berbeda-beda. Konflik dan dinamika sosial muncul saat ia mencoba memahami perasaannya sendiri dan hubungan yang berkembang antara mereka. \nCerita berkembang dengan memperlihatkan bagaimana protagonis menghadapi tantangan dan dilema emosional sekaligus tumbuh dan belajar tentang pentingnya kejujuran serta pengertian dalam hubungan interpersonal yang rumit.",
+          "status": "Ongoing",
+          "source_url": "https://komiku.org/manga/batsu-hare/",
+          "poster": "https://thumbnail.komiku.org/uploads/manga/batsu-hare/manga_thumbnail-Manga-Batsu-Hare.jpg?w=500",
+          "type": "Manga",
+          "author": "-",
+          "artist": "-",
+          "is_featured": 0,
+          "rating": "10.0",
+          "release_year": 2026,
+          "views_count": 180469,
+          "created_at": "2026-04-11T00:00:08.000000Z",
+          "updated_at": "2026-10-13T12:37:15.000000Z",
+          "genres": [
+            {
+              "id": 3,
+              "name": "Comedy",
+              "slug": "comedy",
+              "icon": "😂",
+              "created_at": "2026-03-23T06:39:14.000000Z",
+              "updated_at": "2026-03-23T06:39:14.000000Z",
+              "pivot": {
+                "manga_id": 2165,
+                "genre_id": 3
+              }
+            },
+            {
+              "id": 4,
+              "name": "Drama",
+              "slug": "drama",
+              "icon": "🎭",
+              "created_at": "2026-03-23T06:39:14.000000Z",
+              "updated_at": "2026-03-23T06:39:14.000000Z",
+              "pivot": {
+                "manga_id": 2165,
+                "genre_id": 4
+              }
+            },
+            {
+              "id": 5,
+              "name": "Ecchi",
+              "slug": "ecchi",
+              "icon": "🔞",
+              "created_at": "2026-03-23T06:39:14.000000Z",
+              "updated_at": "2026-03-23T06:39:14.000000Z",
+              "pivot": {
+                "manga_id": 2165,
+                "genre_id": 5
+              }
+            },
+            {
+              "id": 34,
+              "name": "Harem",
+              "slug": "harem",
+              "icon": null,
+              "created_at": "2026-03-23T15:31:50.000000Z",
+              "updated_at": "2026-03-23T15:31:50.000000Z",
+              "pivot": {
+                "manga_id": 2165,
+                "genre_id": 34
+              }
+            },
+            {
+              "id": 13,
+              "name": "Romance",
+              "slug": "romance",
+              "icon": "❤️",
+              "created_at": "2026-03-23T06:39:14.000000Z",
+              "updated_at": "2026-03-23T06:39:14.000000Z",
+              "pivot": {
+                "manga_id": 2165,
+                "genre_id": 13
+              }
+            },
+            {
+              "id": 25,
+              "name": "Seinen",
+              "slug": "seinen",
+              "icon": null,
+              "created_at": "2026-03-23T08:31:28.000000Z",
+              "updated_at": "2026-03-23T08:31:28.000000Z",
+              "pivot": {
+                "manga_id": 2165,
+                "genre_id": 25
+              }
+            }
+          ],
+          "last_chapter": {
+            "id": 404866,
+            "manga_id": 2165,
+            "title": "Chapter 210",
+            "slug": "chapter-210",
+            "chapter_number": 210,
+            "source_url": "https://komiku.org/batsu-harem-chapter-210/",
+            "content": null,
+            "views_count": 989,
+            "created_at": "2026-09-21T08:04:17.000000Z",
+            "updated_at": "2026-10-13T12:37:15.000000Z"
+          }
+        },
+        {
+          "id": 239,
+          "title": "One Piece",
+          "slug": "one-piece",
+          "synopsis": "One Piece mengikuti petualangan Monkey D. Luffy, seorang pemuda yang bermimpi menjadi Raja Bajak Laut dengan menemukan harta karun legendaris bernama One Piece. Dalam perjalanannya, Luffy membentuk kru yang terdiri dari berbagai karakter unik dan kuat, masing-masing memiliki tujuan dan impian mereka sendiri. Bersama-sama, mereka menghadapi berbagai rintangan, musuh tangguh, dan misteri dunia yang luas. Cerita ini memberikan gambaran tentang persahabatan, keberanian, dan semangat pantang menyerah saat para karakter tidak hanya berjuang untuk kekayaan atau kekuasaan, tetapi juga untuk melindungi nilai-nilai yang mereka percayai. One Piece juga mengeksplorasi dunia yang penuh dengan kerajaan, bajak laut, dan Pemerintah Dunia yang berusaha mengendalikan lautan.",
+          "status": "Ongoing",
+          "source_url": "https://komiku.org/manga/komik-one-piece-indo/",
+          "poster": "https://thumbnail.komiku.org/uploads/manga/komik-one-piece-indo/manga_thumbnail-Komik-One-Piece.jpg?w=500",
+          "type": "Manga",
+          "author": "Eiichiro Oda",
+          "artist": "-",
+          "is_featured": 0,
+          "rating": "10.0",
+          "release_year": 2026,
+          "views_count": 110176,
+          "created_at": "2026-03-30T05:31:45.000000Z",
+          "updated_at": "2026-10-13T12:39:17.000000Z",
+          "genres": [
+            {
+              "id": 1,
+              "name": "Action",
+              "slug": "action",
+              "icon": "⚔️",
+              "created_at": "2026-03-23T06:39:14.000000Z",
+              "updated_at": "2026-03-23T06:39:14.000000Z",
+              "pivot": {
+                "manga_id": 239,
+                "genre_id": 1
+              }
+            },
+            {
+              "id": 2,
+              "name": "Adventure",
+              "slug": "adventure",
+              "icon": "🗺️",
+              "created_at": "2026-03-23T06:39:14.000000Z",
+              "updated_at": "2026-03-23T06:39:14.000000Z",
+              "pivot": {
+                "manga_id": 239,
+                "genre_id": 2
+              }
+            },
+            {
+              "id": 3,
+              "name": "Comedy",
+              "slug": "comedy",
+              "icon": "😂",
+              "created_at": "2026-03-23T06:39:14.000000Z",
+              "updated_at": "2026-03-23T06:39:14.000000Z",
+              "pivot": {
+                "manga_id": 239,
+                "genre_id": 3
+              }
+            },
+            {
+              "id": 6,
+              "name": "Fantasy",
+              "slug": "fantasy",
+              "icon": "🪄",
+              "created_at": "2026-03-23T06:39:14.000000Z",
+              "updated_at": "2026-03-23T06:39:14.000000Z",
+              "pivot": {
+                "manga_id": 239,
+                "genre_id": 6
+              }
+            },
+            {
+              "id": 27,
+              "name": "Shounen",
+              "slug": "shounen",
+              "icon": null,
+              "created_at": "2026-03-23T08:33:13.000000Z",
+              "updated_at": "2026-03-23T08:33:13.000000Z",
+              "pivot": {
+                "manga_id": 239,
+                "genre_id": 27
+              }
+            },
+            {
+              "id": 17,
+              "name": "Supernatural",
+              "slug": "supernatural",
+              "icon": "🔮",
+              "created_at": "2026-03-23T06:39:14.000000Z",
+              "updated_at": "2026-03-23T06:39:14.000000Z",
+              "pivot": {
+                "manga_id": 239,
+                "genre_id": 17
+              }
+            }
+          ],
+          "last_chapter": {
+            "id": 405681,
+            "manga_id": 239,
+            "title": "Chapter 1194",
+            "slug": "chapter-1194",
+            "chapter_number": 1194,
+            "source_url": "https://komiku.org/one-piece-chapter-1194/",
+            "content": null,
+            "views_count": 2905,
+            "created_at": "2026-09-26T01:00:22.000000Z",
+            "updated_at": "2026-10-13T12:31:24.000000Z"
+          }
+        },
+        {
+          "id": 2317,
+          "title": "Martial Peak Part 1",
+          "slug": "martial-peak-part-1martial-peak-part-1",
+          "synopsis": "Martial Peak bercerita tentang seorang pemuda bernama Yang Kai yang awalnya hidup sederhana dan tidak memiliki bakat khusus dalam seni bela diri. Namun, tekad dan semangatnya yang kuat membawanya menempuh perjalanan panjang untuk menguasai berbagai teknik bela diri dan menjadi petarung terkuat di dunia. Dalam perjalanannya, Yang Kai menghadapi berbagai musuh kuat dan menemukan rahasia-rahasia kuno yang mengubah arah hidupnya.\n\nSelain bertarung, Yang Kai juga membangun jaringan aliansi dan bertemu dengan banyak karakter penting yang membantu dan menghalangi langkahnya. Konflik internal dan eksternal terus mewarnai perjuangannya untuk mencapai puncak kekuatan. Kisah ini penuh dengan aksi, strategi, dan pertumbuhan karakter yang membuat pembaca terus penasaran akan perkembangan selanjutnya.",
+          "status": "Ongoing",
+          "source_url": "https://komiku.org/manga/martial-peak/",
+          "poster": "https://thumbnail.komiku.org/uploads/manga/martial-peak/manga_thumbnail-Manhua-Martial-Peak.jpg?w=500",
+          "type": "Manhua",
+          "author": "-",
+          "artist": "-",
+          "is_featured": 0,
+          "rating": "9.0",
+          "release_year": 2026,
+          "views_count": 63048,
+          "created_at": "2026-04-13T21:30:17.000000Z",
+          "updated_at": "2026-10-13T12:17:20.000000Z",
+          "genres": [
+            {
+              "id": 1,
+              "name": "Action",
+              "slug": "action",
+              "icon": "⚔️",
+              "created_at": "2026-03-23T06:39:14.000000Z",
+              "updated_at": "2026-03-23T06:39:14.000000Z",
+              "pivot": {
+                "manga_id": 2317,
+                "genre_id": 1
+              }
+            },
+            {
+              "id": 2,
+              "name": "Adventure",
+              "slug": "adventure",
+              "icon": "🗺️",
+              "created_at": "2026-03-23T06:39:14.000000Z",
+              "updated_at": "2026-03-23T06:39:14.000000Z",
+              "pivot": {
+                "manga_id": 2317,
+                "genre_id": 2
+              }
+            },
+            {
+              "id": 4,
+              "name": "Drama",
+              "slug": "drama",
+              "icon": "🎭",
+              "created_at": "2026-03-23T06:39:14.000000Z",
+              "updated_at": "2026-03-23T06:39:14.000000Z",
+              "pivot": {
+                "manga_id": 2317,
+                "genre_id": 4
+              }
+            },
+            {
+              "id": 6,
+              "name": "Fantasy",
+              "slug": "fantasy",
+              "icon": "🪄",
+              "created_at": "2026-03-23T06:39:14.000000Z",
+              "updated_at": "2026-03-23T06:39:14.000000Z",
+              "pivot": {
+                "manga_id": 2317,
+                "genre_id": 6
+              }
+            },
+            {
+              "id": 36,
+              "name": "Historical",
+              "slug": "historical",
+              "icon": null,
+              "created_at": "2026-03-23T15:34:25.000000Z",
+              "updated_at": "2026-03-23T15:34:25.000000Z",
+              "pivot": {
+                "manga_id": 2317,
+                "genre_id": 36
+              }
+            },
+            {
+              "id": 26,
+              "name": "Martial Arts",
+              "slug": "martial-arts",
+              "icon": null,
+              "created_at": "2026-03-23T08:31:53.000000Z",
+              "updated_at": "2026-03-23T08:31:53.000000Z",
+              "pivot": {
+                "manga_id": 2317,
+                "genre_id": 26
+              }
+            },
+            {
+              "id": 29,
+              "name": "Tragedy",
+              "slug": "tragedy",
+              "icon": null,
+              "created_at": "2026-03-23T08:35:38.000000Z",
+              "updated_at": "2026-03-23T08:35:38.000000Z",
+              "pivot": {
+                "manga_id": 2317,
+                "genre_id": 29
+              }
+            }
+          ],
+          "last_chapter": {
+            "id": 179965,
+            "manga_id": 2317,
+            "title": "Chapter 2000",
+            "slug": "chapter-2000",
+            "chapter_number": 2000,
+            "source_url": "https://komiku.org/martial-peak-chapter-2000/",
+            "content": null,
+            "views_count": 607,
+            "created_at": "2026-04-13T21:30:18.000000Z",
+            "updated_at": "2026-10-13T07:28:44.000000Z"
+          }
+        },
+        {
+          "id": 2300,
+          "title": "Magic Emperor",
+          "slug": "magic-emperormagic-emperor",
+          "synopsis": "Magic Emperor menceritakan tentang kisah seorang pemuda yang terlahir kembali dengan keahlian sihir tingkat tinggi di dunia fantasi yang dipenuhi dengan konflik dan intrik politik. Dengan kekuatan sihir yang luar biasa, ia berusaha membangun kekaisaran yang damai sekaligus menghadapi berbagai ancaman baik dari dalam maupun luar kerajaannya.\n\nDalam perjalanannya, sang Kaisar tidak hanya bertarung menghadapi musuh, tetapi juga menggali misteri masa lalu serta berusaha memahami arti kekuasaan dan tanggung jawab. Cerita ini penuh dengan aksi epik, strategi cerdas, dan pengembangan karakter yang dalam, memperlihatkan bagaimana ia tumbuh menjadi pemimpin sejati.",
+          "status": "Ongoing",
+          "source_url": "https://komiku.org/manga/magic-emperor/",
+          "poster": "https://thumbnail.komiku.org/uploads/manga/magic-emperor/manga_thumbnail-Komik-Magic-Emperor.jpg?w=500",
+          "type": "Manhua",
+          "author": "-",
+          "artist": "-",
+          "is_featured": 0,
+          "rating": "9.5",
+          "release_year": 2026,
+          "views_count": 61913,
+          "created_at": "2026-04-13T20:05:48.000000Z",
+          "updated_at": "2026-10-13T12:34:57.000000Z",
+          "genres": [
+            {
+              "id": 1,
+              "name": "Action",
+              "slug": "action",
+              "icon": "⚔️",
+              "created_at": "2026-03-23T06:39:14.000000Z",
+              "updated_at": "2026-03-23T06:39:14.000000Z",
+              "pivot": {
+                "manga_id": 2300,
+                "genre_id": 1
+              }
+            },
+            {
+              "id": 2,
+              "name": "Adventure",
+              "slug": "adventure",
+              "icon": "🗺️",
+              "created_at": "2026-03-23T06:39:14.000000Z",
+              "updated_at": "2026-03-23T06:39:14.000000Z",
+              "pivot": {
+                "manga_id": 2300,
+                "genre_id": 2
+              }
+            },
+            {
+              "id": 6,
+              "name": "Fantasy",
+              "slug": "fantasy",
+              "icon": "🪄",
+              "created_at": "2026-03-23T06:39:14.000000Z",
+              "updated_at": "2026-03-23T06:39:14.000000Z",
+              "pivot": {
+                "manga_id": 2300,
+                "genre_id": 6
+              }
+            },
+            {
+              "id": 39,
+              "name": "Magic",
+              "slug": "magic",
+              "icon": null,
+              "created_at": "2026-03-23T15:40:23.000000Z",
+              "updated_at": "2026-03-23T15:40:23.000000Z",
+              "pivot": {
+                "manga_id": 2300,
+                "genre_id": 39
+              }
+            },
+            {
+              "id": 26,
+              "name": "Martial Arts",
+              "slug": "martial-arts",
+              "icon": null,
+              "created_at": "2026-03-23T08:31:53.000000Z",
+              "updated_at": "2026-03-23T08:31:53.000000Z",
+              "pivot": {
+                "manga_id": 2300,
+                "genre_id": 26
+              }
+            },
+            {
+              "id": 17,
+              "name": "Supernatural",
+              "slug": "supernatural",
+              "icon": "🔮",
+              "created_at": "2026-03-23T06:39:14.000000Z",
+              "updated_at": "2026-03-23T06:39:14.000000Z",
+              "pivot": {
+                "manga_id": 2300,
+                "genre_id": 17
+              }
+            }
+          ],
+          "last_chapter": {
+            "id": 372061,
+            "manga_id": 2300,
+            "title": "Chapter 855",
+            "slug": "chapter-855",
+            "chapter_number": 855,
+            "source_url": "https://komiku.org/magic-emperor-chapter-855/",
+            "content": null,
+            "views_count": 3945,
+            "created_at": "2026-05-15T10:33:02.000000Z",
+            "updated_at": "2026-10-13T12:06:43.000000Z"
+          }
+        },
+        {
+          "id": 2029,
+          "title": "I Randomly Have A New Career Every Week",
+          "slug": "i-randomly-have-a-new-career-every-week",
+          "synopsis": "Komik ini mengisahkan tentang seorang karakter yang secara ajaib mendapatkan karier baru setiap minggu. Setiap perubahan membawa tantangan dan pengalaman unik yang harus dihadapi, membuat perjalanan hidupnya penuh warna dan pelajaran berharga. \n\nDi setiap profesi baru yang dicoba, tokoh utama menemukan sisi berbeda dari dirinya sekaligus dunia yang luas di sekitar. Perubahan yang cepat dan dinamis ini memaksa dia untuk cepat beradaptasi dan menemukan jati dirinya dalam berbagai peran yang berbeda.",
+          "status": "Ongoing",
+          "source_url": "https://komiku.org/manga/i-randomly-have-a-new-career-every-week/",
+          "poster": "https://thumbnail.komiku.org/uploads/manga/i-randomly-have-a-new-career-every-week/manga_thumbnail-Manhua-I-Randomly-Have-A-New-Career-Every-Week.jpg?w=500",
+          "type": "Manhua",
+          "author": "Yoo Han",
+          "artist": "-",
+          "is_featured": 0,
+          "rating": "9.0",
+          "release_year": 2026,
+          "views_count": 56190,
+          "created_at": "2026-04-03T05:41:55.000000Z",
+          "updated_at": "2026-10-13T11:59:51.000000Z",
+          "genres": [
+            {
+              "id": 4,
+              "name": "Drama",
+              "slug": "drama",
+              "icon": "🎭",
+              "created_at": "2026-03-23T06:39:14.000000Z",
+              "updated_at": "2026-03-23T06:39:14.000000Z",
+              "pivot": {
+                "manga_id": 2029,
+                "genre_id": 4
+              }
+            },
+            {
+              "id": 6,
+              "name": "Fantasy",
+              "slug": "fantasy",
+              "icon": "🪄",
+              "created_at": "2026-03-23T06:39:14.000000Z",
+              "updated_at": "2026-03-23T06:39:14.000000Z",
+              "pivot": {
+                "manga_id": 2029,
+                "genre_id": 6
+              }
+            },
+            {
+              "id": 34,
+              "name": "Harem",
+              "slug": "harem",
+              "icon": null,
+              "created_at": "2026-03-23T15:31:50.000000Z",
+              "updated_at": "2026-03-23T15:31:50.000000Z",
+              "pivot": {
+                "manga_id": 2029,
+                "genre_id": 34
+              }
+            },
+            {
+              "id": 13,
+              "name": "Romance",
+              "slug": "romance",
+              "icon": "❤️",
+              "created_at": "2026-03-23T06:39:14.000000Z",
+              "updated_at": "2026-03-23T06:39:14.000000Z",
+              "pivot": {
+                "manga_id": 2029,
+                "genre_id": 13
+              }
+            },
+            {
+              "id": 27,
+              "name": "Shounen",
+              "slug": "shounen",
+              "icon": null,
+              "created_at": "2026-03-23T08:33:13.000000Z",
+              "updated_at": "2026-03-23T08:33:13.000000Z",
+              "pivot": {
+                "manga_id": 2029,
+                "genre_id": 27
+              }
+            }
+          ],
+          "last_chapter": {
+            "id": 403232,
+            "manga_id": 2029,
+            "title": "Chapter 935",
+            "slug": "chapter-935",
+            "chapter_number": 935,
+            "source_url": "https://komiku.org/i-randomly-have-a-new-career-every-week-chapter-935/",
+            "content": null,
+            "views_count": 33,
+            "created_at": "2026-09-13T20:11:58.000000Z",
+            "updated_at": "2026-10-11T12:00:18.000000Z"
+          }
+        },
+        {
+          "id": 2318,
+          "title": "Martial Peak Part 2",
+          "slug": "martial-peak-part-2martial-peak-part-2",
+          "synopsis": "Martial Peak Bagian 2 melanjutkan perjalanan Bai Xiaochun dalam dunia bela diri penuh tantangan dan keajaiban. Setelah melewati berbagai rintangan di bagian pertama, sekarang dia menghadapi musuh yang lebih kuat dan misteri yang semakin dalam, sambil terus mencari puncak kekuatan tertinggi.\n\nDalam perjalanannya, Bai Xiaochun juga menemukan sahabat baru serta sekutu yang tak terduga. Namun, di balik pertarungan dan petualangan yang menegangkan, tersimpan rahasia besar yang dapat mengubah nasib dunia bela diri selamanya.",
+          "status": "Ongoing",
+          "source_url": "https://komiku.org/manga/martial-peak-part-2/",
+          "poster": "https://thumbnail.komiku.org/uploads/manga/martial-peak-part-2/manga_thumbnail-Manhua-Martial-Peak-Part-2.jpg?w=500",
+          "type": "Manhua",
+          "author": "-",
+          "artist": "-",
+          "is_featured": 0,
+          "rating": "9.0",
+          "release_year": 2026,
+          "views_count": 49038,
+          "created_at": "2026-04-13T21:30:28.000000Z",
+          "updated_at": "2026-10-13T12:25:54.000000Z",
+          "genres": [
+            {
+              "id": 1,
+              "name": "Action",
+              "slug": "action",
+              "icon": "⚔️",
+              "created_at": "2026-03-23T06:39:14.000000Z",
+              "updated_at": "2026-03-23T06:39:14.000000Z",
+              "pivot": {
+                "manga_id": 2318,
+                "genre_id": 1
+              }
+            },
+            {
+              "id": 2,
+              "name": "Adventure",
+              "slug": "adventure",
+              "icon": "🗺️",
+              "created_at": "2026-03-23T06:39:14.000000Z",
+              "updated_at": "2026-03-23T06:39:14.000000Z",
+              "pivot": {
+                "manga_id": 2318,
+                "genre_id": 2
+              }
+            },
+            {
+              "id": 3,
+              "name": "Comedy",
+              "slug": "comedy",
+              "icon": "😂",
+              "created_at": "2026-03-23T06:39:14.000000Z",
+              "updated_at": "2026-03-23T06:39:14.000000Z",
+              "pivot": {
+                "manga_id": 2318,
+                "genre_id": 3
+              }
+            },
+            {
+              "id": 6,
+              "name": "Fantasy",
+              "slug": "fantasy",
+              "icon": "🪄",
+              "created_at": "2026-03-23T06:39:14.000000Z",
+              "updated_at": "2026-03-23T06:39:14.000000Z",
+              "pivot": {
+                "manga_id": 2318,
+                "genre_id": 6
+              }
+            },
+            {
+              "id": 34,
+              "name": "Harem",
+              "slug": "harem",
+              "icon": null,
+              "created_at": "2026-03-23T15:31:50.000000Z",
+              "updated_at": "2026-03-23T15:31:50.000000Z",
+              "pivot": {
+                "manga_id": 2318,
+                "genre_id": 34
+              }
+            },
+            {
+              "id": 36,
+              "name": "Historical",
+              "slug": "historical",
+              "icon": null,
+              "created_at": "2026-03-23T15:34:25.000000Z",
+              "updated_at": "2026-03-23T15:34:25.000000Z",
+              "pivot": {
+                "manga_id": 2318,
+                "genre_id": 36
+              }
+            },
+            {
+              "id": 26,
+              "name": "Martial Arts",
+              "slug": "martial-arts",
+              "icon": null,
+              "created_at": "2026-03-23T08:31:53.000000Z",
+              "updated_at": "2026-03-23T08:31:53.000000Z",
+              "pivot": {
+                "manga_id": 2318,
+                "genre_id": 26
+              }
+            },
+            {
+              "id": 13,
+              "name": "Romance",
+              "slug": "romance",
+              "icon": "❤️",
+              "created_at": "2026-03-23T06:39:14.000000Z",
+              "updated_at": "2026-03-23T06:39:14.000000Z",
+              "pivot": {
+                "manga_id": 2318,
+                "genre_id": 13
+              }
+            },
+            {
+              "id": 27,
+              "name": "Shounen",
+              "slug": "shounen",
+              "icon": null,
+              "created_at": "2026-03-23T08:33:13.000000Z",
+              "updated_at": "2026-03-23T08:33:13.000000Z",
+              "pivot": {
+                "manga_id": 2318,
+                "genre_id": 27
+              }
+            },
+            {
+              "id": 17,
+              "name": "Supernatural",
+              "slug": "supernatural",
+              "icon": "🔮",
+              "created_at": "2026-03-23T06:39:14.000000Z",
+              "updated_at": "2026-03-23T06:39:14.000000Z",
+              "pivot": {
+                "manga_id": 2318,
+                "genre_id": 17
+              }
+            }
+          ],
+          "last_chapter": {
+            "id": 180073,
+            "manga_id": 2318,
+            "title": "Chapter 3862",
+            "slug": "chapter-3862",
+            "chapter_number": 3862,
+            "source_url": "https://komiku.org/martial-peak-part-2-chapter-3862/",
+            "content": null,
+            "views_count": 593,
+            "created_at": "2026-04-13T21:30:28.000000Z",
+            "updated_at": "2026-10-12T10:42:32.000000Z"
+          }
+        },
+        {
+          "id": 915,
+          "title": "Solo Leveling",
+          "slug": "solo-leveling",
+          "synopsis": "Di dunia di mana para pemburu bertarung melawan makhluk dari dunia lain melalui portal misterius, Sung Jinwoo adalah pemburu dengan kekuatan yang sangat lemah. Sebagai pemburu kelas terendah, ia sering dianggap tidak berguna dan sering menghadapi bahaya yang mengancam nyawanya dalam setiap misi. Namun, semuanya berubah ketika ia mendapatkan kemampuan khusus yang memungkinkannya untuk naik level secara mandiri dan menjadi semakin kuat tanpa batas.\n\nDengan kekuatannya yang terus berkembang, Jinwoo mulai mengeksplorasi berbagai dungeon berbahaya dan menghadapi monster-monster menakutkan yang bahkan tidak bisa ditaklukkan oleh pemburu lain. Perjalanannya untuk menjadi pemburu terkuat membawa banyak tantangan serta intrik, termasuk menghadapi organisasi rahasia dan ancaman yang lebih besar dari dunia lain. Kisah ini mengeksplorasi perjuangan, pengorbanan, dan perubahan Jinwoo yang luar biasa di dunia penuh ancaman tersebut.",
+          "status": "End",
+          "source_url": "https://komiku.org/manga/solo-leveling-id/",
+          "poster": "https://thumbnail.komiku.org/uploads/manga/solo-leveling-sub-indo/manga_thumbnail-Head-I-Alone-Leveling.png?w=500",
+          "type": "Manhwa",
+          "author": "Chugong",
+          "artist": "-",
+          "is_featured": 0,
+          "rating": "10.0",
+          "release_year": 2026,
+          "views_count": 44600,
+          "created_at": "2026-04-01T02:50:49.000000Z",
+          "updated_at": "2026-10-13T12:39:39.000000Z",
+          "genres": [
+            {
+              "id": 1,
+              "name": "Action",
+              "slug": "action",
+              "icon": "⚔️",
+              "created_at": "2026-03-23T06:39:14.000000Z",
+              "updated_at": "2026-03-23T06:39:14.000000Z",
+              "pivot": {
+                "manga_id": 915,
+                "genre_id": 1
+              }
+            },
+            {
+              "id": 2,
+              "name": "Adventure",
+              "slug": "adventure",
+              "icon": "🗺️",
+              "created_at": "2026-03-23T06:39:14.000000Z",
+              "updated_at": "2026-03-23T06:39:14.000000Z",
+              "pivot": {
+                "manga_id": 915,
+                "genre_id": 2
+              }
+            },
+            {
+              "id": 4,
+              "name": "Drama",
+              "slug": "drama",
+              "icon": "🎭",
+              "created_at": "2026-03-23T06:39:14.000000Z",
+              "updated_at": "2026-03-23T06:39:14.000000Z",
+              "pivot": {
+                "manga_id": 915,
+                "genre_id": 4
+              }
+            },
+            {
+              "id": 6,
+              "name": "Fantasy",
+              "slug": "fantasy",
+              "icon": "🪄",
+              "created_at": "2026-03-23T06:39:14.000000Z",
+              "updated_at": "2026-03-23T06:39:14.000000Z",
+              "pivot": {
+                "manga_id": 915,
+                "genre_id": 6
+              }
+            },
+            {
+              "id": 27,
+              "name": "Shounen",
+              "slug": "shounen",
+              "icon": null,
+              "created_at": "2026-03-23T08:33:13.000000Z",
+              "updated_at": "2026-03-23T08:33:13.000000Z",
+              "pivot": {
+                "manga_id": 915,
+                "genre_id": 27
+              }
+            },
+            {
+              "id": 56,
+              "name": "Super Power",
+              "slug": "super-power",
+              "icon": null,
+              "created_at": "2026-03-31T22:52:41.000000Z",
+              "updated_at": "2026-03-31T22:52:41.000000Z",
+              "pivot": {
+                "manga_id": 915,
+                "genre_id": 56
+              }
+            }
+          ],
+          "last_chapter": {
+            "id": 60961,
+            "manga_id": 915,
+            "title": "Chapter 180",
+            "slug": "chapter-180",
+            "chapter_number": 180,
+            "source_url": "https://komiku.org/solo-leveling-chapter-180/",
+            "content": null,
+            "views_count": 1728,
+            "created_at": "2026-04-01T02:50:52.000000Z",
+            "updated_at": "2026-10-13T11:49:49.000000Z"
+          }
+        },
+        {
+          "id": 2548,
+          "title": "Rebirth Of The Urban Immortal Cultivator",
+          "slug": "rebirth-of-the-urban-immortal-cultivatorrebirth-of-the-urban-immortal-cultivator",
+          "synopsis": "Cerita ini mengikuti perjalanan hidup seorang kultivator berbakat yang pernah hidup di zaman kuno dan tiba-tiba terlahir kembali di kota modern. Dengan pengetahuan dan kekuatan luar biasa dari kehidupan sebelumnya, dia bertekad untuk menaklukkan berbagai tantangan serta memperbaiki nasibnya yang dulu penuh penderitaan. \n\nDi tengah hiruk-pikuk kehidupan perkotaan, sang protagonis harus beradaptasi dengan dunia yang sangat berbeda dan menghadapi berbagai musuh yang mengancam ketenangan serta kehidupannya. Dalam prosesnya, ia mengungkap rahasia masa lalu sekaligus membangun kekuatan baru untuk menjadi sosok kultivator terkuat yang pernah ada di kota tersebut.",
+          "status": "Ongoing",
+          "source_url": "https://komiku.org/manga/rebirth-of-the-urban-immortal-cultivator/",
+          "poster": "https://thumbnail.komiku.org/uploads/manga/rebirth-of-the-urban-immortal-cultivator/manga_thumbnail-Komik-Rebirth-Of-The-Urban-Immortal-Cultivator.jpg?w=500",
+          "type": "Manhua",
+          "author": "-",
+          "artist": "-",
+          "is_featured": 0,
+          "rating": "10.0",
+          "release_year": 2026,
+          "views_count": 38405,
+          "created_at": "2026-04-13T22:13:57.000000Z",
+          "updated_at": "2026-10-12T21:35:59.000000Z",
+          "genres": [
+            {
+              "id": 1,
+              "name": "Action",
+              "slug": "action",
+              "icon": "⚔️",
+              "created_at": "2026-03-23T06:39:14.000000Z",
+              "updated_at": "2026-03-23T06:39:14.000000Z",
+              "pivot": {
+                "manga_id": 2548,
+                "genre_id": 1
+              }
+            },
+            {
+              "id": 4,
+              "name": "Drama",
+              "slug": "drama",
+              "icon": "🎭",
+              "created_at": "2026-03-23T06:39:14.000000Z",
+              "updated_at": "2026-03-23T06:39:14.000000Z",
+              "pivot": {
+                "manga_id": 2548,
+                "genre_id": 4
+              }
+            },
+            {
+              "id": 6,
+              "name": "Fantasy",
+              "slug": "fantasy",
+              "icon": "🪄",
+              "created_at": "2026-03-23T06:39:14.000000Z",
+              "updated_at": "2026-03-23T06:39:14.000000Z",
+              "pivot": {
+                "manga_id": 2548,
+                "genre_id": 6
+              }
+            },
+            {
+              "id": 39,
+              "name": "Magic",
+              "slug": "magic",
+              "icon": null,
+              "created_at": "2026-03-23T15:40:23.000000Z",
+              "updated_at": "2026-03-23T15:40:23.000000Z",
+              "pivot": {
+                "manga_id": 2548,
+                "genre_id": 39
+              }
+            },
+            {
+              "id": 24,
+              "name": "School life",
+              "slug": "school-life",
+              "icon": null,
+              "created_at": "2026-03-23T08:31:28.000000Z",
+              "updated_at": "2026-03-23T08:31:28.000000Z",
+              "pivot": {
+                "manga_id": 2548,
+                "genre_id": 24
+              }
+            },
+            {
+              "id": 25,
+              "name": "Seinen",
+              "slug": "seinen",
+              "icon": null,
+              "created_at": "2026-03-23T08:31:28.000000Z",
+              "updated_at": "2026-03-23T08:31:28.000000Z",
+              "pivot": {
+                "manga_id": 2548,
+                "genre_id": 25
+              }
+            }
+          ],
+          "last_chapter": {
+            "id": 405216,
+            "manga_id": 2548,
+            "title": "Chapter 1066",
+            "slug": "chapter-1066",
+            "chapter_number": 1066,
+            "source_url": "https://komiku.org/rebirth-of-the-urban-immortal-cultivator-chapter-1066/",
+            "content": null,
+            "views_count": 7,
+            "created_at": "2026-09-23T20:10:59.000000Z",
+            "updated_at": "2026-10-12T13:18:37.000000Z"
+          }
+        },
+        {
+          "id": 1421,
+          "title": "Apotheosis",
+          "slug": "apotheosis",
+          "synopsis": "Apotheosis menceritakan perjalanan seorang pemuda yang awalnya biasa saja namun kemudian menemukan kekuatan luar biasa yang mengubah hidupnya secara drastis. Dalam prosesnya, dia harus menghadapi berbagai musuh serta tantangan yang menguji ketangguhan dan tekadnya untuk meraih puncak kekuatan sejati.\n\nCerita ini juga menggambarkan konflik batin sang tokoh utama dalam memahami arti kekuatan sejati dan tanggung jawabnya terhadap dunia. Seiring perjalanan, ia bertemu dengan berbagai karakter yang memperluas wawasannya dan membantunya mengatasi rintangan demi rintangan hingga akhirnya mencapai tingkat pencerahan tertinggi.",
+          "status": "Ongoing",
+          "source_url": "https://komiku.org/manga/apotheosis-indonesia/",
+          "poster": "https://thumbnail.komiku.org/uploads/manga/apotheosis-indonesia/manga_thumbnail-Manhua-Apotheosis.jpg?w=500",
+          "type": "Manhua",
+          "author": "San Ren Xi",
+          "artist": "-",
+          "is_featured": 0,
+          "rating": "10.0",
+          "release_year": 2026,
+          "views_count": 38028,
+          "created_at": "2026-04-02T16:13:58.000000Z",
+          "updated_at": "2026-10-13T11:56:26.000000Z",
+          "genres": [
+            {
+              "id": 1,
+              "name": "Action",
+              "slug": "action",
+              "icon": "⚔️",
+              "created_at": "2026-03-23T06:39:14.000000Z",
+              "updated_at": "2026-03-23T06:39:14.000000Z",
+              "pivot": {
+                "manga_id": 1421,
+                "genre_id": 1
+              }
+            },
+            {
+              "id": 6,
+              "name": "Fantasy",
+              "slug": "fantasy",
+              "icon": "🪄",
+              "created_at": "2026-03-23T06:39:14.000000Z",
+              "updated_at": "2026-03-23T06:39:14.000000Z",
+              "pivot": {
+                "manga_id": 1421,
+                "genre_id": 6
+              }
+            },
+            {
+              "id": 26,
+              "name": "Martial Arts",
+              "slug": "martial-arts",
+              "icon": null,
+              "created_at": "2026-03-23T08:31:53.000000Z",
+              "updated_at": "2026-03-23T08:31:53.000000Z",
+              "pivot": {
+                "manga_id": 1421,
+                "genre_id": 26
+              }
+            },
+            {
+              "id": 27,
+              "name": "Shounen",
+              "slug": "shounen",
+              "icon": null,
+              "created_at": "2026-03-23T08:33:13.000000Z",
+              "updated_at": "2026-03-23T08:33:13.000000Z",
+              "pivot": {
+                "manga_id": 1421,
+                "genre_id": 27
+              }
+            }
+          ],
+          "last_chapter": {
+            "id": 102360,
+            "manga_id": 1421,
+            "title": "Chapter 1301",
+            "slug": "chapter-1301",
+            "chapter_number": 1301,
+            "source_url": "https://komiku.org/apotheosis-chapter-1301/",
+            "content": null,
+            "views_count": 654,
+            "created_at": "2026-04-02T16:13:58.000000Z",
+            "updated_at": "2026-10-13T02:56:21.000000Z"
+          }
+        },
+        {
+          "id": 626,
+          "title": "Lookism",
+          "slug": "lookismm",
+          "synopsis": "Bercerita tentang seorang remaja bernama Park Hyung Suk yang mengalami diskriminasi karena penampilannya yang dianggap jelek. Suatu hari ia terbangun di tubuh baru yang sangat menarik dan mulai menghadapi dunia dengan identitas baru tersebut. Cerita ini mengeksplorasi bagaimana penampilan mempengaruhi perlakuan sosial dan perjuangan hyung suk untuk menemukan jati dirinya.\n\nDi dalam perjalanannya, Hyung Suk menghadapi berbagai konflik sosial mulai dari perundungan hingga masalah pertemanan dan cinta. Ia mempelajari nilai sejati dari kepribadian dan bagaimana orang lain melihat dirinya bukan hanya lewat penampilan fisik, melainkan dari sikap dan tindakan yang ia lakukan selama cerita berlangsung.",
+          "status": "Ongoing",
+          "source_url": "https://komiku.org/manga/lookism/",
+          "poster": "https://thumbnail.komiku.org/img/upload/lookism/img_683169399d3869.32259029.jpg?w=500",
+          "type": "Manhwa",
+          "author": "Park Tae-jun",
+          "artist": "-",
+          "is_featured": 0,
+          "rating": "9.0",
+          "release_year": 2026,
+          "views_count": 34502,
+          "created_at": "2026-04-01T01:41:00.000000Z",
+          "updated_at": "2026-10-13T12:15:48.000000Z",
+          "genres": [
+            {
+              "id": 1,
+              "name": "Action",
+              "slug": "action",
+              "icon": "⚔️",
+              "created_at": "2026-03-23T06:39:14.000000Z",
+              "updated_at": "2026-03-23T06:39:14.000000Z",
+              "pivot": {
+                "manga_id": 626,
+                "genre_id": 1
+              }
+            },
+            {
+              "id": 3,
+              "name": "Comedy",
+              "slug": "comedy",
+              "icon": "😂",
+              "created_at": "2026-03-23T06:39:14.000000Z",
+              "updated_at": "2026-03-23T06:39:14.000000Z",
+              "pivot": {
+                "manga_id": 626,
+                "genre_id": 3
+              }
+            },
+            {
+              "id": 4,
+              "name": "Drama",
+              "slug": "drama",
+              "icon": "🎭",
+              "created_at": "2026-03-23T06:39:14.000000Z",
+              "updated_at": "2026-03-23T06:39:14.000000Z",
+              "pivot": {
+                "manga_id": 626,
+                "genre_id": 4
+              }
+            },
+            {
+              "id": 24,
+              "name": "School life",
+              "slug": "school-life",
+              "icon": null,
+              "created_at": "2026-03-23T08:31:28.000000Z",
+              "updated_at": "2026-03-23T08:31:28.000000Z",
+              "pivot": {
+                "manga_id": 626,
+                "genre_id": 24
+              }
+            },
+            {
+              "id": 27,
+              "name": "Shounen",
+              "slug": "shounen",
+              "icon": null,
+              "created_at": "2026-03-23T08:33:13.000000Z",
+              "updated_at": "2026-03-23T08:33:13.000000Z",
+              "pivot": {
+                "manga_id": 626,
+                "genre_id": 27
+              }
+            },
+            {
+              "id": 17,
+              "name": "Supernatural",
+              "slug": "supernatural",
+              "icon": "🔮",
+              "created_at": "2026-03-23T06:39:14.000000Z",
+              "updated_at": "2026-03-23T06:39:14.000000Z",
+              "pivot": {
+                "manga_id": 626,
+                "genre_id": 17
+              }
+            }
+          ],
+          "last_chapter": {
+            "id": 403406,
+            "manga_id": 626,
+            "title": "Chapter 624",
+            "slug": "chapter-624",
+            "chapter_number": 624,
+            "source_url": "https://komiku.org/lookism-chapter-624/",
+            "content": null,
+            "views_count": 159,
+            "created_at": "2026-09-13T20:22:51.000000Z",
+            "updated_at": "2026-10-13T10:31:48.000000Z"
+          }
+        },
+        {
+          "id": 1078,
+          "title": "The God of High School",
+          "slug": "the-god-of-high-school",
+          "synopsis": "The God of High School menceritakan tentang seorang remaja bernama Jin Mori yang mengikuti kompetisi bela diri tingkat nasional. Turnamen ini mengumpulkan para petarung dari seluruh Korea dengan hadiah utama menjadi yang terkuat dan memperoleh kekuatan luar biasa. Sepanjang perjalanannya, Mori dan teman-temannya menghadapi berbagai lawan kuat sekaligus mengungkap rahasia kelam di balik turnamen tersebut.\n\nSelain pertarungan sengit, cerita ini juga menyoroti persahabatan, tekad, dan pencarian jati diri para peserta. Dengan kekuatan supranatural yang mulai muncul dan intrik tersembunyi, Mori harus terus berkembang agar bisa menghadapi ancaman yang jauh lebih besar dari sekadar kompetisi biasa.",
+          "status": "Ongoing",
+          "source_url": "https://komiku.org/manga/the-god-of-high-school/",
+          "poster": "https://thumbnail.komiku.org/uploads/manga/the-god-of-high-school/manga_thumbnail-Komik-The-God-of-High-School.jpg?w=500",
+          "type": "Manhwa",
+          "author": "Yongje Park",
+          "artist": "-",
+          "is_featured": 0,
+          "rating": "8.0",
+          "release_year": 2026,
+          "views_count": 31713,
+          "created_at": "2026-04-01T03:48:37.000000Z",
+          "updated_at": "2026-10-13T11:43:56.000000Z",
+          "genres": [
+            {
+              "id": 1,
+              "name": "Action",
+              "slug": "action",
+              "icon": "⚔️",
+              "created_at": "2026-03-23T06:39:14.000000Z",
+              "updated_at": "2026-03-23T06:39:14.000000Z",
+              "pivot": {
+                "manga_id": 1078,
+                "genre_id": 1
+              }
+            },
+            {
+              "id": 2,
+              "name": "Adventure",
+              "slug": "adventure",
+              "icon": "🗺️",
+              "created_at": "2026-03-23T06:39:14.000000Z",
+              "updated_at": "2026-03-23T06:39:14.000000Z",
+              "pivot": {
+                "manga_id": 1078,
+                "genre_id": 2
+              }
+            },
+            {
+              "id": 3,
+              "name": "Comedy",
+              "slug": "comedy",
+              "icon": "😂",
+              "created_at": "2026-03-23T06:39:14.000000Z",
+              "updated_at": "2026-03-23T06:39:14.000000Z",
+              "pivot": {
+                "manga_id": 1078,
+                "genre_id": 3
+              }
+            },
+            {
+              "id": 6,
+              "name": "Fantasy",
+              "slug": "fantasy",
+              "icon": "🪄",
+              "created_at": "2026-03-23T06:39:14.000000Z",
+              "updated_at": "2026-03-23T06:39:14.000000Z",
+              "pivot": {
+                "manga_id": 1078,
+                "genre_id": 6
+              }
+            },
+            {
+              "id": 26,
+              "name": "Martial Arts",
+              "slug": "martial-arts",
+              "icon": null,
+              "created_at": "2026-03-23T08:31:53.000000Z",
+              "updated_at": "2026-03-23T08:31:53.000000Z",
+              "pivot": {
+                "manga_id": 1078,
+                "genre_id": 26
+              }
+            },
+            {
+              "id": 14,
+              "name": "Sci-Fi",
+              "slug": "sci-fi",
+              "icon": "🚀",
+              "created_at": "2026-03-23T06:39:14.000000Z",
+              "updated_at": "2026-03-23T06:39:14.000000Z",
+              "pivot": {
+                "manga_id": 1078,
+                "genre_id": 14
+              }
+            },
+            {
+              "id": 27,
+              "name": "Shounen",
+              "slug": "shounen",
+              "icon": null,
+              "created_at": "2026-03-23T08:33:13.000000Z",
+              "updated_at": "2026-03-23T08:33:13.000000Z",
+              "pivot": {
+                "manga_id": 1078,
+                "genre_id": 27
+              }
+            },
+            {
+              "id": 17,
+              "name": "Supernatural",
+              "slug": "supernatural",
+              "icon": "🔮",
+              "created_at": "2026-03-23T06:39:14.000000Z",
+              "updated_at": "2026-03-23T06:39:14.000000Z",
+              "pivot": {
+                "manga_id": 1078,
+                "genre_id": 17
+              }
+            }
+          ],
+          "last_chapter": {
+            "id": 73487,
+            "manga_id": 1078,
+            "title": "Chapter 526",
+            "slug": "chapter-526",
+            "chapter_number": 526,
+            "source_url": "https://komiku.org/the-god-of-high-school-chapter-526/",
+            "content": null,
+            "views_count": 796,
+            "created_at": "2026-04-01T03:48:38.000000Z",
+            "updated_at": "2026-10-13T09:06:30.000000Z"
+          }
+        },
+        {
+          "id": 2489,
+          "title": "Peerless Soul",
+          "slug": "peerless-soulpeerless-soul",
+          "synopsis": "Peerless Soul mengisahkan perjalanan seorang pemuda bernama Chen Feng yang hidup di dunia seni bela diri di mana kekuatan dan tekad menjadi penentu utama keberhasilan. Chen Feng yang awalnya dianggap lemah, bertekad untuk membuktikan bahwa dengan kerja keras dan semangat yang tak tergoyahkan, ia bisa mengalahkan batasan dirinya dan menjadi praktisi bela diri terkuat.\n\nDalam perjalanannya, Chen Feng menghadapi berbagai rintangan dan musuh yang semakin kuat, sekaligus memperoleh teman dan guru yang membantunya tumbuh baik secara fisik maupun mental. Cerita ini menonjolkan pentingnya ketekunan, persahabatan, dan keberanian untuk menghadapi tantangan hidup tanpa menyerah.",
+          "status": "Ongoing",
+          "source_url": "https://komiku.org/manga/13151-peerless-soul/",
+          "poster": "https://thumbnail.komiku.org/uploads/manga/13151-peerless-soul/manga_thumbnail-Komik-Peerless-Soul.jpg?w=500",
+          "type": "Manhua",
+          "author": "-",
+          "artist": "-",
+          "is_featured": 0,
+          "rating": "0.0",
+          "release_year": 2026,
+          "views_count": 29492,
+          "created_at": "2026-04-13T22:01:35.000000Z",
+          "updated_at": "2026-10-13T11:45:11.000000Z",
+          "genres": [
+            {
+              "id": 1,
+              "name": "Action",
+              "slug": "action",
+              "icon": "⚔️",
+              "created_at": "2026-03-23T06:39:14.000000Z",
+              "updated_at": "2026-03-23T06:39:14.000000Z",
+              "pivot": {
+                "manga_id": 2489,
+                "genre_id": 1
+              }
+            },
+            {
+              "id": 2,
+              "name": "Adventure",
+              "slug": "adventure",
+              "icon": "🗺️",
+              "created_at": "2026-03-23T06:39:14.000000Z",
+              "updated_at": "2026-03-23T06:39:14.000000Z",
+              "pivot": {
+                "manga_id": 2489,
+                "genre_id": 2
+              }
+            },
+            {
+              "id": 6,
+              "name": "Fantasy",
+              "slug": "fantasy",
+              "icon": "🪄",
+              "created_at": "2026-03-23T06:39:14.000000Z",
+              "updated_at": "2026-03-23T06:39:14.000000Z",
+              "pivot": {
+                "manga_id": 2489,
+                "genre_id": 6
+              }
+            },
+            {
+              "id": 26,
+              "name": "Martial Arts",
+              "slug": "martial-arts",
+              "icon": null,
+              "created_at": "2026-03-23T08:31:53.000000Z",
+              "updated_at": "2026-03-23T08:31:53.000000Z",
+              "pivot": {
+                "manga_id": 2489,
+                "genre_id": 26
+              }
+            },
+            {
+              "id": 17,
+              "name": "Supernatural",
+              "slug": "supernatural",
+              "icon": "🔮",
+              "created_at": "2026-03-23T06:39:14.000000Z",
+              "updated_at": "2026-03-23T06:39:14.000000Z",
+              "pivot": {
+                "manga_id": 2489,
+                "genre_id": 17
+              }
+            }
+          ],
+          "last_chapter": {
+            "id": 197547,
+            "manga_id": 2489,
+            "title": "Chapter 766",
+            "slug": "chapter-766",
+            "chapter_number": 766,
+            "source_url": "https://komiku.org/peerless-soul-chapter-766/",
+            "content": null,
+            "views_count": 135,
+            "created_at": "2026-04-13T22:01:36.000000Z",
+            "updated_at": "2026-10-12T22:29:32.000000Z"
+          }
+        },
+        {
+          "id": 3237,
+          "title": "Ao Ashi",
+          "slug": "ao-ashi",
+          "synopsis": "Ao Ashi mengikuti kisah Ashito Aoi, seorang remaja dengan bakat sepak bola luar biasa yang berasal dari kota kecil. Meski hidup dalam lingkungan yang sederhana, Ashito memiliki mimpi besar untuk menjadi pemain sepak bola profesional dan bergabung dengan klub elit di Tokyo. Perjalanan Ashito penuh dengan tantangan mulai dari menghadapi persaingan sengit, adaptasi dengan gaya permainan baru, hingga mengatasi tekanan mental di dunia sepak bola tingkat tinggi.\n\nDalam prosesnya, Ashito bertemu dengan pelatih dan teman baru yang membantunya mengasah kemampuan dan karakter. Cerita ini tidak hanya menampilkan aksi di lapangan hijau tetapi juga menggambarkan perjuangan dan pertumbuhan pribadi Ashito sebagai seorang atlet muda yang ingin mengukir namanya di dunia sepak bola Jepang maupun internasional.",
+          "status": "Ongoing",
+          "source_url": "https://komiku.org/manga/ao-ashi/",
+          "poster": "https://thumbnail.komiku.org/uploads/manga/ao-ashi/manga_thumbnail-Ao-Ashi-Cover.jpg?w=500",
+          "type": "Manga",
+          "author": "-",
+          "artist": "-",
+          "is_featured": 0,
+          "rating": null,
+          "release_year": 2026,
+          "views_count": 24081,
+          "created_at": "2026-05-10T03:26:56.000000Z",
+          "updated_at": "2026-10-13T12:39:47.000000Z",
+          "genres": [
+            {
+              "id": 4,
+              "name": "Drama",
+              "slug": "drama",
+              "icon": "🎭",
+              "created_at": "2026-03-23T06:39:14.000000Z",
+              "updated_at": "2026-03-23T06:39:14.000000Z",
+              "pivot": {
+                "manga_id": 3237,
+                "genre_id": 4
+              }
+            },
+            {
+              "id": 24,
+              "name": "School life",
+              "slug": "school-life",
+              "icon": null,
+              "created_at": "2026-03-23T08:31:28.000000Z",
+              "updated_at": "2026-03-23T08:31:28.000000Z",
+              "pivot": {
+                "manga_id": 3237,
+                "genre_id": 24
+              }
+            },
+            {
+              "id": 25,
+              "name": "Seinen",
+              "slug": "seinen",
+              "icon": null,
+              "created_at": "2026-03-23T08:31:28.000000Z",
+              "updated_at": "2026-03-23T08:31:28.000000Z",
+              "pivot": {
+                "manga_id": 3237,
+                "genre_id": 25
+              }
+            },
+            {
+              "id": 15,
+              "name": "Slice of Life",
+              "slug": "slice-of-life",
+              "icon": "🍱",
+              "created_at": "2026-03-23T06:39:14.000000Z",
+              "updated_at": "2026-03-23T06:39:14.000000Z",
+              "pivot": {
+                "manga_id": 3237,
+                "genre_id": 15
+              }
+            },
+            {
+              "id": 16,
+              "name": "Sports",
+              "slug": "sports",
+              "icon": "⚽",
+              "created_at": "2026-03-23T06:39:14.000000Z",
+              "updated_at": "2026-03-23T06:39:14.000000Z",
+              "pivot": {
+                "manga_id": 3237,
+                "genre_id": 16
+              }
+            }
+          ],
+          "last_chapter": {
+            "id": 405937,
+            "manga_id": 3237,
+            "title": "Chapter 410",
+            "slug": "chapter-410",
+            "chapter_number": 410,
+            "source_url": "https://komiku.org/ao-ashi-chapter-410/",
+            "content": null,
+            "views_count": 49,
+            "created_at": "2026-09-26T01:12:20.000000Z",
+            "updated_at": "2026-10-13T11:42:44.000000Z"
+          }
+        },
+        {
+          "id": 1752,
+          "title": "Full-Time Awakening",
+          "slug": "full-time-awakeningfull-time-awakening",
+          "synopsis": "Cerita ini mengikuti perjalanan seorang pemuda yang tanpa sengaja menemukan kekuatan luar biasa yang mengubah kehidupannya secara dramatis. Dalam upayanya untuk menguasai kemampuan baru ini, dia harus menghadapi berbagai tantangan dan musuh yang ingin memanfaatkan kekuatan tersebut untuk tujuan jahat. Meski penuh risiko, ia bertekad untuk melindungi orang-orang yang dicintainya dan mencari kebenaran di balik kekuatan yang ia dapatkan.\n\nSeiring waktu berjalan, sang protagonis bergabung dengan kelompok yang memiliki misi serupa untuk menjaga keseimbangan dunia. Bersama mereka, ia belajar bahwa kebangkitan penuh waktu bukan hanya tentang kekuatan fisik, tetapi juga tentang pertumbuhan pribadi dan keberanian menghadapi masa depan yang tidak pasti. Petualangan ini membawa banyak pelajaran berharga mengenai kepercayaan, persahabatan, dan harapan di tengah kesulitan.",
+          "status": "Ongoing",
+          "source_url": "https://komiku.org/manga/full-time-awakening/",
+          "poster": "https://thumbnail.komiku.org/img/upload/full-time_awakening/img_687dfc3d4330e4.42199864.png?w=500",
+          "type": "Manhua",
+          "author": "-",
+          "artist": "-",
+          "is_featured": 0,
+          "rating": "10.0",
+          "release_year": 2026,
+          "views_count": 21535,
+          "created_at": "2026-04-03T01:35:15.000000Z",
+          "updated_at": "2026-10-13T01:03:00.000000Z",
+          "genres": [
+            {
+              "id": 1,
+              "name": "Action",
+              "slug": "action",
+              "icon": "⚔️",
+              "created_at": "2026-03-23T06:39:14.000000Z",
+              "updated_at": "2026-03-23T06:39:14.000000Z",
+              "pivot": {
+                "manga_id": 1752,
+                "genre_id": 1
+              }
+            },
+            {
+              "id": 6,
+              "name": "Fantasy",
+              "slug": "fantasy",
+              "icon": "🪄",
+              "created_at": "2026-03-23T06:39:14.000000Z",
+              "updated_at": "2026-03-23T06:39:14.000000Z",
+              "pivot": {
+                "manga_id": 1752,
+                "genre_id": 6
+              }
+            }
+          ],
+          "last_chapter": {
+            "id": 405644,
+            "manga_id": 1752,
+            "title": "Chapter 164",
+            "slug": "chapter-164",
+            "chapter_number": 164,
+            "source_url": "https://komiku.org/full-time-awakening-chapter-164/",
+            "content": null,
+            "views_count": 5,
+            "created_at": "2026-09-26T00:59:57.000000Z",
+            "updated_at": "2026-10-11T13:49:39.000000Z"
+          }
+        },
+        {
+          "id": 330,
+          "title": "One Punch Man",
+          "slug": "one-punch-man",
+          "synopsis": "One Punch Man mengikuti kisah Saitama, seorang pahlawan yang bisa mengalahkan musuh hanya dengan satu pukulan. Meskipun kekuatannya luar biasa, ia merasa bosan dan kesepian karena tidak ada lawan yang menantang. Petualangannya dimulai saat ia bergabung dengan Asosiasi Pahlawan dan bertemu dengan berbagai pahlawan dan monster yang unik. Dalam perjalanannya, Saitama harus berhadapan dengan ancaman besar yang mengancam dunia. Meskipun sering diremehkan oleh rekan-rekannya, ia terus berusaha melindungi warga dan mencari arti sesungguhnya dari menjadi seorang pahlawan. Cerita ini menyajikan perpaduan antara aksi seru dan humor yang segar.",
+          "status": "Ongoing",
+          "source_url": "https://komiku.org/manga/manga-one-punch-man/",
+          "poster": "https://thumbnail.komiku.org/uploads/manga/manga-one-punch-man/manga_thumbnail-Komik-One-Punch-Man.jpg?w=500",
+          "type": "Manga",
+          "author": "ONE",
+          "artist": "-",
+          "is_featured": 0,
+          "rating": "10.0",
+          "release_year": 2026,
+          "views_count": 20410,
+          "created_at": "2026-03-31T22:52:41.000000Z",
+          "updated_at": "2026-10-13T12:27:54.000000Z",
+          "genres": [
+            {
+              "id": 1,
+              "name": "Action",
+              "slug": "action",
+              "icon": "⚔️",
+              "created_at": "2026-03-23T06:39:14.000000Z",
+              "updated_at": "2026-03-23T06:39:14.000000Z",
+              "pivot": {
+                "manga_id": 330,
+                "genre_id": 1
+              }
+            },
+            {
+              "id": 3,
+              "name": "Comedy",
+              "slug": "comedy",
+              "icon": "😂",
+              "created_at": "2026-03-23T06:39:14.000000Z",
+              "updated_at": "2026-03-23T06:39:14.000000Z",
+              "pivot": {
+                "manga_id": 330,
+                "genre_id": 3
+              }
+            },
+            {
+              "id": 14,
+              "name": "Sci-Fi",
+              "slug": "sci-fi",
+              "icon": "🚀",
+              "created_at": "2026-03-23T06:39:14.000000Z",
+              "updated_at": "2026-03-23T06:39:14.000000Z",
+              "pivot": {
+                "manga_id": 330,
+                "genre_id": 14
+              }
+            },
+            {
+              "id": 56,
+              "name": "Super Power",
+              "slug": "super-power",
+              "icon": null,
+              "created_at": "2026-03-31T22:52:41.000000Z",
+              "updated_at": "2026-03-31T22:52:41.000000Z",
+              "pivot": {
+                "manga_id": 330,
+                "genre_id": 56
+              }
+            },
+            {
+              "id": 17,
+              "name": "Supernatural",
+              "slug": "supernatural",
+              "icon": "🔮",
+              "created_at": "2026-03-23T06:39:14.000000Z",
+              "updated_at": "2026-03-23T06:39:14.000000Z",
+              "pivot": {
+                "manga_id": 330,
+                "genre_id": 17
+              }
+            }
+          ],
+          "last_chapter": {
+            "id": 405119,
+            "manga_id": 330,
+            "title": "Chapter 312",
+            "slug": "chapter-312",
+            "chapter_number": 312,
+            "source_url": "https://komiku.org/one-punch-man-chapter-312/",
+            "content": null,
+            "views_count": 229,
+            "created_at": "2026-09-23T20:08:20.000000Z",
+            "updated_at": "2026-10-13T12:26:34.000000Z"
+          }
+        },
+        {
+          "id": 1794,
+          "title": "Kingdom",
+          "slug": "kingdom",
+          "synopsis": "Kerajaan mengikuti kisah Xin, seorang pemuda yatim piatu yang bercita-cita menjadi jenderal terhebat di Tiongkok pada zaman Negara-negara Berperang. Dalam perjalanannya, Xin bertemu dengan sekutu dan musuh yang memiliki ambisi besar yang sama, memperjuangkan perdamaian dan pemersatuan Tiongkok yang terpecah-pecah. Cerita ini begitu kaya dengan taktik pertempuran dan pembangunan karakter yang mendalam.\n\nSeiring meningkatnya konflik dan intrik politik, Xin harus menavigasi berbagai peperangan brutal serta pengkhianatan dari dalam dan luar. Sambil berjuang untuk idealismenya, ia juga menginspirasi para pengikutnya untuk berani melawan segala rintangan demi masa depan yang lebih baik. Komik ini menghadirkan perpaduan epik antara aksi, strategi, dan dinamika hubungan antar tokoh dengan latar sejarah yang kuat.",
+          "status": "Ongoing",
+          "source_url": "https://komiku.org/manga/kingdom/",
+          "poster": "https://thumbnail.komiku.org/uploads/manga/kingdom/manga_thumbnail-Komik-Kingdom.jpg?w=500",
+          "type": "Manga",
+          "author": "Yasuhisa Hara",
+          "artist": "-",
+          "is_featured": 0,
+          "rating": "10.0",
+          "release_year": 2026,
+          "views_count": 19767,
+          "created_at": "2026-04-03T02:08:26.000000Z",
+          "updated_at": "2026-10-13T12:19:33.000000Z",
+          "genres": [
+            {
+              "id": 1,
+              "name": "Action",
+              "slug": "action",
+              "icon": "⚔️",
+              "created_at": "2026-03-23T06:39:14.000000Z",
+              "updated_at": "2026-03-23T06:39:14.000000Z",
+              "pivot": {
+                "manga_id": 1794,
+                "genre_id": 1
+              }
+            },
+            {
+              "id": 4,
+              "name": "Drama",
+              "slug": "drama",
+              "icon": "🎭",
+              "created_at": "2026-03-23T06:39:14.000000Z",
+              "updated_at": "2026-03-23T06:39:14.000000Z",
+              "pivot": {
+                "manga_id": 1794,
+                "genre_id": 4
+              }
+            },
+            {
+              "id": 36,
+              "name": "Historical",
+              "slug": "historical",
+              "icon": null,
+              "created_at": "2026-03-23T15:34:25.000000Z",
+              "updated_at": "2026-03-23T15:34:25.000000Z",
+              "pivot": {
+                "manga_id": 1794,
+                "genre_id": 36
+              }
+            },
+            {
+              "id": 25,
+              "name": "Seinen",
+              "slug": "seinen",
+              "icon": null,
+              "created_at": "2026-03-23T08:31:28.000000Z",
+              "updated_at": "2026-03-23T08:31:28.000000Z",
+              "pivot": {
+                "manga_id": 1794,
+                "genre_id": 25
+              }
+            }
+          ],
+          "last_chapter": {
+            "id": 402664,
+            "manga_id": 1794,
+            "title": "Chapter 887",
+            "slug": "chapter-887",
+            "chapter_number": 887,
+            "source_url": "https://komiku.org/kingdom-chapter-887/",
+            "content": null,
+            "views_count": 106,
+            "created_at": "2026-09-11T15:38:07.000000Z",
+            "updated_at": "2026-10-13T10:42:47.000000Z"
+          }
+        },
+        {
+          "id": 1780,
+          "title": "God of Martial Arts",
+          "slug": "god-of-martial-arts",
+          "synopsis": "God of Martial Arts mengisahkan perjalanan seorang pemuda berbakat yang berjuang menguasai seni bela diri tertinggi di dunia yang dipenuhi tantangan dan rival. Dalam usahanya, dia tidak hanya menghadapi musuh kuat, tetapi juga menggali potensi diri serta mempelajari makna sejati kekuatan dan kehormatan.\n\nCerita ini menyoroti pertumbuhan karakter utama dari seorang pemula hingga menjadi legenda di dunia seni bela diri. Disertai dengan berbagai konflik, persahabatan, dan latar dunia yang kaya, komik ini mengajak pembaca untuk menyelami perjalanan penuh inspirasi dan aksi yang mendebarkan.",
+          "status": "Ongoing",
+          "source_url": "https://komiku.org/manga/god-of-martial-arts/",
+          "poster": "https://thumbnail.komiku.org/uploads/manga/god-of-martial-arts/manga_thumbnail-Komik-God-of-Martial-Arts.jpg?w=500",
+          "type": "Manhua",
+          "author": "Jolly Jae",
+          "artist": "-",
+          "is_featured": 0,
+          "rating": "9.0",
+          "release_year": 2026,
+          "views_count": 16664,
+          "created_at": "2026-04-03T01:43:02.000000Z",
+          "updated_at": "2026-10-13T04:49:34.000000Z",
+          "genres": [
+            {
+              "id": 1,
+              "name": "Action",
+              "slug": "action",
+              "icon": "⚔️",
+              "created_at": "2026-03-23T06:39:14.000000Z",
+              "updated_at": "2026-03-23T06:39:14.000000Z",
+              "pivot": {
+                "manga_id": 1780,
+                "genre_id": 1
+              }
+            },
+            {
+              "id": 2,
+              "name": "Adventure",
+              "slug": "adventure",
+              "icon": "🗺️",
+              "created_at": "2026-03-23T06:39:14.000000Z",
+              "updated_at": "2026-03-23T06:39:14.000000Z",
+              "pivot": {
+                "manga_id": 1780,
+                "genre_id": 2
+              }
+            },
+            {
+              "id": 6,
+              "name": "Fantasy",
+              "slug": "fantasy",
+              "icon": "🪄",
+              "created_at": "2026-03-23T06:39:14.000000Z",
+              "updated_at": "2026-03-23T06:39:14.000000Z",
+              "pivot": {
+                "manga_id": 1780,
+                "genre_id": 6
+              }
+            },
+            {
+              "id": 43,
+              "name": "Isekai",
+              "slug": "isekai",
+              "icon": null,
+              "created_at": "2026-03-23T15:46:14.000000Z",
+              "updated_at": "2026-03-23T15:46:14.000000Z",
+              "pivot": {
+                "manga_id": 1780,
+                "genre_id": 43
+              }
+            },
+            {
+              "id": 26,
+              "name": "Martial Arts",
+              "slug": "martial-arts",
+              "icon": null,
+              "created_at": "2026-03-23T08:31:53.000000Z",
+              "updated_at": "2026-03-23T08:31:53.000000Z",
+              "pivot": {
+                "manga_id": 1780,
+                "genre_id": 26
+              }
+            },
+            {
+              "id": 25,
+              "name": "Seinen",
+              "slug": "seinen",
+              "icon": null,
+              "created_at": "2026-03-23T08:31:28.000000Z",
+              "updated_at": "2026-03-23T08:31:28.000000Z",
+              "pivot": {
+                "manga_id": 1780,
+                "genre_id": 25
+              }
+            }
+          ],
+          "last_chapter": {
+            "id": 406236,
+            "manga_id": 1780,
+            "title": "Chapter 1204",
+            "slug": "chapter-1204",
+            "chapter_number": 1204,
+            "source_url": "https://komiku.org/god-of-martial-arts-chapter-1204/",
+            "content": null,
+            "views_count": 35,
+            "created_at": "2026-09-28T01:01:44.000000Z",
+            "updated_at": "2026-10-13T04:49:34.000000Z"
+          }
+        },
+        {
+          "id": 707,
+          "title": "Nano Machine",
+          "slug": "nano-machine",
+          "synopsis": "Nano Machine mengisahkan seorang pewaris klan yang dianggap lemah dan rendah oleh anggota keluarganya. Hidupnya mulai berubah saat menerima teknologi nano canggih yang memberikannya kekuatan luar biasa dan kemampuan yang sebelumnya tidak pernah dia miliki. Dengan bantuan mesin nano ini, ia memulai perjalanan untuk membuktikan kekuatannya dan memulihkan kehormatan keluarganya.\n\nDalam perjalanan tersebut, dia menghadapi berbagai ancaman dari musuh-musuh kuat yang ingin menghancurkan klan dan teknologi nano itu sendiri. Konflik demi konflik membuatnya semakin matang dan kuat, sekaligus membuka rahasia lebih dalam tentang teknologi nano dan dunia di sekitarnya yang penuh intrik serta persaingan sengit antar klan dan kerajaan.",
+          "status": "Ongoing",
+          "source_url": "https://komiku.org/manga/nano-machine/",
+          "poster": "https://thumbnail.komiku.org/img/upload/nano_machine/img_693126dac89353.00003505.jpg?w=500",
+          "type": "Manhwa",
+          "author": "Hwang Yongjae",
+          "artist": "-",
+          "is_featured": 0,
+          "rating": "10.0",
+          "release_year": 2026,
+          "views_count": 16644,
+          "created_at": "2026-04-01T01:59:02.000000Z",
+          "updated_at": "2026-10-13T05:08:31.000000Z",
+          "genres": [
+            {
+              "id": 1,
+              "name": "Action",
+              "slug": "action",
+              "icon": "⚔️",
+              "created_at": "2026-03-23T06:39:14.000000Z",
+              "updated_at": "2026-03-23T06:39:14.000000Z",
+              "pivot": {
+                "manga_id": 707,
+                "genre_id": 1
+              }
+            },
+            {
+              "id": 2,
+              "name": "Adventure",
+              "slug": "adventure",
+              "icon": "🗺️",
+              "created_at": "2026-03-23T06:39:14.000000Z",
+              "updated_at": "2026-03-23T06:39:14.000000Z",
+              "pivot": {
+                "manga_id": 707,
+                "genre_id": 2
+              }
+            },
+            {
+              "id": 6,
+              "name": "Fantasy",
+              "slug": "fantasy",
+              "icon": "🪄",
+              "created_at": "2026-03-23T06:39:14.000000Z",
+              "updated_at": "2026-03-23T06:39:14.000000Z",
+              "pivot": {
+                "manga_id": 707,
+                "genre_id": 6
+              }
+            },
+            {
+              "id": 26,
+              "name": "Martial Arts",
+              "slug": "martial-arts",
+              "icon": null,
+              "created_at": "2026-03-23T08:31:53.000000Z",
+              "updated_at": "2026-03-23T08:31:53.000000Z",
+              "pivot": {
+                "manga_id": 707,
+                "genre_id": 26
+              }
+            }
+          ],
+          "last_chapter": {
+            "id": 405588,
+            "manga_id": 707,
+            "title": "Chapter 331",
+            "slug": "chapter-331",
+            "chapter_number": 331,
+            "source_url": "https://komiku.org/nano-machine-chapter-331/",
+            "content": null,
+            "views_count": 53,
+            "created_at": "2026-09-24T20:52:05.000000Z",
+            "updated_at": "2026-10-13T05:08:31.000000Z"
+          }
+        },
+        {
+          "id": 739,
+          "title": "Overgeared",
+          "slug": "overgeared",
+          "synopsis": "Overgeared New menceritakan kisah Shin Youngwoo yang awalnya dianggap gagal dalam kehidupannya. Namun, setelah menemukan game virtual reality bernama Satisfy dan mendapatkan buku legenda tentang pembuatan senjata, hidupnya berubah total. Dalam dunia game, ia memanfaatkan kecerdasan dan kreativitasnya untuk menjadi pandai besi terbaik sekaligus pemain terkuat.\n\nMelalui berbagai tantangan dan konflik dengan pemain lain, Shin tidak hanya membangun reputasi sebagai pembuat senjata hebat tetapi juga membentuk persahabatan dan aliansi kuat. Cerita ini menyuguhkan petualangan seru dan perkembangan karakter yang inspiratif dari seseorang yang memulai dari bawah hingga meraih puncak kejayaan dalam dunia game.",
+          "status": "Ongoing",
+          "source_url": "https://komiku.org/manga/overgeared-new/",
+          "poster": "https://thumbnail.komiku.org/uploads/manga/overgeared-new/manga_thumbnail-Manhua-Overgeared-New.jpg?w=500",
+          "type": "Manhwa",
+          "author": "Park Saenal",
+          "artist": "-",
+          "is_featured": 0,
+          "rating": "9.0",
+          "release_year": 2026,
+          "views_count": 15734,
+          "created_at": "2026-04-01T02:05:18.000000Z",
+          "updated_at": "2026-10-13T12:39:31.000000Z",
+          "genres": [
+            {
+              "id": 1,
+              "name": "Action",
+              "slug": "action",
+              "icon": "⚔️",
+              "created_at": "2026-03-23T06:39:14.000000Z",
+              "updated_at": "2026-03-23T06:39:14.000000Z",
+              "pivot": {
+                "manga_id": 739,
+                "genre_id": 1
+              }
+            },
+            {
+              "id": 2,
+              "name": "Adventure",
+              "slug": "adventure",
+              "icon": "🗺️",
+              "created_at": "2026-03-23T06:39:14.000000Z",
+              "updated_at": "2026-03-23T06:39:14.000000Z",
+              "pivot": {
+                "manga_id": 739,
+                "genre_id": 2
+              }
+            },
+            {
+              "id": 6,
+              "name": "Fantasy",
+              "slug": "fantasy",
+              "icon": "🪄",
+              "created_at": "2026-03-23T06:39:14.000000Z",
+              "updated_at": "2026-03-23T06:39:14.000000Z",
+              "pivot": {
+                "manga_id": 739,
+                "genre_id": 6
+              }
+            }
+          ],
+          "last_chapter": {
+            "id": 389789,
+            "manga_id": 739,
+            "title": "Chapter 333",
+            "slug": "chapter-333",
+            "chapter_number": 333,
+            "source_url": "https://komiku.org/overgeared-chapter-333/",
+            "content": null,
+            "views_count": 94,
+            "created_at": "2026-07-31T21:12:04.000000Z",
+            "updated_at": "2026-10-13T12:30:45.000000Z"
+          }
+        },
+        {
+          "id": 6856,
+          "title": "The Ultimate of All Ages",
+          "slug": "the-ultimate-of-all-ages",
+          "synopsis": "The Ultimate of All Ages mengeksplorasi petualangan seorang protagonis muda yang secara tak sengaja menemukan kekuatan luar biasa yang mengubah hidupnya selamanya. Dalam perjalanannya, dia bertemu dengan berbagai karakter unik dan menghadapi tantangan yang menguji keberanian serta kebijaksanaannya dalam dunia yang penuh misteri dan bahaya. \n\nCerita berfokus pada bagaimana sang tokoh utama berusaha memahami dan mengendalikan kekuatannya, sembari mengungkap rahasia masa lalu yang misterius serta ancaman masa depan yang mengintai. Selain itu, kisah ini juga memperlihatkan dinamika persahabatan dan konflik internal yang berkembang seiring dengan perjalanan waktu.",
+          "status": "Ongoing",
+          "source_url": "https://komiku.org/manga/the-ultimate-of-all-ages/",
+          "poster": "https://thumbnail.komiku.org/uploads/manga/the-ultimate-of-all-ages/manga_thumbnail-Manhua-The-Ultimate-of-All-Ages.jpg?w=500",
+          "type": "Manhua",
+          "author": "-",
+          "artist": "-",
+          "is_featured": 0,
+          "rating": "9.0",
+          "release_year": 2026,
+          "views_count": 15261,
+          "created_at": "2026-05-10T08:07:22.000000Z",
+          "updated_at": "2026-10-13T12:09:03.000000Z",
+          "genres": [
+            {
+              "id": 1,
+              "name": "Action",
+              "slug": "action",
+              "icon": "⚔️",
+              "created_at": "2026-03-23T06:39:14.000000Z",
+              "updated_at": "2026-03-23T06:39:14.000000Z",
+              "pivot": {
+                "manga_id": 6856,
+                "genre_id": 1
+              }
+            },
+            {
+              "id": 6,
+              "name": "Fantasy",
+              "slug": "fantasy",
+              "icon": "🪄",
+              "created_at": "2026-03-23T06:39:14.000000Z",
+              "updated_at": "2026-03-23T06:39:14.000000Z",
+              "pivot": {
+                "manga_id": 6856,
+                "genre_id": 6
+              }
+            },
+            {
+              "id": 36,
+              "name": "Historical",
+              "slug": "historical",
+              "icon": null,
+              "created_at": "2026-03-23T15:34:25.000000Z",
+              "updated_at": "2026-03-23T15:34:25.000000Z",
+              "pivot": {
+                "manga_id": 6856,
+                "genre_id": 36
+              }
+            },
+            {
+              "id": 26,
+              "name": "Martial Arts",
+              "slug": "martial-arts",
+              "icon": null,
+              "created_at": "2026-03-23T08:31:53.000000Z",
+              "updated_at": "2026-03-23T08:31:53.000000Z",
+              "pivot": {
+                "manga_id": 6856,
+                "genre_id": 26
+              }
+            },
+            {
+              "id": 23,
+              "name": "Reincarnation",
+              "slug": "reincarnation",
+              "icon": null,
+              "created_at": "2026-03-23T08:31:28.000000Z",
+              "updated_at": "2026-03-23T08:31:28.000000Z",
+              "pivot": {
+                "manga_id": 6856,
+                "genre_id": 23
+              }
+            }
+          ],
+          "last_chapter": {
+            "id": 403542,
+            "manga_id": 6856,
+            "title": "Chapter 566",
+            "slug": "chapter-566",
+            "chapter_number": 566,
+            "source_url": "https://komiku.org/the-ultimate-of-all-ages-chapter-566/",
+            "content": null,
+            "views_count": 15,
+            "created_at": "2026-09-14T15:29:59.000000Z",
+            "updated_at": "2026-10-13T12:09:03.000000Z"
+          }
+        },
+        {
+          "id": 1701,
+          "title": "Evolution Begins With A Big Tree",
+          "slug": "evolution-begins-with-a-big-tree",
+          "synopsis": "Cerita ini mengikuti perjalanan seorang pemuda yang hidup di dunia di mana evolusi makhluk hidup terjadi dengan cepat dan ekstrem. Suatu hari, dia menemukan sebuah pohon raksasa yang dianggap sebagai sumber awal dari perubahan besar dalam kehidupan di sekitarnya. Dengan membawa tekad untuk memahami rahasia pohon tersebut, ia menjalani berbagai petualangan yang penuh tantangan dan kejutan.\n\nSepanjang perjalanan, pemuda ini bertemu dengan berbagai makhluk hasil evolusi yang unik dan mempelajari hubungan antar spesies yang berkembang di bawah pengaruh pohon tersebut. Perlahan-lahan, dia menyadari bahwa pohon raksasa ini bukan hanya simbol awal evolusi, tapi juga kunci untuk menjaga keseimbangan alam dan masa depan dunia mereka.",
+          "status": "Ongoing",
+          "source_url": "https://komiku.org/manga/evolution-begins-with-a-big-tree/",
+          "poster": "https://thumbnail.komiku.org/uploads/manga/evolution-begins-with-a-big-tree/manga_thumbnail-Manhua-Evolution-Begins-With-A-Big-Tree.jpg?w=500",
+          "type": "Manhua",
+          "author": "Andria Yuda",
+          "artist": "-",
+          "is_featured": 0,
+          "rating": null,
+          "release_year": 2026,
+          "views_count": 13748,
+          "created_at": "2026-04-03T01:22:12.000000Z",
+          "updated_at": "2026-10-13T06:57:19.000000Z",
+          "genres": [
+            {
+              "id": 1,
+              "name": "Action",
+              "slug": "action",
+              "icon": "⚔️",
+              "created_at": "2026-03-23T06:39:14.000000Z",
+              "updated_at": "2026-03-23T06:39:14.000000Z",
+              "pivot": {
+                "manga_id": 1701,
+                "genre_id": 1
+              }
+            },
+            {
+              "id": 4,
+              "name": "Drama",
+              "slug": "drama",
+              "icon": "🎭",
+              "created_at": "2026-03-23T06:39:14.000000Z",
+              "updated_at": "2026-03-23T06:39:14.000000Z",
+              "pivot": {
+                "manga_id": 1701,
+                "genre_id": 4
+              }
+            },
+            {
+              "id": 6,
+              "name": "Fantasy",
+              "slug": "fantasy",
+              "icon": "🪄",
+              "created_at": "2026-03-23T06:39:14.000000Z",
+              "updated_at": "2026-03-23T06:39:14.000000Z",
+              "pivot": {
+                "manga_id": 1701,
+                "genre_id": 6
+              }
+            },
+            {
+              "id": 27,
+              "name": "Shounen",
+              "slug": "shounen",
+              "icon": null,
+              "created_at": "2026-03-23T08:33:13.000000Z",
+              "updated_at": "2026-03-23T08:33:13.000000Z",
+              "pivot": {
+                "manga_id": 1701,
+                "genre_id": 27
+              }
+            },
+            {
+              "id": 17,
+              "name": "Supernatural",
+              "slug": "supernatural",
+              "icon": "🔮",
+              "created_at": "2026-03-23T06:39:14.000000Z",
+              "updated_at": "2026-03-23T06:39:14.000000Z",
+              "pivot": {
+                "manga_id": 1701,
+                "genre_id": 17
+              }
+            }
+          ],
+          "last_chapter": {
+            "id": 406232,
+            "manga_id": 1701,
+            "title": "Chapter 535",
+            "slug": "chapter-535",
+            "chapter_number": 535,
+            "source_url": "https://komiku.org/evolution-begins-with-a-big-tree-chapter-535/",
+            "content": null,
+            "views_count": 9,
+            "created_at": "2026-09-28T01:01:41.000000Z",
+            "updated_at": "2026-10-13T06:57:19.000000Z"
+          }
+        },
+        {
+          "id": 2704,
+          "title": "Release That Witch",
+          "slug": "release-that-witchrelease-that-witch",
+          "synopsis": "Cerita ini mengikuti Roland, seorang insinyur modern yang tiba-tiba terbangun di tubuh seorang pangeran di dunia abad pertengahan penuh sihir dan konflik politik. Dengan pengetahuan masa depan dan kecakapannya, ia mulai mengungkap rahasia tersembunyi di balik penyihir yang selama ini dianggap sebagai ancaman. Roland bertekad membuktikan bahwa penyihir bukanlah musuh, melainkan aset berharga bagi kerajaan.\n\nDalam perjalanan mengubah pandangan masyarakat terhadap penyihir, Roland menghadapi berbagai tantangan mulai dari intrik istana hingga pertempuran magis. Ia berusaha membangun aliansi dan menggunakan teknologi serta ilmu pengetahuan untuk memperkuat kerajaan dan melindungi para penyihir yang tertindas, membawa perubahan besar di dunia barunya itu.",
+          "status": "Ongoing",
+          "source_url": "https://komiku.org/manga/release-that-witch/",
+          "poster": "https://thumbnail.komiku.org/uploads/manga/release-that-witch/manga_thumbnail-Komik-Release-That-Witch.jpg?w=500",
+          "type": "Manhua",
+          "author": "-",
+          "artist": "-",
+          "is_featured": 0,
+          "rating": "0.0",
+          "release_year": 2026,
+          "views_count": 13328,
+          "created_at": "2026-05-01T01:17:20.000000Z",
+          "updated_at": "2026-10-12T18:17:33.000000Z",
+          "genres": [
+            {
+              "id": 1,
+              "name": "Action",
+              "slug": "action",
+              "icon": "⚔️",
+              "created_at": "2026-03-23T06:39:14.000000Z",
+              "updated_at": "2026-03-23T06:39:14.000000Z",
+              "pivot": {
+                "manga_id": 2704,
+                "genre_id": 1
+              }
+            },
+            {
+              "id": 2,
+              "name": "Adventure",
+              "slug": "adventure",
+              "icon": "🗺️",
+              "created_at": "2026-03-23T06:39:14.000000Z",
+              "updated_at": "2026-03-23T06:39:14.000000Z",
+              "pivot": {
+                "manga_id": 2704,
+                "genre_id": 2
+              }
+            },
+            {
+              "id": 4,
+              "name": "Drama",
+              "slug": "drama",
+              "icon": "🎭",
+              "created_at": "2026-03-23T06:39:14.000000Z",
+              "updated_at": "2026-03-23T06:39:14.000000Z",
+              "pivot": {
+                "manga_id": 2704,
+                "genre_id": 4
+              }
+            },
+            {
+              "id": 6,
+              "name": "Fantasy",
+              "slug": "fantasy",
+              "icon": "🪄",
+              "created_at": "2026-03-23T06:39:14.000000Z",
+              "updated_at": "2026-03-23T06:39:14.000000Z",
+              "pivot": {
+                "manga_id": 2704,
+                "genre_id": 6
+              }
+            },
+            {
+              "id": 34,
+              "name": "Harem",
+              "slug": "harem",
+              "icon": null,
+              "created_at": "2026-03-23T15:31:50.000000Z",
+              "updated_at": "2026-03-23T15:31:50.000000Z",
+              "pivot": {
+                "manga_id": 2704,
+                "genre_id": 34
+              }
+            },
+            {
+              "id": 43,
+              "name": "Isekai",
+              "slug": "isekai",
+              "icon": null,
+              "created_at": "2026-03-23T15:46:14.000000Z",
+              "updated_at": "2026-03-23T15:46:14.000000Z",
+              "pivot": {
+                "manga_id": 2704,
+                "genre_id": 43
+              }
+            },
+            {
+              "id": 17,
+              "name": "Supernatural",
+              "slug": "supernatural",
+              "icon": "🔮",
+              "created_at": "2026-03-23T06:39:14.000000Z",
+              "updated_at": "2026-03-23T06:39:14.000000Z",
+              "pivot": {
+                "manga_id": 2704,
+                "genre_id": 17
+              }
+            }
+          ],
+          "last_chapter": {
+            "id": 208886,
+            "manga_id": 2704,
+            "title": "Chapter 695",
+            "slug": "chapter-695",
+            "chapter_number": 695,
+            "source_url": "https://komiku.org/release-that-witch-chapter-695/",
+            "content": null,
+            "views_count": 27,
+            "created_at": "2026-05-01T01:17:20.000000Z",
+            "updated_at": "2026-09-29T22:33:50.000000Z"
+          }
+        },
+        {
+          "id": 1622,
+          "title": "Disastrous Necromancer",
+          "slug": "disastrous-necromancer",
+          "synopsis": "Disastrous Necromancer mengikuti kisah seorang nekromancer muda yang tanpa sengaja membangkitkan kekuatan gelap yang melebihi kendalinya. Berjuang untuk mengendalikan kemampuan barunya, ia harus menghadapi konsekuensi dari kekacauan yang ditimbulkannya pada dunia sekitar. Dalam prosesnya, ia menemukan bahwa kekuatan necromansi yang dikutuk ini juga membawa rahasia dan harapan yang tidak terduga.\nSementara itu, ancaman dari musuh-musuh yang ingin memanfaatkan kekuatannya semakin nyata. Dengan bantuan teman-teman baru dan tekad yang kuat, sang nekromancer berusaha untuk memperbaiki kesalahannya sekaligus melindungi dunia dari kehancuran yang lebih besar. Cerita ini menyoroti perjalanan pertumbuhan, pengorbanan, dan pencarian jati diri di tengah kekuatan luar biasa yang tersembunyi di dalam diri seseorang.",
+          "status": "Ongoing",
+          "source_url": "https://komiku.org/manga/disastrous-necromancer/",
+          "poster": "https://thumbnail.komiku.org/uploads/manga/disastrous-necromancer/manga_thumbnail-Head-Disastrous-Necromancer.jpeg?w=500",
+          "type": "Manhua",
+          "author": "Yomana Yomana",
+          "artist": "-",
+          "is_featured": 0,
+          "rating": "9.0",
+          "release_year": 2026,
+          "views_count": 12325,
+          "created_at": "2026-04-03T01:02:00.000000Z",
+          "updated_at": "2026-10-13T12:18:53.000000Z",
+          "genres": [
+            {
+              "id": 1,
+              "name": "Action",
+              "slug": "action",
+              "icon": "⚔️",
+              "created_at": "2026-03-23T06:39:14.000000Z",
+              "updated_at": "2026-03-23T06:39:14.000000Z",
+              "pivot": {
+                "manga_id": 1622,
+                "genre_id": 1
+              }
+            },
+            {
+              "id": 2,
+              "name": "Adventure",
+              "slug": "adventure",
+              "icon": "🗺️",
+              "created_at": "2026-03-23T06:39:14.000000Z",
+              "updated_at": "2026-03-23T06:39:14.000000Z",
+              "pivot": {
+                "manga_id": 1622,
+                "genre_id": 2
+              }
+            },
+            {
+              "id": 6,
+              "name": "Fantasy",
+              "slug": "fantasy",
+              "icon": "🪄",
+              "created_at": "2026-03-23T06:39:14.000000Z",
+              "updated_at": "2026-03-23T06:39:14.000000Z",
+              "pivot": {
+                "manga_id": 1622,
+                "genre_id": 6
+              }
+            },
+            {
+              "id": 39,
+              "name": "Magic",
+              "slug": "magic",
+              "icon": null,
+              "created_at": "2026-03-23T15:40:23.000000Z",
+              "updated_at": "2026-03-23T15:40:23.000000Z",
+              "pivot": {
+                "manga_id": 1622,
+                "genre_id": 39
+              }
+            },
+            {
+              "id": 17,
+              "name": "Supernatural",
+              "slug": "supernatural",
+              "icon": "🔮",
+              "created_at": "2026-03-23T06:39:14.000000Z",
+              "updated_at": "2026-03-23T06:39:14.000000Z",
+              "pivot": {
+                "manga_id": 1622,
+                "genre_id": 17
+              }
+            }
+          ],
+          "last_chapter": {
+            "id": 406181,
+            "manga_id": 1622,
+            "title": "Chapter 309",
+            "slug": "chapter-309",
+            "chapter_number": 309,
+            "source_url": "https://komiku.org/disastrous-necromancer-chapter-309/",
+            "content": null,
+            "views_count": 7,
+            "created_at": "2026-09-28T01:00:10.000000Z",
+            "updated_at": "2026-10-12T20:07:37.000000Z"
+          }
+        },
+        {
+          "id": 1801,
+          "title": "Tensei Shitara Slime Datta Ken",
+          "slug": "tensei-shitara-slime-datta-kentensei-shitara-slime-datta-ken",
+          "synopsis": "Cerita ini mengikuti perjalanan seorang pria bernama Satoru Mikami yang meninggal dunia secara tragis dan terlahir kembali dalam dunia fantasi sebagai slime. Dengan kemampuan unik yang disebut Predator, ia mampu menyerap dan meniru kekuatan makhluk lain. Dalam wujud barunya, ia memulai petualangan untuk membangun komunitas yang damai dan kuat, sambil menghadapi berbagai tantangan dan musuh yang mengancam dunia barunya.\n\nSeiring waktu, Satoru yang kini dipanggil Rimuru Tempest bertemu dengan berbagai ras dan makhluk, membentuk aliansi yang kokoh. Kisah ini menggambarkan bagaimana Rimuru berusaha menjaga perdamaian sambil memperkuat kekuasaannya, serta mengungkap misteri dunia di sekitarnya yang penuh dengan sihir dan ancaman besar yang menantinya di masa depan.",
+          "status": "Ongoing",
+          "source_url": "https://komiku.org/manga/tensei-shitara-slime-datta-ken-indo/",
+          "poster": "https://thumbnail.komiku.org/uploads/manga/tensei-shitara-slime-datta-ken-indo/manga_thumbnail-Manga-Tensei-Shitara-Slime-Datta-Ken.jpg?w=500",
+          "type": "Manga",
+          "author": "-",
+          "artist": "-",
+          "is_featured": 0,
+          "rating": "10.0",
+          "release_year": 2026,
+          "views_count": 12249,
+          "created_at": "2026-04-03T02:09:56.000000Z",
+          "updated_at": "2026-10-13T10:34:40.000000Z",
+          "genres": [
+            {
+              "id": 6,
+              "name": "Fantasy",
+              "slug": "fantasy",
+              "icon": "🪄",
+              "created_at": "2026-03-23T06:39:14.000000Z",
+              "updated_at": "2026-03-23T06:39:14.000000Z",
+              "pivot": {
+                "manga_id": 1801,
+                "genre_id": 6
+              }
+            },
+            {
+              "id": 43,
+              "name": "Isekai",
+              "slug": "isekai",
+              "icon": null,
+              "created_at": "2026-03-23T15:46:14.000000Z",
+              "updated_at": "2026-03-23T15:46:14.000000Z",
+              "pivot": {
+                "manga_id": 1801,
+                "genre_id": 43
+              }
+            },
+            {
+              "id": 27,
+              "name": "Shounen",
+              "slug": "shounen",
+              "icon": null,
+              "created_at": "2026-03-23T08:33:13.000000Z",
+              "updated_at": "2026-03-23T08:33:13.000000Z",
+              "pivot": {
+                "manga_id": 1801,
+                "genre_id": 27
+              }
+            }
+          ],
+          "last_chapter": {
+            "id": 405874,
+            "manga_id": 1801,
+            "title": "Chapter 146",
+            "slug": "chapter-146",
+            "chapter_number": 146,
+            "source_url": "https://komiku.org/tensei-shitara-slime-datta-ken-chapter-146/",
+            "content": null,
+            "views_count": 163,
+            "created_at": "2026-09-26T01:11:47.000000Z",
+            "updated_at": "2026-10-13T10:34:40.000000Z"
+          }
+        }
+      ],
+      "first_page_url": "https://mangaku.lol/manga?sort=popular&page=1",
+      "from": 1,
+      "last_page": 322,
+      "last_page_url": "https://mangaku.lol/manga?sort=popular&page=322",
+      "links": [
+        {
+          "url": null,
+          "label": "&laquo; Previous",
+          "active": false
+        },
+        {
+          "url": "https://mangaku.lol/manga?sort=popular&page=1",
+          "label": "1",
+          "active": true
+        },
+        {
+          "url": "https://mangaku.lol/manga?sort=popular&page=2",
+          "label": "2",
+          "active": false
+        },
+        {
+          "url": "https://mangaku.lol/manga?sort=popular&page=3",
+          "label": "3",
+          "active": false
+        },
+        {
+          "url": "https://mangaku.lol/manga?sort=popular&page=4",
+          "label": "4",
+          "active": false
+        },
+        {
+          "url": "https://mangaku.lol/manga?sort=popular&page=5",
+          "label": "5",
+          "active": false
+        },
+        {
+          "url": "https://mangaku.lol/manga?sort=popular&page=6",
+          "label": "6",
+          "active": false
+        },
+        {
+          "url": "https://mangaku.lol/manga?sort=popular&page=7",
+          "label": "7",
+          "active": false
+        },
+        {
+          "url": "https://mangaku.lol/manga?sort=popular&page=8",
+          "label": "8",
+          "active": false
+        },
+        {
+          "url": "https://mangaku.lol/manga?sort=popular&page=9",
+          "label": "9",
+          "active": false
+        },
+        {
+          "url": "https://mangaku.lol/manga?sort=popular&page=10",
+          "label": "10",
+          "active": false
+        },
+        {
+          "url": null,
+          "label": "...",
+          "active": false
+        },
+        {
+          "url": "https://mangaku.lol/manga?sort=popular&page=321",
+          "label": "321",
+          "active": false
+        },
+        {
+          "url": "https://mangaku.lol/manga?sort=popular&page=322",
+          "label": "322",
+          "active": false
+        },
+        {
+          "url": "https://mangaku.lol/manga?sort=popular&page=2",
+          "label": "Next &raquo;",
+          "active": false
+        }
+      ],
+      "next_page_url": "https://mangaku.lol/manga?sort=popular&page=2",
+      "path": "https://mangaku.lol/manga",
+      "per_page": 24,
+      "prev_page_url": null,
+      "to": 24,
+      "total": 7722
+    },
+    "genres": [
+      {
+        "id": 1,
+        "name": "Action",
+        "slug": "action",
+        "icon": "⚔️",
+        "created_at": "2026-03-23T06:39:14.000000Z",
+        "updated_at": "2026-03-23T06:39:14.000000Z"
+      },
+      {
+        "id": 2,
+        "name": "Adventure",
+        "slug": "adventure",
+        "icon": "🗺️",
+        "created_at": "2026-03-23T06:39:14.000000Z",
+        "updated_at": "2026-03-23T06:39:14.000000Z"
+      },
+      {
+        "id": 3,
+        "name": "Comedy",
+        "slug": "comedy",
+        "icon": "😂",
+        "created_at": "2026-03-23T06:39:14.000000Z",
+        "updated_at": "2026-03-23T06:39:14.000000Z"
+      },
+      {
+        "id": 4,
+        "name": "Drama",
+        "slug": "drama",
+        "icon": "🎭",
+        "created_at": "2026-03-23T06:39:14.000000Z",
+        "updated_at": "2026-03-23T06:39:14.000000Z"
+      },
+      {
+        "id": 5,
+        "name": "Ecchi",
+        "slug": "ecchi",
+        "icon": "🔞",
+        "created_at": "2026-03-23T06:39:14.000000Z",
+        "updated_at": "2026-03-23T06:39:14.000000Z"
+      },
+      {
+        "id": 6,
+        "name": "Fantasy",
+        "slug": "fantasy",
+        "icon": "🪄",
+        "created_at": "2026-03-23T06:39:14.000000Z",
+        "updated_at": "2026-03-23T06:39:14.000000Z"
+      },
+      {
+        "id": 7,
+        "name": "Horror",
+        "slug": "horror",
+        "icon": "👻",
+        "created_at": "2026-03-23T06:39:14.000000Z",
+        "updated_at": "2026-03-23T06:39:14.000000Z"
+      },
+      {
+        "id": 8,
+        "name": "Mahou Shoujo",
+        "slug": "mahou-shoujo",
+        "icon": "✨",
+        "created_at": "2026-03-23T06:39:14.000000Z",
+        "updated_at": "2026-03-23T06:39:14.000000Z"
+      },
+      {
+        "id": 9,
+        "name": "Mecha",
+        "slug": "mecha",
+        "icon": "🤖",
+        "created_at": "2026-03-23T06:39:14.000000Z",
+        "updated_at": "2026-03-23T06:39:14.000000Z"
+      },
+      {
+        "id": 10,
+        "name": "Music",
+        "slug": "music",
+        "icon": "🎵",
+        "created_at": "2026-03-23T06:39:14.000000Z",
+        "updated_at": "2026-03-23T06:39:14.000000Z"
+      },
+      {
+        "id": 11,
+        "name": "Mystery",
+        "slug": "mystery",
+        "icon": "🔍",
+        "created_at": "2026-03-23T06:39:14.000000Z",
+        "updated_at": "2026-03-23T06:39:14.000000Z"
+      },
+      {
+        "id": 12,
+        "name": "Psychological",
+        "slug": "psychological",
+        "icon": "🧠",
+        "created_at": "2026-03-23T06:39:14.000000Z",
+        "updated_at": "2026-03-23T06:39:14.000000Z"
+      },
+      {
+        "id": 13,
+        "name": "Romance",
+        "slug": "romance",
+        "icon": "❤️",
+        "created_at": "2026-03-23T06:39:14.000000Z",
+        "updated_at": "2026-03-23T06:39:14.000000Z"
+      },
+      {
+        "id": 14,
+        "name": "Sci-Fi",
+        "slug": "sci-fi",
+        "icon": "🚀",
+        "created_at": "2026-03-23T06:39:14.000000Z",
+        "updated_at": "2026-03-23T06:39:14.000000Z"
+      },
+      {
+        "id": 15,
+        "name": "Slice of Life",
+        "slug": "slice-of-life",
+        "icon": "🍱",
+        "created_at": "2026-03-23T06:39:14.000000Z",
+        "updated_at": "2026-03-23T06:39:14.000000Z"
+      },
+      {
+        "id": 16,
+        "name": "Sports",
+        "slug": "sports",
+        "icon": "⚽",
+        "created_at": "2026-03-23T06:39:14.000000Z",
+        "updated_at": "2026-03-23T06:39:14.000000Z"
+      },
+      {
+        "id": 17,
+        "name": "Supernatural",
+        "slug": "supernatural",
+        "icon": "🔮",
+        "created_at": "2026-03-23T06:39:14.000000Z",
+        "updated_at": "2026-03-23T06:39:14.000000Z"
+      },
+      {
+        "id": 18,
+        "name": "Thriller",
+        "slug": "thriller",
+        "icon": "🔪",
+        "created_at": "2026-03-23T06:39:14.000000Z",
+        "updated_at": "2026-03-23T06:39:14.000000Z"
+      },
+      {
+        "id": 19,
+        "name": "Genius",
+        "slug": "genius",
+        "icon": null,
+        "created_at": "2026-03-23T07:54:49.000000Z",
+        "updated_at": "2026-03-23T07:54:49.000000Z"
+      },
+      {
+        "id": 20,
+        "name": "MC Rebirth",
+        "slug": "mc-rebirth",
+        "icon": null,
+        "created_at": "2026-03-23T07:54:49.000000Z",
+        "updated_at": "2026-03-23T07:54:49.000000Z"
+      },
+      {
+        "id": 21,
+        "name": "Blacksmith",
+        "slug": "blacksmith",
+        "icon": null,
+        "created_at": "2026-03-23T07:55:41.000000Z",
+        "updated_at": "2026-03-23T07:55:41.000000Z"
+      },
+      {
+        "id": 22,
+        "name": "Regression",
+        "slug": "regression",
+        "icon": null,
+        "created_at": "2026-03-23T07:55:41.000000Z",
+        "updated_at": "2026-03-23T07:55:41.000000Z"
+      },
+      {
+        "id": 23,
+        "name": "Reincarnation",
+        "slug": "reincarnation",
+        "icon": null,
+        "created_at": "2026-03-23T08:31:28.000000Z",
+        "updated_at": "2026-03-23T08:31:28.000000Z"
+      },
+      {
+        "id": 24,
+        "name": "School life",
+        "slug": "school-life",
+        "icon": null,
+        "created_at": "2026-03-23T08:31:28.000000Z",
+        "updated_at": "2026-03-23T08:31:28.000000Z"
+      },
+      {
+        "id": 25,
+        "name": "Seinen",
+        "slug": "seinen",
+        "icon": null,
+        "created_at": "2026-03-23T08:31:28.000000Z",
+        "updated_at": "2026-03-23T08:31:28.000000Z"
+      },
+      {
+        "id": 26,
+        "name": "Martial Arts",
+        "slug": "martial-arts",
+        "icon": null,
+        "created_at": "2026-03-23T08:31:53.000000Z",
+        "updated_at": "2026-03-23T08:31:53.000000Z"
+      },
+      {
+        "id": 27,
+        "name": "Shounen",
+        "slug": "shounen",
+        "icon": null,
+        "created_at": "2026-03-23T08:33:13.000000Z",
+        "updated_at": "2026-03-23T08:33:13.000000Z"
+      },
+      {
+        "id": 28,
+        "name": "Gender Bender",
+        "slug": "gender-bender",
+        "icon": null,
+        "created_at": "2026-03-23T08:35:38.000000Z",
+        "updated_at": "2026-03-23T08:35:38.000000Z"
+      },
+      {
+        "id": 29,
+        "name": "Tragedy",
+        "slug": "tragedy",
+        "icon": null,
+        "created_at": "2026-03-23T08:35:38.000000Z",
+        "updated_at": "2026-03-23T08:35:38.000000Z"
+      },
+      {
+        "id": 30,
+        "name": "apocalypse",
+        "slug": "apocalypse",
+        "icon": null,
+        "created_at": "2026-03-23T09:22:25.000000Z",
+        "updated_at": "2026-03-23T09:22:25.000000Z"
+      },
+      {
+        "id": 31,
+        "name": "System",
+        "slug": "system",
+        "icon": null,
+        "created_at": "2026-03-23T09:22:25.000000Z",
+        "updated_at": "2026-03-23T09:22:25.000000Z"
+      },
+      {
+        "id": 32,
+        "name": "Shoujo",
+        "slug": "shoujo",
+        "icon": null,
+        "created_at": "2026-03-23T15:30:59.000000Z",
+        "updated_at": "2026-03-23T15:30:59.000000Z"
+      },
+      {
+        "id": 33,
+        "name": "Cooking",
+        "slug": "cooking",
+        "icon": null,
+        "created_at": "2026-03-23T15:31:12.000000Z",
+        "updated_at": "2026-03-23T15:31:12.000000Z"
+      },
+      {
+        "id": 34,
+        "name": "Harem",
+        "slug": "harem",
+        "icon": null,
+        "created_at": "2026-03-23T15:31:50.000000Z",
+        "updated_at": "2026-03-23T15:31:50.000000Z"
+      },
+      {
+        "id": 35,
+        "name": "School",
+        "slug": "school",
+        "icon": null,
+        "created_at": "2026-03-23T15:34:06.000000Z",
+        "updated_at": "2026-03-23T15:34:06.000000Z"
+      },
+      {
+        "id": 36,
+        "name": "Historical",
+        "slug": "historical",
+        "icon": null,
+        "created_at": "2026-03-23T15:34:25.000000Z",
+        "updated_at": "2026-03-23T15:34:25.000000Z"
+      },
+      {
+        "id": 37,
+        "name": "Josei",
+        "slug": "josei",
+        "icon": null,
+        "created_at": "2026-03-23T15:38:06.000000Z",
+        "updated_at": "2026-03-23T15:38:06.000000Z"
+      },
+      {
+        "id": 38,
+        "name": "Shoujo Ai",
+        "slug": "shoujo-ai",
+        "icon": null,
+        "created_at": "2026-03-23T15:38:43.000000Z",
+        "updated_at": "2026-03-23T15:38:43.000000Z"
+      },
+      {
+        "id": 39,
+        "name": "Magic",
+        "slug": "magic",
+        "icon": null,
+        "created_at": "2026-03-23T15:40:23.000000Z",
+        "updated_at": "2026-03-23T15:40:23.000000Z"
+      },
+      {
+        "id": 40,
+        "name": "Villainess",
+        "slug": "villainess",
+        "icon": null,
+        "created_at": "2026-03-23T15:40:23.000000Z",
+        "updated_at": "2026-03-23T15:40:23.000000Z"
+      },
+      {
+        "id": 41,
+        "name": "Strategy",
+        "slug": "strategy",
+        "icon": null,
+        "created_at": "2026-03-23T15:41:10.000000Z",
+        "updated_at": "2026-03-23T15:41:10.000000Z"
+      },
+      {
+        "id": 42,
+        "name": "Medical",
+        "slug": "medical",
+        "icon": null,
+        "created_at": "2026-03-23T15:41:24.000000Z",
+        "updated_at": "2026-03-23T15:41:24.000000Z"
+      },
+      {
+        "id": 43,
+        "name": "Isekai",
+        "slug": "isekai",
+        "icon": null,
+        "created_at": "2026-03-23T15:46:14.000000Z",
+        "updated_at": "2026-03-23T15:46:14.000000Z"
+      },
+      {
+        "id": 44,
+        "name": "Mature",
+        "slug": "mature",
+        "icon": null,
+        "created_at": "2026-03-23T15:48:50.000000Z",
+        "updated_at": "2026-03-23T15:48:50.000000Z"
+      },
+      {
+        "id": 45,
+        "name": "Demons",
+        "slug": "demons",
+        "icon": null,
+        "created_at": "2026-03-23T15:58:50.000000Z",
+        "updated_at": "2026-03-23T15:58:50.000000Z"
+      },
+      {
+        "id": 46,
+        "name": "Gore",
+        "slug": "gore",
+        "icon": null,
+        "created_at": "2026-03-23T15:58:50.000000Z",
+        "updated_at": "2026-03-23T15:58:50.000000Z"
+      },
+      {
+        "id": 47,
+        "name": "Adult",
+        "slug": "adult",
+        "icon": null,
+        "created_at": "2026-03-27T04:19:21.000000Z",
+        "updated_at": "2026-03-27T04:19:21.000000Z"
+      },
+      {
+        "id": 48,
+        "name": "Yuri",
+        "slug": "yuri",
+        "icon": null,
+        "created_at": "2026-03-27T04:19:21.000000Z",
+        "updated_at": "2026-03-27T04:19:21.000000Z"
+      },
+      {
+        "id": 49,
+        "name": "Crime",
+        "slug": "crime",
+        "icon": null,
+        "created_at": "2026-03-27T04:55:02.000000Z",
+        "updated_at": "2026-03-27T04:55:02.000000Z"
+      },
+      {
+        "id": 50,
+        "name": "Game",
+        "slug": "game",
+        "icon": null,
+        "created_at": "2026-03-27T05:47:13.000000Z",
+        "updated_at": "2026-03-27T05:47:13.000000Z"
+      },
+      {
+        "id": 51,
+        "name": "Dark Fantasy",
+        "slug": "dark-fantasy",
+        "icon": null,
+        "created_at": "2026-03-27T08:55:58.000000Z",
+        "updated_at": "2026-03-27T08:55:58.000000Z"
+      },
+      {
+        "id": 52,
+        "name": "One Shot",
+        "slug": "one-shot",
+        "icon": null,
+        "created_at": "2026-03-27T10:32:15.000000Z",
+        "updated_at": "2026-03-27T10:32:15.000000Z"
+      },
+      {
+        "id": 53,
+        "name": "Police",
+        "slug": "police",
+        "icon": null,
+        "created_at": "2026-03-29T20:36:00.000000Z",
+        "updated_at": "2026-03-29T20:36:00.000000Z"
+      },
+      {
+        "id": 54,
+        "name": "Monsters",
+        "slug": "monsters",
+        "icon": null,
+        "created_at": "2026-03-31T17:24:12.000000Z",
+        "updated_at": "2026-03-31T17:24:12.000000Z"
+      },
+      {
+        "id": 55,
+        "name": "Military",
+        "slug": "military",
+        "icon": null,
+        "created_at": "2026-03-31T18:36:10.000000Z",
+        "updated_at": "2026-03-31T18:36:10.000000Z"
+      },
+      {
+        "id": 56,
+        "name": "Super Power",
+        "slug": "super-power",
+        "icon": null,
+        "created_at": "2026-03-31T22:52:41.000000Z",
+        "updated_at": "2026-03-31T22:52:41.000000Z"
+      },
+      {
+        "id": 57,
+        "name": "Smut",
+        "slug": "smut",
+        "icon": null,
+        "created_at": "2026-04-01T00:26:02.000000Z",
+        "updated_at": "2026-04-01T00:26:02.000000Z"
+      },
+      {
+        "id": 58,
+        "name": "Slow Life",
+        "slug": "slow-life",
+        "icon": null,
+        "created_at": "2026-04-01T00:42:26.000000Z",
+        "updated_at": "2026-04-01T00:42:26.000000Z"
+      },
+      {
+        "id": 59,
+        "name": "Beasts",
+        "slug": "beasts",
+        "icon": null,
+        "created_at": "2026-04-01T00:43:54.000000Z",
+        "updated_at": "2026-04-01T00:43:54.000000Z"
+      },
+      {
+        "id": 60,
+        "name": "Manhwa",
+        "slug": "manhwa",
+        "icon": null,
+        "created_at": "2026-04-01T00:43:54.000000Z",
+        "updated_at": "2026-04-01T00:43:54.000000Z"
+      },
+      {
+        "id": 61,
+        "name": "Revenge",
+        "slug": "revenge",
+        "icon": null,
+        "created_at": "2026-04-01T02:00:50.000000Z",
+        "updated_at": "2026-04-01T02:00:50.000000Z"
+      },
+      {
+        "id": 62,
+        "name": "Murim",
+        "slug": "murim",
+        "icon": null,
+        "created_at": "2026-04-01T02:05:28.000000Z",
+        "updated_at": "2026-04-01T02:05:28.000000Z"
+      },
+      {
+        "id": 63,
+        "name": "Manga",
+        "slug": "manga",
+        "icon": null,
+        "created_at": "2026-04-01T02:15:07.000000Z",
+        "updated_at": "2026-04-01T02:15:07.000000Z"
+      },
+      {
+        "id": 64,
+        "name": "Comic",
+        "slug": "comic",
+        "icon": null,
+        "created_at": "2026-04-01T03:30:54.000000Z",
+        "updated_at": "2026-04-01T03:30:54.000000Z"
+      },
+      {
+        "id": 65,
+        "name": "Shoujo(G)",
+        "slug": "shoujog",
+        "icon": null,
+        "created_at": "2026-04-01T04:00:00.000000Z",
+        "updated_at": "2026-04-01T04:00:00.000000Z"
+      },
+      {
+        "id": 66,
+        "name": "Webtoon",
+        "slug": "webtoon",
+        "icon": null,
+        "created_at": "2026-04-01T04:00:00.000000Z",
+        "updated_at": "2026-04-01T04:00:00.000000Z"
+      },
+      {
+        "id": 67,
+        "name": "Swormanship",
+        "slug": "swormanship",
+        "icon": null,
+        "created_at": "2026-04-01T04:03:28.000000Z",
+        "updated_at": "2026-04-01T04:03:28.000000Z"
+      },
+      {
+        "id": 68,
+        "name": "Ghosts",
+        "slug": "ghosts",
+        "icon": null,
+        "created_at": "2026-04-01T05:01:08.000000Z",
+        "updated_at": "2026-04-01T05:01:08.000000Z"
+      },
+      {
+        "id": 69,
+        "name": "Shounen Ai",
+        "slug": "shounen-ai",
+        "icon": null,
+        "created_at": "2026-04-02T16:06:05.000000Z",
+        "updated_at": "2026-04-02T16:06:05.000000Z"
+      },
+      {
+        "id": 70,
+        "name": "Sport",
+        "slug": "sport",
+        "icon": null,
+        "created_at": "2026-04-09T17:08:49.000000Z",
+        "updated_at": "2026-04-09T17:08:49.000000Z"
+      },
+      {
+        "id": 71,
+        "name": "Knight",
+        "slug": "knight",
+        "icon": null,
+        "created_at": "2026-04-30T09:39:59.000000Z",
+        "updated_at": "2026-04-30T09:39:59.000000Z"
+      },
+      {
+        "id": 72,
+        "name": "Sword Fight",
+        "slug": "sword-fight",
+        "icon": null,
+        "created_at": "2026-04-30T09:39:59.000000Z",
+        "updated_at": "2026-04-30T09:39:59.000000Z"
+      },
+      {
+        "id": 79,
+        "name": "Doujinshi",
+        "slug": "doujinshi",
+        "icon": null,
+        "created_at": "2026-05-10T05:06:47.000000Z",
+        "updated_at": "2026-05-10T05:06:47.000000Z"
+      },
+      {
+        "id": 85,
+        "name": "Academy",
+        "slug": "academy",
+        "icon": null,
+        "created_at": "2026-05-18T00:52:45.000000Z",
+        "updated_at": "2026-05-18T00:52:45.000000Z"
+      },
+      {
+        "id": 88,
+        "name": "Webtoons",
+        "slug": "webtoons",
+        "icon": null,
+        "created_at": "2026-06-13T08:03:07.000000Z",
+        "updated_at": "2026-06-13T08:03:07.000000Z"
+      },
+      {
+        "id": 90,
+        "name": "Korea",
+        "slug": "korea",
+        "icon": null,
+        "created_at": "2026-06-16T00:37:12.000000Z",
+        "updated_at": "2026-06-16T00:37:12.000000Z"
+      },
+      {
+        "id": 93,
+        "name": "Xuanhuan",
+        "slug": "xuanhuan",
+        "icon": null,
+        "created_at": "2026-06-16T03:34:24.000000Z",
+        "updated_at": "2026-06-16T03:34:24.000000Z"
+      },
+      {
+        "id": 94,
+        "name": "Eastern",
+        "slug": "eastern",
+        "icon": null,
+        "created_at": "2026-06-16T03:50:38.000000Z",
+        "updated_at": "2026-06-16T03:50:38.000000Z"
+      },
+      {
+        "id": 95,
+        "name": "Xianxia",
+        "slug": "xianxia",
+        "icon": null,
+        "created_at": "2026-06-16T03:52:55.000000Z",
+        "updated_at": "2026-06-16T03:52:55.000000Z"
+      },
+      {
+        "id": 96,
+        "name": "Wuxia",
+        "slug": "wuxia",
+        "icon": null,
+        "created_at": "2026-06-16T03:53:02.000000Z",
+        "updated_at": "2026-06-16T03:53:02.000000Z"
+      },
+      {
+        "id": 104,
+        "name": "Chinese",
+        "slug": "chinese",
+        "icon": null,
+        "created_at": "2026-06-16T05:19:59.000000Z",
+        "updated_at": "2026-06-16T05:19:59.000000Z"
+      },
+      {
+        "id": 105,
+        "name": "Novel",
+        "slug": "novel",
+        "icon": null,
+        "created_at": "2026-06-16T05:19:59.000000Z",
+        "updated_at": "2026-06-16T05:19:59.000000Z"
+      },
+      {
+        "id": 119,
+        "name": "Immortals",
+        "slug": "immortals",
+        "icon": null,
+        "created_at": "2026-06-16T05:20:08.000000Z",
+        "updated_at": "2026-06-16T05:20:08.000000Z"
+      },
+      {
+        "id": 1555,
+        "name": "Genderswap",
+        "slug": "genderswap",
+        "icon": null,
+        "created_at": "2026-06-27T07:30:35.000000Z",
+        "updated_at": "2026-06-27T07:30:35.000000Z"
+      },
+      {
+        "id": 1556,
+        "name": "Video Games",
+        "slug": "video-games",
+        "icon": null,
+        "created_at": "2026-06-27T07:30:35.000000Z",
+        "updated_at": "2026-06-27T07:30:35.000000Z"
+      },
+      {
+        "id": 1557,
+        "name": "Oneshot",
+        "slug": "oneshot",
+        "icon": null,
+        "created_at": "2026-06-27T07:30:59.000000Z",
+        "updated_at": "2026-06-27T07:30:59.000000Z"
+      },
+      {
+        "id": 1558,
+        "name": "Time Travel",
+        "slug": "time-travel",
+        "icon": null,
+        "created_at": "2026-06-29T07:38:55.000000Z",
+        "updated_at": "2026-06-29T07:38:55.000000Z"
+      },
+      {
+        "id": 1559,
+        "name": "Gyaru",
+        "slug": "gyaru",
+        "icon": null,
+        "created_at": "2026-07-02T05:23:58.000000Z",
+        "updated_at": "2026-07-02T05:23:58.000000Z"
+      },
+      {
+        "id": 1560,
+        "name": "Demon",
+        "slug": "demon",
+        "icon": null,
+        "created_at": "2026-07-03T00:49:48.000000Z",
+        "updated_at": "2026-07-03T00:49:48.000000Z"
+      },
+      {
+        "id": 1561,
+        "name": "Reverse Harem",
+        "slug": "reverse-harem",
+        "icon": null,
+        "created_at": "2026-07-03T01:00:03.000000Z",
+        "updated_at": "2026-07-03T01:00:03.000000Z"
+      },
+      {
+        "id": 1562,
+        "name": "China",
+        "slug": "china",
+        "icon": null,
+        "created_at": "2026-07-08T01:07:52.000000Z",
+        "updated_at": "2026-07-08T01:07:52.000000Z"
+      },
+      {
+        "id": 1563,
+        "name": "Completed",
+        "slug": "completed",
+        "icon": null,
+        "created_at": "2026-07-08T01:07:52.000000Z",
+        "updated_at": "2026-07-08T01:07:52.000000Z"
+      },
+      {
+        "id": 1564,
+        "name": "Tamat",
+        "slug": "tamat",
+        "icon": null,
+        "created_at": "2026-07-08T01:07:52.000000Z",
+        "updated_at": "2026-07-08T01:07:52.000000Z"
+      },
+      {
+        "id": 1565,
+        "name": "Jepang",
+        "slug": "jepang",
+        "icon": null,
+        "created_at": "2026-07-08T01:08:56.000000Z",
+        "updated_at": "2026-07-08T01:08:56.000000Z"
+      },
+      {
+        "id": 1566,
+        "name": "HTL",
+        "slug": "htl",
+        "icon": null,
+        "created_at": "2026-07-08T01:09:16.000000Z",
+        "updated_at": "2026-07-08T01:09:16.000000Z"
+      },
+      {
+        "id": 1567,
+        "name": "Girls' Love",
+        "slug": "girls-love",
+        "icon": null,
+        "created_at": "2026-07-11T08:50:09.000000Z",
+        "updated_at": "2026-07-11T08:50:09.000000Z"
+      },
+      {
+        "id": 1568,
+        "name": "Crossdressing",
+        "slug": "crossdressing",
+        "icon": null,
+        "created_at": "2026-07-22T02:52:28.000000Z",
+        "updated_at": "2026-07-22T02:52:28.000000Z"
+      },
+      {
+        "id": 1569,
+        "name": "Entertainment",
+        "slug": "entertainment",
+        "icon": null,
+        "created_at": "2026-07-25T18:59:45.000000Z",
+        "updated_at": "2026-07-25T18:59:45.000000Z"
+      },
+      {
+        "id": 1570,
+        "name": "Martial Art",
+        "slug": "martial-art",
+        "icon": null,
+        "created_at": "2026-08-04T22:41:13.000000Z",
+        "updated_at": "2026-08-04T22:41:13.000000Z"
+      },
+      {
+        "id": 1571,
+        "name": "Survival",
+        "slug": "survival",
+        "icon": null,
+        "created_at": "2026-08-04T22:41:13.000000Z",
+        "updated_at": "2026-08-04T22:41:13.000000Z"
+      },
+      {
+        "id": 1572,
+        "name": "Long Strip",
+        "slug": "long-strip",
+        "icon": null,
+        "created_at": "2026-08-09T03:34:48.000000Z",
+        "updated_at": "2026-08-09T03:34:48.000000Z"
+      },
+      {
+        "id": 1573,
+        "name": "Fanfiction",
+        "slug": "fanfiction",
+        "icon": null,
+        "created_at": "2026-08-14T07:24:28.000000Z",
+        "updated_at": "2026-08-14T07:24:28.000000Z"
+      },
+      {
+        "id": 1574,
+        "name": "Monster",
+        "slug": "monster",
+        "icon": null,
+        "created_at": "2026-08-20T23:45:50.000000Z",
+        "updated_at": "2026-08-20T23:45:50.000000Z"
+      },
+      {
+        "id": 1575,
+        "name": "Fight",
+        "slug": "fight",
+        "icon": null,
+        "created_at": "2026-08-21T23:42:45.000000Z",
+        "updated_at": "2026-08-21T23:42:45.000000Z"
+      },
+      {
+        "id": 1576,
+        "name": "Monster girls",
+        "slug": "monster-girls",
+        "icon": null,
+        "created_at": "2026-09-05T21:43:51.000000Z",
+        "updated_at": "2026-09-05T21:43:51.000000Z"
+      },
+      {
+        "id": 1577,
+        "name": "4-Koma",
+        "slug": "4-koma",
+        "icon": null,
+        "created_at": "2026-09-07T15:37:56.000000Z",
+        "updated_at": "2026-09-07T15:37:56.000000Z"
+      }
+    ],
+    "filters": {
+      "sort": "popular"
+    }
+  },
+  "url": "/manga?page=1&sort=popular",
+  "version": "1f9ea7ef0878b9a4129e7a3158970903",
+  "clearHistory": false,
+  "encryptHistory": false
+}

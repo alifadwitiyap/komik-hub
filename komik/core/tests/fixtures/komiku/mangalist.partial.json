@@ -1,0 +1,1386 @@
+{
+    "success": true,
+    "message": "Anime list retrieved successfully",
+    "data": {
+        "#": [
+            {
+                "id": 522670,
+                "title": "#Rabu kome-suki to kossori tsunagaritai",
+                "title_alt": "",
+                "score": "-",
+                "date": "-",
+                "author": "-",
+                "total_views": "521",
+                "thumbnail": "https:\/\/thumbnail.komiku.org\/new\/img\/images\/2026\/06\/27\/20260627140026_41e7c78383942870_58d068f2.jpg",
+                "cover": "https:\/\/thumbnail.komiku.org\/new\/img\/images\/2026\/06\/27\/20260627135354_a7de4032f74f0e8f_874370e5.jpg",
+                "other": [],
+                "genreutama": [
+                    {
+                        "name": "Romantis",
+                        "id": "romantis"
+                    }
+                ],
+                "ratemanga": [
+                    {
+                        "name": "13",
+                        "id": "13"
+                    }
+                ],
+                "statusmanga": [
+                    {
+                        "name": "Completed",
+                        "id": "completed"
+                    }
+                ],
+                "tipe": [
+                    {
+                        "name": "Manga",
+                        "id": "manga"
+                    }
+                ]
+            }
+        ],
+        "&": [
+            {
+                "id": 563252,
+                "title": "\"Maou Taoshita Shi Kaeru Ka\"",
+                "title_alt": "",
+                "score": 7,
+                "date": "",
+                "author": "",
+                "total_views": "0",
+                "thumbnail": "https:\/\/thumbnail.komiku.org\/new\/img\/images\/2026\/09\/06\/20260906003146_54074ba8a2ad82dc_1054e5f8.jpg",
+                "cover": "https:\/\/thumbnail.komiku.org\/new\/img\/images\/2026\/09\/02\/20260902230803_540498e29c8dd847_0f4e29ee.jpg",
+                "other": [],
+                "genreutama": [
+                    {
+                        "name": "Fantasi",
+                        "id": "fantasi"
+                    }
+                ],
+                "ratemanga": [
+                    {
+                        "name": "13",
+                        "id": "13"
+                    }
+                ],
+                "statusmanga": [
+                    {
+                        "name": "Ongoing",
+                        "id": "ongoing"
+                    }
+                ],
+                "tipe": [
+                    {
+                        "name": "Manga",
+                        "id": "manga"
+                    }
+                ]
+            }
+        ],
+        "+": [
+            {
+                "id": 3620,
+                "title": "+99 Wooden Stick",
+                "title_alt": "Tongkat Kayu Plus Sembilan Puluh Sembilan",
+                "score": "7",
+                "date": "01 Januari 2016",
+                "author": "Ryu Kim",
+                "total_views": "754640",
+                "thumbnail": "https:\/\/thumbnail.komiku.org\/uploads\/manga\/99-wooden-stick\/manga_thumbnail-Manhwa-99-Wooden-Stick.jpg",
+                "cover": "https:\/\/thumbnail.komiku.org\/uploads\/manga\/99-wooden-stick\/manga_img_horizontal-Komik-99-Wooden-Stick.jpg",
+                "other": [
+                    {
+                        "name": "Berwarna",
+                        "id": "berwarna"
+                    },
+                    {
+                        "name": "Chapter &gt;100",
+                        "id": "chapter-100"
+                    },
+                    {
+                        "name": "Hot",
+                        "id": "hot"
+                    }
+                ],
+                "genreutama": [
+                    {
+                        "name": "Aksi",
+                        "id": "aksi"
+                    }
+                ],
+                "ratemanga": [
+                    {
+                        "name": "15",
+                        "id": "15"
+                    }
+                ],
+                "statusmanga": [
+                    {
+                        "name": "Ongoing",
+                        "id": "ongoing"
+                    }
+                ],
+                "tipe": [
+                    {
+                        "name": "Manhwa",
+                        "id": "manhwa"
+                    }
+                ]
+            },
+            {
+                "id": 6303,
+                "title": "+C: Sword and Cornett",
+                "title_alt": "Pedang dan Korno",
+                "score": "8",
+                "date": "1 November 2017",
+                "author": "El-chan",
+                "total_views": "5158",
+                "thumbnail": "https:\/\/thumbnail.komiku.org\/uploads\/manga\/c-sword-and-cornett-2\/manga_thumbnail-Komik-C-Sword-and-Cornett.png",
+                "cover": "https:\/\/thumbnail.komiku.org\/uploads\/manga\/c-sword-and-cornett-2\/manga_img_horizontal-Manga-C-Sword-and-Cornett.jpg",
+                "other": [],
+                "genreutama": [
+                    {
+                        "name": "Fantasi",
+                        "id": "fantasi"
+                    }
+                ],
+                "ratemanga": [
+                    {
+                        "name": "15",
+                        "id": "15"
+                    }
+                ],
+                "statusmanga": [
+                    {
+                        "name": "Ongoing",
+                        "id": "ongoing"
+                    }
+                ],
+                "tipe": [
+                    {
+                        "name": "Manga",
+                        "id": "manga"
+                    }
+                ]
+            }
+        ],
+        "-": [
+            {
+                "id": 3063,
+                "title": "-50kg Cinderella",
+                "title_alt": "Cinderella Turun Berat Badan 50 Kilogram",
+                "score": "8",
+                "date": "1 Januari 2021",
+                "author": "Jung Min-a",
+                "total_views": "15595",
+                "thumbnail": "https:\/\/thumbnail.komiku.org\/uploads\/manga\/50kg-cinderella\/manga_thumbnail-50kg-Cinderella-Cover.jpg",
+                "cover": "https:\/\/thumbnail.komiku.org\/uploads\/manga\/50kg-cinderella\/manga_img_horizontal-50kg-Cinderella-Panjang.png",
+                "other": [],
+                "genreutama": [
+                    {
+                        "name": "Drama",
+                        "id": "drama"
+                    }
+                ],
+                "ratemanga": [
+                    {
+                        "name": "15",
+                        "id": "15"
+                    }
+                ],
+                "statusmanga": [
+                    {
+                        "name": "Ongoing",
+                        "id": "ongoing"
+                    }
+                ],
+                "tipe": [
+                    {
+                        "name": "Manga",
+                        "id": "manga"
+                    }
+                ]
+            },
+            {
+                "id": 2619,
+                "title": "-Aoppella!?- Hajimari no Playlist",
+                "title_alt": "Aoppella!? Awal dari Playlist",
+                "score": "7.5",
+                "date": "02 Mei 2021",
+                "author": "Kentarou Kawashima",
+                "total_views": "3887",
+                "thumbnail": "https:\/\/thumbnail.komiku.org\/uploads\/manga\/aoppella-hajimari-no-playlist\/manga_thumbnail-Manga-Aoppella-Hajimari-no-Playlist.jpg",
+                "cover": "https:\/\/thumbnail.komiku.org\/uploads\/manga\/aoppella-hajimari-no-playlist\/manga_img_horizontal-Komik-Aoppella-Hajimari-no-Playlist.jpg",
+                "other": [],
+                "genreutama": [
+                    {
+                        "name": "Romantis",
+                        "id": "romantis"
+                    }
+                ],
+                "ratemanga": [
+                    {
+                        "name": "15",
+                        "id": "15"
+                    }
+                ],
+                "statusmanga": [
+                    {
+                        "name": "Ongoing",
+                        "id": "ongoing"
+                    }
+                ],
+                "tipe": [
+                    {
+                        "name": "Manga",
+                        "id": "manga"
+                    }
+                ]
+            },
+            {
+                "id": 366600,
+                "title": "-PIQUANT-",
+                "title_alt": "Pedas Menggigit",
+                "score": "7.2",
+                "date": "29 November 2018",
+                "author": "Kanan Minami",
+                "total_views": "631",
+                "thumbnail": "https:\/\/thumbnail.komiku.org\/img\/upload\/-piquant-\/img_6846a70ed3abe9.02524086.jpg",
+                "cover": "https:\/\/thumbnail.komiku.org\/img\/upload\/-piquant-\/img_6846a70ed38097.10069482.png",
+                "other": [],
+                "genreutama": [
+                    {
+                        "name": "Slice of Life",
+                        "id": "slice-of-life"
+                    }
+                ],
+                "ratemanga": [
+                    {
+                        "name": "15",
+                        "id": "15"
+                    }
+                ],
+                "statusmanga": [
+                    {
+                        "name": "Ongoing",
+                        "id": "ongoing"
+                    }
+                ],
+                "tipe": [
+                    {
+                        "name": "Manga",
+                        "id": "manga"
+                    }
+                ]
+            }
+        ],
+        ".": [
+            {
+                "id": 6304,
+                "title": ".hack\/\/G.U.+",
+                "title_alt": "Petualangan .hack\/\/G.U.+",
+                "score": "7",
+                "date": "4 Juli 2006",
+                "author": "Toshihiro Kawamoto",
+                "total_views": "8610",
+                "thumbnail": "https:\/\/thumbnail.komiku.org\/uploads\/manga\/hack-g-u\/manga_thumbnail-Komik-hackGU.jpg",
+                "cover": "https:\/\/thumbnail.komiku.org\/uploads\/manga\/hack-g-u\/manga_img_horizontal-Manga-hackGU.jpg",
+                "other": [],
+                "genreutama": [
+                    {
+                        "name": "Fantasi",
+                        "id": "fantasi"
+                    }
+                ],
+                "ratemanga": [
+                    {
+                        "name": "15",
+                        "id": "15"
+                    }
+                ],
+                "statusmanga": [
+                    {
+                        "name": "Ongoing",
+                        "id": "ongoing"
+                    }
+                ],
+                "tipe": [
+                    {
+                        "name": "Manga",
+                        "id": "manga"
+                    }
+                ]
+            }
+        ],
+        "0": [
+            {
+                "id": 3251,
+                "title": "0 Magic, a High Spirit, and a Demonic Sword",
+                "title_alt": "Nol Sihir, Roh Tinggi, dan Pedang Iblis",
+                "score": "7.5",
+                "date": "01 Juli 2021",
+                "author": "Hong Melona",
+                "total_views": "1266",
+                "thumbnail": "https:\/\/thumbnail.komiku.org\/uploads\/manga\/0-magic-a-high-spirit-and-a-demonic-sword\/manga_thumbnail-Manga-0-Magic-a-High-Spirit-and-a-Demonic-Sword.jpg",
+                "cover": "https:\/\/thumbnail.komiku.org\/uploads\/manga\/0-magic-a-high-spirit-and-a-demonic-sword\/manga_img_horizontal-Komik-0-Magic-a-High-Spirit-and-a-Demonic-Sword.jpg",
+                "other": [],
+                "genreutama": [
+                    {
+                        "name": "Fantasi",
+                        "id": "fantasi"
+                    }
+                ],
+                "ratemanga": [
+                    {
+                        "name": "15",
+                        "id": "15"
+                    }
+                ],
+                "statusmanga": [
+                    {
+                        "name": "Ongoing",
+                        "id": "ongoing"
+                    }
+                ],
+                "tipe": [
+                    {
+                        "name": "Manga",
+                        "id": "manga"
+                    }
+                ]
+            },
+            {
+                "id": 6302,
+                "title": "07 Ghost",
+                "title_alt": "07 Hantu",
+                "score": "7.5",
+                "date": "11 Januari 2005",
+                "author": "Yuki Amemiya dan Yukino Ichihara",
+                "total_views": "21078",
+                "thumbnail": "https:\/\/thumbnail.komiku.org\/uploads\/manga\/07-ghost\/manga_thumbnail-Komik-07-Ghost.jpg",
+                "cover": "https:\/\/thumbnail.komiku.org\/uploads\/manga\/07-ghost\/manga_img_horizontal-Manga-07-Ghost.jpg",
+                "other": [],
+                "genreutama": [
+                    {
+                        "name": "Fantasi",
+                        "id": "fantasi"
+                    }
+                ],
+                "ratemanga": [
+                    {
+                        "name": "15",
+                        "id": "15"
+                    }
+                ],
+                "statusmanga": [
+                    {
+                        "name": "Ongoing",
+                        "id": "ongoing"
+                    }
+                ],
+                "tipe": [
+                    {
+                        "name": "Manga",
+                        "id": "manga"
+                    }
+                ]
+            },
+            {
+                "id": 6301,
+                "title": "090 Eko to Issho",
+                "title_alt": "090 Eko dan Bersama",
+                "score": "7",
+                "date": "29 September 1989",
+                "author": "Masahiko Kikuni",
+                "total_views": "2967",
+                "thumbnail": "https:\/\/thumbnail.komiku.org\/uploads\/manga\/090-eko-to-issho\/manga_thumbnail-Komik-090-Eko-to-Issho.jpg",
+                "cover": "https:\/\/thumbnail.komiku.org\/uploads\/manga\/090-eko-to-issho\/manga_img_horizontal-Manga-090-Eko-to-Issho.jpg",
+                "other": [],
+                "genreutama": [
+                    {
+                        "name": "Romantis",
+                        "id": "romantis"
+                    }
+                ],
+                "ratemanga": [
+                    {
+                        "name": "15",
+                        "id": "15"
+                    }
+                ],
+                "statusmanga": [
+                    {
+                        "name": "Ongoing",
+                        "id": "ongoing"
+                    }
+                ],
+                "tipe": [
+                    {
+                        "name": "Manga",
+                        "id": "manga"
+                    }
+                ]
+            }
+        ],
+        "1": [
+            {
+                "id": 1388,
+                "title": "1 Million Times Attack Speed",
+                "title_alt": "Serangan Kecepatan Satu Juta Kali",
+                "score": "8",
+                "date": "15 Juli 2021",
+                "author": "Park Yoon Dae",
+                "total_views": "3234952",
+                "thumbnail": "https:\/\/thumbnail.komiku.org\/uploads\/manga\/1-million-times-attack-speed\/manga_thumbnail-1-Million-Times-Attack-Speed.png",
+                "cover": "https:\/\/thumbnail.komiku.org\/uploads\/manga\/1-million-times-attack-speed\/manga_img_horizontal-Back-1-Million-Times-Attack-Speed.jpg",
+                "other": [
+                    {
+                        "name": "Berwarna",
+                        "id": "berwarna"
+                    },
+                    {
+                        "name": "Chapter &gt;100",
+                        "id": "chapter-100"
+                    },
+                    {
+                        "name": "Hot",
+                        "id": "hot"
+                    }
+                ],
+                "genreutama": [
+                    {
+                        "name": "Fantasi",
+                        "id": "fantasi"
+                    }
+                ],
+                "ratemanga": [
+                    {
+                        "name": "13",
+                        "id": "13"
+                    }
+                ],
+                "statusmanga": [
+                    {
+                        "name": "Ongoing",
+                        "id": "ongoing"
+                    }
+                ],
+                "tipe": [
+                    {
+                        "name": "Manhua",
+                        "id": "manhua"
+                    }
+                ]
+            },
+            {
+                "id": 426901,
+                "title": "1 Million Won Per Second",
+                "title_alt": "Satu Juta Won per Detik",
+                "score": "8",
+                "date": "21 Oktober 2020",
+                "author": "Kang Young-soon",
+                "total_views": "6722",
+                "thumbnail": "https:\/\/thumbnail.komiku.org\/img\/upload\/1_million_won_per_second\/img_69217e9d2ab985.59919536.png",
+                "cover": "https:\/\/thumbnail.komiku.org\/img\/upload\/1_million_won_per_second\/img_69217e9d2a2ff9.94126782.png",
+                "other": [
+                    {
+                        "name": "Berwarna",
+                        "id": "berwarna"
+                    },
+                    {
+                        "name": "Crazy Update",
+                        "id": "crazy-update"
+                    }
+                ],
+                "genreutama": [
+                    {
+                        "name": "Drama",
+                        "id": "drama"
+                    }
+                ],
+                "ratemanga": [
+                    {
+                        "name": "13",
+                        "id": "13"
+                    }
+                ],
+                "statusmanga": [
+                    {
+                        "name": "Ongoing",
+                        "id": "ongoing"
+                    }
+                ],
+                "tipe": [
+                    {
+                        "name": "Manhwa",
+                        "id": "manhwa"
+                    }
+                ]
+            },
+            {
+                "id": 2612,
+                "title": "1 RT de Nakawarui Nonke Joshi-tachi ga 1-byou Kiss suru",
+                "title_alt": "Sekelompok Cewek Biasa yang Jahil dan Ciuman Satu Detik",
+                "score": "7.5",
+                "date": "12 Juni 2023",
+                "author": "Lika Kawai",
+                "total_views": "19089",
+                "thumbnail": "https:\/\/thumbnail.komiku.org\/uploads\/manga\/1-rt-de-nakawarui-nonke-joshi-tachi-ga-1-byou-kiss-suru\/manga_thumbnail-Manga-1-RT-de-Nakawarui-Nonke-Joshi-tachi-ga-1-byou-Kiss-suru.jpg",
+                "cover": "https:\/\/thumbnail.komiku.org\/uploads\/manga\/1-rt-de-nakawarui-nonke-joshi-tachi-ga-1-byou-kiss-suru\/manga_img_horizontal-Komik-1-RT-de-Nakawarui-Nonke-Joshi-tachi-ga-1-byou-Kiss-suru.jpg",
+                "other": [],
+                "genreutama": [
+                    {
+                        "name": "Romantis",
+                        "id": "romantis"
+                    }
+                ],
+                "ratemanga": [
+                    {
+                        "name": "17",
+                        "id": "17"
+                    }
+                ],
+                "statusmanga": [
+                    {
+                        "name": "Ongoing",
+                        "id": "ongoing"
+                    }
+                ],
+                "tipe": [
+                    {
+                        "name": "Manga",
+                        "id": "manga"
+                    }
+                ]
+            },
+            {
+                "id": 4837,
+                "title": "1 Second",
+                "title_alt": "Satu Detik Satu",
+                "score": "7",
+                "date": "22 Oktober 2014",
+                "author": "Kinema Citrus",
+                "total_views": "85955",
+                "thumbnail": "https:\/\/thumbnail.komiku.org\/uploads\/manga\/1-second\/manga_thumbnail-Manhwa-1-Second.png",
+                "cover": "https:\/\/thumbnail.komiku.org\/uploads\/manga\/1-second\/manga_img_horizontal-Komik-1-Second.jpg",
+                "other": [
+                    {
+                        "name": "Berwarna",
+                        "id": "berwarna"
+                    }
+                ],
+                "genreutama": [
+                    {
+                        "name": "Aksi",
+                        "id": "aksi"
+                    }
+                ],
+                "ratemanga": [
+                    {
+                        "name": "15",
+                        "id": "15"
+                    }
+                ],
+                "statusmanga": [
+                    {
+                        "name": "Ongoing",
+                        "id": "ongoing"
+                    }
+                ],
+                "tipe": [
+                    {
+                        "name": "Manhwa",
+                        "id": "manhwa"
+                    }
+                ]
+            },
+            {
+                "id": 6300,
+                "title": "1-nen A-gumi no Monster",
+                "title_alt": "Monster Kelas 1-A",
+                "score": "7.8",
+                "date": "22 Januari 2014",
+                "author": "Sh\u016bz\u014d Oshimi",
+                "total_views": "624695",
+                "thumbnail": "https:\/\/thumbnail.komiku.org\/uploads\/manga\/1-nen-a-gumi-no-monster\/manga_thumbnail-Komik-1-nen-A-gumi-no-Monster.jpg",
+                "cover": "https:\/\/thumbnail.komiku.org\/uploads\/manga\/1-nen-a-gumi-no-monster\/manga_img_horizontal-Manga-1-nen-A-gumi-no-Monster.jpg",
+                "other": [
+                    {
+                        "name": "Hot",
+                        "id": "hot"
+                    }
+                ],
+                "genreutama": [
+                    {
+                        "name": "Romantis",
+                        "id": "romantis"
+                    }
+                ],
+                "ratemanga": [
+                    {
+                        "name": "15",
+                        "id": "15"
+                    }
+                ],
+                "statusmanga": [
+                    {
+                        "name": "Ongoing",
+                        "id": "ongoing"
+                    }
+                ],
+                "tipe": [
+                    {
+                        "name": "Manga",
+                        "id": "manga"
+                    }
+                ]
+            },
+            {
+                "id": 6299,
+                "title": "1\/2 Prince",
+                "title_alt": "Setengah Pangeran",
+                "score": "8",
+                "date": "20 Februari 2004",
+                "author": "Yu Wo",
+                "total_views": "22416",
+                "thumbnail": "https:\/\/thumbnail.komiku.org\/uploads\/manga\/1-2-prince\/manga_thumbnail-Komik-12-Prince.jpg",
+                "cover": "https:\/\/thumbnail.komiku.org\/uploads\/manga\/1-2-prince\/manga_img_horizontal-Manhwa-12-Prince.png",
+                "other": [
+                    {
+                        "name": "Berwarna",
+                        "id": "berwarna"
+                    }
+                ],
+                "genreutama": [
+                    {
+                        "name": "Fantasi",
+                        "id": "fantasi"
+                    }
+                ],
+                "ratemanga": [
+                    {
+                        "name": "15",
+                        "id": "15"
+                    }
+                ],
+                "statusmanga": [
+                    {
+                        "name": "Ongoing",
+                        "id": "ongoing"
+                    }
+                ],
+                "tipe": [
+                    {
+                        "name": "Manhwa",
+                        "id": "manhwa"
+                    }
+                ]
+            },
+            {
+                "id": 359197,
+                "title": "10-Nen Buri ni Saikai shita Kusogaki wa Seijun Bishoujo JK ni Seichou shiteita",
+                "title_alt": "Anak Nakal yang Bertemu Lagi Setelah Sepuluh Tahun Tumbuh Menjadi Siswi Cantik dan Sopan",
+                "score": "8",
+                "date": "15 Juni 2023",
+                "author": "AZUMA Yuki",
+                "total_views": "147848",
+                "thumbnail": "https:\/\/thumbnail.komiku.org\/img\/upload\/10-nen_buri_ni_saikai_shita_kusogaki\/img_68343715ce60c0.00792004.jpg",
+                "cover": "https:\/\/thumbnail.komiku.org\/img\/upload\/10-nen_buri_ni_saikai_shita_kusogaki\/img_68343715ce2644.00268192.jpg",
+                "other": [],
+                "genreutama": [
+                    {
+                        "name": "Romantis",
+                        "id": "romantis"
+                    }
+                ],
+                "ratemanga": [
+                    {
+                        "name": "13",
+                        "id": "13"
+                    }
+                ],
+                "statusmanga": [
+                    {
+                        "name": "Ongoing",
+                        "id": "ongoing"
+                    }
+                ],
+                "tipe": [
+                    {
+                        "name": "Manga",
+                        "id": "manga"
+                    }
+                ]
+            },
+            {
+                "id": 356094,
+                "title": "10-nenmae ni Time Leap shite Osananajimi no Ojousama wo Tasuketara Iinazuke ni Narimashita",
+                "title_alt": "Melompat Waktu ke Masa Lalu dan Menyelamatkan Sahabat Masa Kecil yang Jadi Putri, Lalu Menjadi Tunangan",
+                "score": "7",
+                "date": "10 September 2020",
+                "author": "Shizuki Fujisawa",
+                "total_views": "23750",
+                "thumbnail": "https:\/\/thumbnail.komiku.org\/img\/upload\/10-nenmae_ni_time_leap\/img_682ef28d08a9e1.92350639.jpg",
+                "cover": "https:\/\/thumbnail.komiku.org\/img\/upload\/10-nenmae_ni_time_leap\/img_682ef28d085f59.86159108.jpg",
+                "other": [],
+                "genreutama": [
+                    {
+                        "name": "Romantis",
+                        "id": "romantis"
+                    }
+                ],
+                "ratemanga": [
+                    {
+                        "name": "13",
+                        "id": "13"
+                    }
+                ],
+                "statusmanga": [
+                    {
+                        "name": "Ongoing",
+                        "id": "ongoing"
+                    }
+                ],
+                "tipe": []
+            },
+            {
+                "id": 489408,
+                "title": "10,000 Ways to Eliminate Players",
+                "title_alt": null,
+                "score": "Tidak diketahui",
+                "date": "Tidak diketahui",
+                "author": "Tidak diketahui",
+                "total_views": "8026",
+                "thumbnail": "https:\/\/thumbnail.komiku.org\/new\/img\/images\/2026\/04\/24\/20260424010145_36d0e26e0550e5ea_186647e7.jpg",
+                "cover": "https:\/\/thumbnail.komiku.org\/new\/img\/images\/2026\/04\/24\/20260424005323_7c7191ff56a93988_a27b1dbc.jpg",
+                "other": [
+                    {
+                        "name": "Berwarna",
+                        "id": "berwarna"
+                    }
+                ],
+                "genreutama": [
+                    {
+                        "name": "Isekai",
+                        "id": "isekai"
+                    }
+                ],
+                "ratemanga": [
+                    {
+                        "name": "15",
+                        "id": "15"
+                    }
+                ],
+                "statusmanga": [
+                    {
+                        "name": "Ongoing",
+                        "id": "ongoing"
+                    }
+                ],
+                "tipe": [
+                    {
+                        "name": "Manhua",
+                        "id": "manhua"
+                    }
+                ]
+            },
+            {
+                "id": 541130,
+                "title": "100 Days of Nahong",
+                "title_alt": "",
+                "score": "-",
+                "date": "-",
+                "author": "-",
+                "total_views": "127",
+                "thumbnail": "https:\/\/thumbnail.komiku.org\/new\/img\/images\/2026\/08\/02\/20260802110014_eea4af22302effee_6315a11b.webp",
+                "cover": "https:\/\/thumbnail.komiku.org\/new\/img\/images\/2026\/08\/02\/20260802105143_fbff5e7f30b7841a_45c7d3c8.webp",
+                "other": [
+                    {
+                        "name": "Berwarna",
+                        "id": "berwarna"
+                    },
+                    {
+                        "name": "Crazy Update",
+                        "id": "crazy-update"
+                    }
+                ],
+                "genreutama": [
+                    {
+                        "name": "Romantis",
+                        "id": "romantis"
+                    }
+                ],
+                "ratemanga": [
+                    {
+                        "name": "10",
+                        "id": "10"
+                    }
+                ],
+                "statusmanga": [],
+                "tipe": [
+                    {
+                        "name": "Manhwa",
+                        "id": "manhwa"
+                    }
+                ]
+            },
+            {
+                "id": 2613,
+                "title": "100 Nichigo ni Kuufuku de Taore Maid ni Naru Onna no Ko",
+                "title_alt": "Wanita yang Menjadi Pelayan Setelah Pingsan Karena Kelaparan Selama 100 Hari",
+                "score": "7.5",
+                "date": "12 Maret 2021",
+                "author": "Minato Yuka",
+                "total_views": "2268",
+                "thumbnail": "https:\/\/thumbnail.komiku.org\/uploads\/manga\/100-nichigo-ni-kuufuku-de-taore-maid-ni-naru-onna-no-ko\/manga_thumbnail-Manga-100-Nichigo-ni-Kuufuku-de-Taore-Maid-ni-Naru-Onna-no-Ko.jpg",
+                "cover": "https:\/\/thumbnail.komiku.org\/uploads\/manga\/100-nichigo-ni-kuufuku-de-taore-maid-ni-naru-onna-no-ko\/manga_img_horizontal-Komik-100-Nichigo-ni-Kuufuku-de-Taore-Maid-ni-Naru-Onna-no-Ko.jpg",
+                "other": [],
+                "genreutama": [
+                    {
+                        "name": "Komedi",
+                        "id": "komedi"
+                    }
+                ],
+                "ratemanga": [
+                    {
+                        "name": "15",
+                        "id": "15"
+                    }
+                ],
+                "statusmanga": [
+                    {
+                        "name": "Ongoing",
+                        "id": "ongoing"
+                    }
+                ],
+                "tipe": [
+                    {
+                        "name": "Manga",
+                        "id": "manga"
+                    }
+                ]
+            },
+            {
+                "id": 1526,
+                "title": "100 Years Old Top Chef",
+                "title_alt": "Koki Top Berusia Seratus Tahun",
+                "score": "8.5",
+                "date": "2 Desember 2021",
+                "author": "Jo Yongseok",
+                "total_views": "455933",
+                "thumbnail": "https:\/\/thumbnail.komiku.org\/uploads\/manga\/100-years-old-top-chef\/manga_thumbnail-Head-100-Years-Old-Top-Chef.png",
+                "cover": "https:\/\/thumbnail.komiku.org\/uploads\/manga\/100-years-old-top-chef\/manga_img_horizontal-Back-100-Years-Old-Top-Chef.jpg",
+                "other": [
+                    {
+                        "name": "Berwarna",
+                        "id": "berwarna"
+                    }
+                ],
+                "genreutama": [
+                    {
+                        "name": "Fantasi",
+                        "id": "fantasi"
+                    }
+                ],
+                "ratemanga": [
+                    {
+                        "name": "15",
+                        "id": "15"
+                    }
+                ],
+                "statusmanga": [
+                    {
+                        "name": "Ongoing",
+                        "id": "ongoing"
+                    }
+                ],
+                "tipe": [
+                    {
+                        "name": "Manhwa",
+                        "id": "manhwa"
+                    }
+                ]
+            },
+            {
+                "id": 6298,
+                "title": "100-man no Inochi no Ue ni Ore wa Tatteiru",
+                "title_alt": "Aku Berdiri di Atas 100 Ribu Nyawa",
+                "score": "8",
+                "date": "12 Oktober 2016",
+                "author": "Ninomiya Naoki",
+                "total_views": "127529",
+                "thumbnail": "https:\/\/thumbnail.komiku.org\/uploads\/manga\/100-man-no-inochi-no-ue-ni-ore-wa-tatteiru\/manga_thumbnail-Komik-100-man-no-Inochi-no-Ue-ni-Ore-wa-Tatteiru.jpg",
+                "cover": "https:\/\/thumbnail.komiku.org\/uploads\/manga\/100-man-no-inochi-no-ue-ni-ore-wa-tatteiru\/manga_img_horizontal-Manga-100-man-no-Inochi-no-Ue-ni-Ore-wa-Tatteiru.jpg",
+                "other": [],
+                "genreutama": [
+                    {
+                        "name": "Isekai",
+                        "id": "isekai"
+                    }
+                ],
+                "ratemanga": [
+                    {
+                        "name": "15",
+                        "id": "15"
+                    }
+                ],
+                "statusmanga": [
+                    {
+                        "name": "Ongoing",
+                        "id": "ongoing"
+                    }
+                ],
+                "tipe": [
+                    {
+                        "name": "Manga",
+                        "id": "manga"
+                    }
+                ]
+            },
+            {
+                "id": 5187,
+                "title": "100-nin no Eiyuu o Sodateta Saikyou Yogensha wa",
+                "title_alt": "Sang Peramal Terkuat yang Membesarkan Seratus Pahlawan",
+                "score": "8",
+                "date": "8 Mei 2020",
+                "author": "KAKERU",
+                "total_views": "169095",
+                "thumbnail": "https:\/\/thumbnail.komiku.org\/uploads\/manga\/100-nin-no-eiyuu-o-sodateta-saikyou-yogensha-wa\/manga_thumbnail-Manga-100-nin-no-Eiyuu-o-Sodateta-Saikyou-Yogensha-wa.png",
+                "cover": "https:\/\/thumbnail.komiku.org\/uploads\/manga\/100-nin-no-eiyuu-o-sodateta-saikyou-yogensha-wa\/manga_img_horizontal-Komik-100-nin-no-Eiyuu-o-Sodateta-Saikyou-Yogensha-wa.png",
+                "other": [],
+                "genreutama": [
+                    {
+                        "name": "Fantasi",
+                        "id": "fantasi"
+                    }
+                ],
+                "ratemanga": [
+                    {
+                        "name": "15",
+                        "id": "15"
+                    }
+                ],
+                "statusmanga": [
+                    {
+                        "name": "Ongoing",
+                        "id": "ongoing"
+                    }
+                ],
+                "tipe": [
+                    {
+                        "name": "Manga",
+                        "id": "manga"
+                    }
+                ]
+            },
+            {
+                "id": 4510,
+                "title": "100.000 Layers Of Body Refining: I Raise All Emperor",
+                "title_alt": "Seratus Ribu Lapisan Penyempurnaan Tubuh Aku Menaikkan Semua Kaisar",
+                "score": "8.5",
+                "date": "12 Februari 2020",
+                "author": "Blue Copper",
+                "total_views": "1986348",
+                "thumbnail": "https:\/\/thumbnail.komiku.org\/uploads\/manga\/100-000-layers-of-body-refining-i-raise-all-emperor\/manga_thumbnail-Manhua-100.000-Layers-Of-Body-Refining-I-Raise-All-Emperor.jpg",
+                "cover": "https:\/\/thumbnail.komiku.org\/uploads\/manga\/100-000-layers-of-body-refining-i-raise-all-emperor\/manga_img_horizontal-Komik-100.000-Layers-Of-Body-Refining-I-Raise-All-Emperor.jpg",
+                "other": [
+                    {
+                        "name": "Berwarna",
+                        "id": "berwarna"
+                    },
+                    {
+                        "name": "Chapter &gt;100",
+                        "id": "chapter-100"
+                    },
+                    {
+                        "name": "Hot",
+                        "id": "hot"
+                    }
+                ],
+                "genreutama": [
+                    {
+                        "name": "Fantasi",
+                        "id": "fantasi"
+                    }
+                ],
+                "ratemanga": [
+                    {
+                        "name": "15",
+                        "id": "15"
+                    }
+                ],
+                "statusmanga": [
+                    {
+                        "name": "Ongoing",
+                        "id": "ongoing"
+                    }
+                ],
+                "tipe": [
+                    {
+                        "name": "Manhua",
+                        "id": "manhua"
+                    }
+                ]
+            },
+            {
+                "id": 6297,
+                "title": "100% Gokuama Kareshi!",
+                "title_alt": "Pacar Seratus Persen Gokuama",
+                "score": "7.5",
+                "date": "15 Maret 2021",
+                "author": "Yua Takahashi",
+                "total_views": "14370",
+                "thumbnail": "https:\/\/thumbnail.komiku.org\/uploads\/manga\/100-gokuama-kareshi\/manga_thumbnail-Komik-100-Gokuama-Kareshi.jpg",
+                "cover": "https:\/\/thumbnail.komiku.org\/uploads\/manga\/100-gokuama-kareshi\/manga_img_horizontal-Manga-100-Gokuama-Kareshi.png",
+                "other": [],
+                "genreutama": [
+                    {
+                        "name": "Romantis",
+                        "id": "romantis"
+                    }
+                ],
+                "ratemanga": [
+                    {
+                        "name": "15",
+                        "id": "15"
+                    }
+                ],
+                "statusmanga": [
+                    {
+                        "name": "End",
+                        "id": "end"
+                    }
+                ],
+                "tipe": [
+                    {
+                        "name": "Manga",
+                        "id": "manga"
+                    }
+                ]
+            },
+            {
+                "id": 5815,
+                "title": "1000 Ways \u2013 Sun Shangxiang",
+                "title_alt": "1000 Cara \u2013 Sun Shangxiang",
+                "score": "8.5",
+                "date": "15 Maret 2023",
+                "author": "Li Wei",
+                "total_views": "10909",
+                "thumbnail": "https:\/\/thumbnail.komiku.org\/uploads\/manga\/1000-ways-sun-shangxiang\/manga_thumbnail-Komik-1000-Ways--Sun-Shangxiang.jpeg",
+                "cover": "https:\/\/thumbnail.komiku.org\/uploads\/manga\/1000-ways-sun-shangxiang\/manga_img_horizontal-Manhua-1000-Ways--Sun-Shangxiang.jpg",
+                "other": [
+                    {
+                        "name": "Berwarna",
+                        "id": "berwarna"
+                    }
+                ],
+                "genreutama": [
+                    {
+                        "name": "Isekai",
+                        "id": "isekai"
+                    }
+                ],
+                "ratemanga": [
+                    {
+                        "name": "15",
+                        "id": "15"
+                    }
+                ],
+                "statusmanga": [
+                    {
+                        "name": "Ongoing",
+                        "id": "ongoing"
+                    }
+                ],
+                "tipe": [
+                    {
+                        "name": "Manhua",
+                        "id": "manhua"
+                    }
+                ]
+            },
+            {
+                "id": 5849,
+                "title": "1000 Yen Hero",
+                "title_alt": "Pahlawan Seribu Yen",
+                "score": "7",
+                "date": "7 Agustus 2018",
+                "author": "Kaisei Shimokawa",
+                "total_views": "9942",
+                "thumbnail": "https:\/\/thumbnail.komiku.org\/uploads\/manga\/1000-yen-hero\/manga_thumbnail-Komik-1000-Yen-Hero.jpg",
+                "cover": "https:\/\/thumbnail.komiku.org\/uploads\/manga\/1000-yen-hero\/manga_img_horizontal-Manga-1000-Yen-Hero.jpg",
+                "other": [],
+                "genreutama": [
+                    {
+                        "name": "Aksi",
+                        "id": "aksi"
+                    }
+                ],
+                "ratemanga": [
+                    {
+                        "name": "15",
+                        "id": "15"
+                    }
+                ],
+                "statusmanga": [
+                    {
+                        "name": "Ongoing",
+                        "id": "ongoing"
+                    }
+                ],
+                "tipe": [
+                    {
+                        "name": "Manga",
+                        "id": "manga"
+                    }
+                ]
+            },
+            {
+                "id": 6296,
+                "title": "12 Beast",
+                "title_alt": "12 Makhluk",
+                "score": "8.5",
+                "date": "2016",
+                "author": "Okamoto Haruki",
+                "total_views": "22188",
+                "thumbnail": "https:\/\/thumbnail.komiku.org\/uploads\/manga\/12-beast\/manga_thumbnail-Komik-12-Beast.jpg",
+                "cover": "https:\/\/thumbnail.komiku.org\/uploads\/manga\/12-beast\/manga_img_horizontal-Manga-12-Beast.jpg",
+                "other": [],
+                "genreutama": [
+                    {
+                        "name": "Fantasi",
+                        "id": "fantasi"
+                    }
+                ],
+                "ratemanga": [
+                    {
+                        "name": "17",
+                        "id": "17"
+                    }
+                ],
+                "statusmanga": [
+                    {
+                        "name": "Ongoing",
+                        "id": "ongoing"
+                    }
+                ],
+                "tipe": [
+                    {
+                        "name": "Manga",
+                        "id": "manga"
+                    }
+                ]
+            },
+            {
+                "id": 2611,
+                "title": "12 Suicidal Children",
+                "title_alt": "Dua Belas Anak yang Ingin Mati",
+                "score": "8",
+                "date": "10 Januari 2007",
+                "author": "Aka Akasaka",
+                "total_views": "274",
+                "thumbnail": "https:\/\/thumbnail.komiku.org\/uploads\/manga\/12-suicidal-children\/manga_thumbnail-12-Suicidal-Children-1.jpg",
+                "cover": "https:\/\/thumbnail.komiku.org\/uploads\/manga\/12-suicidal-children\/manga_img_horizontal-12-Suicidal-Children-2.png",
+                "other": [],
+                "genreutama": [
+                    {
+                        "name": "Drama",
+                        "id": "drama"
+                    }
+                ],
+                "ratemanga": [
+                    {
+                        "name": "15",
+                        "id": "15"
+                    }
+                ],
+                "statusmanga": [
+                    {
+                        "name": "Ongoing",
+                        "id": "ongoing"
+                    }
+                ],
+                "tipe": [
+                    {
+                        "name": "Manga",
+                        "id": "manga"
+                    }
+                ]
+            },
+            {
+                "id": 6295,
+                "title": "13 (Hideaki Sorachi)",
+                "title_alt": "Gintama",
+                "score": "8",
+                "date": "8 Oktober 2003",
+                "author": "Hideaki Sorachi",
+                "total_views": "5190",
+                "thumbnail": "https:\/\/thumbnail.komiku.org\/uploads\/manga\/13hideaki-sorachi\/manga_thumbnail-Komik-13-Hideaki-Sorachi.jpg",
+                "cover": "https:\/\/thumbnail.komiku.org\/uploads\/manga\/13hideaki-sorachi\/manga_img_horizontal-Manga-13-Hideaki-Sorachi.jpg",
+                "other": [],
+                "genreutama": [
+                    {
+                        "name": "Romantis",
+                        "id": "romantis"
+                    }
+                ],
+                "ratemanga": [
+                    {
+                        "name": "15",
+                        "id": "15"
+                    }
+                ],
+                "statusmanga": [
+                    {
+                        "name": "End",
+                        "id": "end"
+                    }
+                ],
+                "tipe": [
+                    {
+                        "name": "Manga",
+                        "id": "manga"
+                    }
+                ]
+            },
+            {
+                "id": 6294,
+                "title": "14 Sai No Koi",
+                "title_alt": "Cinta di Usia Empat Belas",
+                "score": "7.5",
+                "date": "10 Februari 2018",
+                "author": "Kajiwara Hisaya",
+                "total_views": "3554",
+                "thumbnail": "https:\/\/thumbnail.komiku.org\/uploads\/manga\/14-sai-no-koi\/manga_thumbnail-Komik-14-Sai-No-Koi.jpg",
+                "cover": "https:\/\/thumbnail.komiku.org\/uploads\/manga\/14-sai-no-koi\/manga_img_horizontal-Manga-14-Sai-No-Koi.jpg",
+                "other": [],
+                "genreutama": [
+                    {
+                        "name": "Romantis",
+                        "id": "romantis"
+                    }
+                ],
+                "ratemanga": [
+                    {
+                        "name": "15",
+                        "id": "15"
+                    }
+                ],
+                "statusmanga": [
+                    {
+                        "name": "Ongoing",
+                        "id": "ongoing"
+                    }
+                ],
+                "tipe": [
+                    {
+                        "name": "Manga",
+                        "id": "manga"
+                    }
+                ]
+            },
+            {
+                "id": 6293,
+                "title": "16 Life",
+                "title_alt": "16 Kehidupan",
+                "score": "7.5",
+                "date": "1 September 2020",
+                "author": "Cho Siwoo",
+                "total_views": "13767",
+                "thumbnail": "https:\/\/thumbnail.komiku.org\/uploads\/manga\/16-life\/manga_thumbnail-Komik-16-Life.jpg",
+                "cover": "https:\/\/thumbnail.komiku.org\/uploads\/manga\/16-life\/manga_img_horizontal-Manga-16-Life.jpg",
+                "other": [],
+                "genreutama": [
+                    {
+                        "name": "Romantis",
+                        "id": "romantis"
+                    }
+                ],
+                "ratemanga": [
+                    {
+                        "name": "15",
+                        "id": "15"
+                    }
+                ],
+                "statusmanga": [
+                    {
+                        "name": "End",
+                        "id": "end"
+                    }
+                ],
+                "tipe": [
+                    {
+                        "name": "Manga",
+                        "id": "manga"
+                    }
+                ]
+            },
+            {
+                "id": 2610,
+                "title": "17 Sai no Kimi e",
+                "title_alt": "Untukmu yang Berusia 17 Tahun",
+                "score": "7.5",
+                "date": "12 Januari 2017",
+                "author": "Banana Yoshimoto",
+                "total_views": "1016",
+                "thumbnail": "https:\/\/thumbnail.komiku.org\/uploads\/manga\/17-sai-no-kimi-e\/manga_thumbnail-17-Sai-no-Kimi-e-1.png",
+                "cover": "https:\/\/thumbnail.komiku.org\/uploads\/manga\/17-sai-no-kimi-e\/manga_img_horizontal-17-Sai-no-Kimi-e-2.png",
+                "other": [],
+                "genreutama": [
+                    {
+                        "name": "Drama",
+                        "id": "drama"
+                    }
+                ],
+                "ratemanga": [
+                    {
+                        "name": "13",
+                        "id": "13"
+                    }
+                ],
+                "statusmanga": [
+                    {
+                        "name": "Ongoing",
+                        "id": "ongoing"
+                    }
+                ],
+                "tipe": [
+                    {
+                        "name": "Manga",
+                        "id": "manga"
+                    }
+                ]
+            },
+            {
+                "id": 467382,
+                "title": "18-Year-Old Demon King",
+                "title_alt": null,
+                "score": "Tidak diketahui",
+                "date": "Tidak diketahui",
+                "author": "Tidak diketahui",
+                "total_views": "29555",
+                "thumbnail": "https:\/\/thumbnail.komiku.org\/new\/img\/images\/2026\/03\/13\/20260313213020_931ec3e6978fddec_9a0b7b8e.webp",
+                "cover": "https:\/\/thumbnail.komiku.org\/new\/img\/images\/2026\/03\/13\/20260313211418_74715754c66cadd8_2628eec1.webp",
+                "other": [
+                    {
+                        "name": "Berwarna",
+                        "id": "berwarna"
+                    }
+                ],
+                "genreutama": [
+                    {
+                        "name": "Fantasi",
+                        "id": "fantasi"
+                    }
+                ],
+                "ratemanga": [
+                    {
+                        "name": "17",
+                        "id": "17"
+                    }
+                ],
+                "statusmanga": [
+                    {
+                        "name": "Ongoing",
+                        "id": "

@@ -1,0 +1,42 @@
+{
+  "favorites": {},
+  "notifications": [
+    {
+      "id": "notif-e2e-45-1",
+      "title_key": "class de 2 banme ni kawaii onna no ko to tomodachi ni natta",
+      "title": "Class de 2 Banme ni Kawaii Onna no Ko to Tomodachi ni Natta",
+      "handle": "3215",
+      "chapter": "45.1",
+      "sources": [
+        "komiku"
+      ],
+      "at": 1792060000000,
+      "read": true
+    },
+    {
+      "id": "notif-e2e-45-2",
+      "title_key": "class de 2 banme ni kawaii onna no ko to tomodachi ni natta",
+      "title": "Class de 2 Banme ni Kawaii Onna no Ko to Tomodachi ni Natta",
+      "handle": "3215",
+      "chapter": "45.2",
+      "sources": [
+        "komiku"
+      ],
+      "at": 1792060100000,
+      "read": true
+    },
+    {
+      "id": "notif-e2e-45-3",
+      "title_key": "class de 2 banme ni kawaii onna no ko to tomodachi ni natta",
+      "title": "Class de 2 Banme ni Kawaii Onna no Ko to Tomodachi ni Natta",
+      "handle": "3215",
+      "chapter": "45.3",
+      "sources": [
+        "komiku"
+      ],
+      "at": 1792060200000,
+      "read": true
+    }
+  ],
+  "last_check_at": 1792083659633
+}
