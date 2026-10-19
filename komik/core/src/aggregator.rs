@@ -912,7 +912,46 @@ impl Aggregator {
 
             match tokio::time::timeout(self.timeout, src.chapter_pages(&manga, &chapter)).await {
                 Ok(Ok(pages)) if !pages.images.is_empty() => {
-                    let (prev, next) = neighbor_refs(&detail, pos);
+                    let (mut prev, mut next) = neighbor_refs(&detail, pos);
+                    // Tepi sumber pelayan -> cari tetangga di sumber lain yang
+                    // punya series dengan judul sama. Sumber pelayan tetap
+                    // menang selama punya tetangga (regresi).
+                    //
+                    // Syarat:
+                    // - Pemanggil TIDAK mempersempit sumber (`--source`):
+                    //   dengan filter, navigasi harus tetap di sumber yang
+                    //   diminta.
+                    // - Daftar chapter sumber pelayan punya konteks urutan
+                    //   (>1 chapter). Daftar 1 chapter = sumber tak memberi
+                    //   tahu itu tepi atas atau tepi bawah, jadi tak ada
+                    //   tebakan tetangga lintas sumber.
+                    if (prev.is_none() || next.is_none())
+                        && source.is_none()
+                        && detail.chapters.len() > 1
+                    {
+                        let (lists, _failed) = self
+                            .collect_series_across_sources(
+                                &manga.title,
+                                Some(&sid),
+                                CROSS_SOURCE_CHAPTER_LIMIT,
+                            )
+                            .await;
+                        let (cross_prev, cross_next) =
+                            pick_cross_source_neighbors(&lists, &chapter.number);
+                        if next.is_none() {
+                            next = cross_next;
+                        }
+                        // `prev` hanya boleh lintas sumber kalau daftar
+                        // sumber pelayan TIDAK terpotong: `cap` memotong dari
+                        // yang paling tua (daftar terbaru-dulu), jadi tepi
+                        // bawah bisa jadi artefak pemotongan — sumber pelayan
+                        // mungkin punya chapter lebih tua yang kita buang.
+                        // Tanpa guard, prev bisa melompati chapter yang
+                        // sebenarnya milik sumber pelayan.
+                        if prev.is_none() && detail.chapters.len() < cap {
+                            prev = cross_prev;
+                        }
+                    }
                     let switched_from = (sid != primary).then(|| primary.clone());
                     let note = switched_from.as_ref().map(|p| match &primary_miss {
                         Some(PrimaryMiss::Empty) => {
@@ -1455,7 +1494,13 @@ pub fn chapter_index_by_key(detail: &SeriesDetail, number: &str) -> Option<usize
         .position(|c| chapter_number_key(&c.number) == want)
 }
 
-/// prev/next dari daftar chapter sumber yang MELAYANI. Daftar chapter
+/// Batas chapter per sumber saat mencari tetangga LINTAS sumber.
+///
+/// 0 = tanpa pemotongan: daftar chapter sumber lain dipakai utuh supaya
+/// kandidat terdekat (mis. "233" dari "232") tak terpotong.
+const CROSS_SOURCE_CHAPTER_LIMIT: u32 = 0;
+
+/// prev/next dari daftar chapter sumber yang MELAYAN. Daftar chapter
 /// terbaru-dulu (kontrak trait `Source`), jadi `prev` = lebih tua (index+1)
 /// dan `next` = lebih baru (index-1) — konvensi sama dengan endpoint chapter
 /// server yang sudah ada. Chapter di tepi dapat `None`.
@@ -1471,6 +1516,72 @@ fn neighbor_refs(detail: &SeriesDetail, pos: usize) -> (Option<ChapterRef>, Opti
         .and_then(|i| detail.chapters.get(i))
         .map(|c| mk(c));
     let prev = detail.chapters.get(pos + 1).map(|c| mk(c));
+    (prev, next)
+}
+
+/// Kandidat tetangga LINTAS SUMBER untuk chapter `current`.
+///
+/// Dipakai hanya saat sumber yang melayani sudah di TEPI (tidak punya
+/// `next` / tidak punya `prev`). Sumber lain searched =
+/// [`Aggregator::collect_series_across_sources`] (judul sama, sumber pelayan
+/// dilewati).
+///
+/// - `next` = nomor LEBIH BESAR dari `current`, yang terkecil (suksesor
+///   terdekat).
+/// - `prev` = nomor LEBIH KECIL dari `current`, yang terbesar.
+///
+/// Perbandingan memakai [`crate::union::cmp_chapter_number`] (numerik-aware,
+/// identitas string `chapter_number_key`) — bukan f64. Label non-numerik
+/// ("extra", "prologue") kalah dari kandidat numerik, jadi `prev` memilih
+/// "extra" hanya kalau tak ada kandidat numerik yang lebih kecil.
+///
+/// Kandidat dengan nomor sama di beberapa sumber: yang pertama (urutan
+/// prioritas sumber) menang.
+fn pick_cross_source_neighbors(
+    lists: &[crate::union::SourceChapterList],
+    current: &str,
+) -> (Option<ChapterRef>, Option<ChapterRef>) {
+    let mut next: Option<ChapterRef> = None;
+    let mut prev: Option<ChapterRef> = None;
+    for list in lists {
+        for ch in &list.chapters {
+            let mk = || ChapterRef {
+                number: ch.number.clone(),
+                source: list.source.clone(),
+                handle: list.handle.clone(),
+            };
+            match crate::union::cmp_chapter_number(&ch.number, current) {
+                // Nomor lebih besar -> kandidat `next`: ambil yang terkecil.
+                std::cmp::Ordering::Greater => {
+                    let better = match &next {
+                        None => true,
+                        Some(n) => {
+                            crate::union::cmp_chapter_number(&ch.number, &n.number)
+                                == std::cmp::Ordering::Less
+                        }
+                    };
+                    if better {
+                        next = Some(mk());
+                    }
+                }
+                // Nomor lebih kecil -> kandidat `prev`: ambil yang terbesar.
+                std::cmp::Ordering::Less => {
+                    let better = match &prev {
+                        None => true,
+                        Some(p) => {
+                            crate::union::cmp_chapter_number(&ch.number, &p.number)
+                                == std::cmp::Ordering::Greater
+                        }
+                    };
+                    if better {
+                        prev = Some(mk());
+                    }
+                }
+                // Nomor sama -> chapter itu sendiri, bukan tetangga.
+                std::cmp::Ordering::Equal => {}
+            }
+        }
+    }
     (prev, next)
 }
 
