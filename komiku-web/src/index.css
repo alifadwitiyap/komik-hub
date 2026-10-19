@@ -70,6 +70,11 @@
   --color-grey-d: #999999;
   --color-grey-l: #dcdcdc;
 
+  /* status UNTUK surface gelap (sheet reader, footer komik). Nilai tetap
+     sama di terang & gelap karena sheet ini selalu gelap — pakai `danger`
+     (yang berubah随 tema) di sini bikin merah tua nyaris ga kelihatan. */
+  --color-danger-ink: #f87171;
+
   --font-sans: 'Nunito Sans', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
   --font-display: 'BR Hendrix', 'Nunito Sans', ui-sans-serif, system-ui, sans-serif;
 }

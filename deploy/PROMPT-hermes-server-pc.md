@@ -126,11 +126,16 @@ credentials-file: <ID>.json, ingress hostname `komik.<domain>` → `http://local
 dan membaca config dari `C:\Windows\System32\config\systemprofile\.cloudflared\` — salin
 `config.yml` + file `<ID>.json` ke sana.
 
-## Langkah 7 — Autostart & operasional
+## Langkah 7 — Autostart & operasional (domain harus TETAP setelah restart)
 
 - Docker Desktop auto-start: ON (langkah 1) · container `--restart unless-stopped` ·
-  cloudflared: Windows service. → **Tes reboot:** restart PC, tunggu 1–2 menit, buka
-  `https://komik.<domain>/healthz` → 200.
+  cloudflared: Windows service (auto-start, tanpa login).
+- **Auto-login Windows wajib aktif** — `netplwiz` → uncentang "Users must enter a user name and
+  password" → simpan. *(Docker Desktop hanya start setelah ada sesi login; tanpa auto-login,
+  reboot = container mati sampai ada yang login.)*
+- **Tes reboot (bukti domain tetap):** restart PC, tunggu 1–2 menit, buka
+  `https://komik.<domain>/healthz` → 200 — URL sama persis seperti sebelum restart.
+- Jangan pakai quick tunnel (`trycloudflare.com`) untuk produksi — URL-nya ganti tiap jalan.
 
 | Aksi | Perintah (PowerShell) |
 |---|---|

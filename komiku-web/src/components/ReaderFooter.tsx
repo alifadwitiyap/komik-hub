@@ -1,12 +1,5 @@
 import { Link } from 'react-router-dom'
-import {
-  IconThumbsUp,
-  IconHeartCirclePlus,
-  IconLightbulb,
-  IconMessageDots,
-  IconArrowRight,
-  IconArrowLeft,
-} from '../icons'
+import { IconArrowRight, IconArrowLeft } from '../icons'
 
 interface ReaderFooterProps {
   /** chapter berikutnya (null = terbaru) */
@@ -15,19 +8,23 @@ interface ReaderFooterProps {
   /** chapter sebelumnya (null = chapter pertama) */
   prevName?: string | null
   prevHref?: string | null
-  onOpenComments: () => void
+  /** buka sheet pemilih chapter */
+  onPickChapter: () => void
   /** false = sembunyi saat pembaca scroll turun (geser keluar layar) */
   visible?: boolean
 }
 
 /**
- * Footer reader — replika item_reader_footer APK:
- * baris reaksi (3 ikon ring + jumlah), baris komentar, lalu navigasi chapter.
+ * Footer reader — navigasi chapter + pemilih chapter.
  *
- * Navigasi = DUA tombol berdampingan (grid 2 kolom): "Sebelumnya" sekunder
- * (outline) dan "Berikutnya" solid brand. Kalau hanya satu sisi yang ada
- * (chapter pertama / terbaru), tombol yang tinggal melebar penuh. Teks
- * "Chapter terbaru" dipertahankan untuk tepi terbaru.
+ * Baris "Tambahkan komentar…" dan baris reaksi (ikon sosial) DIHAPUS:
+ * keduanya fitur mati di versi web. Penggantinya satu tombol "Pilih
+ * Chapter" yang membuka sheet daftar chapter series yang sedang dibaca.
+ *
+ * Navigasi tetap DUA tombol berdampingan (grid 2 kolom): "Sebelumnya"
+ * sekunder (outline) dan "Berikutnya" solid brand. Kalau hanya satu sisi
+ * yang ada (chapter pertama / terbaru), tombol yang tinggal melebar penuh.
+ * Teks "Chapter terbaru" dipertahankan untuk tepi terbaru.
  *
  * `visible=false` = geser ke bawah keluar layar + `inert` supaya chrome
  * tersembunyi benar-benar tidak bisa difokus saat dibaca.
@@ -37,7 +34,7 @@ export default function ReaderFooter({
   nextHref,
   prevName,
   prevHref,
-  onOpenComments,
+  onPickChapter,
   visible = true,
 }: ReaderFooterProps) {
   const both = !!prevHref && !!nextHref
@@ -50,22 +47,22 @@ export default function ReaderFooter({
       aria-hidden={!visible}
       inert={!visible}
     >
-      <div className="flex items-center justify-around px-4 pt-2">
-        <Reaction icon={<IconThumbsUp className="size-4" />} n={0} />
-        <Reaction icon={<IconHeartCirclePlus className="size-4" />} n={0} />
-        <Reaction icon={<IconLightbulb className="size-4" />} n={0} />
+      <div className="mx-4 mt-2 grid gap-2">
+        <button
+          type="button"
+          onClick={onPickChapter}
+          aria-label="Pilih Chapter"
+          className="flex w-full items-center justify-center gap-2 rounded-xl border border-white/40 bg-black/70 py-3 text-[13px] font-bold text-white backdrop-blur-sm active:bg-black/85"
+        >
+          <IconChapterList className="size-4 shrink-0" />
+          Pilih Chapter
+        </button>
       </div>
-      <button
-        onClick={onOpenComments}
-        className="mx-4 mt-2 flex w-[calc(100%-2rem)] items-center gap-2 rounded-full border border-white/25 px-3.5 py-2 text-left"
-      >
-        <IconMessageDots className="size-4 text-white/70" />
-        <span className="text-[12px] text-white/60">Tambahkan komentar…</span>
-      </button>
       <div className={`mx-4 my-2.5 grid gap-2 ${both ? 'grid-cols-2' : 'grid-cols-1'}`}>
         {prevHref && (
           <Link
             to={prevHref}
+            replace
             aria-label={prevName ? `Chapter Sebelumnya ${prevName}` : 'Chapter Sebelumnya'}
             className="flex items-center justify-center gap-1.5 rounded-xl border border-white/35 py-3 text-[13px] font-bold text-white/90"
           >
@@ -79,6 +76,7 @@ export default function ReaderFooter({
         {nextHref ? (
           <Link
             to={nextHref}
+            replace
             aria-label={nextName ? `Baca Chapter Berikutnya ${nextName}` : 'Baca Chapter Berikutnya'}
             className="flex items-center justify-center gap-2 rounded-xl bg-brand-amber py-3 text-[13px] font-bold text-white"
           >
@@ -99,11 +97,20 @@ export default function ReaderFooter({
   )
 }
 
-function Reaction({ icon, n }: { icon: React.ReactNode; n: number }) {
+/** Ikon daftar chapter — inline supaya icons.tsx (ikon APK asli) tak diubah. */
+function IconChapterList({ className }: { className?: string }) {
   return (
-    <button className="flex items-center gap-1.5 rounded-full px-3 py-1.5 text-white/80 active:bg-white/10">
-      {icon}
-      <span className="text-[11px]">{n}</span>
-    </button>
+    <svg
+      viewBox="0 0 24 24"
+      className={className}
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d="M4 6h16M4 12h16M4 18h10" />
+    </svg>
   )
 }
