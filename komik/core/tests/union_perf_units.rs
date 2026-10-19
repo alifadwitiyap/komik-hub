@@ -185,6 +185,94 @@ fn merge_urutan_numerik_desc_lalu_non_numerik() {
     assert_eq!(nums, vec!["232", "10", "9", "extra"], "non-numerik paling belakang");
 }
 
+/// Kontrak comparator untuk label non-numerik (review Task 0 I1).
+///
+/// `cmp_chapter_number` memakai konvensi "Greater = nomor LEBIH TINGGI urutan"
+/// untuk key numerik. Untuk label bebas ("extra", "prologue") tidak ada nomor,
+/// jadi yang compared adalah `chapter_number_key`-nya. Kontrak plan Task 2
+/// (lihat .omh/plans/cross-chapter-merge.md, "arah comparator") menyatakan
+/// label non-numerik selalu `Less` dibanding numerik, dan antar-label
+/// dibandingkan by key.
+///
+/// Test ini mengunci perilaku yang BENAR-BENAR dipakai Lane 2 saat memilih
+/// kandidat `prev`: `prev` = kandidat dengan nomor TERBESAR di antara yang
+/// lebih kecil. Untuk label, "terbesar" berarti key-nya lebih besar.
+#[test]
+fn cmp_label_non_numerik_arah_kunci_desc() {
+    use std::cmp::Ordering;
+    // Label ("extra", "prologue") selalu kalah dari numerik.
+    assert_eq!(
+        komik_core::union::cmp_chapter_number("9", "extra"),
+        Ordering::Greater,
+        "numerik selalu mendahului label bebas"
+    );
+    assert_eq!(
+        komik_core::union::cmp_chapter_number("extra", "9"),
+        Ordering::Less
+    );
+    // Antar-label: key DESC (key besar = "lebih tinggi urutan").
+    assert_eq!(
+        komik_core::union::cmp_chapter_number("prologue", "extra"),
+        Ordering::Greater,
+        "antar label non-numerik: key DESC"
+    );
+    assert_eq!(
+        komik_core::union::cmp_chapter_number("extra", "prologue"),
+        Ordering::Less
+    );
+}
+
+/// Label non-numerik di daftar union: urut key DESC, tetap SESUDAH numerik.
+///
+/// Ini yang dipakai Lane 2 untuk memilih kandidat `prev` di antara label —
+/// jadi urutannya harus DESC agar "terbesar" = paling dekat.
+///
+/// CATATAN: test ini sengaja mengunci output DESC label. Review Task 0 (I1)
+/// mengusulkan membalik comparator label (`ka.cmp(&kb)` -> `kb.cmp(&ka)`)
+/// agar "label diurutkan DESC". Tapi comparator itu dipakai di dua tempat
+/// dengan arah BERBEDA:
+///   - `merge_chapter_lists` -> `sort_by(cmp.reverse())` -> output akhir DESC.
+///   - `pick_cross_source_neighbors` -> `cmp` langsung -> "terbesar"/"terkecil".
+/// Membalik comparator label tanpa membalik sort site justru membuat output
+/// label jadi ASC. Test ini mengunci output yang BENAR supaya usulan fix
+/// salah tidak diam-diam merusak urutan.
+#[test]
+fn merge_label_urut_key_desc_setelah_numerik() {
+    let lists = vec![list_of("komiku", "komiku:1", &["232", "prologue", "extra"])];
+    let merged = komik_core::union::merge_chapter_lists(&lists);
+    let nums: Vec<&str> = merged.iter().map(|c| c.number.as_str()).collect();
+    assert_eq!(
+        nums,
+        vec!["232", "prologue", "extra"],
+        "numerik dulu, lalu label by key DESC"
+    );
+}
+
+/// Handle yang dibangun dari native id sumber harus bisa di-parse kembali.
+///
+/// Review Task 0 "tidak sempat dicek": `handle` = "{sumber}:{native_id}" dan
+/// `parse_handle` memecah pada ':' PERTAMA. Native id yang memuat ':' sendiri
+/// (mis. slug ber-':' atau id ber-':' di tengah) harus tetap ter-parse dengan
+/// benar: prefix sumber jadi sumber, sisanya (termasuk ':') jadi native id.
+#[test]
+fn handle_dengan_native_id_ber_kolom_masih_ter_parse() {
+    use komik_core::model::parse_handle;
+    for (handle, expect_src, expect_native) in [
+        ("komiku:6167", Some("komiku"), "6167"),
+        ("shinigami:3b1eab91-4a88-4d5c-babe-f9cf40be1347", Some("shinigami"), "3b1eab91-4a88-4d5c-babe-f9cf40be1347"),
+        // native id memuat ':' -> harus jadi bagian native, bukan dipotong.
+        ("mangaku:some:weird:id", Some("mangaku"), "some:weird:id"),
+    ] {
+        let (src, native) = parse_handle(handle);
+        assert_eq!(
+            src.as_ref().map(|s| s.as_str()),
+            expect_src,
+            "sumber dari handle {handle}"
+        );
+        assert_eq!(native, expect_native, "native id dari handle {handle}");
+    }
+}
+
 #[test]
 fn cmp_chapter_number_arah_besar_lebih_besar() {
     use std::cmp::Ordering;
