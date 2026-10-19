@@ -44,6 +44,14 @@ self.addEventListener('fetch', (e) => {
   if (req.method !== 'GET') return
   const url = new URL(req.url)
 
+  // 0) STATE PER-AKUN → JANGAN PERNAH lewat cache SW.
+  //    Cache `API` di bawah ini dipakai BERSAMA semua akun (cache key = URL,
+  //    bukan header), jadi respons `/api/progress`, `/api/read`,
+  //    `/api/notif/favorites`, `/api/unified/downloads` milik akun A bisa
+  //    dilayani ke akun B. Itu bocor state antar-orang. Request yang bawa
+  //    header `X-Komik-User` karena itu scoped akun → selalu ke jaringan.
+  if (req.headers.get('X-Komik-User')) return
+
   // 1) state notifikasi → network-first: badge unread HARUS segar.
   // Cache hanya fallback saat offline (SWR membuat badge basi sampai poll 60s).
   if (url.pathname.startsWith('/api/notif/')) {

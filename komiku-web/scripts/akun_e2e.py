@@ -8,6 +8,7 @@ membocorkan empat permukaan state yang di-scope per akun:
   2. notifikasi - GET /api/notif/list + POST /api/notif/read
   3. unduhan    - POST /api/unified/download-pdf, GET/DELETE /api/unified/downloads
   4. progress   - GET/PUT /api/progress
+  5. readmarks  - GET/PUT /api/read (chapter "sudah dibaca")
 
 Plus kontrak akses: header hilang / username belum terdaftar / username invalid
 => 401 di setiap endpoint ber-scope akun (dan 400 untuk `claim` invalid).
@@ -142,6 +143,17 @@ def prog_ids(js) -> set:
     if not isinstance(js, dict):
         return set()
     return {str(e.get("seriesId")) for e in js.get("entries", []) if isinstance(e, dict)}
+
+
+def read_chapters(js) -> set:
+    """Semua nomor chapter yang ditandai sudah dibaca (semua series digabung)."""
+    if not isinstance(js, dict):
+        return set()
+    out = set()
+    for series in (js.get("marks") or {}).values():
+        if isinstance(series, dict):
+            out.update(str(c) for c in series)
+    return out
 
 
 # ------------------------------------------------------------------ skenario
@@ -283,7 +295,34 @@ def main() -> int:
     check("B melihat progressnya sendiri", str(sid_b) in ib, "ids=%s" % sorted(ib))
     check("B TIDAK melihat progress A", str(sid_a) not in ib, "ids=%s" % sorted(ib))
 
-    # ---- 5. unduhan ------------------------------------------------------
+    # ---- 5. read marks (chapter "sudah dibaca") ---------------------------
+    print("== read marks ==")
+    tk_rm = "akun-e2e-readmark-%s" % user_a
+    rm_a = {tk_rm: {"7": 111}}
+    rm_b = {tk_rm: {"8": 222}}
+    st, js = req(base, "PUT", "/api/read", user=user_a, body={"marks": rm_a}, verbose=v)
+    check("PUT read A: 200 ok",
+          st == 200 and isinstance(js, dict) and js.get("ok") is True,
+          "status=%s body=%s" % (st, js))
+    st, js = req(base, "GET", "/api/read", user=user_a, verbose=v)
+    rm_keys_a = read_chapters(js)
+    check("A melihat mark bacanya sendiri", "7" in rm_keys_a,
+          "chapters=%s" % sorted(rm_keys_a))
+    st, js = req(base, "GET", "/api/read", user=user_b, verbose=v)
+    check("B TIDAK melihat mark A (no leak)", "7" not in read_chapters(js),
+          "chapters=%s" % sorted(read_chapters(js)))
+    st, js = req(base, "PUT", "/api/read", user=user_b, body={"marks": rm_b}, verbose=v)
+    check("PUT read B: 200 ok",
+          st == 200 and isinstance(js, dict) and js.get("ok") is True,
+          "status=%s body=%s" % (st, js))
+    st, js = req(base, "GET", "/api/read", user=user_a, verbose=v)
+    rm_keys_a = read_chapters(js)
+    check("push B tidak menghapus mark A (union)", "7" in rm_keys_a,
+          "chapters=%s" % sorted(rm_keys_a))
+    check("A TIDAK melihat mark B", "8" not in rm_keys_a,
+          "chapters=%s" % sorted(rm_keys_a))
+
+    # ---- 6. unduhan ------------------------------------------------------
     print("== unduhan ==")
     created_ids = {"a": [], "b": []}
     st, js = req(base, "GET", "/api/unified/series/%s" % args.handle, timeout=60, verbose=v)

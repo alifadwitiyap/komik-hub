@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
+import ChapterPickerSheet from '../components/ChapterPickerSheet'
 import ComicImage from '../components/ComicImage'
 import HeartButton from '../components/HeartButton'
 import ReaderFooter from '../components/ReaderFooter'
@@ -13,6 +14,7 @@ import { useChromeOnScroll } from '../hooks/useChromeOnScroll'
 import type { ChapterResponse, Manga } from '../types'
 import { Empty } from '../App'
 import { useProgress } from '../hooks/useProgress'
+import { chapterNumberOf, markChapterRead } from '../readMarks'
 import { anchorFrom, scrollYForAnchor, usableAnchor } from '../pageMemory'
 import type { ReadingAnchor } from '../pageMemory'
 import * as rakStore from '../rakStore'
@@ -83,6 +85,7 @@ export default function Reader() {
   const chrome = useChromeOnScroll(() => pending.current !== null)
   const [menuOpen, setMenuOpen] = useState(false)
   const [sheetOpen, setSheetOpen] = useState(false)
+  const [chapterPickerOpen, setChapterPickerOpen] = useState(false)
   const [toast, setToast] = useState<string | null>(null)
   const { save, recent } = useProgress()
   const navigate = useNavigate()
@@ -107,6 +110,11 @@ export default function Reader() {
     setLoadedPages(new Set())
     setImagesReady(false)
     pending.current = null
+    // React Router v7 TIDAK reset scroll saat rute berubah → chapter baru
+    // akan tampil di posisi scroll chapter lama (bawah). Scroll ke atas
+    // SEBELUM fetch; kalau chapter ini punya anchor tersimpan, efek restore
+    // di bawah yang memindahkannya ke posisi baca terakhir.
+    window.scrollTo({ top: 0 })
     // chapter baru = konteks baru: chrome tampil lagi, jangan warisi
     // keadaan tersembunyi dari chapter sebelumnya
     chrome.show()
@@ -119,6 +127,12 @@ export default function Reader() {
         // A1 — respons basi: abaikan total (gambar/badge/riwayat tidak disentuh)
         if (genRef.current !== gen) return
         setData(d)
+        // CHAPTER DIBUKA → tandai "sudah dibaca" (per akun). Kunci =
+        // title_key series + nomor chapter, sama dengan yang dipakai halaman
+        // series, jadi mark langsung nyambung dengan baris daftarnya.
+        // Nubuat: reader unified bisa fallback ke sumber lain, tapi title_key
+        // tetap milik series yang diminta — itu yang kita tandai.
+        markChapterRead(d.title_key, chapterNumberOf(d.chapter))
         // RAK BUKU — chapter sukses dimuat → tulis sejarah (snapshot lokal,
         // lintas-sumber via title_key). Flow Komiku lama (id angka) tak punya
         // title_key dari server → riwayatnya tetap dijalankan useProgress.
@@ -368,6 +382,10 @@ export default function Reader() {
     : 0
   const nextKey = chapter.next ? String(chapter.next.id) : null
   const prevKey = chapter.previous ? String(chapter.previous.id) : null
+  // id manga legacy (angka) — cuma ada di flow komiku lama. Flow unified
+  // menyimpan handle 'sumber:native_id' di `series.id` (string), jadi angka
+  // di sini selalu null untuk unified.
+  const legacySeriesId = typeof seriesId === 'number' ? seriesId : null
 
   return (
     <div className={`relative min-h-screen ${settings.nightShift ? 'bg-night-dark' : 'bg-white'}`}>
@@ -400,8 +418,17 @@ export default function Reader() {
         nextHref={nextKey ? readerHref(nextKey) : null}
         prevName={chapter.previous?.name ?? null}
         prevHref={prevKey ? readerHref(prevKey) : null}
-        onOpenComments={() => setToast('Komentar belum tersedia di versi web')}
+        onPickChapter={() => setChapterPickerOpen(true)}
         visible={chrome.visible}
+      />
+
+      <ChapterPickerSheet
+        open={chapterPickerOpen}
+        onClose={() => setChapterPickerOpen(false)}
+        chapterKey={chapterId}
+        legacySeriesId={legacySeriesId}
+        seriesTitle={series?.title ?? null}
+        titleKey={data?.title_key ?? null}
       />
 
       {toast && (

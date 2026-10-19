@@ -7,6 +7,7 @@ import { Empty, Spinner } from '../App'
 import SourceBadge from '../components/SourceBadge'
 import HeartButton from '../components/HeartButton'
 import { useProgress } from '../hooks/useProgress'
+import { useReadMarks } from '../hooks/useReadMarks'
 import { rememberSeriesLite, readerHref } from '../readerSource'
 import {
   cancelRun,
@@ -116,6 +117,10 @@ export default function SeriesUnified() {
     [data],
   )
   const oldest = chapters.length > 0 ? chapters[chapters.length - 1] : null
+  // Mark "sudah dibaca" per akun: chapter yang pernah dibuka user jadi abu.
+  // Kunci = title_key series + nomor chapter (lihat readMarks.ts).
+  const titleKey = data?.manga.title_key ?? null
+  const { isRead, count: readTotal } = useReadMarks(titleKey)
   // entry riwayat memakai seriesId = handle (ditetapkan Reader unified)
   const resume = recent.find((r) => String(r.seriesId) === handle)
   // Kunci chapter terakhir dibaca: `<handle>:<nomor>` (bentuk yang ditulis
@@ -344,6 +349,11 @@ export default function SeriesUnified() {
       <section className="px-4 pb-6" data-series-list>
         <h2 className="mb-2 text-[13px] font-semibold text-ink-100">
           Chapter <span className="text-ink-500">({chapters.length})</span>
+          {readTotal > 0 && (
+            <span className="ml-1.5 font-normal text-ink-500">
+              · {readTotal} sudah dibaca
+            </span>
+          )}
         </h2>
 
         {/* Mode seleksi range (2-tap Awal/Akhir) → POST /unified/download-pdf.
@@ -408,6 +418,12 @@ export default function SeriesUnified() {
             {visible.map((c, i) => {
               // Mode seleksi: tap baris bikin anchor Awal lalu Akhir — tanpa centang 1-1.
               const anchor = pickMode ? range.isAnchor(i) : null
+              // Chapter yang sudah pernah dibuka user → judul jadi abu (redup),
+              // penanda tak hilang lewat aria-label "sudah dibaca".
+              const read = isRead(c.number)
+              const titleCls = read
+                ? 'min-w-0 flex-1 truncate text-[13px] font-medium text-ink-500'
+                : 'min-w-0 flex-1 truncate text-[13px] font-semibold text-ink-100'
               return (
                 <li
                   key={c.native_id}
@@ -431,9 +447,7 @@ export default function SeriesUnified() {
                       onClick={() => range.select(i)}
                       className="flex w-full items-center justify-between gap-3 px-3.5 py-3 text-left transition-colors hover:bg-ink-850 active:bg-ink-850"
                     >
-                      <span className="min-w-0 flex-1 truncate text-[13px] font-semibold text-ink-100">
-                        {chapterLabel(c)}
-                      </span>
+                      <span className={titleCls}>{chapterLabel(c)}</span>
                       {anchor && (
                         <span className="shrink-0 rounded-md bg-brand-amber px-1.5 py-0.5 text-[10px] font-bold text-ink-950">
                           {anchor}
@@ -446,11 +460,14 @@ export default function SeriesUnified() {
                   ) : (
                     <Link
                       to={readerHref(`${handle}:${c.number}`)}
+                      aria-label={
+                        read
+                          ? `${chapterLabel(c)} — sudah dibaca`
+                          : `${chapterLabel(c)} — belum dibaca`
+                      }
                       className="flex min-w-0 flex-1 items-center justify-between gap-3 py-3 pr-3.5 transition-colors hover:bg-ink-850 active:bg-ink-850"
                     >
-                      <span className="min-w-0 flex-1 truncate text-[13px] font-semibold text-ink-100">
-                        {chapterLabel(c)}
-                      </span>
+                      <span className={titleCls}>{chapterLabel(c)}</span>
                       <span className="shrink-0 text-[10.5px] font-medium text-ink-500">
                         {chapterDate(c)}
                       </span>

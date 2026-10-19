@@ -12,6 +12,7 @@ mod hosts;
 mod notif;
 mod pdf;
 mod progress;
+mod read;
 mod routes;
 mod unified;
 mod user;
@@ -47,6 +48,9 @@ async fn main() -> anyhow::Result<()> {
     // Akun (username-only) + posisi baca per-akun. Sama-sama stateless.
     let app = app.merge(user::user_routes());
     let app = app.merge(progress::progress_routes());
+    // State "sudah dibaca" per akun (chapter yang pernah dibuka) — union,
+    // supaya push dari device lain tidak menimpa mark chapter lain.
+    let app = app.merge(read::read_routes());
     let app = if dist.is_dir() {
         let dist = dist.to_path_buf();
         app.fallback_service(tower::service_fn(

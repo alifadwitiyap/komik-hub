@@ -258,6 +258,30 @@ export const progressApi = {
     send<{ ok: boolean; count: number }>('PUT', '/progress', { entries }, signal),
 }
 
+// ---------------------------------------------------------------- read marks
+
+/**
+ * Mark "chapter sudah dibaca" per akun.
+ *
+ * Bentuk: `{ marks: { "<title_key>": { "<nomor chapter>": <at_ms> } } }`
+ * `title_key` = identitas series lintas-sumber, nomor = string ("1195").
+ *
+ * Merge di server = UNION (monotonik) — push dari device lain tidak
+ * menghapus mark yang sudah ada.
+ */
+export type ReadMarks = Record<string, Record<string, number>>
+
+export const readApi = {
+  /** Semua mark akun, atau hanya satu series (`?series=<title_key>`). */
+  get: (series?: string, signal?: AbortSignal) =>
+    get<{ marks: ReadMarks; count: number }>(
+      series ? `/read?series=${encodeURIComponent(series)}` : '/read',
+      signal,
+    ),
+  put: (marks: ReadMarks, signal?: AbortSignal) =>
+    send<{ ok: boolean; count: number }>('PUT', '/read', { marks }, signal),
+}
+
 /**
  * MangaOut (unified) → bentuk kartu `Manga` yang sudah dipakai komponen
  * existing (Row/MangaCard). Dirata di sini supaya TIDAK ada komponen duplikat:

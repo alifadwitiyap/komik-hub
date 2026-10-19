@@ -14,6 +14,8 @@ import type { Chapter, SeriesDetail } from '../types'
 import { Empty, Spinner } from '../App'
 import HeartButton from '../components/HeartButton'
 import { useProgress } from '../hooks/useProgress'
+import { chapterNumberOf } from '../readMarks'
+import { useReadMarks } from '../hooks/useReadMarks'
 import { marathonHref, readerHref } from '../readerSource'
 
 type SeriesData = {
@@ -38,6 +40,11 @@ export default function Series() {
   const [error, setError] = useState<string | null>(null)
   const [showAll, setShowAll] = useState(false)
   const { recent } = useProgress()
+  // Mark "sudah dibaca" per akun: chapter yang pernah dibuka user jadi abu.
+  // Kunci = title_key series + nomor chapter. title_key legacy di-suntik
+  // server (routes.rs) dan nilainya sama dengan title_key unified untuk
+  // judul yang sama → mark nyambung lintas kedua flow.
+  const { isRead, count: readTotal } = useReadMarks(data?.series.title_key ?? null)
   // --- flow unduh range (paritas Komiku+): 2-tap Awal/Akhir ---------------
   // Handle download legacy: kontrak unified butuh 'sumber:native_id' →
   // 'komiku:<id angka>'. Halaman ini hanya dilayani untuk id angka (App.tsx
@@ -374,6 +381,11 @@ export default function Series() {
       <section className="px-4 pb-6">
         <h2 className="mb-2 text-[13px] font-semibold text-ink-100">
           Chapter <span className="text-ink-500">({chapters.length})</span>
+          {readTotal > 0 && (
+            <span className="ml-1.5 font-normal text-ink-500">
+              · {readTotal} sudah dibaca
+            </span>
+          )}
         </h2>
 
         {/* Info seleksi + progres unduh (tetap tampil setelah run selesai) */}
@@ -449,6 +461,7 @@ export default function Series() {
                 chapter={c}
                 mark={pickMode ? markOf(i) : undefined}
                 onPick={pickMode ? () => pickRange(i) : undefined}
+                read={isRead(chapterNumber(c))}
               />
             ))}
           </ul>
@@ -483,23 +496,26 @@ type RowMark = 'plain' | 'start' | 'mid' | 'end'
  * Nomor chapter untuk kontrak download-pdf: field `number` dari daftar
  * legacy (string), atau parse dari nama ("Chapter 45.1" → "45.1"). null =
  * chapter ini tak bisa diunduh — jangan dikarang.
+ *
+ * Pakai helper yang sama dengan `readMarks` supaya mark "sudah dibaca" dan
+ * kontrak unduhan tidak pernah berbeda soal nomor chapter.
  */
 function chapterNumber(c: Chapter): string | null {
-  const n = c.number
-  if (n != null && String(n).trim() !== '') return String(n).trim()
-  const m = /chapter\s*([0-9]+(?:\.[0-9]+)?)/i.exec(c.name ?? '')
-  return m ? m[1] : null
+  return chapterNumberOf(c)
 }
 
 function ChapterRow({
   chapter,
   mark = 'plain',
   onPick,
+  read = false,
 }: {
   chapter: Chapter
   /** undefined = mode baca biasa (baris = link ke reader). */
   mark?: RowMark
   onPick?: () => void
+  /** chapter sudah pernah dibuka user → judul jadi abu (redup). */
+  read?: boolean
 }) {
   const isAnchor = mark === 'start' || mark === 'end'
   const cls = `flex w-full items-center justify-between gap-3 px-3.5 py-3 text-left transition-colors ${
@@ -509,11 +525,12 @@ function ChapterRow({
         ? 'bg-brand-amber/10'
         : 'hover:bg-ink-850 active:bg-ink-850'
   }`
+  const titleCls = read
+    ? 'min-w-0 flex-1 truncate text-[13px] font-medium text-ink-500'
+    : 'min-w-0 flex-1 truncate text-[13px] font-semibold text-ink-100'
   const body = (
     <>
-      <span className="min-w-0 flex-1 truncate text-[13px] font-semibold text-ink-100">
-        {chapter.name}
-      </span>
+      <span className={titleCls}>{chapter.name}</span>
       {isAnchor && (
         <span className="shrink-0 rounded-full bg-brand-amber px-1.5 py-0.5 text-[9.5px] font-bold text-ink-950">
           {mark === 'start' ? 'Awal' : 'Akhir'}
@@ -535,7 +552,11 @@ function ChapterRow({
   }
   return (
     <li>
-      <Link to={readerHref(String(chapter.id))} className={cls}>
+      <Link
+        to={readerHref(String(chapter.id))}
+        className={cls}
+        aria-label={read ? `${chapter.name} — sudah dibaca` : `${chapter.name} — belum dibaca`}
+      >
         {body}
       </Link>
     </li>

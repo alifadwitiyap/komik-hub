@@ -12,6 +12,7 @@ import { IconHouse, IconRectangleHistory, IconMoon, IconSun, IconMagnifyingGlass
 import NotifPanel from './components/NotifPanel'
 import SourceHealthBadge from './components/SourceHealthBadge'
 import { startFavoritesSync } from './notifStore'
+import { startReadMarksSync } from './readMarks'
 import { captureFromUrl } from './account'
 import { NotifCountsProvider, useNotifCounts } from './notifCounts'
 import { useTheme } from './hooks/useTheme'
@@ -34,6 +35,8 @@ export default function App() {
 
   // sinkron favorit → server notifikasi (PUT /api/notif/favorites)
   useState(() => startFavoritesSync())
+  // sinkron mark "sudah dibaca" → server per-akun (PUT /api/read, union)
+  useState(() => startReadMarksSync())
   const [bellOpen, setBellOpen] = useState(false)
 
   return (

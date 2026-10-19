@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
+import ChapterPickerSheet from '../components/ChapterPickerSheet'
 import ComicImage from '../components/ComicImage'
 import ReaderFooter from '../components/ReaderFooter'
 import ReaderMenu from '../components/ReaderMenu'
@@ -11,6 +12,7 @@ import { useChromeOnScroll } from '../hooks/useChromeOnScroll'
 import type { ChapterResponse } from '../types'
 import { Empty } from '../App'
 import { useProgress } from '../hooks/useProgress'
+import { chapterNumberOf, markChapterRead } from '../readMarks'
 import {
   chapterKeyOf,
   loadChapter,
@@ -32,6 +34,10 @@ interface Block {
   nextName: string | null
   prevId: string | null
   prevName: string | null
+  /** title_key series (untuk mark "sudah dibaca") */
+  titleKey?: string | null
+  /** nomor chapter (untuk mark "sudah dibaca") */
+  number?: string | null
 }
 
 const MAX_BLOCKS = 40 // batas aman: makin dari ini = sudah ~seribu halaman
@@ -70,6 +76,7 @@ export default function ReaderMarathon() {
   const chrome = useChromeOnScroll()
   const [menuOpen, setMenuOpen] = useState(false)
   const [sheetOpen, setSheetOpen] = useState(false)
+  const [chapterPickerOpen, setChapterPickerOpen] = useState(false)
   const [toast, setToast] = useState<string | null>(null)
   const [nextLoadFailed, setNextLoadFailed] = useState(false)
   const bottomRef = useRef<HTMLDivElement | null>(null)
@@ -206,6 +213,16 @@ export default function ReaderMarathon() {
   const curBlock = blocks[readBlock] ?? blocks[0]
   const curLen = curBlock?.images.length ?? 0
 
+  // Chapter yang SEDANG dibaca → tandai "sudah dibaca" (per akun).
+  // Yang ditandai cuma blok yang jadi blok baca aktif — chapter berikutnya
+  // yang sudah di-preload (chaining 80%) belum tentu dibaca user, jadi
+  // jangan ditandai saat block masuk antrean.
+  useEffect(() => {
+    const b = blocks[readBlock]
+    if (!b) return
+    markChapterRead(b.titleKey, b.number)
+  }, [blocks, readBlock])
+
   // Chaining dipicu PROGRES chapter (>=80%), tapi HANYA setelah semua gambar
   // chapter terakhir BERES — kalau komik belum ke-load semua, chapter
   // berikutnya tidak dinyalakan: pembaca tidak menemui lubang kosong.
@@ -305,8 +322,19 @@ export default function ReaderMarathon() {
         nextHref={tail?.nextId ? marathonHref(tail.nextId) : null}
         prevName={head?.prevName ?? null}
         prevHref={head?.prevId ? marathonHref(head.prevId) : null}
-        onOpenComments={() => setToast('Komentar belum tersedia di versi web')}
+        onPickChapter={() => setChapterPickerOpen(true)}
         visible={chrome.visible}
+      />
+
+      <ChapterPickerSheet
+        open={chapterPickerOpen}
+        onClose={() => setChapterPickerOpen(false)}
+        chapterKey={head?.chapterId ?? null}
+        currentKey={curBlock?.chapterId ?? null}
+        legacySeriesId={typeof head?.seriesId === 'number' ? head.seriesId : null}
+        seriesTitle={head?.seriesTitle ?? null}
+        titleKey={head?.titleKey ?? null}
+        mode="marathon"
       />
 
       {toast && (
@@ -371,6 +399,7 @@ export default function ReaderMarathon() {
           <div className="mx-4 mb-24">
             <Link
               to={marathonHref(tail.nextId)}
+              replace
               className="block rounded-xl bg-brand-amber py-3 text-center text-[13px] font-bold text-ink-950"
             >
               Baca Chapter Berikutnya — {tail.nextName ?? 'chapter berikutnya'}
@@ -429,6 +458,8 @@ function toBlock(d: ChapterResponse): Block {
     nextName: d.chapter.next?.name ?? null,
     prevId: d.chapter.previous ? String(d.chapter.previous.id) : null,
     prevName: d.chapter.previous?.name ?? null,
+    titleKey: d.title_key ?? null,
+    number: chapterNumberOf(d.chapter),
   }
 }
 
