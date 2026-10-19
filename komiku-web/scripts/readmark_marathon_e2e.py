@@ -18,6 +18,7 @@ import os
 import random
 import string
 import sys
+import time
 import urllib.request
 
 from playwright.sync_api import sync_playwright
@@ -50,6 +51,35 @@ def api(base: str, path: str, user: str | None = None, body=None):
         return json.loads(resp.read() or b"{}")
 
 
+
+def wait_reader_loaded(page, chapter: str | None = None, timeout_s: float = 45.0) -> bool:
+    """Tunggu reader menampilkan chapter + minimal 1 gambar (poll, bukan sleep).
+
+    `chapter` = nomor chapter yang diharapkan; None = cukup header "Chapter"
+    dan ada gambar.
+    """
+    deadline = time.time() + timeout_s
+    while time.time() < deadline:
+        try:
+            ok = page.evaluate(
+                """(n) => {
+                    const head = document.querySelector('header')?.innerText || '';
+                    const imgs = Array.from(document.querySelectorAll('img'))
+                        .filter(i => i.naturalWidth > 0).length;
+                    const hasChapter = n ? head.includes('Chapter ' + n)
+                                         : head.includes('Chapter');
+                    return hasChapter && imgs > 0;
+                }""",
+                chapter,
+            )
+        except Exception:
+            ok = False
+        if ok:
+            return True
+        page.wait_for_timeout(500)
+    return False
+
+
 def rand_user(tag: str) -> str:
     alphabet = string.ascii_lowercase + string.digits
     return "e2erm" + tag + "".join(random.choice(alphabet) for _ in range(6))
@@ -70,7 +100,9 @@ def main() -> int:
     # Chapter AWAL harus punya `next` — cari dari API, jangan hardcode
     # (chapter terbaru `next`-nya null, rantainya tak akan pernah terjadi).
     start = None
-    for c in chapters:
+    # cukup 3 kandidat: chapter paling baru biasanya punya `next` ke arah
+    # episode SEBELUM-nya? tidak — next = nomor lebih besar. Cari di 3 teratas.
+    for c in chapters[:3]:
         ch = api(base, f"/api/unified/chapter/{HANDLE}/{c['number']}")
         if ch.get("next"):
             start = (c["number"], ch["next"]["number"])
@@ -97,6 +129,17 @@ def main() -> int:
 
         page.goto(f"{base}/maraton/{HANDLE}/{first}", wait_until="networkidle")
         page.wait_for_timeout(6000)
+
+        # PREKONDISI: chapter harus termuat — kalau tidak, mark tak pernah
+        # dibuat dan check di bawah gagal karena alasan yang salah.
+        reader_ok = wait_reader_loaded(page, first)
+        if not reader_ok:
+            check("PRASYARAT: chapter termuat di reader", False,
+                  "reader tak menampilkan chapter (server/upstream, bukan fitur)")
+            browser.close()
+            print("\nGAGAL PRASYARAT: chapter tak termuat. Masalah lingkungan, bukan fitur.")
+            return 2
+        check("PRASYARAT: chapter termuat di reader", True)
 
         marks = api(base, "/api/read", user=user).get("marks", {})
         ch_read = {c for s in marks.values() for c in s}

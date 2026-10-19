@@ -21,6 +21,7 @@ import os
 import random
 import string
 import sys
+import time
 import urllib.request
 
 from playwright.sync_api import sync_playwright
@@ -49,6 +50,33 @@ def api(base: str, path: str, user: str | None = None, body=None):
     req = urllib.request.Request(base + path, data=data, headers=headers, method="POST" if body is not None else "GET")
     with urllib.request.urlopen(req, timeout=30) as resp:
         return json.loads(resp.read() or b"{}")
+
+
+
+def wait_reader_loaded(page, chapter: str, timeout_s: float = 45.0) -> bool:
+    """Tunggu reader benar-benar menampilkan chapter + minimal 1 gambar.
+
+    Chapter live dari sumber bisa gagal dimuat sesaat (upstream lambat /
+    server restart). Poll, jangan langsung FAIL.
+    """
+    deadline = time.time() + timeout_s
+    while time.time() < deadline:
+        try:
+            ok = page.evaluate(
+                """(n) => {
+                    const head = document.querySelector('header')?.innerText || '';
+                    const imgs = Array.from(document.querySelectorAll('img'))
+                        .filter(i => i.naturalWidth > 0).length;
+                    return head.includes('Chapter ' + n) && imgs > 0;
+                }""",
+                chapter,
+            )
+        except Exception:
+            ok = False
+        if ok:
+            return True
+        page.wait_for_timeout(500)
+    return False
 
 
 def rand_user(tag: str) -> str:
@@ -127,6 +155,21 @@ def main() -> int:
         row.first.click()
         page.wait_for_url("**/baca/**", timeout=20000)
         page.wait_for_timeout(3500)
+
+        # PREKONDISI: chapter harus benar-benar termuat di reader. Kalau tidak
+        # (server restart, upstream lambat, gambar gagal) mark tak pernah
+        # dibuat dan SEMUA check mark di bawah gagal karena alasan yang salah.
+        # Bedakan "lingkungan rusak" dari "fitur rusak".
+        reader_ok = wait_reader_loaded(page, ch_read)
+        if not reader_ok:
+            check("PRASYARAT: chapter termuat di reader (chapter %s)" % ch_read, False,
+                  "reader tak menampilkan chapter — cek server 8788 / upstream (lingkungan, bukan fitur)")
+            page.screenshot(path=SHOTS + "/0-reader-gagal-load.png")
+            browser.close()
+            print(f"\nGAGAL PRASYARAT: chapter {ch_read} tak termuat di reader. "
+                  f"INI masalah lingkungan (server/upstream), bukan fitur read-mark.")
+            return 2
+        check("PRASYARAT: chapter termuat di reader", True)
 
         # --- 2. kembali ke series → harus abu --------------------------------
         print("== akun A: kembali ke series ==")

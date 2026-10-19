@@ -78,6 +78,7 @@ import sys
 import time
 import urllib.error
 import urllib.parse
+import time
 import urllib.request
 
 from playwright.sync_api import sync_playwright
@@ -94,6 +95,35 @@ def check(name: str, cond: bool, extra: str = "") -> bool:
     (passed if cond else failed).append(name)
     print(f"  {'PASS' if cond else 'FAIL'}  {name}" + (f"  [{extra}]" if extra else ""))
     return bool(cond)
+
+
+
+def wait_reader_loaded(page, chapter: str | None = None, timeout_s: float = 45.0) -> bool:
+    """Tunggu reader menampilkan chapter + minimal 1 gambar (poll, bukan sleep).
+
+    `chapter` = nomor chapter yang diharapkan; None = cukup header "Chapter"
+    dan ada gambar.
+    """
+    deadline = time.time() + timeout_s
+    while time.time() < deadline:
+        try:
+            ok = page.evaluate(
+                """(n) => {
+                    const head = document.querySelector('header')?.innerText || '';
+                    const imgs = Array.from(document.querySelectorAll('img'))
+                        .filter(i => i.naturalWidth > 0).length;
+                    const hasChapter = n ? head.includes('Chapter ' + n)
+                                         : head.includes('Chapter');
+                    return hasChapter && imgs > 0;
+                }""",
+                chapter,
+            )
+        except Exception:
+            ok = False
+        if ok:
+            return True
+        page.wait_for_timeout(500)
+    return False
 
 
 def rand_user(tag: str) -> str:
@@ -346,6 +376,16 @@ def main() -> int:
         target = "120"
         page.locator(f'a[aria-label^="Chapter {target}"]').first.click()
         page.wait_for_url("**/baca/**", timeout=20000)
+        page.wait_for_timeout(3000)
+        # PREKONDISI: chapter termuat. Kalau tidak, mark tak pernah dibuat dan
+        # check mark gagal karena alasan yang salah (lingkungan, bukan fitur).
+        if not wait_reader_loaded(page, target):
+            check("PRASYARAT: chapter termuat di reader", False,
+                  "reader tak menampilkan chapter (server/upstream, bukan fitur)")
+            browser.close()
+            print("\nGAGAL PRASYARAT: chapter tak termuat. Masalah lingkungan, bukan fitur.")
+            return 2
+        check("PRASYARAT: chapter termuat di reader", True)
         # tunggu mark tercatat di storage LALU reload < 1,2 s (sebelum debounce)
         recorded = False
         for _ in range(60):
