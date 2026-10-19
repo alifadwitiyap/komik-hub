@@ -9,6 +9,12 @@
 //! - GET /api/unified/genres          -> {items:[{slug,name,sources:[string]}]}
 //! - GET /api/unified/series/{handle} -> {manga:MangaOut, chapters:[ChapterRow],
 //!   source:string, failed_sources:[string], from_cache:bool}
+//!   CATATAN `from_cache`: hanya melacak cache DETAIL PRIMARY. Baris union
+//!   dari sumber lain punya cache sendiri (kunci "series-union:{title_key}")
+//!   yang status hit-nya tidak diekspos — jadi `from_cache:true` tak
+//!   menjamin seluruh respons dari cache, dan `false` tak berarti seluruh
+//!   respons fresh. Jangan pakai field ini sebagai proxy efektivitas cache
+//!   tanpa memakai `failed_sources` juga.
 //!   handle = "sumber:native_id" (URL-encoded oleh klien, mis. "komiku%3A6426")
 //!   `chapters` = UNION lintas sumber: semua episode dari semua sumber yang
 //!   punya series dengan judul sama (episode eksklusif sumber lain ikut).
