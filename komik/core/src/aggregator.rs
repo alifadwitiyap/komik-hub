@@ -1133,6 +1133,45 @@ impl Aggregator {
         out
     }
 
+    /// Versi `join_sources` untuk item yang BUKAN `Arc<dyn Source>` — dipakai
+    /// tahap 2 pengumpulan union, di mana tiap item sudah membawa
+    /// `(sumber, native_id)`. Closure mengembalikan
+    /// `Result<T, (SourceId, String)>` supaya sumber yang gagal tetap bisa
+    /// dilaporkan (tidak seperti `join_sources` yang error-nya anyhow).
+    async fn join_items<T, I, F, Fut>(
+        &self,
+        items: Vec<I>,
+        call: F,
+    ) -> Vec<Result<(I, T), (SourceId, String)>>
+    where
+        I: Clone + Send + 'static,
+        T: Send + 'static,
+        F: Fn(I) -> Fut + Clone + Send + Sync + 'static,
+        Fut: std::future::Future<Output = Result<T, (SourceId, String)>> + Send + 'static,
+    {
+        let timeout = self.timeout;
+        let mut set = tokio::task::JoinSet::new();
+        for item in items {
+            let call = call.clone();
+            set.spawn(async move {
+                let fut = call(item.clone());
+                match tokio::time::timeout(timeout, fut).await {
+                    Ok(Ok(v)) => Ok((item, v)),
+                    Ok(Err(e)) => Err(e),
+                    Err(_) => Err((SourceId::from("?"), format!("timeout {}s", timeout.as_secs()))),
+                }
+            });
+        }
+        let mut out = Vec::new();
+        while let Some(joined) = set.join_next().await {
+            match joined {
+                Ok(r) => out.push(r),
+                Err(e) => out.push(Err((SourceId::from("?"), format!("task gagal: {e}")))),
+            }
+        }
+        out
+    }
+
     /// Urutan fallback: sumber primary dulu, sisanya menurut SOURCE_PRIORITY.
     fn fallback_order(&self, primary: Option<SourceId>, source: Option<&str>) -> Vec<Arc<dyn Source>> {
         let mut all = self.filtered(source);
@@ -1207,8 +1246,20 @@ impl Aggregator {
 
         let mut failed: Vec<(SourceId, String)> = Vec::new();
         if !targets.is_empty() {
+            // DUA TAHAP, bukan resolve->series berurutan per sumber.
+            //
+            // Sebelumnya tiap sumber melakukan `resolve` lalu `series` secara
+            // SEBERANG, jadi latensi = max(resolve_i + series_i) — dengan
+            // komiku (resolve 2.3s + series 1.0s) totalnya didominasi
+            // sumber TERLAMBAT. Sekarang: tahap 1 semua `resolve` paralel,
+            // tahap 2 semua `series` paralel → latensi =
+            // max(resolve_i) + max(series_i).
+            //
+            // Resolve WAJIB exact `title_key` (anti-false-positive): manga
+            // "Tower Of God: Side Story" tidak boleh tercemar manga
+            // "Tower Of God" hanya karena judulnya mirip.
             let t = title.to_string();
-            let call = move |src: Arc<dyn Source>| {
+            let call_resolve = move |src: Arc<dyn Source>| {
                 let t = t.clone();
                 async move {
                     // Varian judul: user sering menempel slug URL ("solo-leveling")
@@ -1222,8 +1273,8 @@ impl Aggregator {
                     }
                     for cand in candidates {
                         // Resolve by exact `title_key` (default trait `resolve`).
-                        let m = match src.resolve(&cand).await {
-                            Ok(Some(m)) => m,
+                        match src.resolve(&cand).await {
+                            Ok(Some(m)) => return Ok(Some(m.native_id)),
                             // Sumber terakses tapi judulnya tidak ada -> coba
                             // varian berikutnya.
                             Ok(None) => continue,
@@ -1233,34 +1284,56 @@ impl Aggregator {
                                 }
                                 return Err(e);
                             }
-                        };
-                        return match src.series(&m.native_id).await {
-                            Ok(detail) => {
-                                // Handle series di sumber itu: "sumber:native-id".
-                                let handle = format!("{}:{}", src.id().as_str(), m.native_id);
-                                Ok(Some((handle, detail.chapters)))
-                            }
-                            Err(e) => {
-                                if SourceError::from(&e).is_conclusive() {
-                                    Ok(None)
-                                } else {
-                                    Err(e)
-                                }
-                            }
-                        };
+                        }
                     }
                     // Sumber tidak punya series dengan judul itu.
                     Ok(None)
                 }
             };
-            for res in self.join_sources(targets, call).await {
+
+            // Tahap 1: resolve semua sumber paralel.
+            let mut resolved: Vec<(Arc<dyn Source>, String)> = Vec::new();
+            for res in self.join_sources(targets, call_resolve).await {
                 match res {
-                    Ok((src, Some((handle, chapters)))) => {
-                        by_source.insert(src.id().as_str().to_string(), (handle, chapters));
+                    Ok((src, Some(native_id))) => {
+                        resolved.push((src, native_id));
                     }
                     // Sumber tidak punya series itu -> dilewati (bukan failed).
                     Ok((_, None)) => {}
                     Err((sid, msg)) => failed.push((sid, msg)),
+                }
+            }
+
+            // Tahap 2: series semua sumber yang ter-resolve, paralel.
+            if !resolved.is_empty() {
+                let call_series = move |(src, native_id): (Arc<dyn Source>, String)| {
+                    let src2 = src.clone();
+                    async move {
+                        match src.series(&native_id).await {
+                            Ok(detail) => {
+                                // Handle series di sumber itu: "sumber:native-id".
+                                let handle = format!("{}:{}", src.id().as_str(), native_id);
+                                Ok((src2, Some((handle, detail.chapters))))
+                            }
+                            Err(e) => {
+                                if SourceError::from(&e).is_conclusive() {
+                                    Ok((src2, None))
+                                } else {
+                                    Err((src.id(), e.to_string()))
+                                }
+                            }
+                        }
+                    }
+                };
+                for res in self.join_items(resolved, call_series).await {
+                    match res {
+                        Ok((_, (src, Some((handle, chapters))))) => {
+                            by_source.insert(src.id().as_str().to_string(), (handle, chapters));
+                        }
+                        // Sumber tak punya series -> dilewati (bukan failed).
+                        Ok((_, (_, None))) => {}
+                        Err((sid, msg)) => failed.push((sid, msg)),
+                    }
                 }
             }
             // Cache ditulis walau sebagian sumber gagal: entri per sumber

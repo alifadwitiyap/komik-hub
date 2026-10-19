@@ -1,0 +1,66 @@
+# CI gate: unit test + budget performa.
+#
+# Kenapa workflow ini ada: ulw-perf mensyaratkan "regression budget dan gate
+# yang menegakkannya" — anggaran performa yang tak ditegakkan di CI = konvensi
+# saja, bukan proteksi. Workflow ini menjalankan:
+#   1. `cargo test` untuk komik-core + komiku-server (regresi fungsional)
+#   2. `scripts/perf-eval.sh` sebagai gate anggaran cold path
+#
+# Budget (ms): series COLD 2500, chapter COLD 1500, warm 300.
+# Tolerance 20% sudah di dalam skrip evaluator.
+#
+# PENTING: angka COLD hanya valid kalau server baru start (cache memory
+# kosong). Skrip menjalankan server sendiri di runner yang bersih, jadi
+# cold-nya benar.
+
+name: test-and-perf-gate
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  gate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: 1.99
+
+      - uses: Swatinem/rust-cache@v2
+
+      # --- 1. Gate fungsional: test core + server ---
+      - name: Test komik-core
+        working-directory: komik
+        run: cargo test --package komik-core --all-targets
+
+      - name: Test komiku-server
+        working-directory: komiku-server
+        run: cargo test --all-targets
+
+      # --- 2. Gate performa: cold path union chapter ---
+      - name: Build server (release)
+        working-directory: komiku-server
+        run: cargo build --release --locked
+
+      - name: Perf gate (cold path budget)
+        working-directory: komiku-server
+        run: |
+          set -euo pipefail
+          # Server fresh = cache memory kosong => angka COLD valid.
+          PORT=8799 ./target/release/komiku-server &
+          SERVER_PID=$!
+          trap 'kill $SERVER_PID 2>/dev/null || true' EXIT
+          # Tunggu server siap (health endpoint).
+          for _ in $(seq 1 30); do
+            if curl -s -m 2 -o /dev/null http://127.0.0.1:8799/api/unified/health; then
+              break
+            fi
+            sleep 1
+          done
+          # Gate: skrip keluar != 0 kalau anggaran terlampaui.
+          bash scripts/perf-eval.sh 8799 3
