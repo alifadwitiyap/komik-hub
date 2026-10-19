@@ -395,4 +395,46 @@ mod tests {
         assert_eq!(chapters.len(), 2, "mark dari tulis pertama harus tetap ada");
         let _ = std::fs::remove_dir_all(&dir);
     }
+
+    /// Bug A13 (bentuk paralel): banyak penulis ke file yang sama. Tanpa
+    /// kunci RMW, sebagian mark hilang. Dengan kunci, semua tersimpan.
+    /// Dipakai juga untuk membuktikan file temp tak pernah bentrok.
+    #[test]
+    fn banyak_tulis_paralel_semua_tersimpan() {
+        let dir = temp_dir("paralel");
+        let path = dir.join("alif.json");
+        let n = 24u32;
+        let handles: Vec<_> = (0..n)
+            .map(|i| {
+                let path = path.clone();
+                std::thread::spawn(move || {
+                    let _guard = write_lock()
+                        .lock()
+                        .unwrap_or_else(|poisoned| poisoned.into_inner());
+                    let mut st = read_state(&path);
+                    merge(&mut st, &marks_of("s", &[(&i.to_string(), i64::from(i) + 1)]));
+                    write_state(&path, &st).expect("tulis paralel");
+                })
+            })
+            .collect();
+        for h in handles {
+            h.join().expect("thread tulis");
+        }
+        let back = read_state(&path);
+        let chapters = back.marks.get("s").expect("series s");
+        assert_eq!(
+            chapters.len(),
+            n as usize,
+            "semua mark paralel harus tersimpan (tanpa lock ada yang hilang)"
+        );
+        // tak boleh ada file temp tersisa
+        let leftovers: Vec<_> = std::fs::read_dir(&dir)
+            .unwrap()
+            .filter_map(|e| e.ok())
+            .map(|e| e.file_name().to_string_lossy().to_string())
+            .filter(|name| name.contains(".tmp."))
+            .collect();
+        assert!(leftovers.is_empty(), "file temp tertinggal: {leftovers:?}");
+        let _ = std::fs::remove_dir_all(&dir);
+    }
 }
