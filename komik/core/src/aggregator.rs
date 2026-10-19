@@ -189,6 +189,23 @@ pub struct ReadOutcome {
     pub from_cache: bool,
 }
 
+/// Series + daftar chapter hasil UNION lintas sumber.
+///
+/// Sumber primary = sumber yang handle-nya (atau fallback `series_resolve_pref`).
+/// Sumber lain diisi dari `collect_series_across_sources` (judul sama).
+/// Union pakai `merge_chapter_lists`; primary DILETAKKAN lebih dulu supaya
+/// chapter miliknya menang dedup.
+///
+/// `failed` = sumber yang gagal saat pengumpulan (partial failure tolerated).
+#[derive(Debug, Clone)]
+pub struct MergedSeries {
+    pub manga: Manga,
+    pub chapters: Vec<crate::union::MergedChapter>,
+    pub failed: Vec<(SourceId, String)>,
+    /// True kalau detail primary dilayani dari cache aggregator.
+    pub from_cache: bool,
+}
+
 /// Referensi chapter tetangga untuk navigasi reader. Membawa sumber + handle
 /// manga di sumber itu, supaya client bisa lanjut baca lintas sumber tanpa
 /// perlu tahu sumber asal: kirim balik `handle` + `number` ke
@@ -643,6 +660,54 @@ impl Aggregator {
             "gagal ambil series {id}{}",
             last_err.map(|e| format!(" ({e})")).unwrap_or_default()
         )
+    }
+
+    /// Series + daftar chapter hasil UNION lintas sumber.
+    ///
+    /// Primary = [`Aggregator::series_resolve_pref`] (sticky source + fallback
+    /// dipertahankan apa adanya). Sumber lain diambil lewat
+    /// [`Aggregator::collect_series_across_sources`] dengan judul manga
+    /// primary (exact `title_key`); primary TIDAK diminta ulang.
+    ///
+    /// Union pakai [`crate::union::merge_chapter_lists`] dengan daftar primary
+    /// di urutan PERTAMA, jadi chapter primary menang dedup ("09" == "9").
+    /// Episode eksklusif sumber lain tetap ikut.
+    ///
+    /// Kegagalan sumber lain ditoleransi: sumbernya masuk `failed`, chapter
+    /// primary tetap dikembalikan.
+    pub async fn series_merged(
+        &self,
+        id: &str,
+        limit: u32,
+        source: Option<&str>,
+        last_source: Option<&str>,
+    ) -> anyhow::Result<MergedSeries> {
+        let outcome = self.series_resolve_pref(id, limit, source, last_source).await?;
+        let detail = outcome.detail;
+        let manga = detail.manga.clone();
+
+        // Primary = sumber pelayan; handle kanonik "sumber:native_id".
+        let primary = crate::union::SourceChapterList {
+            source: manga.source.clone(),
+            handle: manga.handle(),
+            chapters: detail.chapters,
+        };
+
+        // Sumber lain: judul sama (exact `title_key`); primary dilewati.
+        let (others, failed) = self
+            .collect_series_across_sources(&manga.title, Some(&manga.source), limit)
+            .await;
+
+        let mut lists = Vec::with_capacity(others.len() + 1);
+        lists.push(primary);
+        lists.extend(others);
+
+        Ok(MergedSeries {
+            manga,
+            chapters: crate::union::merge_chapter_lists(&lists),
+            failed,
+            from_cache: outcome.from_cache,
+        })
     }
 
     /// Fallback chain untuk series yang manganya sudah diketahui.
