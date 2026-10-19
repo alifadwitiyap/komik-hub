@@ -19,6 +19,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
+use std::sync::{Mutex, OnceLock};
 
 use crate::routes::{AppError, Res};
 use crate::user::{require_user, users_dir};
@@ -26,11 +27,26 @@ use crate::user::{require_user, users_dir};
 type Marks = BTreeMap<String, BTreeMap<String, i64>>;
 
 /// Batas jumlah mark chapter per series (pertahankan yang terbaru).
-const PER_SERIES_CAP: usize = 400;
+///
+/// HARUS lebih besar dari chapter terpanjang sebuah manga — One Piece punya
+/// 1215 chapter. Cap yang lebih kecil membuat chapter lama yang SUDAH dibaca
+/// ter-prune dan muncul lagi sebagai "belum dibaca" (bug-find A11).
+const PER_SERIES_CAP: usize = 2_000;
 /// Batas total mark per akun (buang yang paling lama).
-const GLOBAL_CAP: usize = 8_000;
+const GLOBAL_CAP: usize = 20_000;
 /// Batas ukuran body PUT (byte).
 const MAX_BODY_BYTES: usize = 1024 * 1024;
+
+/// Kunci akses tulis state read.
+///
+/// PUT doing read → merge → write (bukan atomic). Dua request bersamaan
+/// bisa sama-sama membaca state LAMA lalu menulis → mark yang baru hilang
+/// (bug-find A13: 24 push paralel → hanya 5 tersimpan). Kunci ini
+/// menyerialisasi read-modify-write per akun.
+fn write_lock() -> &'static Mutex<()> {
+    static LOCK: OnceLock<Mutex<()>> = OnceLock::new();
+    LOCK.get_or_init(|| Mutex::new(()))
+}
 
 fn read_file(username: &str) -> PathBuf {
     users_dir().join("read").join(format!("{username}.json"))
@@ -50,14 +66,37 @@ fn read_state(path: &Path) -> ReadState {
 }
 
 /// Tulis atomik (temp + rename) — pola sama `progress.rs`/`notif.rs`.
+///
+/// Dua penyesuaian untuk Windows:
+///  - nama file temp UNIK per tulis (pid + counter). Kalau temp-nya shared,
+///    dua penulis bisa saling menimpa file temp lalu renamePartial yang
+///    salah → state korup.
+///  - `rename` di Windows GAGAL kalau file tujuan sedang dibuka proses lain
+///    (mis. GET paralel yang sedang membaca) → retry singkat.
 fn write_state(path: &Path, st: &ReadState) -> anyhow::Result<()> {
     if let Some(parent) = path.parent() {
         std::fs::create_dir_all(parent)?;
     }
-    let tmp = path.with_extension("json.tmp");
+    static SEQ: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
+    let seq = SEQ.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+    let tmp = path.with_extension(format!("json.tmp.{}.{}", std::process::id(), seq));
     std::fs::write(&tmp, serde_json::to_vec(st)?)?;
-    std::fs::rename(&tmp, path)?;
-    Ok(())
+    let mut last: Option<std::io::Error> = None;
+    for attempt in 0..10 {
+        match std::fs::rename(&tmp, path) {
+            Ok(()) => return Ok(()),
+            Err(e) => {
+                last = Some(e);
+                // Windows: file tujuan sedang dibuka → tunggu sebentar, coba lagi.
+                std::thread::sleep(std::time::Duration::from_millis(5 * (attempt + 1)));
+            }
+        }
+    }
+    let _ = std::fs::remove_file(&tmp);
+    Err(anyhow::anyhow!(
+        "gagal rename state baca: {}",
+        last.map(|e| e.to_string()).unwrap_or_default()
+    ))
 }
 
 /// Gabung mark baru ke state lama: per key ambil `at` yang lebih baru.
@@ -163,6 +202,15 @@ async fn put_read(headers: HeaderMap, body: axum::body::Bytes) -> Res<Value> {
     let req: PutReadReq = serde_json::from_slice(&body)
         .map_err(|e| AppError::bad_request(format!("payload bukan JSON yang valid: {e}")))?;
 
+    // Serialisasi read → merge → write. Tanpa ini, dua PUT bersamaan bisa
+    // sama-sama membaca state LAMA lalu menulis → mark yang baru hilang
+    // (bug-find A13: 24 push paralel → hanya 5 tersimpan).
+    // `read_state` HARUS di dalam lock — lock hanya_merge tidak berguna.
+    // Poisoning (thread panic di dalam lock) diambil dengan `into_inner`:
+    // state file sudah atomic, jadi lock yg 'racun' tetap aman dipakai.
+    let _guard = write_lock()
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner());
     let mut state = read_state(&read_file(&username));
     merge(&mut state, &req.marks);
     prune(&mut state);
@@ -196,6 +244,17 @@ mod tests {
         ));
         std::fs::create_dir_all(&dir).unwrap();
         dir
+    }
+
+    /// Bentuk payload `marks` dari pasangan (chapter, at).
+    fn marks_of(series: &str, pairs: &[(&str, i64)]) -> Marks {
+        let mut chapters = BTreeMap::new();
+        for (c, at) in pairs {
+            chapters.insert((*c).to_string(), *at);
+        }
+        let mut root = BTreeMap::new();
+        root.insert(series.to_string(), chapters);
+        root
     }
 
     #[test]
@@ -284,5 +343,56 @@ mod tests {
         let f = read_file("alif");
         assert!(f.to_string_lossy().contains("read"));
         assert!(f.to_string_lossy().ends_with("alif.json"));
+    }
+
+    /// Bug A11: cap per-series harus cukup untuk manga terpanjang. One Piece
+    /// punya 1215 chapter — cap yang lebih kecil membuat chapter lama yang
+    /// SUDAH dibaca ter-prune lalu muncul lagi sebagai "belum dibaca".
+    #[test]
+    fn cap_per_series_mencukupi_manga_panjang() {
+        assert!(
+            PER_SERIES_CAP >= 1215,
+            "PER_SERIES_CAP ({PER_SERIES_CAP}) < chapter terpanjang (1215)"
+        );
+    }
+
+    /// Bug A13: file temp harus unik per tulis. Kalau shared, dua penulis
+    /// bisa saling menimpa temp lalu rename yang salah.
+    #[test]
+    fn write_state_temp_unik_per_tulis() {
+        let dir = temp_dir("temp-unik");
+        let path = dir.join("alif.json");
+        let st = ReadState::default();
+        write_state(&path, &st).expect("tulis 1");
+        write_state(&path, &st).expect("tulis 2");
+        // tidak ada file temp tersisa
+        let leftovers: Vec<_> = std::fs::read_dir(&dir)
+            .unwrap()
+            .filter_map(|e| e.ok())
+            .map(|e| e.file_name().to_string_lossy().to_string())
+            .filter(|n| n.contains(".tmp."))
+            .collect();
+        assert!(leftovers.is_empty(), "file temp tertinggal: {leftovers:?}");
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    /// Bug A13: dua tulisan berurutan pada file yang sama tidak boleh
+    /// saling menghapus (lock read-modify-write).
+    #[test]
+    fn dua_tulis_berurutan_tidak_saling_menghapus() {
+        let dir = temp_dir("r-m-w");
+        let path = dir.join("alif.json");
+        let mut first = ReadState::default();
+        merge(&mut first, &marks_of("s", &[("1", 1)]));
+        write_state(&path, &first).expect("tulis 1");
+
+        let mut second = read_state(&path);
+        merge(&mut second, &marks_of("s", &[("2", 2)]));
+        write_state(&path, &second).expect("tulis 2");
+
+        let back = read_state(&path);
+        let chapters = back.marks.get("s").unwrap();
+        assert_eq!(chapters.len(), 2, "mark dari tulis pertama harus tetap ada");
+        let _ = std::fs::remove_dir_all(&dir);
     }
 }

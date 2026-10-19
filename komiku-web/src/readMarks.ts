@@ -32,6 +32,7 @@
 
 import { getUser, onAccountChange, type AccountEvent } from './account'
 import { readApi } from './api'
+import { commit, snapshot } from './readMarksQueue'
 
 const KEY_PREFIX = 'komik.readmarks.v1'
 const PENDING_PREFIX = 'komik.readmarks.pending.v1'
@@ -190,35 +191,37 @@ function schedulePush(): void {
 
 async function flush(): Promise<void> {
   const scopeName = scope()
-  const batch = pending[scopeName]
-  if (!batch) return
+  const bag = pending[scopeName]
+  if (!bag) return
   if (getUser() === null) return
-  const payload: Record<string, Record<string, number>> = {}
-  for (const [key, at] of Object.entries(batch)) {
-    const idx = key.lastIndexOf(':')
-    if (idx <= 0) continue
-    const titleKey = key.slice(0, idx)
-    const chapter = key.slice(idx + 1)
-    const series = (payload[titleKey] ??= {})
-    series[chapter] = at
-  }
-  if (Object.keys(payload).length === 0) {
+  // Bekukan dulu key yang akan terkirim: `bag` objek yang SAMA dengan antrean
+  // pending, jadi mark baru bisa masuk ke dalamnya SELAMA request ini jalan.
+  const { sent, payload } = snapshot(bag)
+  if (sent.length === 0) {
     delete pending[scopeName]
     writePending(scopeName, {})
     return
   }
   try {
     await readApi.put(payload)
-    delete pending[scopeName]
+    // Hapus HANYA key yang terkirim — mark yang masuk saat request jalan
+    // tetap di antrean → flush berikutnya membawanya.
+    commit(bag, sent)
+    // Hapus antrean hanya kalau MASIH objek yang sama: dua flush yang
+    // overlap bisa menukar antrean, dan `delete` tanpa syarat akan membuang
+    // antrean baru beserta mark yang baru masuk.
+    if (Object.keys(bag).length === 0 && pending[scopeName] === bag) {
+      delete pending[scopeName]
+    }
     // pending persisted ikut dibersihkan — kalau ada sisa (mis. mark baru
     // masuk saat request ini jalan), biarkan supaya push berikutnya membawa.
     const left = readPending(scopeName)
-    for (const k of Object.keys(batch)) delete left[k]
+    for (const k of sent) delete left[k]
     writePending(scopeName, left)
   } catch (err) {
     // Gagal push: batch dikembalikan ke pending supaya dicoba lagi di mark
     // berikutnya ATAU di sesi berikutnya (pending persist) — jangan hilang.
-    pending[scopeName] = { ...batch, ...(pending[scopeName] ?? {}) }
+    pending[scopeName] = { ...bag, ...(pending[scopeName] ?? {}) }
     writePending(scopeName, pending[scopeName])
     console.warn('readMarks: gagal push mark', err)
   }
