@@ -7,8 +7,13 @@
 //! - GET /api/unified/popular?page=   -> sama
 //! - GET /api/unified/latest?page=    -> sama
 //! - GET /api/unified/genres          -> {items:[{slug,name,sources:[string]}]}
-//! - GET /api/unified/series/{handle} -> {manga:MangaOut, chapters:[ChapterRow], source:string, failed_sources:[]}
+//! - GET /api/unified/series/{handle} -> {manga:MangaOut, chapters:[ChapterRow],
+//!   source:string, failed_sources:[string], from_cache:bool}
 //!   handle = "sumber:native_id" (URL-encoded oleh klien, mis. "komiku%3A6426")
+//!   `chapters` = UNION lintas sumber: semua episode dari semua sumber yang
+//!   punya series dengan judul sama (episode eksklusif sumber lain ikut).
+//!   Tiap ChapterRow += `source` + `handle` (sumber + handle series PEMILIK
+//!   chapter itu, bisa beda dari sumber manga primary).
 //! - GET /api/unified/chapter/{handle}/{number}
 //!   -> {title, number, source, images:[url], prev:{number,source,handle}|null,
 //!       next:{...}|null, switched_from: sumber|null, note: string|null}
@@ -43,7 +48,7 @@ use serde_json::{json, Value};
 
 use komik_core::adapters::all_sources;
 use komik_core::aggregator::Aggregator;
-use komik_core::model::{title_key, Chapter, Manga};
+use komik_core::model::{title_key, Manga};
 use komik_core::source::{Source, PER_SOURCE_TIMEOUT_SECS};
 
 use crate::downloads::{self, DownloadEntry, DownloadStore};
@@ -121,21 +126,31 @@ impl From<&Manga> for MangaOut {
 }
 
 /// Baris daftar chapter di respons series (urut sesuai sumber: terbaru dulu).
+///
+/// `source` + `handle` (DITAMBAH, lane union chapter): chapter bisa datang
+/// dari sumber BERBEDA dari manga primary, jadi client perlu tahu handle
+/// series di sumber pemilik chapter itu untuk membacanya.
 #[derive(serde::Serialize)]
 pub struct ChapterRow {
     pub number: String,
     pub title: String,
     pub native_id: String,
     pub updated_at: Option<i64>,
+    /// Sumber yang benar-benar punya chapter ini.
+    pub source: String,
+    /// Handle series di sumber itu ("shinigami:3b1eab91").
+    pub handle: String,
 }
 
-impl From<&Chapter> for ChapterRow {
-    fn from(c: &Chapter) -> Self {
+impl From<&komik_core::union::MergedChapter> for ChapterRow {
+    fn from(c: &komik_core::union::MergedChapter) -> Self {
         ChapterRow {
             number: c.number.clone(),
             title: c.title.clone(),
             native_id: c.native_id.clone(),
             updated_at: c.updated_at,
+            source: c.source.as_str().to_string(),
+            handle: c.handle.clone(),
         }
     }
 }
@@ -641,10 +656,15 @@ fn validate_handle(handle: &str) -> Result<(), AppError> {
     Ok(())
 }
 
-/// Detail series + daftar chapter. `handle` = "sumber:native_id".
+/// Detail series + daftar chapter UNION lintas sumber. `handle` =
+/// "sumber:native_id".
 /// Query opsional `last_source` (mis. "kiryuu") = sumber terakhir yang dibaca
 /// client: dicoba LEBIH DULU sebelum sumber dari handle (sticky source,
 /// keputusan Q4/8 plan cross-source fallback) — core `series_resolve_pref`.
+///
+/// Daftar chapter = UNION semua sumber yang punya series dengan judul sama
+/// (core `series_merged`), jadi episode eksklusif sumber lain ikut tampil.
+/// Tiap baris membawa `source` + `handle` sumber PEMILIK chapter itu.
 #[derive(Deserialize)]
 pub struct SeriesQuery {
     last_source: Option<String>,
@@ -652,8 +672,8 @@ pub struct SeriesQuery {
 
 async fn u_series(Path(handle): Path<String>, Query(q): Query<SeriesQuery>) -> Res<Value> {
     validate_handle(&handle)?;
-    let outcome = aggregator()
-        .series_resolve_pref(
+    let merged = aggregator()
+        .series_merged(
             &handle,
             SERIES_CHAPTER_LIMIT,
             None,
@@ -661,16 +681,20 @@ async fn u_series(Path(handle): Path<String>, Query(q): Query<SeriesQuery>) -> R
         )
         .await
         .map_err(classify_core_err)?;
-    let detail = outcome.detail;
-    let manga = MangaOut::from(&detail.manga);
-    let chapters: Vec<ChapterRow> = detail.chapters.iter().map(ChapterRow::from).collect();
+    let manga = MangaOut::from(&merged.manga);
+    let chapters: Vec<ChapterRow> = merged.chapters.iter().map(ChapterRow::from).collect();
     Ok(Json(json!({
         "manga": manga,
         "chapters": chapters,
-        "source": detail.manga.source.as_str(),
-        // series bukan fan-out: tidak ada partial-failure lintas sumber
-        "failed_sources": [],
-        "from_cache": outcome.from_cache,
+        // Sumber manga PRIMARY (metadata tidak berubah oleh union).
+        "source": merged.manga.source.as_str(),
+        // Sumber yang gagal saat pengumpulan union (partial failure).
+        "failed_sources": merged
+            .failed
+            .iter()
+            .map(|(s, _)| s.as_str().to_string())
+            .collect::<Vec<_>>(),
+        "from_cache": merged.from_cache,
     })))
 }
 

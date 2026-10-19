@@ -189,6 +189,23 @@ pub struct ReadOutcome {
     pub from_cache: bool,
 }
 
+/// Series + daftar chapter hasil UNION lintas sumber.
+///
+/// Sumber primary = sumber yang handle-nya (atau fallback `series_resolve_pref`).
+/// Sumber lain diisi dari `collect_series_across_sources` (judul sama).
+/// Union pakai `merge_chapter_lists`; primary DILETAKKAN lebih dulu supaya
+/// chapter miliknya menang dedup.
+///
+/// `failed` = sumber yang gagal saat pengumpulan (partial failure tolerated).
+#[derive(Debug, Clone)]
+pub struct MergedSeries {
+    pub manga: Manga,
+    pub chapters: Vec<crate::union::MergedChapter>,
+    pub failed: Vec<(SourceId, String)>,
+    /// True kalau detail primary dilayani dari cache aggregator.
+    pub from_cache: bool,
+}
+
 /// Referensi chapter tetangga untuk navigasi reader. Membawa sumber + handle
 /// manga di sumber itu, supaya client bisa lanjut baca lintas sumber tanpa
 /// perlu tahu sumber asal: kirim balik `handle` + `number` ke
@@ -645,6 +662,54 @@ impl Aggregator {
         )
     }
 
+    /// Series + daftar chapter hasil UNION lintas sumber.
+    ///
+    /// Primary = [`Aggregator::series_resolve_pref`] (sticky source + fallback
+    /// dipertahankan apa adanya). Sumber lain diambil lewat
+    /// [`Aggregator::collect_series_across_sources`] dengan judul manga
+    /// primary (exact `title_key`); primary TIDAK diminta ulang.
+    ///
+    /// Union pakai [`crate::union::merge_chapter_lists`] dengan daftar primary
+    /// di urutan PERTAMA, jadi chapter primary menang dedup ("09" == "9").
+    /// Episode eksklusif sumber lain tetap ikut.
+    ///
+    /// Kegagalan sumber lain ditoleransi: sumbernya masuk `failed`, chapter
+    /// primary tetap dikembalikan.
+    pub async fn series_merged(
+        &self,
+        id: &str,
+        limit: u32,
+        source: Option<&str>,
+        last_source: Option<&str>,
+    ) -> anyhow::Result<MergedSeries> {
+        let outcome = self.series_resolve_pref(id, limit, source, last_source).await?;
+        let detail = outcome.detail;
+        let manga = detail.manga.clone();
+
+        // Primary = sumber pelayan; handle kanonik "sumber:native_id".
+        let primary = crate::union::SourceChapterList {
+            source: manga.source.clone(),
+            handle: manga.handle(),
+            chapters: detail.chapters,
+        };
+
+        // Sumber lain: judul sama (exact `title_key`); primary dilewati.
+        let (others, failed) = self
+            .collect_series_across_sources(&manga.title, Some(&manga.source), limit)
+            .await;
+
+        let mut lists = Vec::with_capacity(others.len() + 1);
+        lists.push(primary);
+        lists.extend(others);
+
+        Ok(MergedSeries {
+            manga,
+            chapters: crate::union::merge_chapter_lists(&lists),
+            failed,
+            from_cache: outcome.from_cache,
+        })
+    }
+
     /// Fallback chain untuk series yang manganya sudah diketahui.
     pub async fn series_with_fallback(
         &self,
@@ -847,7 +912,46 @@ impl Aggregator {
 
             match tokio::time::timeout(self.timeout, src.chapter_pages(&manga, &chapter)).await {
                 Ok(Ok(pages)) if !pages.images.is_empty() => {
-                    let (prev, next) = neighbor_refs(&detail, pos);
+                    let (mut prev, mut next) = neighbor_refs(&detail, pos);
+                    // Tepi sumber pelayan -> cari tetangga di sumber lain yang
+                    // punya series dengan judul sama. Sumber pelayan tetap
+                    // menang selama punya tetangga (regresi).
+                    //
+                    // Syarat:
+                    // - Pemanggil TIDAK mempersempit sumber (`--source`):
+                    //   dengan filter, navigasi harus tetap di sumber yang
+                    //   diminta.
+                    // - Daftar chapter sumber pelayan punya konteks urutan
+                    //   (>1 chapter). Daftar 1 chapter = sumber tak memberi
+                    //   tahu itu tepi atas atau tepi bawah, jadi tak ada
+                    //   tebakan tetangga lintas sumber.
+                    if (prev.is_none() || next.is_none())
+                        && source.is_none()
+                        && detail.chapters.len() > 1
+                    {
+                        let (lists, _failed) = self
+                            .collect_series_across_sources(
+                                &manga.title,
+                                Some(&sid),
+                                CROSS_SOURCE_CHAPTER_LIMIT,
+                            )
+                            .await;
+                        let (cross_prev, cross_next) =
+                            pick_cross_source_neighbors(&lists, &chapter.number);
+                        if next.is_none() {
+                            next = cross_next;
+                        }
+                        // `prev` hanya boleh lintas sumber kalau daftar
+                        // sumber pelayan TIDAK terpotong: `cap` memotong dari
+                        // yang paling tua (daftar terbaru-dulu), jadi tepi
+                        // bawah bisa jadi artefak pemotongan — sumber pelayan
+                        // mungkin punya chapter lebih tua yang kita buang.
+                        // Tanpa guard, prev bisa melompati chapter yang
+                        // sebenarnya milik sumber pelayan.
+                        if prev.is_none() && detail.chapters.len() < cap {
+                            prev = cross_prev;
+                        }
+                    }
                     let switched_from = (sid != primary).then(|| primary.clone());
                     let note = switched_from.as_ref().map(|p| match &primary_miss {
                         Some(PrimaryMiss::Empty) => {
@@ -1052,6 +1156,136 @@ impl Aggregator {
 
     fn cache_key(&self, op: &str, source: Option<&str>, arg: &str) -> String {
         format!("{}:{}:{}", op, source.unwrap_or("*"), arg)
+    }
+
+    /// Kumpulkan daftar chapter dari SEMUA sumber yang punya series dengan judul
+    /// sama (exact `title_key`), paralel, timeout per sumber.
+    ///
+    /// - Sumber yang gagal/timeout DILEWATI (partial failure tolerated) dan
+    ///   dikembalikan di `failed` sebagai (SourceId, pesan).
+    /// - Sumber tidak boleh yang sama dengan `skip_source` (sumber pelayan).
+    /// - `title` = judul series yang sudah dimuat (bukan handle).
+    /// - Kunci cache: "series-union:{title_key}".
+    ///
+    /// Cache disimpan PER SUMBER (peta id sumber -> (handle, daftar chapter))
+    /// supaya kunci tetap "series-union:{title_key}" apa pun `skip_source` yang
+    /// dipakai: sumber yang belum ada di cache tetap diambil saat panggilan
+    /// ini, dan sumber pelayan cukup dibuang dari keluaran.
+    pub async fn collect_series_across_sources(
+        &self,
+        title: &str,
+        skip_source: Option<&SourceId>,
+        limit: u32,
+    ) -> (
+        Vec<crate::union::SourceChapterList>,
+        Vec<(SourceId, String)>,
+    ) {
+        let tkey = crate::model::title_key(title);
+        let cache_key = format!("series-union:{tkey}");
+
+        // Cache: id sumber -> (handle series, daftar chapter).
+        let mut by_source: std::collections::BTreeMap<String, (String, Vec<Chapter>)> =
+            std::collections::BTreeMap::new();
+        if let Some(cache) = &self.cache {
+            if let Some(hit) = cache
+                .fresh_json::<std::collections::BTreeMap<String, (String, Vec<Chapter>)>>(&cache_key)
+            {
+                by_source = hit;
+            }
+        }
+
+        // Target: semua sumber yang dikenal, kecuali sumber pelayan
+        // (`skip_source`) dan yang sudah ada di cache.
+        let skip_id = skip_source.cloned();
+        let targets: Vec<Arc<dyn Source>> = self
+            .sources
+            .iter()
+            .filter(|s| Some(&s.id()) != skip_id.as_ref())
+            .filter(|s| !by_source.contains_key(s.id().as_str()))
+            .cloned()
+            .collect();
+
+        let mut failed: Vec<(SourceId, String)> = Vec::new();
+        if !targets.is_empty() {
+            let t = title.to_string();
+            let call = move |src: Arc<dyn Source>| {
+                let t = t.clone();
+                async move {
+                    // Varian judul: user sering menempel slug URL ("solo-leveling")
+                    // padahal sumber hanya cocok dengan bentuk berspasi
+                    // ("solo leveling") — pola yang sama dengan
+                    // `load_series_by_title`.
+                    let mut candidates = vec![t.clone()];
+                    let spaced = t.replace('-', " ");
+                    if spaced != t {
+                        candidates.push(spaced);
+                    }
+                    for cand in candidates {
+                        // Resolve by exact `title_key` (default trait `resolve`).
+                        let m = match src.resolve(&cand).await {
+                            Ok(Some(m)) => m,
+                            // Sumber terakses tapi judulnya tidak ada -> coba
+                            // varian berikutnya.
+                            Ok(None) => continue,
+                            Err(e) => {
+                                if SourceError::from(&e).is_conclusive() {
+                                    continue;
+                                }
+                                return Err(e);
+                            }
+                        };
+                        return match src.series(&m.native_id).await {
+                            Ok(detail) => {
+                                // Handle series di sumber itu: "sumber:native-id".
+                                let handle = format!("{}:{}", src.id().as_str(), m.native_id);
+                                Ok(Some((handle, detail.chapters)))
+                            }
+                            Err(e) => {
+                                if SourceError::from(&e).is_conclusive() {
+                                    Ok(None)
+                                } else {
+                                    Err(e)
+                                }
+                            }
+                        };
+                    }
+                    // Sumber tidak punya series dengan judul itu.
+                    Ok(None)
+                }
+            };
+            for res in self.join_sources(targets, call).await {
+                match res {
+                    Ok((src, Some((handle, chapters)))) => {
+                        by_source.insert(src.id().as_str().to_string(), (handle, chapters));
+                    }
+                    // Sumber tidak punya series itu -> dilewati (bukan failed).
+                    Ok((_, None)) => {}
+                    Err((sid, msg)) => failed.push((sid, msg)),
+                }
+            }
+            // Cache ditulis walau sebagian sumber gagal: entri per sumber
+            // tetap aman (sumber yang gagal akan diambil lagi di panggilan
+            // berikutnya).
+            self.cache_put(&cache_key, &by_source);
+        }
+
+        // Keluaran: semua sumber yang punya series, sumber pelayan dibuang.
+        let mut out: Vec<crate::union::SourceChapterList> = by_source
+            .into_iter()
+            .filter(|(sid, _)| Some(sid.as_str()) != skip_id.as_ref().map(|s| s.as_str()))
+            .map(|(sid, (handle, chapters))| crate::union::SourceChapterList {
+                source: SourceId::from(sid.as_str()),
+                handle,
+                chapters,
+            })
+            .collect();
+        out.sort_by_key(|l| (source_priority(&l.source), l.source.as_str().to_string()));
+        for l in &mut out {
+            if limit > 0 {
+                l.chapters.truncate(limit as usize);
+            }
+        }
+        (out, failed)
     }
 }
 
@@ -1260,7 +1494,13 @@ pub fn chapter_index_by_key(detail: &SeriesDetail, number: &str) -> Option<usize
         .position(|c| chapter_number_key(&c.number) == want)
 }
 
-/// prev/next dari daftar chapter sumber yang MELAYANI. Daftar chapter
+/// Batas chapter per sumber saat mencari tetangga LINTAS sumber.
+///
+/// 0 = tanpa pemotongan: daftar chapter sumber lain dipakai utuh supaya
+/// kandidat terdekat (mis. "233" dari "232") tak terpotong.
+const CROSS_SOURCE_CHAPTER_LIMIT: u32 = 0;
+
+/// prev/next dari daftar chapter sumber yang MELAYAN. Daftar chapter
 /// terbaru-dulu (kontrak trait `Source`), jadi `prev` = lebih tua (index+1)
 /// dan `next` = lebih baru (index-1) — konvensi sama dengan endpoint chapter
 /// server yang sudah ada. Chapter di tepi dapat `None`.
@@ -1276,6 +1516,72 @@ fn neighbor_refs(detail: &SeriesDetail, pos: usize) -> (Option<ChapterRef>, Opti
         .and_then(|i| detail.chapters.get(i))
         .map(|c| mk(c));
     let prev = detail.chapters.get(pos + 1).map(|c| mk(c));
+    (prev, next)
+}
+
+/// Kandidat tetangga LINTAS SUMBER untuk chapter `current`.
+///
+/// Dipakai hanya saat sumber yang melayani sudah di TEPI (tidak punya
+/// `next` / tidak punya `prev`). Sumber lain searched =
+/// [`Aggregator::collect_series_across_sources`] (judul sama, sumber pelayan
+/// dilewati).
+///
+/// - `next` = nomor LEBIH BESAR dari `current`, yang terkecil (suksesor
+///   terdekat).
+/// - `prev` = nomor LEBIH KECIL dari `current`, yang terbesar.
+///
+/// Perbandingan memakai [`crate::union::cmp_chapter_number`] (numerik-aware,
+/// identitas string `chapter_number_key`) — bukan f64. Label non-numerik
+/// ("extra", "prologue") kalah dari kandidat numerik, jadi `prev` memilih
+/// "extra" hanya kalau tak ada kandidat numerik yang lebih kecil.
+///
+/// Kandidat dengan nomor sama di beberapa sumber: yang pertama (urutan
+/// prioritas sumber) menang.
+fn pick_cross_source_neighbors(
+    lists: &[crate::union::SourceChapterList],
+    current: &str,
+) -> (Option<ChapterRef>, Option<ChapterRef>) {
+    let mut next: Option<ChapterRef> = None;
+    let mut prev: Option<ChapterRef> = None;
+    for list in lists {
+        for ch in &list.chapters {
+            let mk = || ChapterRef {
+                number: ch.number.clone(),
+                source: list.source.clone(),
+                handle: list.handle.clone(),
+            };
+            match crate::union::cmp_chapter_number(&ch.number, current) {
+                // Nomor lebih besar -> kandidat `next`: ambil yang terkecil.
+                std::cmp::Ordering::Greater => {
+                    let better = match &next {
+                        None => true,
+                        Some(n) => {
+                            crate::union::cmp_chapter_number(&ch.number, &n.number)
+                                == std::cmp::Ordering::Less
+                        }
+                    };
+                    if better {
+                        next = Some(mk());
+                    }
+                }
+                // Nomor lebih kecil -> kandidat `prev`: ambil yang terbesar.
+                std::cmp::Ordering::Less => {
+                    let better = match &prev {
+                        None => true,
+                        Some(p) => {
+                            crate::union::cmp_chapter_number(&ch.number, &p.number)
+                                == std::cmp::Ordering::Greater
+                        }
+                    };
+                    if better {
+                        prev = Some(mk());
+                    }
+                }
+                // Nomor sama -> chapter itu sendiri, bukan tetangga.
+                std::cmp::Ordering::Equal => {}
+            }
+        }
+    }
     (prev, next)
 }
 
