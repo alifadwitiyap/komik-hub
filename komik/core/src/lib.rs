@@ -4,3 +4,4 @@ pub mod cache;
 pub mod model;
 pub mod probe;
 pub mod source;
+pub mod union;

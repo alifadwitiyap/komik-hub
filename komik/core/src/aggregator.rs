@@ -1053,6 +1053,136 @@ impl Aggregator {
     fn cache_key(&self, op: &str, source: Option<&str>, arg: &str) -> String {
         format!("{}:{}:{}", op, source.unwrap_or("*"), arg)
     }
+
+    /// Kumpulkan daftar chapter dari SEMUA sumber yang punya series dengan judul
+    /// sama (exact `title_key`), paralel, timeout per sumber.
+    ///
+    /// - Sumber yang gagal/timeout DILEWATI (partial failure tolerated) dan
+    ///   dikembalikan di `failed` sebagai (SourceId, pesan).
+    /// - Sumber tidak boleh yang sama dengan `skip_source` (sumber pelayan).
+    /// - `title` = judul series yang sudah dimuat (bukan handle).
+    /// - Kunci cache: "series-union:{title_key}".
+    ///
+    /// Cache disimpan PER SUMBER (peta id sumber -> (handle, daftar chapter))
+    /// supaya kunci tetap "series-union:{title_key}" apa pun `skip_source` yang
+    /// dipakai: sumber yang belum ada di cache tetap diambil saat panggilan
+    /// ini, dan sumber pelayan cukup dibuang dari keluaran.
+    pub async fn collect_series_across_sources(
+        &self,
+        title: &str,
+        skip_source: Option<&SourceId>,
+        limit: u32,
+    ) -> (
+        Vec<crate::union::SourceChapterList>,
+        Vec<(SourceId, String)>,
+    ) {
+        let tkey = crate::model::title_key(title);
+        let cache_key = format!("series-union:{tkey}");
+
+        // Cache: id sumber -> (handle series, daftar chapter).
+        let mut by_source: std::collections::BTreeMap<String, (String, Vec<Chapter>)> =
+            std::collections::BTreeMap::new();
+        if let Some(cache) = &self.cache {
+            if let Some(hit) = cache
+                .fresh_json::<std::collections::BTreeMap<String, (String, Vec<Chapter>)>>(&cache_key)
+            {
+                by_source = hit;
+            }
+        }
+
+        // Target: semua sumber yang dikenal, kecuali sumber pelayan
+        // (`skip_source`) dan yang sudah ada di cache.
+        let skip_id = skip_source.cloned();
+        let targets: Vec<Arc<dyn Source>> = self
+            .sources
+            .iter()
+            .filter(|s| Some(&s.id()) != skip_id.as_ref())
+            .filter(|s| !by_source.contains_key(s.id().as_str()))
+            .cloned()
+            .collect();
+
+        let mut failed: Vec<(SourceId, String)> = Vec::new();
+        if !targets.is_empty() {
+            let t = title.to_string();
+            let call = move |src: Arc<dyn Source>| {
+                let t = t.clone();
+                async move {
+                    // Varian judul: user sering menempel slug URL ("solo-leveling")
+                    // padahal sumber hanya cocok dengan bentuk berspasi
+                    // ("solo leveling") — pola yang sama dengan
+                    // `load_series_by_title`.
+                    let mut candidates = vec![t.clone()];
+                    let spaced = t.replace('-', " ");
+                    if spaced != t {
+                        candidates.push(spaced);
+                    }
+                    for cand in candidates {
+                        // Resolve by exact `title_key` (default trait `resolve`).
+                        let m = match src.resolve(&cand).await {
+                            Ok(Some(m)) => m,
+                            // Sumber terakses tapi judulnya tidak ada -> coba
+                            // varian berikutnya.
+                            Ok(None) => continue,
+                            Err(e) => {
+                                if SourceError::from(&e).is_conclusive() {
+                                    continue;
+                                }
+                                return Err(e);
+                            }
+                        };
+                        return match src.series(&m.native_id).await {
+                            Ok(detail) => {
+                                // Handle series di sumber itu: "sumber:native-id".
+                                let handle = format!("{}:{}", src.id().as_str(), m.native_id);
+                                Ok(Some((handle, detail.chapters)))
+                            }
+                            Err(e) => {
+                                if SourceError::from(&e).is_conclusive() {
+                                    Ok(None)
+                                } else {
+                                    Err(e)
+                                }
+                            }
+                        };
+                    }
+                    // Sumber tidak punya series dengan judul itu.
+                    Ok(None)
+                }
+            };
+            for res in self.join_sources(targets, call).await {
+                match res {
+                    Ok((src, Some((handle, chapters)))) => {
+                        by_source.insert(src.id().as_str().to_string(), (handle, chapters));
+                    }
+                    // Sumber tidak punya series itu -> dilewati (bukan failed).
+                    Ok((_, None)) => {}
+                    Err((sid, msg)) => failed.push((sid, msg)),
+                }
+            }
+            // Cache ditulis walau sebagian sumber gagal: entri per sumber
+            // tetap aman (sumber yang gagal akan diambil lagi di panggilan
+            // berikutnya).
+            self.cache_put(&cache_key, &by_source);
+        }
+
+        // Keluaran: semua sumber yang punya series, sumber pelayan dibuang.
+        let mut out: Vec<crate::union::SourceChapterList> = by_source
+            .into_iter()
+            .filter(|(sid, _)| Some(sid.as_str()) != skip_id.as_ref().map(|s| s.as_str()))
+            .map(|(sid, (handle, chapters))| crate::union::SourceChapterList {
+                source: SourceId::from(sid.as_str()),
+                handle,
+                chapters,
+            })
+            .collect();
+        out.sort_by_key(|l| (source_priority(&l.source), l.source.as_str().to_string()));
+        for l in &mut out {
+            if limit > 0 {
+                l.chapters.truncate(limit as usize);
+            }
+        }
+        (out, failed)
+    }
 }
 
 // -------------------------------------------------------------- dedup/rank
