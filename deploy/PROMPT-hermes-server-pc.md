@@ -142,7 +142,7 @@ dan membaca config dari `C:\Windows\System32\config\systemprofile\.cloudflared\`
 | Lihat log | `docker logs --tail 100 -f komik-hub` |
 | Restart | `docker restart komik-hub` |
 | Update versi | `docker pull ghcr.io/alifadwitiyap/komik-hub:latest` lalu `docker rm -f komik-hub` lalu jalankan ulang perintah run (data di `D:\komik-hub\data` aman) |
-| Rollback | pakai tag bertanggal, mis. `ghcr.io/alifadwitiyap/komik-hub:2026-10-16` |
+| Rollback | pakai tag bertanggal, mis. `ghcr.io/alifadwitiyap/komik-hub:2026-10-20` |
 | Backup | copy folder `D:\komik-hub\data` (state user + PDF) |
 | Stop | `docker stop komik-hub` |
 

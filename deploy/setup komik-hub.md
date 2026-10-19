@@ -8,7 +8,7 @@
 
 ## Fakta penting
 
-- **Image:** `ghcr.io/alifadwitiyap/komik-hub:latest` (tag cadangan: `:2026-10-16`)
+- **Image:** `ghcr.io/alifadwitiyap/komik-hub:latest` (tag cadangan: `:2026-10-20`)
 - **Digest:** `sha256:e05ea71c0480b7cf8d3eea7e5e9eb0179ec2f6b3aee5531e079e6bac481b82ab`
 - **Arsitektur:** linux/amd64 (PC server x64 — cocok). Isi: Caddy (basic auth) → API Rust → web app.
 - **Basic auth:** user `alif` / password `komik-m31LUI6u`
@@ -40,11 +40,11 @@ docker pull ghcr.io/alifadwitiyap/komik-hub:latest
 
 ### Cara B — Dari file (tanpa registry / tanpa GitHub)
 
-1. Copy file `D:\komik-hub-image-2026-10-16.tar` (±144 MB, dari PC Alif) ke PC ini.
+1. Copy file `D:\komik-hub-image-2026-10-20.tar` (±144 MB, dari PC Alif) ke PC ini.
 2. Load:
 
 ```powershell
-docker load -i C:\lokasi\komik-hub-image-2026-10-16.tar
+docker load -i C:\lokasi\komik-hub-image-2026-10-20.tar
 ```
 
 Hasilnya sama: image `ghcr.io/alifadwitiyap/komik-hub:latest` siap dipakai → lanjut langkah 3.
@@ -111,7 +111,7 @@ Beli dulu (mis. `.my.id` di registrar lokal), lalu Add site di Cloudflare.
 | Log | `docker logs --tail 100 -f komik-hub` |
 | Restart | `docker restart komik-hub` |
 | Update versi | `docker pull ghcr.io/alifadwitiyap/komik-hub:latest` → `docker rm -f komik-hub` → jalankan ulang perintah run (data di `D:\komik-hub\data` aman) |
-| Rollback | pakai tag `:2026-10-16` |
+| Rollback | pakai tag `:2026-10-20` |
 | Backup | copy folder `D:\komik-hub\data` |
 | Stop | `docker stop komik-hub` |
 
