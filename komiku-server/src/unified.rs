@@ -8,8 +8,11 @@
 //! - GET /api/unified/latest?page=    -> sama
 //! - GET /api/unified/genres          -> {items:[{slug,name,sources:[string]}]}
 //! - GET /api/unified/series/{handle} -> {manga:MangaOut, chapters:[ChapterRow],
-//!   source:string, failed_sources:[string], from_cache:bool}
-//!   CATATAN `from_cache`: hanya melacak cache DETAIL PRIMARY. Baris union
+//!   source:string, representative_source:string|null, failed_sources:[string],
+//!   from_cache:bool}
+//!   `representative_source` = sumber dengan chapter numerik utama terbesar
+//!   (tie-break SOURCE_PRIORITY); null kalau tak ada chapter numerik.
+//!   CATATAN `from_cache`: hanya melacak cache DETAIL PRIMARY.
 //!   dari sumber lain punya cache sendiri (kunci "series-union:{title_key}")
 //!   yang status hit-nya tidak diekspos — jadi `from_cache:true` tak
 //!   menjamin seluruh respons dari cache, dan `false` tak berarti seluruh
@@ -694,6 +697,11 @@ async fn u_series(Path(handle): Path<String>, Query(q): Query<SeriesQuery>) -> R
         "chapters": chapters,
         // Sumber manga PRIMARY (metadata tidak berubah oleh union).
         "source": merged.manga.source.as_str(),
+        // Sumber representatif: chapter numerik utama terbesar (tie
+        // SOURCE_PRIORITY); null kalau tak ada chapter numerik.
+        "representative_source": merged
+            .representative_source
+            .map(|s| s.as_str().to_string()),
         // Sumber yang gagal saat pengumpulan union (partial failure).
         "failed_sources": merged
             .failed

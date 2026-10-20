@@ -204,6 +204,9 @@ pub struct MergedSeries {
     pub failed: Vec<(SourceId, String)>,
     /// True kalau detail primary dilayani dari cache aggregator.
     pub from_cache: bool,
+    /// Sumber representatif = sumber yang punya chapter numerik utama terbesar
+    /// (tie-break `SOURCE_PRIORITY`). None kalau tak ada chapter numerik.
+    pub representative_source: Option<SourceId>,
 }
 
 /// Referensi chapter tetangga untuk navigasi reader. Membawa sumber + handle
@@ -702,11 +705,13 @@ impl Aggregator {
         lists.push(primary);
         lists.extend(others);
 
+        let representative_source = crate::union::pick_representative_source(&lists);
         Ok(MergedSeries {
             manga,
             chapters: crate::union::merge_chapter_lists(&lists),
             failed,
             from_cache: outcome.from_cache,
+            representative_source,
         })
     }
 
