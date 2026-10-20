@@ -490,6 +490,25 @@ async fn fetch_snapshots(fav: &Favorite) -> Vec<(String, String)> {
     out
 }
 
+/// Handle lengkap `sumber:native_id` dari favorit.
+///
+/// `Favorite.handle` bentuknya BEDA per sumber: flow unified sudah
+/// menyertakan prefix sumber ("shinigami:6915ddaf-…"), flow lama komiku
+/// hanya native id ("3922"). Menempelkan prefix tanpa cek menghasilkan
+/// handle dobel ("komiku:komiku:6426") → `series_resolve` gagal → baseline
+/// tak pernah terisi → notifikasi "chapter baru" mati untuk semua favorit
+/// unified (bug nyata di data: baselines={} padahal handle-nya valid).
+fn full_handle(source: &str, handle: &str) -> String {
+    let handle = handle.trim();
+    if handle.is_empty() {
+        return format!("{source}:");
+    }
+    if handle.contains(':') {
+        return handle.to_string();
+    }
+    format!("{source}:{handle}")
+}
+
 /// Baseline-fill untuk favorit baru MILIK `username`: ambil series dari
 /// sumber/handle favorit (native id) lalu set baseline sumber itu = chapter
 /// tertinggi saat ini. Hanya mengisi kalau baselines masih kosong (tak menimpa
@@ -503,7 +522,7 @@ async fn fill_baselines(store: &NotifStore, username: &str, key: &str) {
             .cloned()
     };
     let Some(fav) = fav else { return };
-    let handle = format!("{}:{}", fav.source, fav.handle);
+    let handle = full_handle(&fav.source, &fav.handle);
     match aggregator()
         .series_resolve(&handle, NOTIF_CHAPTER_LIMIT, None)
         .await
@@ -542,7 +561,7 @@ async fn fill_baselines(store: &NotifStore, username: &str, key: &str) {
 /// Satu siklus pemeriksaan untuk SEMUA akun. Guard `checking` mencegah cycle
 /// bertumpuk (dipicu GET /list saat TTL lewat). Fetch sumber tetap DIBAGI lewat
 /// cache global `snapshot()`. Chapter baru -> 1 notifikasi per title_key per akun.
-async fn run_check_cycle(store: &NotifStore) {
+async fn run_check_cycle(store: Arc<NotifStore>) {
     // try_lock: kalau ada cycle berjalan, langsung keluar. Guard mutex
     // dipegang sampai fungsi selesai, termasuk saat return/panic -> tak
     // mungkin "nyangkut true" seperti AtomicBool manual.
@@ -592,7 +611,15 @@ async fn run_check_cycle(store: &NotifStore) {
         let mut snaps: Vec<(String, Vec<(String, String)>)> = Vec::new();
         for (key, fav) in favorites {
             if fav.baselines.is_empty() {
-                continue; // baseline belum ada -> dilewati
+                // Baseline kosong: coba isi sekarang (favorit lama yg fill-nya
+                // gagal dulu, mis. karena handle dobel -> notifikasi mati
+                // permanen). Cycle ini tetap melompatinya, jadi yang baru
+                // terisi akan ternotifikasi pada cycle BERIKUTNYA.
+                let s = store.clone();
+                let u = username.clone();
+                let k = key.clone();
+                tokio::spawn(async move { fill_baselines(&s, &u, &k).await });
+                continue;
             }
             let snap = store.snapshot(key, fav).await;
             snaps.push((key.clone(), snap));
@@ -720,7 +747,7 @@ async fn get_list(headers: HeaderMap) -> Res<Value> {
     };
     if should_check {
         let s = store.clone();
-        tokio::spawn(async move { run_check_cycle(&s).await });
+        tokio::spawn(async move { run_check_cycle(s).await });
     }
     Ok(Json(json!({
         "items": items,
@@ -835,6 +862,26 @@ mod tests {
 
     // ---- interval efektif (penggandaan favorit besar) ------------------
 
+    /// Bug handle dobel: `Favorite.handle` unified sudah ber-prefix sumber,
+    /// jadi menempelkan prefix lagi bikin "komiku:komiku:6426" → resolve
+    /// gagal → baseline kosong → notifikasi chapter baru mati.
+    #[test]
+    fn full_handle_tidak_menempel_prefix_ganda() {
+        // unified: handle sudah "sumber:native_id" -> dipakai apa adanya
+        assert_eq!(
+            full_handle("shinigami", "shinigami:6915ddaf-380a-47d8-aa8a-c48ba8778db5"),
+            "shinigami:6915ddaf-380a-47d8-aa8a-c48ba8778db5"
+        );
+        // legacy komiku: native id polos -> prefix ditambahkan
+        assert_eq!(full_handle("komiku", "3922"), "komiku:3922");
+        // native id UUID tanpa prefix -> prefix ditambahkan
+        assert_eq!(full_handle("kiryuu", "solo-leveling"), "kiryuu:solo-leveling");
+        // tak boleh ada handle dobel
+        assert!(!full_handle("komiku", "komiku:6426").contains("komiku:komiku"));
+        // handle kosong -> tetap bentuk handle yang bisa dipakai
+        assert_eq!(full_handle("komiku", ""), "komiku:");
+    }
+
     #[test]
     fn effective_interval_doubles_above_threshold() {
         // <= 50 favorit: TTL dasar (override NOTIF_INTERVAL_SECS dihormati)
@@ -863,7 +910,7 @@ mod tests {
         let store = NotifStore::open(&dir).unwrap();
         assert!(store.checking.try_lock().is_ok(), "guard bebas saat idle");
         drop(store.checking.try_lock().unwrap());
-        run_check_cycle(&store).await; // tanpa akun: no-op
+        run_check_cycle(store.clone()).await; // tanpa akun: no-op
         assert!(
             store.checking.try_lock().is_ok(),
             "guard harus dilepas setelah cycle selesai"
