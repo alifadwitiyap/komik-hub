@@ -143,3 +143,127 @@ fn trim_leading_zeros(s: &str) -> &str {
         t
     }
 }
+
+/// Pilih sumber representatif = sumber yang punya chapter numerik utama TERBESAR.
+/// Non-numerik (extra/special/prologue) TIDAK dihitung. Tie-break: SOURCE_PRIORITY.
+/// Kosong di semua sumber (atau semua non-numerik) -> None.
+pub fn pick_representative_source(lists: &[SourceChapterList]) -> Option<SourceId> {
+    let priority = crate::model::SOURCE_PRIORITY;
+    lists
+        .iter()
+        .map(|list| {
+            // latest_main = nomor numerik terbesar di list ini (skip non-numerik).
+            let latest_main = list
+                .chapters
+                .iter()
+                .map(|ch| ch.number.as_str())
+                .filter(|k| is_numeric_key(k))
+                .max_by(|a, b| cmp_chapter_number(a, b));
+            (list, latest_main)
+        })
+        // Buang list tanpa chapter numerik sama sekali.
+        .filter(|(_, latest)| latest.is_some())
+        .max_by(|(a, la), (b, lb)| {
+            cmp_chapter_number(la.unwrap(), lb.unwrap()).then_with(|| {
+                // Tie-break: SOURCE_PRIORITY (indeks kecil = prioritas lebih tinggi).
+                let ia = priority
+                    .iter()
+                    .position(|p| *p == a.source.as_str())
+                    .unwrap_or(usize::MAX);
+                let ib = priority
+                    .iter()
+                    .position(|p| *p == b.source.as_str())
+                    .unwrap_or(usize::MAX);
+                ib.cmp(&ia)
+            })
+        })
+        .map(|(list, _)| list.source.clone())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn chapter(source: &str, number: &str) -> Chapter {
+        Chapter {
+            source: SourceId(source.to_string()),
+            native_id: number.to_string(),
+            title: String::new(),
+            number: number.to_string(),
+            updated_at: None,
+            url: None,
+        }
+    }
+
+    fn list(source: &str, numbers: &[&str]) -> SourceChapterList {
+        SourceChapterList {
+            source: SourceId(source.to_string()),
+            handle: format!("{}:id", source),
+            chapters: numbers.iter().map(|n| chapter(source, n)).collect(),
+        }
+    }
+
+    #[test]
+    fn pilih_max_numerik_di_antara_sumber_v() {
+        // komiku max 90, shinigami 91 -> shinigami.
+        let lists = vec![
+            list("komiku", &["1", "90"]),
+            list("shinigami", &["10", "91"]),
+        ];
+        let got = pick_representative_source(&lists);
+        assert_eq!(got.as_ref().map(SourceId::as_str), Some("shinigami"));
+    }
+
+    #[test]
+    fn tie_sumber_prioritas_lebi_tinggi() {
+        // Dua sumber sama2 91 -> komiku (prioritas lebih tinggi daripada shinigami).
+        let lists = vec![
+            list("shinigami", &["91"]),
+            list("komiku", &["91"]),
+        ];
+        let got = pick_representative_source(&lists);
+        assert_eq!(got.as_ref().map(SourceId::as_str), Some("komiku"));
+    }
+
+    #[test]
+    fn extra_diabaikan() {
+        // extra 179.5 (label non-numerik) di satu sumber + main 90 di sumber lain
+        // -> pilih yang 90 (extra diabaikan).
+        let lists = vec![
+            list("komiku", &["90"]),
+            list("shinigami", &["extra 179.5"]),
+        ];
+        let got = pick_representative_source(&lists);
+        assert_eq!(got.as_ref().map(SourceId::as_str), Some("komiku"));
+    }
+
+    #[test]
+    fn semua_non_numerik_none() {
+        let lists = vec![
+            list("komiku", &["extra", "prologue"]),
+            list("shinigami", &["specials"]),
+        ];
+        assert_eq!(pick_representative_source(&lists), None);
+    }
+
+    #[test]
+    fn tie_desimal_angka_menjadi() {
+        // 179.6 vs 179.60 dianggap sama -> tie-break prioritas -> kiryuu lebih tinggi.
+        let lists = vec![
+            list("komiku", &["179.60"]),
+            list("kiryuu", &["179.6"]),
+        ];
+        let got = pick_representative_source(&lists);
+        assert_eq!(got.as_ref().map(SourceId::as_str), Some("komiku"));
+    }
+
+    #[test]
+    fn seratus_mengalahkan_sembilan_puluh_sembil() {
+        let lists = vec![
+            list("komiku", &["99"]),
+            list("mangaku", &["100"]),
+        ];
+        let got = pick_representative_source(&lists);
+        assert_eq!(got.as_ref().map(SourceId::as_str), Some("mangaku"));
+    }
+}
