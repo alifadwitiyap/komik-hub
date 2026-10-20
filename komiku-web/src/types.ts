@@ -81,6 +81,12 @@ export interface UnifiedSeries {
   chapters: UnifiedChapterOut[]
   source: string
   failed_sources: string[]
+  /**
+   * Sumber representatif (server yang putuskan) untuk indikator
+   * "Terbaru dari <sumber>". Bisa absen (field belum ada di server) atau
+   * null — UI harus toleran, jangan crash.
+   */
+  representative_source?: string | null
 }
 
 /** Pointer prev/next lintas-sumber — handle sudah 'sumber:native_id'. */

@@ -26,7 +26,11 @@ import { RangeSelectBar, useRangeSelection } from '../components/DownloadRangePi
  */
 export default function SeriesUnified() {
   const { handle = '' } = useParams<{ handle: string }>()
-  const [data, setData] = useState<{ manga: MangaOut; chapters: UnifiedChapterOut[] } | null>(
+  const [data, setData] = useState<{
+    manga: MangaOut
+    chapters: UnifiedChapterOut[]
+    representative_source: string | null
+  } | null>(
     null,
   )
   const [error, setError] = useState<string | null>(null)
@@ -99,7 +103,13 @@ export default function SeriesUnified() {
     setPickMode(false)
     unifiedApi
       .series(handle, ctrl.signal, lastSourceRef.current)
-      .then((r) => setData({ manga: r.manga, chapters: r.chapters ?? [] }))
+      .then((r) =>
+        setData({
+          manga: r.manga,
+          chapters: r.chapters ?? [],
+          representative_source: r.representative_source ?? null,
+        }),
+      )
       .catch((e: Error) => e.name !== 'AbortError' && setError(e.message))
     return () => ctrl.abort()
   }, [handle])
@@ -256,6 +266,12 @@ export default function SeriesUnified() {
                   </div>
                 )}
               </dl>
+
+              {data.representative_source && (
+                <p className="mt-1.5 inline-flex items-center gap-1 rounded-md border border-ink-700 bg-ink-900 px-1.5 py-0.5 text-[10.5px] font-medium text-ink-400">
+                  Terbaru dari {data.representative_source}
+                </p>
+              )}
 
               {m.updated_at != null && (
                 <p className="mt-1.5 text-[11px] text-ink-500">
