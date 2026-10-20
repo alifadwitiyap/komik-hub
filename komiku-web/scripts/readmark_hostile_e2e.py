@@ -81,6 +81,8 @@ import urllib.parse
 import time
 import urllib.request
 
+import e2e_cleanup
+
 from playwright.sync_api import sync_playwright
 
 DEFAULT_BASE = "http://127.0.0.1:8788"
@@ -128,7 +130,9 @@ def wait_reader_loaded(page, chapter: str | None = None, timeout_s: float = 45.0
 
 def rand_user(tag: str) -> str:
     alphabet = string.ascii_lowercase + string.digits
-    return "e2eh" + tag + "".join(random.choice(alphabet) for _ in range(6))
+    return e2e_cleanup.track(
+        "e2eh" + tag + "".join(random.choice(alphabet) for _ in range(6))
+    )
 
 
 def api(base, path, user=None, body=None, method=None, raw=None, timeout=30):
@@ -509,6 +513,13 @@ def main() -> int:
         browser.close()
 
     # ------------------------------------------------------------------ A2 total
+    # Bersihkan state akun throwaway (file users/progress/read). Tanpa ini
+    # tiap run meninggalkan file di data/ server — 121 file terkumpul dari
+    # belasan run read-mark.
+    removed = e2e_cleanup.cleanup_claimed()
+    if removed:
+        print(f"cleanup: {len(removed)} file state akun tes dihapus")
+
     print()
     print(f"lulus: {len(passed)}  gagal: {len(failed)}")
     if failed:

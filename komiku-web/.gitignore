@@ -26,3 +26,7 @@ dist-ssr
 # artefak sementara harness verifikasi (scripts/run-wiring-check.mjs)
 .checktmp/
 .checkbase
+
+# bytecode python (import helper di scripts/)
+__pycache__/
+*.pyc
