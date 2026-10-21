@@ -8,19 +8,92 @@
     <meta name="description" content="Baca manga, manhwa, dan manhua bahasa Indonesia — mode maraton seperti aplikasi Komik Hub." />
     <title>Komik Hub — baca manga, mode maraton</title>
     <!--
-      Preload font yang dipakai di layar pertama (Beranda): Nunito Sans 400
-      untuk seluruh body/teks UI, BR Hendrix 400 (judul carousel) + 600
-      (judul seksi). `crossorigin` wajib walau same-origin — font selalu
+      Preload font HANYA yang dipakai di layar pertama untuk TEKS BODY:
+      Nunito Sans 400. `crossorigin` wajib walau same-origin — font selalu
       di-fetch dalam mode CORS, tanpa atribut ini preload jadi fetch ganda.
-      BR Hendrix 700 (NotifPanel) sengaja tidak di-preload: hanya muncul
-      saat panel notifikasi dibuka, biar swap yang mengisi.
+
+      BR Hendrix (display/judul) SENGAJA TIDAK di-preload lagi. Terukur di
+      400 kbps: 2 file itu = 45 KB yang berebut bandwidth dengan JS di 3 detik
+      pertama, dan judul yang memakainya baru ada SETELAH JS jalan — jadi
+      preload-nya murni menunda halaman yang sedang dibaca. `font-display:
+      swap` di index.css sudah menjamin teks tampil pakai font fallback dulu.
+    -->
+    <!--
+      ...dan hasilnya: preload DIKEMBALIKAN. Terukur 3 run di 400 kbps,
+      page1 7,18 s (dengan preload) vs 7,22 s (tanpa) — selisih di dalam
+      noise. Setelah halaman 1 jadi penentu, byte font bukan lagi bottleneck;
+      membuang preload cuma menambah risiko FOUT tanpa waktu yang dibeli.
     -->
     <link rel="preload" as="font" type="font/woff2" href="/fonts/NunitoSans-Regular.woff2" crossorigin />
-    <link rel="preload" as="font" type="font/woff2" href="/fonts/BRHendrix-Regular.woff2" crossorigin />
-    <link rel="preload" as="font" type="font/woff2" href="/fonts/BRHendrix-SemiBold.woff2" crossorigin />
+    <!--
+      SKELETON BOOT — kenapa ada di sini dan bukan di React:
+
+      Di 400 kbps, bundle (react-vendor + app + css ≈ 122 KB gzip) butuh ~5 detik
+      sebelum React bisa menggambar apa pun. Selama itu layar KOSONG — itu
+      keluhan "lemot" yang sebenarnya, walau byte halaman sudah dipotong.
+      Skeleton + CSS kritis inline ini tidak butuh request tambahan, jadi
+      frame aplikasi tampil begitu HTML tiba (~1 round-trip), lalu React
+      menggantinya (`createRoot` membersihkan isi #root saat mount).
+
+      Aturan: JANGAN menaruh URL aset apa pun di sini (logo pun ditulis
+      sebagai teks) — satu request tambahan merusak seluruh gunanya.
+    -->
+    <style>
+      :root {
+        --kb-bg: #f1f4f7; --kb-surface: #ffffff; --kb-line: #e3e7ec;
+        --kb-muted: #6f7681; --kb-text: #161c26;
+      }
+      html.dark {
+        --kb-bg: #0d1117; --kb-surface: #161c26; --kb-line: #2b3546;
+        --kb-muted: #8794a6; --kb-text: #f2f5f9;
+      }
+      html { background: var(--kb-bg); }
+      body { margin: 0; background: var(--kb-bg); color: var(--kb-text);
+        font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif; }
+      .kb-boot-bar {
+        position: fixed; inset: 0 0 auto 0; z-index: 40; height: 56px;
+        display: flex; align-items: center; padding: 0 12px;
+        background: var(--kb-bg); border-bottom: 1px solid var(--kb-line);
+      }
+      .kb-boot-logo { font-size: 17px; font-weight: 700; letter-spacing: .2px; }
+      .kb-boot-body {
+        box-sizing: border-box; padding: 72px 12px 24px;
+        display: flex; flex-direction: column; align-items: center; gap: 10px;
+      }
+      .kb-boot-page {
+        width: 100%; max-width: 768px; aspect-ratio: .685;
+        background: var(--kb-surface); border: 1px solid var(--kb-line);
+        border-radius: 8px; animation: kb-pulse 1.4s ease-in-out infinite;
+      }
+      .kb-boot-label { font-size: 12px; color: var(--kb-muted); }
+      @keyframes kb-pulse { 0%, 100% { opacity: 1 } 50% { opacity: .55 } }
+      @media (prefers-reduced-motion: reduce) {
+        .kb-boot-page { animation: none }
+      }
+    </style>
+    <script>
+      // Tema sebelum paint pertama: skeleton tidak boleh kedip terang untuk
+      // user mode gelap. Sumber sama dengan `src/theme.ts` (key `komik-theme`).
+      try {
+        var t = localStorage.getItem('komik-theme')
+        if (t !== 'light' && t !== 'dark') {
+          t = matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
+        }
+        if (t === 'dark') document.documentElement.classList.add('dark')
+        document.documentElement.style.colorScheme = t
+      } catch (e) {}
+    </script>
   </head>
   <body>
-    <div id="root"></div>
+    <div id="root">
+      <div class="kb-boot">
+        <div class="kb-boot-bar"><span class="kb-boot-logo">Komik Hub</span></div>
+        <div class="kb-boot-body">
+          <div class="kb-boot-page"></div>
+          <p class="kb-boot-label">Memuat…</p>
+        </div>
+      </div>
+    </div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

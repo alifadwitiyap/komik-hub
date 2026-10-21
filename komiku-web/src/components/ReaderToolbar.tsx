@@ -1,9 +1,11 @@
-import { IconAngleLeft, IconShare, IconEllipsisV, IconBolt } from '../icons'
+import { IconAngleLeft, IconHouse, IconShare, IconEllipsisV, IconBolt } from '../icons'
 
 interface ReaderToolbarProps {
   title: string
   subtitle?: string
   onBack: () => void
+  /** Tombol Beranda — kalau diisi, ikon rumah muncul di sebelah "Kembali". */
+  onHome?: () => void
   onShare: () => void
   onMore: () => void
   /** chip ungu di kanan (mode aktif, mis. "Maraton") */
@@ -34,6 +36,7 @@ export default function ReaderToolbar({
   title,
   subtitle,
   onBack,
+  onHome,
   onShare,
   onMore,
   chip,
@@ -59,6 +62,15 @@ export default function ReaderToolbar({
         >
           <IconAngleLeft className="size-4" />
         </button>
+        {onHome && (
+          <button
+            onClick={onHome}
+            aria-label="Beranda"
+            className="grid size-10 place-items-center rounded-full text-white/90 active:bg-white/10"
+          >
+            <IconHouse className="size-4" />
+          </button>
+        )}
         <div className="min-w-0 flex-1">
           <p className="truncate font-display text-[13px] font-semibold text-white">{title}</p>
           {subtitle && <p className="truncate text-[10.5px] text-white/60">{subtitle}</p>}

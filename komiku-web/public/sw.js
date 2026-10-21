@@ -1,21 +1,30 @@
 /* eslint-disable */
-// Service worker komiku-web — percepat shell + metadata API.
+// Service worker komiku-web — percepat shell, metadata API, DAN gambar halaman.
 //
-// Keputusan Q21/Q11 (plan komiku-ringan-homeserver): gambar di-hotlink
-// LANGSUNG dari CDN, jadi tidak ada cache gambar di sini dan cache offline
-// in-app dibuang. Yang tersisa hanya percepatan shell same-origin & metadata
-// API.
+// Sejarah singkat: Q21 dulu melepas proxy `/img` (gambar di-hotlink langsung
+// ke CDN) sehingga cache gambar di sini dibuang — respons lintas-origin opaque
+// tidak bisa disajikan penuh/tepercaya. Proxy `/img` kini HIDUP LAGI dan
+// gambarnya SAME-ORIGIN, jadi justru di sinilah letak menang besarnya:
+// halaman yang pernah dibaca tersimpan penuh di perangkat → scroll balik,
+// buka ulang chapter, dan baca offline jadi instan (0 byte).
 //
 // Strategi per jenis request:
-// - /api/notif/..  : network-first — badge unread HARUS segar.
-// - /api lain      : stale-while-revalidate (daftar halaman langsung tampil,
-//                    data segar menyusul di belakang layar).
+// - /img?u=..&w=..  : cache-first (nama = URL CDN + lebar, isinya immutable),
+//                     dengan batas jumlah entri supaya disk tidak penuh.
+// - /api/notif/..   : network-first — badge unread HARUS segar.
+// - /api lain       : stale-while-revalidate (daftar langsung tampil, segar
+//                     menyusul di belakang layar).
 // - aset same-origin (js/css/font) : cache-first + update di background.
-// - navigasi       : network-first, fallback index.html yang di-precache.
-// - gambar CDN + sisanya: lewat jaringan biasa (hotlink, tanpa cache SW).
+// - navigasi        : network-first, fallback index.html yang di-precache.
+// - request ber-header X-Komik-User : SELALU ke jaringan (state per-akun).
 
 const SHELL = 'komiku-shell-v2'
 const API = 'komiku-api-v2'
+const IMG = 'komiku-img-v3'
+
+/** Batas entri cache gambar. 400 halaman ≈ 40-60 MB — cukup untuk beberapa
+ *  chapter, jauh di bawah kuota storage browser pada umumnya. */
+const IMG_MAX_ENTRIES = 400
 
 self.addEventListener('install', (e) => {
   e.waitUntil(
@@ -31,7 +40,7 @@ self.addEventListener('activate', (e) => {
       .then((keys) =>
         Promise.all(
           keys
-            .filter((k) => ![SHELL, API].includes(k))
+            .filter((k) => ![SHELL, API, IMG].includes(k))
             .map((k) => caches.delete(k)),
         ),
       )
@@ -52,20 +61,29 @@ self.addEventListener('fetch', (e) => {
   //    header `X-Komik-User` karena itu scoped akun → selalu ke jaringan.
   if (req.headers.get('X-Komik-User')) return
 
-  // 1) state notifikasi → network-first: badge unread HARUS segar.
+  // 1) GAMBAR halaman (proxy same-origin) → cache-first.
+  //    URL-nya memuat URL CDN + lebar, dan isi CDN per chapter tidak pernah
+  //    berubah → tidak perlu revalidasi. Ini yang membuat baca ulang/offline
+  //    gratis byte-nya.
+  if (url.pathname === '/img') {
+    e.respondWith(cacheFirstImage(req))
+    return
+  }
+
+  // 2) state notifikasi → network-first: badge unread HARUS segar.
   // Cache hanya fallback saat offline (SWR membuat badge basi sampai poll 60s).
   if (url.pathname.startsWith('/api/notif/')) {
     e.respondWith(networkFirst(req, API))
     return
   }
 
-  // 2) API metadata → stale-while-revalidate
+  // 3) API metadata → stale-while-revalidate
   if (url.pathname.startsWith('/api/')) {
     e.respondWith(staleWhileRevalidate(req, API))
     return
   }
 
-  // 3) aset same-origin (js/css/font) → cache-first + bg update
+  // 4) aset same-origin (js/css/font) → cache-first + bg update
   if (url.origin === self.location.origin) {
     if (req.mode === 'navigate') {
       e.respondWith(
@@ -79,8 +97,36 @@ self.addEventListener('fetch', (e) => {
     return
   }
 
-  // 4) gambar CDN + sisanya: lewat jaringan biasa (hotlink; tanpa cache SW)
+  // 5) lintas-origin + sisanya: lewat jaringan biasa
 })
+
+/** cache-first untuk gambar, dengan pemangkasan entri terlama. */
+async function cacheFirstImage(req) {
+  const cache = await caches.open(IMG)
+  const hit = await cache.match(req)
+  if (hit) return hit
+  try {
+    const res = await fetch(req)
+    // Hanya simpan respons sukses yang benar-benar gambar; 403/502 jangan
+    // di-cache, kalau tidak kegagalan sesaat jadi permanen di perangkat.
+    if (res.ok && (res.headers.get('content-type') || '').startsWith('image/')) {
+      cache.put(req, res.clone())
+      trimCache(cache, IMG_MAX_ENTRIES)
+    }
+    return res
+  } catch {
+    return new Response('', { status: 504, statusText: 'offline' })
+  }
+}
+
+async function trimCache(cache, maxEntries) {
+  const keys = await cache.keys()
+  if (keys.length <= maxEntries) return
+  // urutan keys = urutan penyisipan → hapus yang paling lama
+  for (const k of keys.slice(0, keys.length - maxEntries)) {
+    await cache.delete(k)
+  }
+}
 
 async function cacheFirst(req, cacheName) {
   const cache = await caches.open(cacheName)

@@ -36,7 +36,7 @@ export default function ReaderSettingsSheet({
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/50" onClick={onClose}>
       <div
-        className="w-full max-w-md rounded-t-2xl bg-white pb-6"
+        className="w-full max-w-md rounded-t-2xl bg-ink-900 pb-6"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between px-4 py-3">

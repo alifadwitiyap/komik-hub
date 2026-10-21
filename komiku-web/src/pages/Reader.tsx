@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import ChapterPickerSheet from '../components/ChapterPickerSheet'
 import ComicImage from '../components/ComicImage'
@@ -8,7 +8,7 @@ import ReaderMenu from '../components/ReaderMenu'
 import ReaderSettingsSheet from '../components/ReaderSettingsSheet'
 import ReaderToolbar from '../components/ReaderToolbar'
 import SourceBadge from '../components/SourceBadge'
-import { imgUrl } from '../imgUrl'
+import { imgSrc, imgUrl, mountAheadPx } from '../imgUrl'
 import { useReaderSettings } from '../hooks/useReaderSettings'
 import { useChromeOnScroll } from '../hooks/useChromeOnScroll'
 import type { ChapterResponse, Manga } from '../types'
@@ -101,6 +101,8 @@ export default function Reader() {
   const pending = useRef<ReadingAnchor | null>(null)
   /** penulis anchor aktif (dipasang efek; dipanggil juga saat gambar memuat) */
   const writeRef = useRef<(force: boolean) => void>(() => {})
+  /** prefetch chapter berikutnya sudah dipicu (sekali per chapter) */
+  const prefetchedNext = useRef(false)
 
   // reset saat chapter berganti
   useEffect(() => {
@@ -110,6 +112,7 @@ export default function Reader() {
     setLoadedPages(new Set())
     setImagesReady(false)
     pending.current = null
+    prefetchedNext.current = false
     // React Router v7 TIDAK reset scroll saat rute berubah → chapter baru
     // akan tampil di posisi scroll chapter lama (bawah). Scroll ke atas
     // SEBELUM fetch; kalau chapter ini punya anchor tersimpan, efek restore
@@ -149,6 +152,15 @@ export default function Reader() {
   }, [chapterId])
 
   const images = data?.images ?? []
+
+  // Seberapa jauh di luar layar gambar boleh mulai diminta. Skalanya mengikuti
+  // preferensi reader (hemat 0,4 · seimbang 1,5 · siapkan 3 viewport) dan
+  // dipaksa hemat saat Save-Data/2G. Dihitung sekali per mount: nilai ini yang
+  // menentukan berapa byte yang berebut di detik pertama.
+  const mountAhead = useMemo(
+    () => mountAheadPx(typeof window !== 'undefined' ? window.innerHeight : 800),
+    [],
+  )
 
   // A1 — guard navigasi basi: setiap load chapter (ganti chapterId) menaikkan
   // counter; kalau respons lama kembali setelah user sudah pindah, respons itu
@@ -249,6 +261,58 @@ export default function Reader() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [data, loadedCount, images.length])
+
+  // ---- prefetch chapter berikutnya (UX) ----
+  // Saat pembaca hampir mencapai akhir chapter, hangatkan data + halaman
+  // pertama chapter berikutnya sehingga "Baca Berikutnya" terasa instan.
+  // Dilewati kalau mode hemat / saveData aktif (jangan boros bandwidth).
+  // Pemicu pakai scroll threshold (>= ~600px dari dasar), lebih deterministik
+  // daripada IntersectionObserver di lingkungan ini.
+  useEffect(() => {
+    if (!data || images.length === 0 || !chapterId) return
+    const nextId = data.chapter?.next ? String(data.chapter.next.id) : null
+    if (!nextId || prefetchedNext.current) return
+    try {
+      const raw = localStorage.getItem('komiku.web.reader.settings.v1')
+      const mode = raw ? (JSON.parse(raw) as { prefetchMode?: string }).prefetchMode : undefined
+      const conn = (
+        typeof navigator !== 'undefined'
+          ? (navigator as Navigator & { connection?: { saveData?: boolean } }).connection
+          : undefined
+      )
+      if (mode === 'hemat' || conn?.saveData) return
+    } catch {
+      /* storage tertutup — lanjut default */
+    }
+    const scrollable = () =>
+      document.documentElement.scrollHeight - window.innerHeight
+    const onScroll = () => {
+      if (prefetchedNext.current) return
+      if (window.scrollY >= scrollable() - 600) {
+        prefetchedNext.current = true
+        const ctrl = new AbortController()
+        loadChapter(nextId, ctrl.signal)
+          .then((d) => {
+            const firstImg = d.images?.[0]
+            if (firstImg) {
+              // Panaskan lewat proxy pada lebar yang BENAR-BENAR dipilih browser.
+              // Kontainer reader 768 px + DPR 2 → srcset 480/640/900 memilih 900w,
+              // jadi prefetch 480/640 dulu tidak pernah terpakai: transisi chapter
+              // tetap dingin (terukur 4,3 s). Byte asli di-cache server, jadi satu
+              // fetch upstream cukup untuk semua lebar.
+              const im = new window.Image()
+              im.src = imgSrc(firstImg, 900)
+            }
+          })
+          .catch(() => {
+            /* gagal prefetch — bukan error fatal; user tetap bisa buka manual */
+          })
+      }
+    }
+    window.addEventListener('scroll', onScroll, { passive: true })
+    return () => window.removeEventListener('scroll', onScroll)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [data, images.length, chapterId])
 
   // ---- simpan anchor posisi baca ------------------------------------------
   // Ditulis saat scroll (throttle), saat halaman gambar selesai muat, saat tab
@@ -402,6 +466,7 @@ export default function Reader() {
         title={chapter.name}
         subtitle={`${series?.title ?? 'Memuat…'} · ${pct}%`}
         onBack={() => navigate(seriesHref(seriesId) ?? '/')}
+        onHome={() => navigate('/')}
         onShare={() => setToast('Bagikan: salin URL halaman ini')}
         onMore={() => setMenuOpen(true)}
         chip={settings.marathon ? 'Maraton' : null}
@@ -450,9 +515,12 @@ export default function Reader() {
             src={src}
             alt={`${chapter.name} halaman ${i + 1}`}
             pageIndex={i}
-            // hanya halaman 1-2 yang eager + fetchpriority tinggi (LCP);
-            // sisanya lazy supaya 9 MB/chapter tidak diunduh serentak
-            eager={i < 2}
+            // HANYA halaman pertama yang langsung diminta (LCP + prioritas
+            // tinggi). Sisanya menunggu sampai dekat layar — dulu 3 halaman
+            // eager + margin lazy bawaan Chrome membuat 9 gambar / 1,7 MB
+            // berebut, dan halaman yang sedang dibaca kalah (53 detik di 3G).
+            eager={i === 0}
+            mountAhead={mountAhead}
             onLoad={() => {
               setLoadedPages((s) => (s.has(i) ? s : new Set(s).add(i)))
             }}

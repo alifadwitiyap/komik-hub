@@ -58,9 +58,18 @@ def visible_icon(page) -> str:
 with sync_playwright() as p:
     browser = p.chromium.launch(headless=True)
 
+    def dismiss_promo(ctx):
+        # LoginPromoModal menutupi tombol tema di kunjungan pertama; tandai
+        # sudah-dismiss (localStorage diisi timestamp) supaya overlay tidak
+        # mencegat klik tema. Sesuai kontrak LoginPromoModal.
+        ctx.add_init_script(
+            "try{localStorage.setItem('komik.login-promo.dismissed.v1', String(Date.now()))}catch(e){}"
+        )
+
     # ---------- 1. Default terang + tombol tampil ----------
     ctx = browser.new_context(viewport={"width": 1280, "height": 900}, locale="id-ID")
     ctx.route("**/sw.js", lambda r: r.fulfill(status=404, body="blocked"))
+    dismiss_promo(ctx)
     page = ctx.new_page()
     errors = []
     page.on("pageerror", lambda e: errors.append(str(e)))
@@ -141,6 +150,7 @@ with sync_playwright() as p:
     # ---------- 6. OS gelap jadi nilai awal (belum pernah memilih) ----------
     ctx2 = browser.new_context(viewport={"width": 1280, "height": 900}, locale="id-ID")
     ctx2.route("**/sw.js", lambda r: r.fulfill(status=404, body="blocked"))
+    dismiss_promo(ctx2)
     page2 = ctx2.new_page()
     page2.emulate_media(color_scheme="dark")
     page2.goto(BASE + "/cari", wait_until="domcontentloaded")

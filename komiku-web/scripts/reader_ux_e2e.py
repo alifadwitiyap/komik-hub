@@ -25,20 +25,52 @@ import urllib.error
 import urllib.request
 
 from playwright.sync_api import sync_playwright
+# --- MODAL AUTO-CLOSE (login promo overlay) -----------------------------
+def close_login_modal(page):
+    try:
+        page.get_by_role("button", name="Nanti saja").click(timeout=1500)
+    except Exception:
+        pass  # Modal absent
+
+
 
 BASE = "http://127.0.0.1:8788"
 SHOTS = r"C:\Users\LENOVO LEGION\AppData\Local\Temp\reader_ux_e2e"
 os.makedirs(SHOTS, exist_ok=True)
 
-# Chapter bertitik DULU nyebabkan 404 dari SPA fallback server (segmen
+# Chapter bertitik DULU menyebabkan 404 dari SPA fallback server (segmen
 # mengandung '.' dianggap aset). Ini menguji perbaikan itu.
 DOTTED = "/baca/komiku:1284/00.1"
 
 # Reincarnator (komiku:1284): ch 121 punya prev (120) dan next (122) —
 # terverifikasi live via /api/unified/chapter/komiku:1284/121.
 MID = "/baca/komiku:1284/121"
-# chapter BENAR-BENAR pertama (series mulai dari 00.1; ch 1 masih punya prev)
-FIRST = "/baca/komiku:1284/00.1"
+# chapter BENAR-BENAR pertama — diambil dari API, bukan nomor hardcode:
+# sumber menerbitkan chapter baru (dan beberapa chapter cuma ada di
+# sumber lain lewat fallback lintas-sumber), jadi nomor "terendah" BERUBAH
+# seiring waktu. `00.1` dulu yang pertama; sekarang ada chapter `0`.
+FIRST = None  # diisi oleh first_chapter_url()
+
+
+def first_chapter_url() -> str:
+    """Chapter pertama series — dibaca dari API, bukan di-hardcode."""
+    global FIRST
+    if FIRST:
+        return FIRST
+    d = json.load(urllib.request.urlopen(BASE + "/api/unified/series/komiku:1284", timeout=60))
+    chs = d.get("chapters") or []
+    if not chs:
+        raise RuntimeError("series seed tanpa chapter — ubah series seed E2E")
+
+    def num(c):
+        try:
+            return float(str(c.get("number")))
+        except (TypeError, ValueError):
+            return float("inf")
+
+    lowest = min(chs, key=num)
+    FIRST = f"/baca/komiku:1284/{lowest.get('number')}"
+    return FIRST
 LATEST = None  # diisi dari API: chapter terbaru bisa berubah (sumber terbit baru)
 
 
@@ -122,6 +154,8 @@ def open_page(browser, path, marathon=False):
     errors = []
     page.on("pageerror", lambda e: errors.append(str(e)))
     page.goto(BASE + path, wait_until="domcontentloaded")
+    # Close login promo if present; noop otherwise
+    close_login_modal(page)
     ok = wait_ready(page, marathon=marathon)
     return ctx, page, errors, ok
 
@@ -214,7 +248,7 @@ with sync_playwright() as p:
     ctx.close()
 
     # ================= 3. Tepi: chapter pertama & terbaru =================
-    ctx, page, errors2, ready = open_page(browser, FIRST)
+    ctx, page, errors2, ready = open_page(browser, first_chapter_url())
     check("tepi: chapter pertama termuat", ready)
     if ready:
         prev_link = page.locator('[data-reader-chrome=footer] a[aria-label^="Chapter Sebelumnya"]')

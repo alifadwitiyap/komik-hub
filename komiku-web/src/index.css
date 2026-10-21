@@ -80,37 +80,30 @@
 }
 
 :root {
-  color-scheme: dark;
+  color-scheme: light dark; /* Support both themes */
 }
 
-/* ---------------------------------------------------------------------------
-   Mode gelap — SATU blok ini yang mengubah seluruh app.
-
-   Semua komponen memakai token `ink-*`, dan utility Tailwind v4 dikompilasi
-   ke `var(--color-ink-*)`. Jadi memetakan ulang variabelnya di bawah `.dark`
-   sudah membalik seluruh permukaan — tidak perlu `dark:` di setiap komponen.
-
-   Angka sengaja dipilih agar "10 menjadi 900 dan seterusnya" tetap masuk akal:
-   ink-950 (page) jadi gelap pekat, ink-900 (kartu) sedikit diangkat, ink-100
-   (teks utama) jadi terang. Arah brand tidak diubah (biru/ungu tetap).
-   --------------------------------------------------------------------------- */
+/* DARK MODE - satu-satunya mekanisme adalah class .dark di <html>,
+   dipasang oleh bootstrapTheme() (theme.ts). JANGAN pakai media query
+   prefers-color-scheme DI SINI karena akan merusak mode siang ketika OS
+   user itu dark. */
 .dark {
-  --color-ink-950: #0d1117; /* page background   */
-  --color-ink-900: #161c26; /* card / surface    */
-  --color-ink-850: #1c2431;
-  --color-ink-800: #2b3546; /* border / divider  */
-  --color-ink-700: #3a4759;
-  --color-ink-600: #5b6779; /* secondary text    */
-  --color-ink-500: #8794a6;
-  --color-ink-400: #9aa6b6;
-  --color-ink-300: #c2ccda;
-  --color-ink-200: #dde5ef;
-  --color-ink-100: #f2f5f9;
-
-  /* status: versi terang supaya kontras cukup di surface gelap */
-  --color-healthy: #4ade80;
-  --color-warn: #fbbf24;
-  --color-danger: #f87171;
+  --color-ink-950: #1a1b1e;  /* Page background - warm charcoal */
+  --color-ink-900: #25272b;  /* Card surfaces - subtle depth */
+  --color-ink-850: #2e3036;  /* Elevated cards/modals */
+  --color-ink-800: #3a3d44;  /* Borders - visible but elegant */
+  --color-ink-700: #4a4d57;  /* Muted highlights */
+  --color-ink-600: #8f939b;  /* Secondary text - readable (AA on card) */
+  --color-ink-500: #9aa0a8;  /* Tertiary text - AA on card */
+  --color-ink-400: #a6aab1;  /* Hints */
+  --color-ink-300: #b5b8be;  /* Accents */
+  --color-ink-200: #ffffff;  /* PRIMARY TEXT - PURE WHITE for MAXIMUM readability! */
+  --color-ink-100: #ffffff;  /* Maximum emphasis */
+  
+  /* Status colors enhanced for visibility */
+  --color-healthy: #4ade80;      /* Bright green */
+  --color-warn: #fbbf24;         /* Amber yellow */
+  --color-danger: #f87171;       /* Soft red */
 }
 
 /* Transisi warna halus saat tema ditukar (200ms) — hanya properti warna,

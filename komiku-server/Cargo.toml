@@ -29,6 +29,11 @@ komik-core = { path = "../komik/core" }
 # PDF unduhan (rak buku): halaman non-JPEG di-decode lalu re-encode JPEG.
 # Versi & alasan sama dengan komik/cli (core & server tetap lean tanpa ini).
 image = "0.25"
+# Encoder WebP lossy untuk proxy `/img`. `image` hanya bisa WebP LOSSLESS
+# (image-webp), sedangkan yang dibutuhkan di sini lossy q72-78 — selisihnya
+# ~1,5x byte pada line-art manga. Crate `webp` = binding libwebp (C) yang
+# dikompilasi lewat cc; sudah diverifikasi build di Windows ini.
+webp = "0.3"
 
 # kripto: seeds + dekripsi payload AES-256-CBC/PKCS7, PBKDF2-HMAC-SHA1
 aes = "0.8"

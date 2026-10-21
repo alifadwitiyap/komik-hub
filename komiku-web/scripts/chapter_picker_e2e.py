@@ -44,6 +44,29 @@ def series_chapters():
     return [{"number": str(c.get("number")), "title": c.get("title") or ""} for c in chs]
 
 
+def first_chapter_url() -> str:
+    """Chapter PERTAMA series — dicari dari API, bukan di-hardcode.
+
+    Sumber menerbitkan chapter baru kapan saja (dan beberapa chapter
+    cuma ada di sumber lain lewat fallback lintas-sumber). Anchoring
+    "chapter pertama" ke nomor tetap bikin assertion gagal palsu begitu
+    sumber menambah chapter di bawahnya — persis yang terjadi: `00.1`
+    dulu jadi yang pertama, sekarang ada chapter `0`.
+    """
+    chs = series_chapters()
+    if not chs:
+        raise RuntimeError("series seed tanpa chapter — ubah series seed E2E")
+
+    def num(c):
+        try:
+            return float(c["number"])
+        except (TypeError, ValueError):
+            return float("inf")
+
+    lowest = min(chs, key=num)
+    return f"/baca/{SERIES}/{lowest['number']}"
+
+
 def wait_ready(page):
     deadline = time.time() + 40
     while time.time() < deadline:

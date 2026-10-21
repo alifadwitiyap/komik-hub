@@ -343,6 +343,9 @@ pub fn router(state: AppState) -> Router {
         .route("/api/catalogue", get(catalogue))
         .route("/api/series/:id", get(series))
         .route("/api/chapter/:id", get(chapter))
+        // Proxy gambar ber-resize (same-origin supaya bisa di-cache service
+        // worker): `?u=<url CDN>&w=<lebar>`. Lihat `img.rs`.
+        .route("/img", get(crate::img::img_handler))
         // route BARU: wrapper komik-core (multi-sumber). Route lama di atas
         // tidak diubah; handler unified stateless (aggregator statis).
         .merge(unified::unified_routes())

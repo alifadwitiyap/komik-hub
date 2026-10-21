@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import ChapterPickerSheet from '../components/ChapterPickerSheet'
 import ComicImage from '../components/ComicImage'
@@ -7,6 +7,7 @@ import ReaderMenu from '../components/ReaderMenu'
 import ReaderSettingsSheet from '../components/ReaderSettingsSheet'
 import ReaderToolbar from '../components/ReaderToolbar'
 import SourceBadge from '../components/SourceBadge'
+import { mountAheadPx } from '../imgUrl'
 import { useReaderSettings } from '../hooks/useReaderSettings'
 import { useChromeOnScroll } from '../hooks/useChromeOnScroll'
 import type { ChapterResponse } from '../types'
@@ -85,6 +86,11 @@ export default function ReaderMarathon() {
   const { save } = useProgress()
   const navigate = useNavigate()
   const { settings, onChange, onReset, filterStyle } = useReaderSettings()
+  // seberapa jauh di luar layar halaman boleh mulai diminta (lihat ComicImage)
+  const mountAhead = useMemo(
+    () => mountAheadPx(typeof window !== 'undefined' ? window.innerHeight : 800),
+    [],
+  )
 
   // sumber dari blok yang sedang dibaca (hanya unified) — dipakai badge toolbar
   const [readBlock, setReadBlock] = useState(0)
@@ -310,6 +316,7 @@ export default function ReaderMarathon() {
         title="Mode Baca Marathon"
         subtitle={`${curBlock?.chapterName ?? ''} · ${readInBlock}/${curLen} halaman`}
         onBack={() => navigate(seriesHref(head?.seriesId) ?? '/')}
+        onHome={() => navigate('/')}
         onShare={() => setToast('Bagikan: salin URL halaman ini')}
         onMore={() => setMenuOpen(true)}
         chip="Maraton"
@@ -380,7 +387,10 @@ export default function ReaderMarathon() {
                   src={src}
                   alt={`${b.chapterName} halaman ${i + 1}`}
                   blockIndex={bi}
-                  eager={bi === 0 && i < 2}
+                  // hanya halaman pertama blok PERTAMA yang langsung diminta;
+                  // sisanya menunggu dekat layar (lihat ComicImage.mountAhead)
+                  eager={bi === 0 && i === 0}
+                  mountAhead={mountAhead}
                   onLoad={() =>
                     setTailIdx((n) => (start + i === n ? n + 1 : Math.max(n, start + i)))
                   }

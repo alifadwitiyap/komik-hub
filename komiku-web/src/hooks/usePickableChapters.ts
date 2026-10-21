@@ -108,9 +108,20 @@ function legacyNumber(c: Chapter): string {
   return m ? m[1] : ''
 }
 
-/** Urutan baca: nomor kecil → besar. Non-numerik jatuh ke urutan teks. */
+/**
+ * Urutan baca: nomor kecil → besar. Chapter TANPA nomor (number kosong,
+ * mis. "Bonus"/"Extra") diTaruh di AKHIR — bukan di awal.
+ *
+ * Jebakan: `Number('')` adalah 0 dan `Number.isFinite(0)` true, jadi
+ * naive-sort menganggap chapter tanpa nomor sebagai "chapter 0" dan
+ * menaruhnya di paling atas daftar — jelas salah.
+ */
 function sortAscending(list: PickableChapter[]): PickableChapter[] {
   return [...list].sort((a, b) => {
+    const aEmpty = a.number.trim() === ''
+    const bEmpty = b.number.trim() === ''
+    if (aEmpty !== bEmpty) return aEmpty ? 1 : -1
+    if (aEmpty && bEmpty) return a.title.localeCompare(b.title)
     const na = Number(a.number)
     const nb = Number(b.number)
     if (Number.isFinite(na) && Number.isFinite(nb) && na !== nb) return na - nb

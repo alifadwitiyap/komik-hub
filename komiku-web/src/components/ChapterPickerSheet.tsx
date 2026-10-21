@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { usePickableChapters } from '../hooks/usePickableChapters'
+import { usePickableChapters, type PickableChapter } from '../hooks/usePickableChapters'
 import { useReadMarks } from '../hooks/useReadMarks'
 import { marathonHref, readerHref } from '../readerSource'
 
@@ -59,6 +59,8 @@ export default function ChapterPickerSheet({
   const markedKey = currentKey ?? chapterKey
   const listRef = useRef<HTMLUListElement | null>(null)
   const currentRef = useRef<HTMLAnchorElement | null>(null)
+  const panelRef = useRef<HTMLDivElement | null>(null)
+  const searchRef = useRef<HTMLInputElement | null>(null)
 
   // chapter aktif → digulir ke tengah daftar (bukan cuma ujung)
   useEffect(() => {
@@ -73,15 +75,65 @@ export default function ChapterPickerSheet({
       el.clientHeight / 2
   }, [open, chapters.length])
 
-  // Escape menutup sheet
+  // A11Y MODAL: saat sheet dibuka, fokus pindah KE DALAM sheet (kotak
+  // pencarian) — tanpa ini, Tab keyboard masih jalan ke tombol di belakang
+  // sheet dan screen reader tidak tahu ini dialog. Saat ditutup, fokus
+  // kembali ke elemen yang membuka sheet.
+  useEffect(() => {
+    if (!open) return
+    const opener = document.activeElement as HTMLElement | null
+    const t = setTimeout(() => searchRef.current?.focus({ preventScroll: true }), 0)
+    return () => {
+      clearTimeout(t)
+      // preventScroll: mengembalikan fokus ke tombol pemicu tidak boleh
+      // menggulir halaman (reader sedang menampilkan chapter baru).
+      opener?.focus?.({ preventScroll: true })
+    }
+  }, [open])
+
+  // Escape menutup sheet + Tab diputar di dalam dialog (focus trap).
   useEffect(() => {
     if (!open) return
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose()
+      if (e.key === 'Escape') {
+        onClose()
+        return
+      }
+      if (e.key !== 'Tab') return
+      const panel = panelRef.current
+      if (!panel) return
+      const focusables = panel.querySelectorAll<HTMLElement>(
+        'a[href], button:not([disabled]), input, [tabindex]:not([tabindex="-1"])',
+      )
+      if (focusables.length === 0) return
+      const first = focusables[0]
+      const last = focusables[focusables.length - 1]
+      const active = document.activeElement
+      if (e.shiftKey && active === first) {
+        e.preventDefault()
+        last.focus()
+      } else if (!e.shiftKey && active === last) {
+        e.preventDefault()
+        first.focus()
+      }
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
   }, [open, onClose])
+
+  // SCROLL LOCK: sheet adalah overlay — halaman di belakang tidak boleh
+  // ikut ter-scroll (atau chrome reader ikut hilang) saat sheet terbuka.
+  // Roda mouse di area daftar (list) tetap boleh menggulir daftar.
+  useEffect(() => {
+    if (!open) return
+    const onWheel = (e: WheelEvent) => {
+      const t = e.target as Node | null
+      if (t && listRef.current?.contains(t)) return
+      e.preventDefault()
+    }
+    document.addEventListener('wheel', onWheel, { passive: false })
+    return () => document.removeEventListener('wheel', onWheel)
+  }, [open])
 
   const filtered = useMemo(() => {
     const needle = q.trim().toLowerCase()
@@ -92,20 +144,38 @@ export default function ChapterPickerSheet({
     )
   }, [chapters, q])
 
+  // "terbaru" = chapter dengan nomor TERBESAR dari daftar PENUH (bukan hasil
+  // filter, bukan sekadar elemen terakhir — chapter tanpa nomor di-sort ke
+  // akhir, jadi elemen terakhir belum tentu yang terbaru).
+  const latest = useMemo(() => {
+    let best: PickableChapter | null = null
+    let bestN = -Infinity
+    for (const c of chapters) {
+      const n = Number(c.number)
+      if (!Number.isFinite(n)) continue
+      if (n > bestN) {
+        bestN = n
+        best = c
+      }
+    }
+    return best
+  }, [chapters])
+
   if (!open) return null
 
   const hrefFor = (key: string) => (mode === 'marathon' ? marathonHref(key) : readerHref(key))
-  // "terbaru" = chapter terakhir dari daftar PENUH (bukan hasil filter) —
-  // kalau ikut ter-filter, tombolnya lompat ke chapter cocok terakhir.
-  const latest = chapters.length > 0 ? chapters[chapters.length - 1] : null
 
   return (
     <div
       className="fixed inset-0 z-50 flex items-end justify-center bg-black/60"
       onClick={onClose}
-      data-chapter-picker
     >
       <div
+        ref={panelRef}
+        role="dialog"
+        aria-modal="true"
+        aria-label="Pilih Chapter"
+        data-chapter-picker
         className="flex max-h-[85vh] w-full max-w-md flex-col overflow-hidden rounded-t-2xl border-t border-white/10 bg-night-dark/97 backdrop-blur"
         onClick={(e) => e.stopPropagation()}
       >
@@ -142,6 +212,7 @@ export default function ChapterPickerSheet({
               <path d="m20 20-3.5-3.5" strokeLinecap="round" />
             </svg>
             <input
+              ref={searchRef}
               value={q}
               onChange={(e) => setQ(e.target.value)}
               placeholder="Cari nomor atau judul chapter…"
@@ -201,15 +272,16 @@ export default function ChapterPickerSheet({
                     }`}
                   >
                     <span
-                      className={`w-11 shrink-0 text-center text-[12px] font-bold tabular-nums ${
+                      className={`w-11 shrink-0 truncate text-center text-[12px] font-bold tabular-nums ${
                         isCurrent
                           ? 'text-brand-amber-soft'
                           : read
                             ? 'text-white/30'
                             : 'text-white/60'
                       }`}
+                      title={c.number || c.title}
                     >
-                      {c.number}
+                      {c.number || '—'}
                     </span>
                     <span
                       className={`min-w-0 flex-1 truncate text-[13px] ${

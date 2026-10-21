@@ -172,10 +172,21 @@ impl NotifStore {
 
     /// Purge retensi (7 hari) lalu tulis atomik file SATU akun. Dipanggil setiap
     /// mutasi state akun itu.
+    ///
+    /// TIDAK pernah membuat file dari nol: kalau file belum ada DAN state-nya
+    /// kosong (tak ada favorit, tak ada notifikasi), skip tulis. Cycle
+    /// notifikasi meng-iterasi SEMUA akun lalu menandai `last_check_at` —
+    /// tanpa guard ini, tiap akun yang dihapus (mis. cleanup E2E) langsung
+    /// dibuat ulang jadi file `{favorites:{},notifications:{},last_check_at}`,
+    /// dan file sampah tak pernah hilang.
     fn save_locked(&self, username: &str, st: &mut State) {
         let cutoff = now_millis().saturating_sub(RETENTION_MS);
         st.notifications.retain(|n| n.at >= cutoff);
-        if let Err(e) = write_json(&user_file(&self.dir, username), st) {
+        let path = user_file(&self.dir, username);
+        if st.favorites.is_empty() && st.notifications.is_empty() && !path.is_file() {
+            return; // tak ada isi, dan file belum pernah ada -> jangan ciptakan
+        }
+        if let Err(e) = write_json(&path, st) {
             tracing::error!("notif: gagal tulis akun {username}: {e:#}");
         }
     }
@@ -1107,6 +1118,45 @@ mod tests {
                     .replace('\\', "/")
                     .ends_with("users/alif.json")
         );
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    /// Cycle notifikasi meng-iterasi semua akun lalu menandai `last_check_at`.
+    /// Kalau `save_locked` menulis file untuk state kosong, akun yang dihapus
+    /// (cleanup E2E) langsung dibuat ulang — file sampah tak pernah hilang.
+    #[tokio::test]
+    async fn save_locked_tidak_membuat_file_baru_kosong() {
+        let dir = temp_dir("no_empty_file");
+        let store = NotifStore::open(&dir).unwrap();
+        let path = user_file(&store.dir, "hantu");
+        assert!(!path.is_file());
+        {
+            let mut map = store.state.lock().await;
+            let st = NotifStore::ensure_user(&store.dir, &mut map, "hantu");
+            st.last_check_at = Some(now_millis());
+            store.save_locked("hantu", st);
+        }
+        assert!(
+            !path.is_file(),
+            "state kosong tak boleh membuat file baru (akun hantu muncul lagi)"
+        );
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    /// Tapi kalau state-nya ADA isi, file harus ditulis (akun sungguhan).
+    #[tokio::test]
+    async fn save_locked_menulis_file_kalau_state_berisi() {
+        let dir = temp_dir("with_content");
+        let store = NotifStore::open(&dir).unwrap();
+        {
+            let mut map = store.state.lock().await;
+            let st = NotifStore::ensure_user(&store.dir, &mut map, "nyata");
+            let mut f = fav("3215", "komiku");
+            f.baselines.insert("komiku".to_string(), "1195".to_string());
+            st.favorites.insert("k1".to_string(), f);
+            store.save_locked("nyata", st);
+        }
+        assert!(user_file(&store.dir, "nyata").is_file());
         let _ = std::fs::remove_dir_all(&dir);
     }
 

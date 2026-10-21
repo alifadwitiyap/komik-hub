@@ -1,14 +1,17 @@
 //! komiku-server — proxy API Komiku+ untuk komiku-web.
 //!
-//! Backend hanya bertugas: generate header keamanan, dekripsi payload, cache
-//! katalog, dan normalisasi bentuk JSON. Gambar tetap diambil browser langsung
-//! dari CDN (`img.komiku.org`) — statis dan bisa di-hotlink, jadi tidak perlu
-//! proxy byte yang hanya membebani server.
+//! Backend bertugas: generate header keamanan, dekripsi payload, cache
+//! katalog, normalisasi bentuk JSON, DAN proxy gambar ber-resize (`/img`).
+//!
+//! Proxy gambar sengaja ada: byte gambar adalah yang user rasakan saat membaca
+//! di koneksi jelek (1 chapter 5,4 MB). CDN sumber tidak bisa resize, jadi
+//! decode→resize→WebP dilakukan di sini dan hasilnya di-cache di disk.
 
 mod api;
 mod crypto;
 mod downloads;
 mod hosts;
+mod img;
 mod notif;
 mod pdf;
 mod progress;
