@@ -82,6 +82,9 @@ async fn main() -> anyhow::Result<()> {
     if dist.is_dir() {
         tracing::info!("juga menyajikan frontend dari {}", dist.display());
     }
+    // Warm-up feed latest: cache cold 2-5s, panaskan sekali supaya request
+    // pertama user adalah cache hit.
+    let _ = tokio::spawn(async { unified::warm_up_latest().await });
     axum::serve(listener, app).await?;
     Ok(())
 }

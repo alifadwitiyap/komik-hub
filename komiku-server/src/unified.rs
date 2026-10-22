@@ -90,6 +90,18 @@ fn aggregator() -> &'static Aggregator {
     })
 }
 
+/// Pre-fetch feed latest saat startup. Cache cold 2-5s (fan-out 4 sumber);
+/// memanaskan sekali supaya user pertama dapat cache hit (~warm).
+pub async fn warm_up_latest() {
+    let t0 = std::time::Instant::now();
+    let m = aggregator().latest(1, 48, None).await;
+    tracing::info!(
+        "warm-up latest: {} item dalam {:?}",
+        m.items.len(),
+        t0.elapsed()
+    );
+}
+
 // ------------------------------------------------------------------ DTO
 
 /// Kartu manga lintas sumber. Persis kontrak frontend.

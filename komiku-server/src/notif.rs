@@ -414,6 +414,25 @@ fn detect_new_sources(
         .collect()
 }
 
+/// Ceiling (max lintas sumber) naik? Kembalikan nomor ceiling baru kalau
+/// snapshot punya chapter LEBIH TINGGI dari baseline global; `None` kalau
+/// tidak (update lebih rendah/ sama dari sumber lain → TIDAK ternotifikasi).
+fn ceiling_advance(
+    baseline: &BTreeMap<String, String>,
+    current: &[(String, String)],
+) -> Option<String> {
+    let base_ceil = baseline.values().max_by(|a, b| cmp_num_or_str(a, b)).cloned();
+    let snap_ceil = current
+        .iter()
+        .map(|(_, n)| n)
+        .max_by(|a, b| cmp_num_or_str(a, b))
+        .cloned();
+    match (base_ceil, snap_ceil) {
+        (Some(bc), Some(sc)) if cmp_num_or_str(&sc, &bc) == Ordering::Greater => Some(sc),
+        _ => None,
+    }
+}
+
 // ------------------------------------------------------------------ PUT replace-all
 
 #[derive(Deserialize)]
@@ -648,8 +667,11 @@ async fn run_check_cycle(store: Arc<NotifStore>) {
                 if f.baselines.is_empty() {
                     continue;
                 }
-                let detection = detect_new(&f.baselines, snap);
                 let srcs = detect_new_sources(&f.baselines, snap);
+                // Tie-break ceiling: notifikasi HANYA kalau ada chapter yang
+                // menembus ceiling (max lintas sumber). Update lebih rendah dari
+                // ceiling dari sumber lain → tidak masuk notif.
+                let detection = ceiling_advance(&f.baselines, snap).map(|sc| (String::new(), sc));
                 // Naikkan/adopsi baseline ke snapshot terkini (tak pernah turun).
                 for (src, num) in snap {
                     let e = f
@@ -1056,6 +1078,37 @@ mod tests {
         let mut srcs = detect_new_sources(&base, &current);
         srcs.sort();
         assert_eq!(srcs, vec!["kiryuu".to_string(), "komiku".to_string()]);
+    }
+
+    #[test]
+    fn ceiling_advance_ditekan_saat_lebih_rendah_dari_ceiling() {
+        // shinigami ceiling 105; komiku update 101 -> tidak tembus -> None.
+        let mut base = BTreeMap::new();
+        base.insert("shinigami".to_string(), "105".to_string());
+        base.insert("komiku".to_string(), "100".to_string());
+        let current = vec![
+            ("komiku".to_string(), "101".to_string()),
+            ("shinigami".to_string(), "105".to_string()),
+        ];
+        assert_eq!(ceiling_advance(&base, &current), None);
+    }
+
+    #[test]
+    fn ceiling_advance_tembus_ceiling_baru() {
+        // shinigami ceiling 105; komiku tembus 106 -> keluar 106.
+        let mut base = BTreeMap::new();
+        base.insert("shinigami".to_string(), "105".to_string());
+        base.insert("komiku".to_string(), "100".to_string());
+        let current = vec![("komiku".to_string(), "106".to_string())];
+        assert_eq!(ceiling_advance(&base, &current), Some("106".to_string()));
+    }
+
+    #[test]
+    fn ceiling_advance_cek_sama_tidak_ada() {
+        let mut base = BTreeMap::new();
+        base.insert("komiku".to_string(), "5".to_string());
+        let current = vec![("komiku".to_string(), "5".to_string())];
+        assert_eq!(ceiling_advance(&base, &current), None);
     }
 
     // ---- state persistence per-akun -----------------------------------

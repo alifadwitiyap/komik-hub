@@ -59,6 +59,56 @@ pub fn title_key(title: &str) -> String {
     out.trim().to_string()
 }
 
+/// Kata fungsi Inggris yang dibuang saat membentuk kunci kanonik judul.
+/// Tidak mengubah `title_key` (dipakai dedup persis); hanya dipakai untuk
+/// mencocokkan judul yang sama tapi beda tata kata lintas sumber.
+const TITLE_STOPWORDS: &[&str] = &[
+    "a", "an", "the", "of", "and", "or", "to", "for", "with", "at", "from",
+    "by", "in", "on", "is", "are", "was", "were", "be", "been", "being",
+    "has", "have", "had", "as", "it", "its", "this", "that", "these",
+    "those", "i", "you", "he", "she", "we", "they", "my", "your", "his",
+    "her", "our", "their", "not", "no", "but", "so", "if", "then", "than",
+    "too", "very", "s", "t", "d",
+];
+
+/// Stem ringan (English, heuristik) untuk mencocokkan bentuk kata (return vs
+/// returned, demon vs demons). Aman untuk slice byte karena suffix yang diuji
+/// semuanya ASCII.
+fn light_stem(w: &str) -> String {
+    let n = w.len();
+    if n > 5 && w.ends_with("ing") {
+        return w[..n - 3].to_string();
+    }
+    if n > 4 && w.ends_with("ed") {
+        return w[..n - 2].to_string();
+    }
+    if n > 4 && w.ends_with("ies") {
+        return format!("{}y", &w[..n - 3]);
+    }
+    if n > 3 && w.ends_with('s') && !w.ends_with("ss") {
+        return w[..n - 1].to_string();
+    }
+    w.to_string()
+}
+
+/// Kunci kanonik judul untuk pencocokan lintas sumber: token signifikan
+/// (stopword dibuang + stem ringan) diurutkan & dedup. Dua judul seri yang
+/// sama dengan tata kata berbeda akan menghasilkan kunci identik; dua seri
+/// beda hampir selalu beda kunci. Cuma dipakai di feed ceiling (`latest`),
+/// bukan `title_key` (yang tetap eksak).
+pub fn title_canonical_key(title: &str) -> String {
+    let mut stems: Vec<String> = Vec::new();
+    for tok in title_key(title).split_whitespace() {
+        if TITLE_STOPWORDS.contains(&tok) {
+            continue;
+        }
+        stems.push(light_stem(tok));
+    }
+    stems.sort();
+    stems.dedup();
+    stems.join(" ")
+}
+
 /// Identitas nomor chapter berbasis STRING (bukan f64: f64 tidak bisa jadi
 /// kunci persis, dan "179.60" vs "179.6" jadi beda).
 ///
@@ -85,6 +135,12 @@ pub fn chapter_number_key(number: &str) -> String {
         // Bukan desimal: label bebas, bandingkan case-insensitive.
         None => raw.to_lowercase(),
     }
+}
+
+/// Apakah nomor chapter berupa angka desimal ("102", "1.1")? Non-numerik
+/// ("extra", "prologue", "specials") -> false. Dipakai dedup ceiling feed.
+pub fn is_numeric_chapter(number: &str) -> bool {
+    split_decimal(number).is_some()
 }
 
 /// "179.60" -> Some(("179", "60")); "7" -> Some(("7", "")); "extra" -> None.
@@ -172,4 +228,41 @@ pub struct ChapterPages {
     pub number: String,
     /// URL gambar absolut, urut halaman.
     pub images: Vec<String>,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::title_canonical_key;
+
+    #[test]
+    fn kanonik_seri_sama_beda_tata_kata() {
+        // Kasus nyata: komiku vs shinigami untuk seri yang sama.
+        let a = title_canonical_key("A Disaster-Class Hero Has Returned");
+        let b = title_canonical_key("The Return of The Disaster Class Hero");
+        assert_eq!(a, b, "judul seri yang sama harus punya kunci kanonik sama");
+        assert_eq!(a, "class disaster hero return");
+    }
+
+    #[test]
+    fn kanonik_seri_beda_tetap_beda() {
+        let a = title_canonical_key("Solo Leveling");
+        let b = title_canonical_key("Solo Leveling Reawakening");
+        assert_ne!(a, b, "seri beda tidak boleh bergabung");
+
+        let c = title_canonical_key("The King's Avatar");
+        let d = title_canonical_key("Avatar: The Last Airbender");
+        assert_ne!(c, d);
+
+        let e = title_canonical_key("Return of the Monster Class Hero");
+        let f = title_canonical_key("Return of the Disaster Class Hero");
+        assert_ne!(e, f, "satu kata pembeda harus tetap memisahkan");
+    }
+
+    #[test]
+    fn kanonik_hilangkan_stopword() {
+        let a = title_canonical_key("The Tales of Demons and Gods");
+        let b = title_canonical_key("Tales of Demons and Gods");
+        assert_eq!(a, b);
+        assert_eq!(a, "demon god tale");
+    }
 }

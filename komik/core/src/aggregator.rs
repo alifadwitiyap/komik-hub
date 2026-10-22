@@ -17,6 +17,7 @@
 use crate::cache::Cache;
 use crate::model::*;
 use crate::source::{Source, SourceError, SourceResult, PER_SOURCE_TIMEOUT_SECS};
+use crate::union::cmp_chapter_number;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
@@ -350,7 +351,7 @@ impl Aggregator {
     // ---------------------------------------------------------- merged list
 
     pub async fn popular(&self, page: u32, limit: u32, source: Option<&str>) -> Merged<Manga> {
-        self.merged(&format!("popular:{page}"), source, move |src| async move {
+        self.merged(&format!("popular:{page}"), false, source, move |src| async move {
             src.popular(page).await
         })
         .await
@@ -358,11 +359,170 @@ impl Aggregator {
     }
 
     pub async fn latest(&self, page: u32, limit: u32, source: Option<&str>) -> Merged<Manga> {
-        self.merged(&format!("latest:{page}"), source, move |src| async move {
-            src.latest(page).await
-        })
-        .await
-        .truncate(limit)
+        let key = format!("latest:{page}");
+        let full_key = self.cache_key("list", source, &format!("ceil:{key}"));
+
+        let sources = self.filtered(source);
+        let total = sources.len();
+        if let Some(cache) = &self.cache {
+            if let Some(hit) = cache.fresh_json::<Vec<Manga>>(&full_key) {
+                return Merged {
+                    items: hit,
+                    failures: vec![],
+                    sources_total: total,
+                    sources_ok: total,
+                    from_cache: true,
+                };
+            }
+        }
+
+        let mut items: Vec<Manga> = Vec::new();
+        let mut failures = Vec::new();
+        let mut ok = 0usize;
+        for res in self
+            .join_sources(sources, move |src| async move { src.latest(page).await })
+            .await
+        {
+            match res {
+                Ok((_, v)) => {
+                    ok += 1;
+                    items.extend(v);
+                }
+                Err(f) => failures.push(f),
+            }
+        }
+
+        let resolved = self.resolve_latest_feed(items).await;
+        let merged = Merged {
+            items: resolved,
+            failures,
+            sources_total: total,
+            sources_ok: ok,
+            from_cache: false,
+        };
+        if merged.failures.is_empty() {
+            self.cache_put(&full_key, &merged.items);
+        }
+        merged.truncate(limit)
+    }
+
+    /// Rekalkulasi feed ceiling (`latest`) + resolusi tie: saat beberapa sumber
+    /// mengiklankan chapter tertinggi yang SAMA, validasi ke daftar chapter
+    /// asli tiap kandidat dan pilih sumber yang BENERAN punya chapter itu
+    /// (bukan asal prioritas). Gagal/tak ada yang mengonfirmasi -> fallback
+    /// prioritas.
+    async fn resolve_latest_feed(&self, items: Vec<Manga>) -> Vec<Manga> {
+        let mut order: Vec<String> = Vec::new();
+        let mut by_key: HashMap<String, Vec<Manga>> = HashMap::new();
+        for m in items {
+            let k = m.rank_canonical_key();
+            if !by_key.contains_key(&k) {
+                order.push(k.clone());
+            }
+            by_key.entry(k).or_default().push(m);
+        }
+
+        let mut out = Vec::with_capacity(order.len());
+        for k in order {
+            let group = by_key.remove(&k).unwrap();
+            out.push(self.pick_ceiling_winner_validated(group).await);
+        }
+        out.sort_by(|a, b| rank_cmp(a, b));
+        out
+    }
+
+    /// `pick_ceiling_winner` + validasi tie (lihat [`resolve_latest_feed`]).
+    /// Hasil validasi tie di-memoize per (kunci kanonik series, nomor ceiling)
+    /// supaya grup tie yang berulang tidak re-fetch series resolve.
+    async fn pick_ceiling_winner_validated(&self, group: Vec<Manga>) -> Manga {
+        let numeric: Vec<usize> = group
+            .iter()
+            .enumerate()
+            .filter(|(_, x)| x.rank_last_chapter().map(is_numeric_chapter).unwrap_or(false))
+            .map(|(i, _)| i)
+            .collect();
+
+        let winner_idx = if numeric.is_empty() {
+            group
+                .iter()
+                .enumerate()
+                .reduce(|acc, cur| {
+                    if rank_cmp(acc.1, cur.1) == std::cmp::Ordering::Less {
+                        acc
+                    } else {
+                        cur
+                    }
+                })
+                .map(|(i, _)| i)
+                .unwrap_or(0)
+        } else {
+            let max_idx = numeric.iter().copied().reduce(|best, cur| {
+                let lb = group[best].rank_last_chapter().unwrap();
+                let lc = group[cur].rank_last_chapter().unwrap();
+                match cmp_chapter_number(lb, lc) {
+                    std::cmp::Ordering::Greater => best,
+                    std::cmp::Ordering::Less => cur,
+                    std::cmp::Ordering::Equal => best,
+                }
+            }).unwrap();
+            let max_num = group[max_idx].rank_last_chapter().unwrap().to_string();
+
+            let tied: Vec<usize> = numeric.iter().copied().filter(|&i| {
+                chapter_number_key(group[i].rank_last_chapter().unwrap()) == chapter_number_key(&max_num)
+            }).collect();
+
+            if tied.len() <= 1 {
+                tied[0]
+            } else {
+                let cache_key = (title_canonical_key(&group[0].title), max_num.clone());
+                // Cek memoize dulu: kalau pernah diputuskan, jangan re-fetch.
+                let cached_handle = {
+                    let g = tie_validation_cache().lock().unwrap();
+                    g.get(&cache_key).cloned()
+                };
+                if let Some(h) = cached_handle {
+                    if let Some(i) = tied.iter().copied().find(|&i| group[i].handle() == h) {
+                        i
+                    } else {
+                        tied.into_iter().reduce(|best, cur| {
+                            let pb = source_priority(group[best].rank_source());
+                            let pc = source_priority(group[cur].rank_source());
+                            if pb <= pc { best } else { cur }
+                        }).unwrap()
+                    }
+                } else {
+                    let mut chosen: Option<usize> = None;
+                    for &i in &tied {
+                        let handle = group[i].handle();
+                        if let Ok(outcome) = self.series_resolve(&handle, 2000, None).await {
+                            if outcome.detail.chapters.iter().any(|c| {
+                                chapter_number_key(&c.number) == chapter_number_key(&max_num)
+                            }) {
+                                chosen = Some(i);
+                                break;
+                            }
+                        }
+                    }
+                    let winner_idx = chosen.unwrap_or_else(|| {
+                        tied.into_iter().reduce(|best, cur| {
+                            let pb = source_priority(group[best].rank_source());
+                            let pc = source_priority(group[cur].rank_source());
+                            if pb <= pc { best } else { cur }
+                        }).unwrap()
+                    });
+                    tie_validation_cache().lock().unwrap().insert(cache_key, group[winner_idx].handle());
+                    winner_idx
+                }
+            }
+        };
+
+        let mut winner = group[winner_idx].clone();
+        for (i, other) in group.iter().enumerate() {
+            if i != winner_idx {
+                winner.merge_from(other);
+            }
+        }
+        winner
     }
 
     pub async fn search(
@@ -374,16 +534,16 @@ impl Aggregator {
     ) -> Merged<Manga> {
         let q = query.to_string();
         let merged = self
-            .merged(&format!("search:{page}:{q}"), source, move |src| {
+            .merged(&format!("search:{page}:{q}"), false, source, move |src| {
                 let q = q.clone();
                 async move { src.search(&q, page).await }
             })
             .await;
-        // Rank relevansi kueri diterapkan SETELAH merge+dedup (dedup_rank tetap
-        // recency; ini hanya menyusun ULANG urutan akhir search). Cache yang
-        // disimpan `merged` masih recency — re-rank di sini deterministik, jadi
-        // hit cache maupun miss menghasilkan urutan sama.
-        Merged { items: rank_by_query(merged.items, query), ..merged }.truncate(limit)
+        let mut items = merged.items;
+        // Ceiling: kartu search menunjuk sumber dengan episode TERBESAR —
+        // `last_chapter` tiap kartu = max numerik lintas sumber sekunci kanonik.
+        apply_ceiling_last_chapter(&mut items);
+        Merged { items: rank_by_query(items, query), ..merged }.truncate(limit)
     }
 
     /// Seperti [`Aggregator::search`], tapi `genre` diteruskan ke SETIAP
@@ -406,6 +566,7 @@ impl Aggregator {
         let merged = self
             .merged(
                 &format!("search-genre:{page}:{q}:{g}"),
+                false,
                 source,
                 move |src| {
                     let q = q.clone();
@@ -415,7 +576,9 @@ impl Aggregator {
             )
             .await;
         // Rank relevansi kueri sama seperti `search` (deterministik, cache aman).
-        Merged { items: rank_by_query(merged.items, query), ..merged }.truncate(limit)
+        let mut items = merged.items;
+        apply_ceiling_last_chapter(&mut items);
+        Merged { items: rank_by_query(items, query), ..merged }.truncate(limit)
     }
 
     /// Katalog + filter genre (slug/nama diteruskan ke sumber apa adanya).
@@ -429,6 +592,7 @@ impl Aggregator {
         let g = genre.map(|s| s.to_string());
         self.merged(
             &format!("list:{page}:{}", genre.unwrap_or("*")),
+            false,
             source,
             move |src| {
                 let g = g.clone();
@@ -504,7 +668,13 @@ impl Aggregator {
     }
 
     /// Fan-out generik: paralel + timeout per sumber + dedup + rank + cache.
-    async fn merged<T, F, Fut>(&self, key: &str, source: Option<&str>, call: F) -> Merged<T>
+    async fn merged<T, F, Fut>(
+        &self,
+        key: &str,
+        ceiling_dedup: bool,
+        source: Option<&str>,
+        call: F,
+    ) -> Merged<T>
     where
         T: Rankable + Serialize + for<'de> Deserialize<'de> + Clone + Send + 'static,
         F: Fn(Arc<dyn Source>) -> Fut + Clone + Send + Sync + 'static,
@@ -512,7 +682,12 @@ impl Aggregator {
     {
         let sources = self.filtered(source);
         let total = sources.len();
-        let full_key = self.cache_key("list", source, key);
+        let list_key = if ceiling_dedup {
+            format!("ceil:{key}")
+        } else {
+            key.to_string()
+        };
+        let full_key = self.cache_key("list", source, &list_key);
         if let Some(cache) = &self.cache {
             if let Some(hit) = cache.fresh_json::<Vec<T>>(&full_key) {
                 return Merged {
@@ -539,7 +714,11 @@ impl Aggregator {
         }
 
         let merged = Merged {
-            items: dedup_rank(items),
+            items: if ceiling_dedup {
+                dedup_rank_ceiling(items)
+            } else {
+                dedup_rank(items)
+            },
             failures,
             sources_total: total,
             sources_ok: ok,
@@ -706,9 +885,23 @@ impl Aggregator {
         lists.extend(others);
 
         let representative_source = crate::union::pick_representative_source(&lists);
+        let merged_chapters = crate::union::merge_chapter_lists(&lists);
+
+        // Ceiling: metadata seri menunjuk sumber dengan episode TERBESAR —
+        // `last_chapter` = chapter numerik terbesar lintas sumber (bukan
+        // advertised primary). Cover/judul sama seri, tak perlu repoint source.
+        let mut manga = manga;
+        if let Some(hi) = merged_chapters
+            .iter()
+            .map(|c| c.number.as_str())
+            .max_by(|a, b| crate::union::cmp_chapter_number(a, b))
+        {
+            manga.last_chapter = Some(hi.to_string());
+        }
+
         Ok(MergedSeries {
             manga,
-            chapters: crate::union::merge_chapter_lists(&lists),
+            chapters: merged_chapters,
             failed,
             from_cache: outcome.from_cache,
             representative_source,
@@ -1373,8 +1566,16 @@ impl Aggregator {
 /// tipe: judul, recency, dan identitas sumber sudah cukup.
 pub trait Rankable: Sized {
     fn rank_title_key(&self) -> &str;
+    /// Kunci grup untuk dedup ceiling. Default = title_key eksak; Manga
+    /// override ke kunci kanonik supaya judul seri yang sama tapi beda tata
+    /// kata lintas sumber bisa bergabung.
+    fn rank_canonical_key(&self) -> String {
+        self.rank_title_key().to_string()
+    }
     fn rank_updated_at(&self) -> Option<i64>;
     fn rank_source(&self) -> &SourceId;
+    /// Nomor chapter terbaru (string mentah; None kalau tidak tersedia).
+    fn rank_last_chapter(&self) -> Option<&str>;
     /// Lengkapi field yang kosong dari duplikat (cover, author, ...).
     fn merge_from(&mut self, other: &Self);
 }
@@ -1388,6 +1589,12 @@ impl Rankable for Manga {
     }
     fn rank_source(&self) -> &SourceId {
         &self.source
+    }
+    fn rank_canonical_key(&self) -> String {
+        title_canonical_key(&self.title)
+    }
+    fn rank_last_chapter(&self) -> Option<&str> {
+        self.last_chapter.as_deref()
     }
     fn merge_from(&mut self, other: &Self) {
         macro_rules! fill {
@@ -1438,6 +1645,94 @@ pub fn dedup_rank<T: Rankable + Clone>(items: Vec<T>) -> Vec<T> {
     let mut out: Vec<T> = order.into_iter().filter_map(|k| by_key.remove(&k)).collect();
     out.sort_by(|a, b| rank_cmp(a, b));
     out
+}
+
+/// Dedup by title_key dengan aturan CEILING lintas sumber (feed "Update terbaru"):
+/// dalam satu group judul, pemenang = entri dengan `last_chapter` numerik
+/// TERTINGGI (tiebreak `SOURCE_PRIORITY`); entri di bawah ceiling TIDAK ikut
+/// tampil. Kalau tidak ada entri yang numerik di group itu, fallback ke
+/// recency/prioritas (perilaku `dedup_rank` lama). Output tetap di-rank recency
+/// desc.
+pub fn dedup_rank_ceiling<T: Rankable + Clone>(items: Vec<T>) -> Vec<T> {
+    let mut order: Vec<String> = Vec::new();
+    let mut by_key: HashMap<String, Vec<T>> = HashMap::new();
+    for item in items {
+        let key = item.rank_canonical_key();
+        if !by_key.contains_key(&key) {
+            order.push(key.clone());
+        }
+        by_key.entry(key).or_default().push(item);
+    }
+
+    let mut out = Vec::with_capacity(order.len());
+    for key in order {
+        let group = by_key.remove(&key).unwrap();
+        out.push(pick_ceiling_winner(group));
+    }
+    out.sort_by(|a, b| rank_cmp(a, b));
+    out
+}
+
+/// Pilih pemenang satu group judul untuk dedup ceiling.
+fn pick_ceiling_winner<T: Rankable + Clone>(group: Vec<T>) -> T {
+    // Indeks yang punya last_chapter numerik.
+    let numeric: Vec<usize> = group
+        .iter()
+        .enumerate()
+        .filter(|(_, x)| x.rank_last_chapter().map(is_numeric_chapter).unwrap_or(false))
+        .map(|(i, _)| i)
+        .collect();
+
+    let winner_idx = if numeric.is_empty() {
+        // Fallback: recency/prioritas (perilaku `dedup_rank` lama).
+        group
+            .iter()
+            .enumerate()
+            .reduce(|acc, cur| {
+                if rank_cmp(acc.1, cur.1) == std::cmp::Ordering::Less {
+                    acc
+                } else {
+                    cur
+                }
+            })
+            .map(|(i, _)| i)
+            .unwrap_or(0)
+    } else {
+        numeric
+            .into_iter()
+            .reduce(|best, cur| {
+                let lb = group[best].rank_last_chapter().unwrap();
+                let lc = group[cur].rank_last_chapter().unwrap();
+                match cmp_chapter_number(lb, lc) {
+                    std::cmp::Ordering::Greater => best,
+                    std::cmp::Ordering::Less => cur,
+                    std::cmp::Ordering::Equal => {
+                        // Tie: prioritas sumber lebih tinggi (indeks kecil) menang.
+                        let pb = source_priority(group[best].rank_source());
+                        let pc = source_priority(group[cur].rank_source());
+                        if pb <= pc { best } else { cur }
+                    }
+                }
+            })
+            .unwrap()
+    };
+
+    let mut winner = group[winner_idx].clone();
+    for (i, other) in group.iter().enumerate() {
+        if i != winner_idx {
+            winner.merge_from(other);
+        }
+    }
+    winner
+}
+
+/// Memoize keputusan validasi tie per (kunci kanonik series, nomor ceiling).
+/// Nilai = handle pemenang. Grup tie yang berulang (mis. di lintas halaman)
+/// tidak perlu re-fetch series resolve.
+fn tie_validation_cache() -> &'static std::sync::Mutex<HashMap<(String, String), String>> {
+    use std::sync::OnceLock;
+    static CACHE: OnceLock<std::sync::Mutex<HashMap<(String, String), String>>> = OnceLock::new();
+    CACHE.get_or_init(|| std::sync::Mutex::new(HashMap::new()))
 }
 
 fn rank_cmp<T: Rankable>(a: &T, b: &T) -> std::cmp::Ordering {
@@ -1518,6 +1813,32 @@ fn match_tier(title_key: &str, tokens: &[String], query_key: &str) -> (MatchTier
 /// TIDAK mengurangi/merusak `dedup_rank`: dipakai hanya oleh
 /// [`Aggregator::search`]; `popular`/`latest`/`list` tetap pakai
 /// `dedup_rank` (recency).
+/// Ceiling untuk kartu: set `last_chapter` tiap item = max numerik lintas
+/// sumber yang sekunci kanonik. Tidak mengubah jumlah/urutan item; hanya
+/// menaikkan "chapter terbaru" yang ditampilkan ke sumber dengan episode terbesar.
+fn apply_ceiling_last_chapter(items: &mut [Manga]) {
+    use std::cmp::Ordering;
+    let mut best: HashMap<String, Option<String>> = HashMap::new();
+    for m in items.iter() {
+        let k = m.rank_canonical_key();
+        if let Some(lc) = m.rank_last_chapter() {
+            let e = best.entry(k).or_default();
+            let better = match e.as_deref() {
+                None => true,
+                Some(cur) => cmp_chapter_number(lc, cur) == Ordering::Greater,
+            };
+            if better {
+                *e = Some(lc.to_string());
+            }
+        }
+    }
+    for m in items.iter_mut() {
+        if let Some(v) = best.get(&m.rank_canonical_key()) {
+            m.last_chapter = v.clone();
+        }
+    }
+}
+
 pub fn rank_by_query<T: Rankable>(items: Vec<T>, query: &str) -> Vec<T> {
     // Token kueri lowercase, tanpa duplikat ("solo  solo" -> 1 token).
     let mut seen = HashSet::new();
@@ -1809,5 +2130,201 @@ mod tests {
         let m2 = m("komiku", "n", "Solo Necromancy");
         let out = rank_by_query(vec![m2, m1], "SOLO Leveling");
         assert_eq!(ids(&out), vec!["m", "n"]);
+    }
+
+    // -------------------------------------------------- dedup ceiling (feed)
+
+    fn with_last(mut m: Manga, last: &str) -> Manga {
+        m.last_chapter = Some(last.to_string());
+        m
+    }
+
+    /// Skenario utama: shinigami 102, komikku 100 -> hanya shinigami tampil,
+    /// komikku (di bawah ceiling) disembunyikan.
+    #[test]
+    fn ceiling_sembunyikan_update_di_bawah() {
+        let s = with_last(m("shinigami", "s", "Solo Leveling"), "102");
+        let k = with_last(m("komiku", "k", "Solo Leveling"), "100");
+        let out = dedup_rank_ceiling(vec![s, k]);
+        assert_eq!(ids(&out), vec!["s"]);
+        assert_eq!(out[0].last_chapter.as_deref(), Some("102"));
+    }
+
+    /// komikku naik ke 103 (> ceiling 102) -> jadi pemenang baru.
+    #[test]
+    fn ceiling_tampil_saat_melebihi() {
+        let s = with_last(m("shinigami", "s", "Solo Leveling"), "102");
+        let k = with_last(m("komiku", "k", "Solo Leveling"), "103");
+        let out = dedup_rank_ceiling(vec![s, k]);
+        assert_eq!(ids(&out), vec!["k"]);
+        assert_eq!(out[0].last_chapter.as_deref(), Some("103"));
+    }
+
+    /// Ceiling sama besar -> tiebreak SOURCE_PRIORITY (komiku > shinigami).
+    #[test]
+    fn ceiling_tie_prioritas() {
+        let s = with_last(m("shinigami", "s", "Solo Leveling"), "102");
+        let k = with_last(m("komiku", "k", "Solo Leveling"), "102");
+        let out = dedup_rank_ceiling(vec![s, k]);
+        assert_eq!(ids(&out), vec!["k"]);
+    }
+
+    /// Tanpa last_chapter numerik -> fallback recency/prioritas (perilaku lama).
+    #[test]
+    fn ceiling_fallback_non_numerik() {
+        let a = with_last(m("shinigami", "a", "X"), "extra");
+        let b = with_last(m("komiku", "b", "X"), "prologue");
+        let out = dedup_rank_ceiling(vec![a, b]);
+        assert_eq!(ids(&out), vec!["b"]);
+    }
+
+    /// Campur: non-numerik tidak ikut ceiling, numerik menang.
+    #[test]
+    fn ceiling_numerik_mengalahkan_non_numerik() {
+        let a = with_last(m("komiku", "a", "X"), "extra");
+        let b = with_last(m("shinigami", "b", "X"), "102");
+        let out = dedup_rank_ceiling(vec![a, b]);
+        assert_eq!(ids(&out), vec!["b"]);
+        assert_eq!(out[0].last_chapter.as_deref(), Some("102"));
+    }
+
+    /// Urutan antar-series tetap recency desc (updated_at).
+    #[test]
+    fn ceiling_urut_recency_desc() {
+        let mut t1 = with_last(m("shinigami", "t1", "Alpha"), "10");
+        t1.updated_at = Some(500);
+        let t2 = with_last(m("komiku", "t2", "Beta"), "5");
+        let out = dedup_rank_ceiling(vec![t2, t1]);
+        assert_eq!(ids(&out), vec!["t1", "t2"]);
+    }
+
+    /// Jumlah hasil = jumlah judul unik (tidak ada duplikat judul).
+    #[test]
+    fn ceiling_hasil_set_unik() {
+        let a = with_last(m("shinigami", "a", "Solo Leveling"), "102");
+        let b = with_last(m("komiku", "b", "Solo Leveling"), "100");
+        let c = with_last(m("komiku", "c", "Lain"), "7");
+        let out = dedup_rank_ceiling(vec![a, b, c]);
+        assert_eq!(out.len(), 2);
+    }
+
+    // ---------------------------------------------- QA adversarial (ultraqa)
+
+    /// Input kosong -> output kosong (tidak panic).
+    #[test]
+    fn ceiling_empty_input() {
+        let out = dedup_rank_ceiling::<Manga>(vec![]);
+        assert!(out.is_empty());
+    }
+
+    /// Satu entri numerik -> lolos apa adanya (jumlah tetap 1).
+    #[test]
+    fn ceiling_single_numeric() {
+        let a = with_last(m("komiku", "a", "Solo"), "105");
+        let out = dedup_rank_ceiling(vec![a]);
+        assert_eq!(out.len(), 1);
+        assert_eq!(out[0].last_chapter.as_deref(), Some("105"));
+    }
+
+    /// Normalisasi desimal: "179.60" vs "179.6" = tie -> prioritas komiku menang.
+    #[test]
+    fn ceiling_tie_desimal_ternormalisasi() {
+        let a = with_last(m("shinigami", "a", "X"), "179.60");
+        let b = with_last(m("komiku", "b", "X"), "179.6");
+        let out = dedup_rank_ceiling(vec![a, b]);
+        assert_eq!(ids(&out), vec!["b"]);
+    }
+
+    /// Normalisasi nol depan: "007" vs "7" = tie -> prioritas komiku menang.
+    #[test]
+    fn ceiling_tie_leading_zero() {
+        let a = with_last(m("shinigami", "a", "X"), "007");
+        let b = with_last(m("komiku", "b", "X"), "7");
+        let out = dedup_rank_ceiling(vec![a, b]);
+        assert_eq!(ids(&out), vec!["b"]);
+    }
+
+    /// Nomor lebih tinggi menang MESKIPUN sumbernya prioritas lebih rendah.
+    #[test]
+    fn ceiling_angka_tinggi_menang_bebas_prioritas() {
+        let a = with_last(m("komiku", "a", "X"), "100"); // prioritas tinggi
+        let b = with_last(m("kiryuu", "b", "X"), "120"); // prioritas rendah, angka besar
+        let out = dedup_rank_ceiling(vec![a, b]);
+        assert_eq!(ids(&out), vec!["b"]);
+        assert_eq!(out[0].last_chapter.as_deref(), Some("120"));
+    }
+
+    /// last_chapter None tidak ikut ceiling; yang punya angka menang.
+    #[test]
+    fn ceiling_none_tidak_ikut() {
+        let a = m("komiku", "a", "X"); // last_chapter None
+        let b = with_last(m("shinigami", "b", "X"), "55");
+        let out = dedup_rank_ceiling(vec![a, b]);
+        assert_eq!(ids(&out), vec!["b"]);
+    }
+
+    /// Non-numerik lebih baru TIDAK mengalahkan numerik (numerik tetap ceiling).
+    #[test]
+    fn ceiling_non_numerik_baru_kalah_numerik() {
+        let mut a = with_last(m("komiku", "a", "X"), "extra"); // non-numerik
+        a.updated_at = Some(9_999); // sangat baru
+        let b = with_last(m("shinigami", "b", "X"), "50"); // numerik, lebih tua
+        let out = dedup_rank_ceiling(vec![a, b]);
+        assert_eq!(ids(&out), vec!["b"]);
+    }
+
+    /// Urutan input tidak mengubah hasil (deterministik).
+    #[test]
+    fn ceiling_deterministik_terhadap_urutan() {
+        let a = with_last(m("komiku", "a", "X"), "100");
+        let b = with_last(m("shinigami", "b", "X"), "120");
+        let out1 = dedup_rank_ceiling(vec![a.clone(), b.clone()]);
+        let out2 = dedup_rank_ceiling(vec![b, a]);
+        assert_eq!(ids(&out1), ids(&out2));
+        assert_eq!(ids(&out1), vec!["b"]);
+    }
+
+    /// Judul seri SAMA tapi beda tata kata lintas sumber -> merge (kunci
+    /// kanonik): "A Disaster-Class Hero Has Returned" vs "The Return of The
+    /// Disaster Class Hero". Pemenang = ceiling (keduanya 193 -> tie prioritas).
+    #[test]
+    fn ceiling_merge_seri_beda_tata_kata() {
+        let a = with_last(m("komiku", "a", "A Disaster-Class Hero Has Returned"), "193");
+        let b = with_last(m("shinigami", "b", "The Return of The Disaster Class Hero"), "193");
+        let out = dedup_rank_ceiling(vec![a, b]);
+        assert_eq!(out.len(), 1, "seri yang sama harus jadi satu kartu");
+        assert_eq!(out[0].last_chapter.as_deref(), Some("193"));
+    }
+
+    /// Judul beda yang mirip TIDAK boleh merge.
+    #[test]
+    fn ceiling_tidak_merge_seri_beda_mirip() {
+        let a = with_last(m("komiku", "a", "Return of the Monster Class Hero"), "10");
+        let b = with_last(m("shinigami", "b", "Return of the Disaster Class Hero"), "10");
+        let out = dedup_rank_ceiling(vec![a, b]);
+        assert_eq!(out.len(), 2, "seri beda harus tetap dua kartu");
+    }
+
+    /// Memoize validasi tie: simpan lalu ambil balik (kunci kanonik, ceiling).
+    #[test]
+    fn tie_cache_simpan_dan_ambil() {
+        let c = tie_validation_cache();
+        c.lock().unwrap().insert(("x".into(), "193".into()), "handleA".into());
+        let got = c.lock().unwrap().get(&("x".into(), "193".into())).cloned();
+        assert_eq!(got.as_deref(), Some("handleA"));
+    }
+
+    /// Kartu crit: `last_chapter` memakai max lintas sumber sekunci kanonik.
+    #[test]
+    fn ceiling_kartu_search_pakai_max_lintas_sumber() {
+        let a = with_last(m("komiku", "a", "Solo Leveling"), "100");
+        let b = with_last(m("shinigami", "b", "Solo Leveling"), "105");
+        let c = with_last(m("komiku", "c", "Solo Necromancy"), "9");
+        let mut items = vec![a, b, c];
+        apply_ceiling_last_chapter(&mut items);
+        assert_eq!(items[0].last_chapter.as_deref(), Some("105"));
+        assert_eq!(items[1].last_chapter.as_deref(), Some("105"));
+        // seri beda tidak tersentuh
+        assert_eq!(items[2].last_chapter.as_deref(), Some("9"));
     }
 }
