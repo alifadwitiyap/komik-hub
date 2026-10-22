@@ -1,20 +1,21 @@
 /**
- * useAutoFullscreen — masuk layar penuh setelah beberapa gestur scroll turun.
+ * useAutoFullscreen — masuk layar penuh setelah scroll turun cukup jauh.
  *
- * Desain (hasil grill):
- * - Trigger: 3 gestur scroll-bawah (tiap turun melewati threshold 40px),
- *   arah naik mereset hitungan. Scroll programatik saat pemulihan chapter
- *   (restoring) tidak memicu.
- * - Mode hybrid: cobain Fullscreen API native dulu; kalau ditolak (scroll
- *   bukan user-gesture — iOS Safari/Chrome sering menolak), fallback ke
- *   "immersive" (pseudo-fullscreen, hanya sembunyiin chrome via state).
- * - Exit: scroll balik ke puncak, atau kontrol eksplisit (tap tengah),
- *   atau user menekan Esc (dipantau via fullscreenchange).
+ * Desain (hasil grill + perbaikan UX):
+ * - Trigger: akumulasi JARAK scroll-turun (`TRIGGER_PX`). Begitu total turun
+ *   melewati ambang, masuk fullscreen. Satu gerakan scroll cepat langsung
+ *   memicu — tidak perlu menghitung gestur diskrit.
+ * - Arah naik me-reset akumulasi (dari state non-aktif).
+ * - Saat aktif: scroll naik → keluar. `exit()` TIDAK me-reset akumulasi,
+ *   jadi begitu user batalin lalu scroll turun lagi, dia langsung masuk lagi
+ *   (tanpa harus mengulang jarak penuh).
+ * - `reset()` (tap tengah / ganti chapter) keluar + reset akumulasi penuh.
+ * - Mode hybrid: Fullscreen API native dulu; kalau ditolak → "immersive"
+ *   (pseudo-fullscreen, hanya sembunyiin chrome via state).
+ * - Exit juga via Esc (fullscreenchange).
  */
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { gestureStep } from './autoFullscreenLogic'
-
-const THRESHOLD_PX = 40
+import { gestureStep, THRESHOLD_PX } from './autoFullscreenLogic'
 
 export interface AutoFullscreenControl {
   /** immersive (pseudo-fullscreen) aktif — chrome disembunyikan via CSS/state */
@@ -31,7 +32,7 @@ export function useAutoFullscreen(
 ): AutoFullscreenControl {
   const [immersive, setImmersive] = useState(false)
   const [nativeActive, setNativeActive] = useState(false)
-  const countRef = useRef(0)
+  const pixelsRef = useRef(0)
   const lastY = useRef(0)
   const enabledRef = useRef(enabled)
   enabledRef.current = enabled
@@ -58,7 +59,7 @@ export function useAutoFullscreen(
   }, [])
 
   const reset = useCallback(() => {
-    countRef.current = 0
+    pixelsRef.current = 0
     exit()
   }, [exit])
 
@@ -67,7 +68,6 @@ export function useAutoFullscreen(
     const onChange = () => {
       if (!document.fullscreenElement) {
         setNativeActive(false)
-        countRef.current = 0
       }
     }
     document.addEventListener('fullscreenchange', onChange)
@@ -82,14 +82,16 @@ export function useAutoFullscreen(
       const y = window.scrollY
       const d = y - lastY.current
       lastY.current = y
-      // saat aktif: scroll naik (melewati threshold) → lepas fullscreen
+      // saat aktif: scroll naik (melewati threshold) → lepas fullscreen.
+      // Akumulasi sengaja TIDAK di-reset → begitu turun lagi langsung bisa
+      // masuk kembali.
       if (immersive || nativeActive) {
         if (Math.abs(d) >= THRESHOLD_PX && d < 0) exit()
         return
       }
       if (Math.abs(d) < THRESHOLD_PX) return
-      const step = gestureStep(countRef.current, d)
-      countRef.current = step.count
+      const step = gestureStep(pixelsRef.current, d)
+      pixelsRef.current = step.pixels
       if (step.fire) enter()
     }
     window.addEventListener('scroll', onScroll, { passive: true })

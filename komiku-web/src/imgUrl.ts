@@ -95,10 +95,21 @@ export function isProxyable(raw: string | null | undefined): boolean {
  * URL untuk atribut `src`: lewat proxy `/img?u=…&w=…` bila host diizinkan,
  * selain itu URL asli (fail-open: host baru tetap tampil, hanya tanpa resize).
  */
-export function imgSrc(raw: string | null | undefined, width: number = 640): string {
+export function imgSrc(
+  raw: string | null | undefined,
+  width: number = 640,
+  buster?: number,
+): string {
   if (!raw) return ''
-  if (!isProxyable(raw)) return raw
-  return `/img?u=${encodeURIComponent(raw)}&w=${width}`
+  if (!isProxyable(raw)) {
+    // Fail-open: URL asli. Cache-buster tetap dilekatkan supaya refresh
+    // manual bisa memaksa re-fetch dari server (bukan cache rusak).
+    if (!buster) return raw
+    const sep = raw.includes('?') ? '&' : '?'
+    return `${raw}${sep}t=${buster}`
+  }
+  const base = `/img?u=${encodeURIComponent(raw)}&w=${width}`
+  return buster ? `${base}&t=${buster}` : base
 }
 
 /**
@@ -108,9 +119,10 @@ export function imgSrc(raw: string | null | undefined, width: number = 640): str
 export function imgSrcSet(
   raw: string | null | undefined,
   widths: readonly number[] = READER_WIDTHS,
+  buster?: number,
 ): string | undefined {
   if (!raw || !isProxyable(raw)) return undefined
-  return widths.map((w) => `${imgSrc(raw, w)} ${w}w`).join(', ')
+  return widths.map((w) => `${imgSrc(raw, w, buster)} ${w}w`).join(', ')
 }
 
 /**

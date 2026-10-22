@@ -3,6 +3,15 @@ import { imgSrc, imgSrcSet, imgUrl, READER_SIZES } from '../imgUrl'
 import { acquireImageSlot, recordImageSettle } from '../imgQueue'
 import { aspectOf, rememberAspect } from '../pageMemory'
 
+/**
+ * Gambar dianggap "stuck" (dan layak tombol refresh manual) kalau byte sudah
+ * mulai diminta (`started`) tapi belum settle setelah ini. Proses normal di
+ * koneksi lambat bisa lebih lama — timer ini hanya menandai, tidak memblokir
+ * apa pun; tombol refresh murni opsional.
+ */
+const STUCK_MS = 2000
+
+
 interface ComicImageProps {
   src: string
   alt: string
@@ -85,6 +94,12 @@ export default function ComicImage({
   const [failed, setFailed] = useState(false)
   const [shown, setShown] = useState(false)
   const [attempt, setAttempt] = useState(0)
+  // `stuck` = gambar belum settle dalam `STUCK_MS` sejak byte mulai diminta,
+  // padahal bukan gagal. Memunculkan tombol refresh manual per-halaman.
+  const [stuck, setStuck] = useState(false)
+  // `buster` = penanda unik untuk refresh manual; dilekatkan ke src/srcset
+  // supaya browser tidak melayani cache rusak (URL berubah).
+  const [buster, setBuster] = useState(0)
   // `mounted` = boleh minta byte sekarang. false = skeleton (0 byte).
   const [mounted, setMounted] = useState(!!eager)
   // `started` = slot antrean sudah didapat → `src` dipasang. Beda dari
@@ -103,12 +118,14 @@ export default function ComicImage({
   // rasio w/h: hasil decode terbaru → memori kunjungan lalu → cadangan.
   const ratio =
     (measured?.url === url ? measured.ratio : null) ?? aspectOf(url) ?? fallbackRatio
-  const srcSet = imgSrcSet(src)
+  const srcSet = imgSrcSet(src, undefined, buster || undefined)
 
   // chapter berganti → reset state gambar
   useEffect(() => {
     setFailed(false)
     setShown(false)
+    setStuck(false)
+    setBuster(0)
     setMounted(!!eager)
     setStarted(false)
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -137,6 +154,19 @@ export default function ComicImage({
     io.observe(el)
     return () => io.disconnect()
   }, [mounted, mountAhead, attempt])
+
+  // --- timer "stuck": byte sudah diminta tapi belum settle → refresh manual --
+  // Hanya menandai; tidak memblokir apa pun. Setiap kali `attempt` naik
+  // (bukan cuma retry error) timer restart, jadi refresh manual memberi
+  // jendela penuh lagi.
+  useEffect(() => {
+    if (!started || shown || failed) {
+      setStuck(false)
+      return
+    }
+    const t = setTimeout(() => setStuck(true), STUCK_MS)
+    return () => clearTimeout(t)
+  }, [started, shown, failed, attempt])
 
   // --- antrean byte: dekat layar ≠ boleh langsung minta -------------------
   // Halaman pertama (eager) langsung dapat slot; sisanya mengantre sampai
@@ -206,11 +236,40 @@ export default function ComicImage({
   }
 
   return (
-    <img
+    <div className="relative">
+      {stuck && (
+        <button
+          type="button"
+          aria-label="Muatin ulang halaman ini"
+          title="Muatin ulang halaman ini"
+          onClick={() => {
+            setStuck(false)
+            setBuster(Date.now())
+            setAttempt((a) => a + 1)
+          }}
+          className="absolute right-3 top-14 z-40 flex h-11 w-11 items-center justify-center rounded-full border border-ink-300 bg-ink-900/80 text-ink-200 shadow-lg transition hover:bg-ink-900 hover:text-ink-100 focus:outline-none focus:ring-2 focus:ring-brand-amber"
+        >
+          <svg
+            width="22"
+            height="22"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            aria-hidden="true"
+          >
+            <path d="M21 12a9 9 0 1 1-2.64-6.36" />
+            <polyline points="21 3 21 9 15 9" />
+          </svg>
+        </button>
+      )}
+      <img
       key={attempt}
       ref={ref}
       // Tanpa `started`: TIDAK ada src sama sekali = 0 byte terunduh.
-      src={started ? imgSrc(src, 640) : undefined}
+      src={started ? imgSrc(src, 640, buster || undefined) : undefined}
       srcSet={started ? srcSet : undefined}
       sizes={started && srcSet ? sizes : undefined}
       alt={alt}
@@ -239,6 +298,7 @@ export default function ComicImage({
         settle()
       }}
       onError={() => {
+        setStuck(false)
         setFailed(true)
         settledRef.current?.(false)
         settle()
@@ -253,5 +313,6 @@ export default function ComicImage({
       } ${className ?? ''}`}
       draggable={false}
     />
+    </div>
   )
 }
