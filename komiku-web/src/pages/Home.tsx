@@ -236,6 +236,8 @@ function BackdropCarousel({ items }: { items: Manga[] }) {
                   <img
                     src={imgUrl(img)}
                     alt=""
+                    role="presentation"
+                    aria-hidden="true"
                     className="size-full object-cover"
                     loading="eager"
                     decoding="async"

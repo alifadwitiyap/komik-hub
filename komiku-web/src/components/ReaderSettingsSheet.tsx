@@ -51,6 +51,7 @@ export default function ReaderSettingsSheet({
           icon={<IconBars className="size-4" />}
           label="Mode Baca"
           value={settings.readMode === 'scroll' ? 'Gulir Halaman' : 'Webtoon'}
+          onClick={() => onChange({ readMode: settings.readMode === 'scroll' ? 'webtoon' : 'scroll' })}
         />
         <Row
           icon={<IconPersonRunning className="size-4" />}
@@ -114,6 +115,12 @@ export default function ReaderSettingsSheet({
           toggle={settings.fullscreen}
           onToggle={(v) => onChange({ fullscreen: v })}
         />
+        <Row
+          icon={<IconExpand className="size-4" />}
+          label="Fullscreen Otomatis (scroll)"
+          toggle={settings.autoFullscreen}
+          onToggle={(v) => onChange({ autoFullscreen: v })}
+        />
         <Row icon={<IconBolt className="size-4" />} label="Prefetch" />
         <div className="flex gap-2 px-4 pb-2">
           {(
@@ -156,15 +163,24 @@ function Row({
   value,
   toggle,
   onToggle,
+  onClick,
 }: {
   icon: React.ReactNode
   label: string
   value?: string
   toggle?: boolean
   onToggle?: (v: boolean) => void
+  onClick?: () => void
 }) {
+  const clickable = onClick !== undefined
   return (
-    <div className="flex items-center gap-3 px-4 py-3">
+    <div
+      role={clickable ? 'button' : undefined}
+      tabIndex={clickable ? 0 : undefined}
+      onClick={onClick}
+      onKeyDown={clickable ? (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onClick() } } : undefined}
+      className={`flex items-center gap-3 px-4 py-3 ${clickable ? 'cursor-pointer select-none active:bg-ink-850' : ''}`}
+    >
       <span className="grid size-8 place-items-center rounded-full bg-ink-850 text-ink-300">{icon}</span>
       <span className="min-w-0 flex-1 text-[13px] font-medium text-ink-100">{label}</span>
       {value && <span className="text-[12px] text-ink-500">{value}</span>}

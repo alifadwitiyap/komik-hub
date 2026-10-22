@@ -35,9 +35,15 @@ const KEY = 'komiku.web.progress.v1'
 const MAX = 24
 const PUSH_DEBOUNCE_MS = 2000
 
+/** Key localStorage per-akun: akun beda dapat riwayat baca terpisah. */
+function progressKey(): string {
+  const u = getUser()
+  return u ? `${KEY}:${u}` : KEY
+}
+
 function read(): ProgressEntry[] {
   try {
-    const raw = localStorage.getItem(KEY)
+    const raw = localStorage.getItem(progressKey())
     if (!raw) return []
     const parsed: unknown = JSON.parse(raw)
     if (!Array.isArray(parsed)) return []
@@ -51,7 +57,7 @@ function read(): ProgressEntry[] {
 
 function write(entries: ProgressEntry[]) {
   try {
-    localStorage.setItem(KEY, JSON.stringify(entries))
+    localStorage.setItem(progressKey(), JSON.stringify(entries))
   } catch {
     /* storage penuh / mode privat — progres tidak ganggu membaca */
   }
@@ -135,6 +141,10 @@ export function useProgress() {
   const onAccount = useCallback(
     (e: AccountEvent) => {
       if (e.username === null) return
+      // akun berganti → cache lokal akun lama tidak relevan; kosongkan dulu
+      // supaya merge dengan server akun baru tidak mencampur.
+      entriesRef.current = []
+      setEntries([])
       if (e.created === true) {
         push(entriesRef.current)
         return
@@ -145,7 +155,7 @@ export function useProgress() {
   )
 
   useEffect(() => {
-    const onStorage = (e: StorageEvent) => e.key === KEY && apply(read())
+    const onStorage = (e: StorageEvent) => e.key === progressKey() && apply(read())
     window.addEventListener('storage', onStorage)
     // boot: akun yang sedang aktif → PULL.
     void syncFromServer()

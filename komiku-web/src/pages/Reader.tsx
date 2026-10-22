@@ -11,6 +11,7 @@ import SourceBadge from '../components/SourceBadge'
 import { imgSrc, imgUrl, mountAheadPx } from '../imgUrl'
 import { useReaderSettings } from '../hooks/useReaderSettings'
 import { useChromeOnScroll } from '../hooks/useChromeOnScroll'
+import { useAutoFullscreen } from '../hooks/useAutoFullscreen'
 import type { ChapterResponse, Manga } from '../types'
 import { Empty } from '../App'
 import { useProgress } from '../hooks/useProgress'
@@ -83,13 +84,17 @@ export default function Reader() {
   // chrome (toolbar + footer) ikut arah scroll; selama restore anchor
   // (`pending.current`) berjalan scroll programatik TIDAK memicunya
   const chrome = useChromeOnScroll(() => pending.current !== null)
+  const { settings, onChange, onReset, filterStyle } = useReaderSettings()
+  const autoFS = useAutoFullscreen(
+    settings.autoFullscreen && !settings.fullscreen,
+    () => pending.current !== null,
+  )
   const [menuOpen, setMenuOpen] = useState(false)
   const [sheetOpen, setSheetOpen] = useState(false)
   const [chapterPickerOpen, setChapterPickerOpen] = useState(false)
   const [toast, setToast] = useState<string | null>(null)
   const { save, recent } = useProgress()
   const navigate = useNavigate()
-  const { settings, onChange, onReset, filterStyle } = useReaderSettings()
 
   // URL sumber asli halaman ini (hanya flow unified) — dipakai badge toolbar.
   // Kontrak v2: `source` = sumber yang MELAYANI halaman ini (bisa beda dari
@@ -121,6 +126,7 @@ export default function Reader() {
     // chapter baru = konteks baru: chrome tampil lagi, jangan warisi
     // keadaan tersembunyi dari chapter sebelumnya
     chrome.show()
+    autoFS.reset()
     const ctrl = new AbortController()
     // A1 — naikkan generasi SEBELUM fetch; respons yang kembali membawa
     // nomor generasi ini. Kalau user sudah pindah chapter, nomor basi.
@@ -451,14 +457,23 @@ export default function Reader() {
   // di sini selalu null untuk unified.
   const legacySeriesId = typeof seriesId === 'number' ? seriesId : null
 
+  const chromeHidden = !chrome.visible || autoFS.active || autoFS.nativeActive
+
   return (
     <div className={`relative min-h-screen ${settings.nightShift ? 'bg-night-dark' : 'bg-white'}`}>
-      {/* tap tengah: toggle chrome.
-          z-10 (di bawah menu z-40 / sheet z-50, di atas gambar): dulu z-0
-          sehingga gambar manga menang stacking dan tap tak pernah sampai. */}
+      {/* tap tengah: toggle chrome. Saat auto-fullscreen aktif, tap = keluar. */}
       <button
-        aria-label={chrome.visible ? 'Sembunyikan kontrol' : 'Tampilkan kontrol'}
-        onClick={chrome.toggle}
+        aria-label={
+          chromeHidden && !autoFS.active && !autoFS.nativeActive
+            ? 'Tampilkan kontrol'
+            : chromeHidden
+              ? 'Keluar fullscreen / sembunyikan'
+              : 'Sembunyikan kontrol'
+        }
+        onClick={() => {
+          if (autoFS.active || autoFS.nativeActive) autoFS.reset()
+          else chrome.toggle()
+        }}
         className="fixed inset-0 z-10"
       />
 
@@ -471,7 +486,7 @@ export default function Reader() {
         onMore={() => setMenuOpen(true)}
         chip={settings.marathon ? 'Maraton' : null}
         badge={source && source !== 'komiku' ? <SourceBadge source={source} /> : null}
-        visible={chrome.visible}
+        visible={!chromeHidden}
         heart={
           data.title_key && data.series_handle ? (
             <HeartButton manga={rakMangaOf(data, data.title_key)} />
@@ -484,7 +499,7 @@ export default function Reader() {
         prevName={chapter.previous?.name ?? null}
         prevHref={prevKey ? readerHref(prevKey) : null}
         onPickChapter={() => setChapterPickerOpen(true)}
-        visible={chrome.visible}
+        visible={!chromeHidden}
       />
 
       <ChapterPickerSheet
@@ -510,22 +525,34 @@ export default function Reader() {
       ) : null}
       <div ref={flowRef} className="mx-auto flex max-w-3xl flex-col" style={filterStyle}>
         {images.map((src, i) => (
-          <ComicImage
+          <div
             key={`${chapter.id}-${i}`}
-            src={src}
-            alt={`${chapter.name} halaman ${i + 1}`}
-            pageIndex={i}
-            // HANYA halaman pertama yang langsung diminta (LCP + prioritas
-            // tinggi). Sisanya menunggu sampai dekat layar — dulu 3 halaman
-            // eager + margin lazy bawaan Chrome membuat 9 gambar / 1,7 MB
-            // berebut, dan halaman yang sedang dibaca kalah (53 detik di 3G).
-            eager={i === 0}
-            mountAhead={mountAhead}
-            onLoad={() => {
-              setLoadedPages((s) => (s.has(i) ? s : new Set(s).add(i)))
-            }}
-            className="manga-img w-full"
-          />
+            className={
+              settings.readMode === 'webtoon'
+                ? 'flex h-screen w-full items-center justify-center'
+                : ''
+            }
+          >
+            <ComicImage
+              src={src}
+              alt={`${chapter.name} halaman ${i + 1}`}
+              pageIndex={i}
+              // HANYA halaman pertama yang langsung diminta (LCP + prioritas
+              // tinggi). Sisanya menunggu sampai dekat layar — dulu 3 halaman
+              // eager + margin lazy bawaan Chrome membuat 9 gambar / 1,7 MB
+              // berebut, dan halaman yang sedang dibaca kalah (53 detik di 3G).
+              eager={i === 0}
+              mountAhead={mountAhead}
+              onLoad={() => {
+                setLoadedPages((s) => (s.has(i) ? s : new Set(s).add(i)))
+              }}
+              className={
+                settings.readMode === 'webtoon'
+                  ? 'manga-img max-h-full max-w-full object-contain'
+                  : 'manga-img w-full'
+              }
+            />
+          </div>
         ))}
         <div className="h-10" />
       </div>

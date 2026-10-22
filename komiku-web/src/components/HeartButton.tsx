@@ -80,7 +80,7 @@ export default function HeartButton({ manga, className = '', labeled = false }: 
         e.stopPropagation()
         toggleFavorite(manga)
       }}
-      className={`relative grid place-items-center rounded-full transition-colors ${className}`}
+      className={`relative grid place-items-center rounded-full p-2 transition-colors ${className}`}
     >
       {heart}
       {count > 0 && (

@@ -1,11 +1,19 @@
+import { getUser } from './account'
+
 /**
  * Rak Buku — localStorage store lintas-sumber via title_key.
- * Key localStorage: 'komik-rak-v1'
+ * Key localStorage: 'komik-rak-v1' / 'komik-rak-v1:<username>' (per-akun).
  * title_key dari server (MangaOut.title_key) — JANGAN reimplement normalisasi di JS.
  */
 
 const KEY = 'komik-rak-v1'
 const HISTORY_MAX = 200
+
+/** Key localStorage per-akun: akun beda dapat rak terpisah. */
+function rakKey(): string {
+  const u = getUser()
+  return u ? `${KEY}:${u}` : KEY
+}
 
 export interface RakManga {
   title: string
@@ -32,7 +40,7 @@ interface RakData {
 
 function load(): RakData {
   try {
-    const raw = localStorage.getItem(KEY)
+    const raw = localStorage.getItem(rakKey())
     if (!raw) return { favorites: {}, history: {} }
     const parsed = JSON.parse(raw) as Partial<RakData>
     return {
@@ -46,7 +54,7 @@ function load(): RakData {
 
 function save(data: RakData): void {
   try {
-    localStorage.setItem(KEY, JSON.stringify(data))
+    localStorage.setItem(rakKey(), JSON.stringify(data))
   } catch {
     /* storage penuh / mode privat */
   }
