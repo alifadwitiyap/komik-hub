@@ -33,6 +33,7 @@ export function useAutoFullscreen(
   const [immersive, setImmersive] = useState(false)
   const [nativeActive, setNativeActive] = useState(false)
   const pixelsRef = useRef(0)
+  const busyRef = useRef(false)
   const lastY = useRef(0)
   const enabledRef = useRef(enabled)
   enabledRef.current = enabled
@@ -41,11 +42,19 @@ export function useAutoFullscreen(
 
   const enter = useCallback(() => {
     if (!enabledRef.current) return
+    if (busyRef.current) return
     const el = document.documentElement
     if (typeof el.requestFullscreen === 'function') {
+      busyRef.current = true
       el.requestFullscreen().then(
-        () => setNativeActive(true),
-        () => setImmersive(true), // ditolak → fallback immersive
+        () => {
+          busyRef.current = false
+          setNativeActive(true)
+        },
+        () => {
+          busyRef.current = false
+          setImmersive(true) // ditolak → fallback immersive
+        },
       )
     } else {
       setImmersive(true)
@@ -53,6 +62,7 @@ export function useAutoFullscreen(
   }, [])
 
   const exit = useCallback(() => {
+    busyRef.current = false
     if (document.fullscreenElement) void document.exitFullscreen().catch(() => {})
     setNativeActive(false)
     setImmersive(false)
@@ -64,10 +74,16 @@ export function useAutoFullscreen(
   }, [exit])
 
   // Sinkron dengan state fullscreen asli browser (mis. user menekan Esc).
+  // Saat keluar fullscreen, kosongkan SEMUA state aktif (native + immersive)
+  // dan reset akumulasi → scroll berikutnya bisa memicu lagi. Tanpa ini,
+  // fallback immersive bisa tertinggal `true` dan menutup ulang macet.
   useEffect(() => {
     const onChange = () => {
       if (!document.fullscreenElement) {
+        busyRef.current = false
         setNativeActive(false)
+        setImmersive(false)
+        pixelsRef.current = 0
       }
     }
     document.addEventListener('fullscreenchange', onChange)
