@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { imgSrc, imgSrcSet, imgUrl, READER_SIZES } from '../imgUrl'
 import { acquireImageSlot, recordImageSettle } from '../imgQueue'
 import { aspectOf, rememberAspect } from '../pageMemory'
@@ -10,6 +11,62 @@ import { aspectOf, rememberAspect } from '../pageMemory'
  * apa pun; tombol refresh murni opsional.
  */
 const STUCK_MS = 2000
+
+/**
+ * Ren der tombol "Coba lagi" melalui portal ke document.body dengan posisi
+ * fixed mengikuti kotak placeholder gambar yang gagal. Ini MENGGAGALKAN
+ * stacking-context yang dibuat `filter`/`transform` pada kontainer flow
+ * reader — tanpa portal, z-index tombol hanya naik dalam konteks itu dan
+ * tetap DI BAWAH overlay `ReaderFooter` (fixed z-30) / tap-tengah (z-10),
+ * sehingga tombol tak bisa diklik saat memberinya di bawah footer. Dengan
+ * portal, tombol ikut stacking-context akar dan z-40 > z-30.
+ */
+function FixedRetry({
+  targetRef,
+  onRetry,
+}: {
+  targetRef: React.RefObject<HTMLDivElement | null>
+  onRetry: () => void
+}) {
+  const [rect, setRect] = useState<DOMRect | null>(null)
+
+  useEffect(() => {
+    const update = () => {
+      const el = targetRef.current
+      if (el) setRect(el.getBoundingClientRect())
+    }
+    update()
+    window.addEventListener('scroll', update, { passive: true })
+    window.addEventListener('resize', update)
+    return () => {
+      window.removeEventListener('scroll', update)
+      window.removeEventListener('resize', update)
+    }
+  }, [targetRef])
+
+  if (!rect) return null
+
+  return (
+    <div
+      className="fixed left-0 top-0 z-40 flex flex-col items-center justify-center gap-2 px-4 py-10 text-center"
+      style={{
+        width: rect.width,
+        height: rect.height,
+        transform: `translate(${rect.left}px, ${rect.top}px)`,
+      }}
+    >
+      <p className="text-[12px] text-ink-400">Halaman gagal dimuat.</p>
+      <button
+        type="button"
+        onClick={onRetry}
+        className="rounded-lg border border-brand-amber-dim bg-white/80 px-3 py-1.5 text-[12px] font-semibold text-brand-amber"
+      >
+        Coba lagi
+      </button>
+    </div>
+  )
+}
+
 
 
 interface ComicImageProps {
@@ -109,6 +166,7 @@ export default function ComicImage({
   const startedAtRef = useRef(0)
   const [measured, setMeasured] = useState<{ url: string; ratio: number } | null>(null)
   const ref = useRef<HTMLImageElement | null>(null)
+  const slotRef = useRef<HTMLDivElement | null>(null)
   // onLoad terbaru tanpa memicu efek ulang tiap render induk
   const onLoadRef = useRef(onLoad)
   onLoadRef.current = onLoad
@@ -215,22 +273,17 @@ export default function ComicImage({
 
   if (failed) {
     return (
-      <div
-        // tinggi tetap dipertahankan walau gambar gagal, supaya halaman di
-        // bawahnya tidak "melompat" naik dan posisi baca tetap valid
-        className="flex flex-col items-center justify-center gap-2 px-4 py-10"
-        style={ratio ? { aspectRatio: String(ratio) } : undefined}
-      >
-        <p className="text-[12px] text-ink-400">Halaman gagal dimuat.</p>
-        <button
-          onClick={() => {
-            setFailed(false)
-            setAttempt((a) => a + 1)
-          }}
-          className="rounded-lg border border-brand-amber-dim px-3 py-1.5 text-[12px] font-semibold text-brand-amber"
-        >
-          Coba lagi
-        </button>
+      <div ref={slotRef} className="relative" style={ratio ? { aspectRatio: String(ratio) } : undefined}>
+        {createPortal(
+          <FixedRetry
+            targetRef={slotRef}
+            onRetry={() => {
+              setFailed(false)
+              setAttempt((a) => a + 1)
+            }}
+          />,
+          document.body,
+        )}
       </div>
     )
   }
