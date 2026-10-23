@@ -1,27 +1,35 @@
 /**
- * useAutoFullscreen — masuk layar penuh setelah scroll turun cukup jauh.
+ * useAutoFullscreen — masuk layar penuh lewat pola 2 lapis:
  *
- * Desain (hasil grill + perbaikan UX):
- * - Trigger: akumulasi JARAK scroll-turun (`TRIGGER_PX`). Begitu total turun
- *   melewati ambang, masuk fullscreen. Satu gerakan scroll cepat langsung
- *   memicu — tidak perlu menghitung gestur diskrit.
- * - Arah naik me-reset akumulasi (dari state non-aktif).
- * - Saat aktif: scroll naik → keluar. `exit()` TIDAK me-reset akumulasi,
- *   jadi begitu user batalin lalu scroll turun lagi, dia langsung masuk lagi
- *   (tanpa harus mengulang jarak penuh).
- * - `reset()` (tap tengah / ganti chapter) keluar + reset akumulasi penuh.
- * - Mode hybrid: Fullscreen API native dulu; kalau ditolak → "immersive"
- *   (pseudo-fullscreen, hanya sembunyiin chrome via state).
- * - Exit juga via Esc (fullscreenchange).
+ * 1. DETEKSI INTENT (scroll): flick scroll-turun cepat menyalakan flag
+ *    `pending` (niat), dengan masa berlaku `PENDING_TTL_MS`. Ini TIDAK
+ *    langsung memanggil requestFullscreen.
+ * 2. EKSEKUSI (ges : asli): `requestEnter()` dipanggil sinkron DI DALAM
+ *    event tap/klik (pointerup/click/keydown). Karena itu terjadi dalam
+ *    transient activation, browser pasti menerima permintaan — tidak lagi
+ *    "kadang masuk kadang engga".
+ *
+ * Keluar: Esc (native fullscreenchange), scroll naik, atau tap tengah
+ * (via `reset()`). Fallback ke "immersive" (sembunyikan chrome) saat
+ * Fullscreen API tidak tersedia / ditolak (mis. iOS Safari).
  */
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { gestureStep, THRESHOLD_PX } from './autoFullscreenLogic'
+import {
+  detectFlick,
+  pruneFlickSamples,
+  EXIT_SCROLL_THRESHOLD_PX,
+  PENDING_TTL_MS,
+} from './autoFullscreenLogic'
 
 export interface AutoFullscreenControl {
   /** immersive (pseudo-fullscreen) aktif — chrome disembunyikan via CSS/state */
   active: boolean
   /** native Fullscreen API aktif (beneran full layar) */
   nativeActive: boolean
+  /** niat terpasang (flick terdeteksi, menunggu tap untuk eksekusi) */
+  pending: boolean
+  /** panggil sinkron dalam event gesture asli (tap/klik) untuk masuk fullscreen */
+  requestEnter: () => void
   /** paksa keluar + reset hitungan */
   reset: () => void
 }
@@ -32,17 +40,37 @@ export function useAutoFullscreen(
 ): AutoFullscreenControl {
   const [immersive, setImmersive] = useState(false)
   const [nativeActive, setNativeActive] = useState(false)
-  const pixelsRef = useRef(0)
+  const [pending, setPending] = useState(false)
   const busyRef = useRef(false)
   const lastY = useRef(0)
+  const samplesRef = useRef<{ t: number; dy: number }[]>([])
+  const pendingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const enabledRef = useRef(enabled)
   enabledRef.current = enabled
   const restoringRef = useRef(restoring)
   restoringRef.current = restoring
 
-  const enter = useCallback(() => {
+  const clearPending = useCallback(() => {
+    if (pendingTimerRef.current) {
+      clearTimeout(pendingTimerRef.current)
+      pendingTimerRef.current = null
+    }
+    setPending(false)
+  }, [])
+
+  const armPending = useCallback(() => {
+    if (pendingTimerRef.current) clearTimeout(pendingTimerRef.current)
+    setPending(true)
+    pendingTimerRef.current = setTimeout(() => {
+      pendingTimerRef.current = null
+      setPending(false)
+    }, PENDING_TTL_MS)
+  }, [])
+
+  const requestEnter = useCallback(() => {
     if (!enabledRef.current) return
     if (busyRef.current) return
+    clearPending()
     const el = document.documentElement
     if (typeof el.requestFullscreen === 'function') {
       busyRef.current = true
@@ -59,7 +87,7 @@ export function useAutoFullscreen(
     } else {
       setImmersive(true)
     }
-  }, [])
+  }, [clearPending])
 
   const exit = useCallback(() => {
     busyRef.current = false
@@ -69,27 +97,41 @@ export function useAutoFullscreen(
   }, [])
 
   const reset = useCallback(() => {
-    pixelsRef.current = 0
+    clearPending()
     exit()
-  }, [exit])
+  }, [clearPending, exit])
 
   // Sinkron dengan state fullscreen asli browser (mis. user menekan Esc).
   // Saat keluar fullscreen, kosongkan SEMUA state aktif (native + immersive)
-  // dan reset akumulasi → scroll berikutnya bisa memicu lagi. Tanpa ini,
-  // fallback immersive bisa tertinggal `true` dan menutup ulang macet.
+  // dan reset akumulasi → scroll berikutnya bisa memicu lagi.
   useEffect(() => {
     const onChange = () => {
       if (!document.fullscreenElement) {
         busyRef.current = false
         setNativeActive(false)
         setImmersive(false)
-        pixelsRef.current = 0
       }
     }
     document.addEventListener('fullscreenchange', onChange)
     return () => document.removeEventListener('fullscreenchange', onChange)
   }, [])
 
+  // Lapis 1 — deteksi intent: wheel velocity → arm pending.
+  useEffect(() => {
+    const onWheel = (e: WheelEvent) => {
+      if (!enabledRef.current || restoringRef.current()) return
+      const now = performance.now()
+      samplesRef.current = pruneFlickSamples(
+        [...samplesRef.current, { t: now, dy: e.deltaY }],
+        now,
+      )
+      if (detectFlick(samplesRef.current, now)) armPending()
+    }
+    window.addEventListener('wheel', onWheel, { passive: true })
+    return () => window.removeEventListener('wheel', onWheel)
+  }, [armPending])
+
+  // Exit via scroll naik (saat aktif) + batal pending via scroll naik.
   useEffect(() => {
     lastY.current = window.scrollY
     const onScroll = () => {
@@ -98,21 +140,16 @@ export function useAutoFullscreen(
       const y = window.scrollY
       const d = y - lastY.current
       lastY.current = y
-      // saat aktif: scroll naik (melewati threshold) → lepas fullscreen.
-      // Akumulasi sengaja TIDAK di-reset → begitu turun lagi langsung bisa
-      // masuk kembali.
-      if (immersive || nativeActive) {
-        if (Math.abs(d) >= THRESHOLD_PX && d < 0) exit()
-        return
+      const active = immersive || nativeActive
+      if (Math.abs(d) < EXIT_SCROLL_THRESHOLD_PX) return
+      if (d < 0) {
+        if (active) exit()
+        else clearPending()
       }
-      if (Math.abs(d) < THRESHOLD_PX) return
-      const step = gestureStep(pixelsRef.current, d)
-      pixelsRef.current = step.pixels
-      if (step.fire) enter()
     }
     window.addEventListener('scroll', onScroll, { passive: true })
     return () => window.removeEventListener('scroll', onScroll)
-  }, [enter, exit, immersive, nativeActive])
+  }, [exit, clearPending, immersive, nativeActive])
 
-  return { active: immersive, nativeActive, reset }
+  return { active: immersive, nativeActive, pending, requestEnter, reset }
 }

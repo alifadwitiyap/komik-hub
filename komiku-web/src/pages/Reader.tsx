@@ -461,21 +461,37 @@ export default function Reader() {
 
   return (
     <div className={`relative min-h-screen ${settings.nightShift ? 'bg-night-dark' : 'bg-white'}`}>
-      {/* tap tengah: toggle chrome. Saat auto-fullscreen aktif, tap = keluar. */}
+      {/* tap tengah: toggle chrome. Saat ada niat (pending) → eksekusi
+          fullscreen (tap = gesture asli). Saat aktif → keluar. */}
       <button
         aria-label={
-          chromeHidden && !autoFS.active && !autoFS.nativeActive
-            ? 'Tampilkan kontrol'
-            : chromeHidden
-              ? 'Keluar fullscreen / sembunyikan'
-              : 'Sembunyikan kontrol'
+          autoFS.pending
+            ? 'Masuk fullscreen'
+            : chromeHidden && !autoFS.active && !autoFS.nativeActive
+              ? 'Tampilkan kontrol'
+              : chromeHidden
+                ? 'Keluar fullscreen / sembunyikan'
+                : 'Sembunyikan kontrol'
         }
         onClick={() => {
-          if (autoFS.active || autoFS.nativeActive) autoFS.reset()
+          if (autoFS.pending) autoFS.requestEnter()
+          else if (autoFS.active || autoFS.nativeActive) autoFS.reset()
           else chrome.toggle()
         }}
         className="fixed inset-0 z-10"
       />
+      {/* tombol fullscreen manual — jalur eksplisit (fallback iOS / saat
+          pending hangus). Muncul bareng chrome biar gak ganggu baca. */}
+      <button
+        aria-label="Masuk fullscreen"
+        title="Masuk fullscreen"
+        onClick={() => autoFS.requestEnter()}
+        className={`fixed left-1/2 top-16 z-40 rounded-lg border border-white/20 bg-black/60 px-3 py-1.5 text-[11px] font-semibold text-white/90 transition-opacity ${
+          chrome.visible ? 'opacity-100' : 'pointer-events-none opacity-0'
+        }`}
+      >
+        ⛶ Layar penuh
+      </button>
 
       <ReaderToolbar
         title={chapter.name}
