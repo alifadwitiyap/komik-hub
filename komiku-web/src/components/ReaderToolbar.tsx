@@ -89,7 +89,8 @@ export default function ReaderToolbar({
         {onDownload && (
           <button
             onClick={onDownload}
-            aria-label="Unduh offline"
+            aria-label="Simpan untuk dibaca offline"
+            title="Simpan untuk dibaca offline"
             className="grid size-11 place-items-center rounded-full text-white/90 active:bg-white/10"
           >
             <IconBolt className="size-4" />

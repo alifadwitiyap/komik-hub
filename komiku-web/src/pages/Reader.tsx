@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import ChapterPickerSheet from '../components/ChapterPickerSheet'
 import ComicImage from '../components/ComicImage'
@@ -9,6 +9,7 @@ import ReaderSettingsSheet from '../components/ReaderSettingsSheet'
 import ReaderToolbar from '../components/ReaderToolbar'
 import SourceBadge from '../components/SourceBadge'
 import { imgSrc, imgUrl, mountAheadPx } from '../imgUrl'
+import { downloadChapterImages } from '../chapterOffline'
 import { useReaderSettings } from '../hooks/useReaderSettings'
 import { useChromeOnScroll } from '../hooks/useChromeOnScroll'
 import { useAutoFullscreen } from '../hooks/useAutoFullscreen'
@@ -158,6 +159,36 @@ export default function Reader() {
   }, [chapterId])
 
   const images = data?.images ?? []
+
+  // "Unduh offline": simpan byte chapter ini ke cache (via service worker)
+  // agar kebaca saat internet/server mati. Terpisah dari ekspor PDF (Series).
+  const [downloading, setDownloading] = useState(false)
+  const onOfflineDownload = useCallback(async () => {
+    if (downloading || images.length === 0) return
+    setDownloading(true)
+    setToast('Mengunduh offline…')
+    let last = 0
+    const { ok, fail } = await downloadChapterImages(images, (done) => {
+      if (done !== last) {
+        last = done
+        setToast(`Mengunduh offline… ${done}/${images.length}`)
+      }
+    })
+    // Hangatkan cache API chapter: request pertama saat load bisa balapan dengan
+    // aktivasi service worker (belum masuk cache). Re-request lewat SW sekarang
+    // memastikan metadata chapter tersimpan → reload offline tidak kena 504.
+    try {
+      await loadChapter(chapterId)
+    } catch {
+      /* metadata sudah di memori; cache API tetap hangat kalau SW menangkap */
+    }
+    setDownloading(false)
+    setToast(
+      fail === 0
+        ? `Chapter tersimpan offline (${ok} halaman).`
+        : `Tersimpan ${ok}, ${fail} gagal — coba lagi nanti.`,
+    )
+  }, [downloading, images, chapterId])
 
   // Seberapa jauh di luar layar gambar boleh mulai diminta. Skalanya mengikuti
   // preferensi reader (hemat 0,4 · seimbang 1,5 · siapkan 3 viewport) dan
@@ -499,6 +530,7 @@ export default function Reader() {
         onBack={() => navigate(seriesHref(seriesId) ?? '/')}
         onHome={() => navigate('/')}
         onShare={() => setToast('Bagikan: salin URL halaman ini')}
+        onDownload={onOfflineDownload}
         onMore={() => setMenuOpen(true)}
         chip={settings.marathon ? 'Maraton' : null}
         badge={source && source !== 'komiku' ? <SourceBadge source={source} /> : null}
