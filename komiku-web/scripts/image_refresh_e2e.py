@@ -2,7 +2,8 @@
 
 Kontrak:
   1. Gambar (via /img) yang tidak settle dalam ~2s memunculkan tombol
-     refresh (aria-label "Muatin ulang halaman ini") di pojok kanan atas.
+     refresh (aria-label "Muatin ulang halaman ini") — membesar & di tengah
+     gambar (bukan pojok kanan atas).
   2. Klik tombol → re-mount <img> + URL baru ber-`?t=` (cache-buster).
   3. Klik tidak memunculkan "Coba lagi" (itu untuk error nyata), dan tidak
      memblokir scroll/reader.

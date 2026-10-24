@@ -300,15 +300,15 @@ export default function ComicImage({
             setBuster(Date.now())
             setAttempt((a) => a + 1)
           }}
-          className="absolute right-3 top-14 z-40 flex h-11 w-11 items-center justify-center rounded-full border border-ink-300 bg-ink-900/80 text-ink-200 shadow-lg transition hover:bg-ink-900 hover:text-ink-100 focus:outline-none focus:ring-2 focus:ring-brand-amber"
+          className="absolute left-1/2 top-1/2 z-40 flex h-20 w-20 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border-2 border-brand-amber-dim bg-ink-900/85 text-ink-100 shadow-xl transition hover:bg-ink-900 hover:text-white focus:outline-none focus:ring-2 focus:ring-brand-amber"
         >
           <svg
-            width="22"
-            height="22"
+            width="34"
+            height="34"
             viewBox="0 0 24 24"
             fill="none"
             stroke="currentColor"
-            strokeWidth="2"
+            strokeWidth="2.2"
             strokeLinecap="round"
             strokeLinejoin="round"
             aria-hidden="true"
