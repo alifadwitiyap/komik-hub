@@ -58,8 +58,22 @@ self.addEventListener('fetch', (e) => {
   //    bukan header), jadi respons `/api/progress`, `/api/read`,
   //    `/api/notif/favorites`, `/api/unified/downloads` milik akun A bisa
   //    dilayani ke akun B. Itu bocor state antar-orang. Request yang bawa
-  //    header `X-Komik-User` karena itu scoped akun → selalu ke jaringan.
-  if (req.headers.get('X-Komik-User')) return
+  //    header `X-Komik-User` DAN menyentuh state per-akun → selalu ke jaringan.
+  //    Konten PUBLIK (chapter/series metadata, gambar) TETAP di-cache walau
+  //    ada header — metadata chapter perlu cache supaya baca offline tetap
+  //    jalan saat login, dan tidak mengandung state akun.
+  const PRIVATE_PREFIXES = [
+    '/api/notif/',
+    '/api/progress',
+    '/api/read',
+    '/api/unified/downloads',
+    '/api/user/',
+  ]
+  if (req.headers.get('X-Komik-User')) {
+    const p = url.pathname
+    const isPrivate = PRIVATE_PREFIXES.some((pre) => p.startsWith(pre))
+    if (isPrivate) return
+  }
 
   // 1) GAMBAR halaman (proxy same-origin) → cache-first.
   //    URL-nya memuat URL CDN + lebar, dan isi CDN per chapter tidak pernah
