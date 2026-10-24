@@ -8,6 +8,7 @@ import Reader from './pages/Reader'
 import ReaderMarathon from './pages/ReaderMarathon'
 import Rak from './pages/Rak'
 import Akun from './pages/Akun'
+import Notifikasi from './pages/Notifikasi'
 import { IconHouse, IconRectangleHistory, IconMoon, IconSun, IconMagnifyingGlass, IconBookHeart, IconBell, IconUser } from './icons'
 import NotifPanel from './components/NotifPanel'
 import SourceHealthBadge from './components/SourceHealthBadge'
@@ -53,6 +54,7 @@ export default function App() {
             <Route path="/cari" element={<Search />} />
             <Route path="/rak" element={<Rak />} />
             <Route path="/akun" element={<Akun />} />
+            <Route path="/notifikasi" element={<Notifikasi />} />
             {/* manga: id komiku lama (angka) ATAU handle unified 'sumber:id' */}
             <Route path="/manga/:handle" element={<SeriesRoute />} />
             <Route path="/baca/:chapterId" element={<Reader />} />

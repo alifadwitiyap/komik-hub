@@ -134,13 +134,22 @@ export default function NotifPanel({
       </ul>
 
       {groups.length > 0 && (
-        <div className="border-t border-ink-800 px-3 py-2">
+        <div className="flex items-center border-t border-ink-800 px-3 py-2">
           <button
             onClick={() => onMarkRead('all')}
             disabled={unread === 0}
-            className="w-full rounded-xl py-2 text-[12px] font-bold text-brand-amber transition-colors hover:bg-ink-900 disabled:text-ink-500 disabled:hover:bg-transparent"
+            className="flex-1 rounded-xl py-2 text-[12px] font-bold text-brand-amber transition-colors hover:bg-ink-900 disabled:text-ink-500 disabled:hover:bg-transparent"
           >
             Tandai semua dibaca
+          </button>
+          <button
+            onClick={() => {
+              navigate('/notifikasi')
+              onClose()
+            }}
+            className="shrink-0 rounded-xl py-2 pl-2 pr-1 text-[12px] font-bold text-ink-300 transition-colors hover:text-ink-100"
+          >
+            Lihat semua
           </button>
         </div>
       )}
