@@ -17,6 +17,14 @@ interface ReaderSettingsSheetProps {
   onClose: () => void
   onChange: (patch: Partial<ReaderSettings>) => void
   onReset: () => void
+  /** Ekspor chapter saat ini sebagai PDF (server-side → tab Unduhan). */
+  onExportPdf?: () => void
+  /** Simpan chapter saat ini ke cache offline (service worker). */
+  onOfflineDownload?: () => void
+  /** true = aksi PDF sedang berjalan (disable tombol). */
+  exportingPdf?: boolean
+  /** true = aksi unduh offline sedang berjalan (disable tombol). */
+  downloading?: boolean
 }
 
 /**
@@ -31,6 +39,10 @@ export default function ReaderSettingsSheet({
   onClose,
   onChange,
   onReset,
+  onExportPdf,
+  onOfflineDownload,
+  exportingPdf,
+  downloading,
 }: ReaderSettingsSheetProps) {
   if (!open) return null
   return (
@@ -144,6 +156,36 @@ export default function ReaderSettingsSheet({
           ))}
         </div>
 
+        {(onExportPdf || onOfflineDownload) && (
+          <>
+            <div className="mt-3 flex items-center gap-2 px-4">
+              <span className="h-px flex-1 bg-ink-800" />
+              <span className="text-[10.5px] font-semibold uppercase tracking-wide text-ink-500">
+                Unduhan
+              </span>
+              <span className="h-px flex-1 bg-ink-800" />
+            </div>
+            {onExportPdf && (
+              <Row
+                icon={<IconBolt className="size-4" />}
+                label={exportingPdf ? 'Membuat PDF…' : 'Ekspor PDF'}
+                value={exportingPdf ? 'Mohon tunggu' : undefined}
+                disabled={exportingPdf}
+                onClick={onExportPdf}
+              />
+            )}
+            {onOfflineDownload && (
+              <Row
+                icon={<IconBolt className="size-4" />}
+                label={downloading ? 'Mengunduh offline…' : 'Simpan untuk dibaca offline'}
+                value={downloading ? 'Mohon tunggu' : undefined}
+                disabled={downloading}
+                onClick={onOfflineDownload}
+              />
+            )}
+          </>
+        )}
+
         <div className="mt-2 px-4">
           <button
             onClick={onReset}
@@ -164,6 +206,7 @@ function Row({
   toggle,
   onToggle,
   onClick,
+  disabled,
 }: {
   icon: React.ReactNode
   label: string
@@ -171,15 +214,17 @@ function Row({
   toggle?: boolean
   onToggle?: (v: boolean) => void
   onClick?: () => void
+  disabled?: boolean
 }) {
   const clickable = onClick !== undefined
   return (
     <div
       role={clickable ? 'button' : undefined}
-      tabIndex={clickable ? 0 : undefined}
-      onClick={onClick}
-      onKeyDown={clickable ? (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onClick() } } : undefined}
-      className={`flex items-center gap-3 px-4 py-3 ${clickable ? 'cursor-pointer select-none active:bg-ink-850' : ''}`}
+      tabIndex={clickable && !disabled ? 0 : undefined}
+      aria-disabled={disabled || undefined}
+      onClick={disabled ? undefined : onClick}
+      onKeyDown={clickable && !disabled ? (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onClick() } } : undefined}
+      className={`flex items-center gap-3 px-4 py-3 ${clickable ? `${disabled ? 'cursor-not-allowed opacity-50' : 'cursor-pointer select-none active:bg-ink-850'}` : ''}`}
     >
       <span className="grid size-8 place-items-center rounded-full bg-ink-850 text-ink-300">{icon}</span>
       <span className="min-w-0 flex-1 text-[13px] font-medium text-ink-100">{label}</span>

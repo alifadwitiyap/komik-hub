@@ -113,6 +113,18 @@ body,
   transition: background-color 200ms ease, color 200ms ease;
 }
 
+/* Logo brand: varian terang untuk mode siang, varian oranye-putih untuk
+   mode gelap (teks navy asli tak terbaca di latar gelap). */
+.logo-dark {
+  display: none;
+}
+.dark .logo-dark {
+  display: block;
+}
+.dark .logo-light {
+  display: none;
+}
+
 html,
 body,
 #root {

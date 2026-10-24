@@ -114,15 +114,29 @@ function TopBar({
     <header className="fixed inset-x-0 top-0 z-40 border-b border-ink-800 bg-ink-950/95 backdrop-blur">
       <div className="mx-auto flex h-14 max-w-3xl items-center gap-1 px-3">
         <Link to="/" className="flex items-center" aria-label="Komik Hub">
-          <img src="/logo-komik-hub.png" alt="Komik Hub" width={125} height={23} className="h-[23px] w-auto" />
+          <img
+            src="/logo-komik-hub.png"
+            alt="Komik Hub"
+            width={125}
+            height={23}
+            className="logo-light h-[23px] w-auto"
+          />
+          <img
+            src="/logo-komik-hub-light.png"
+            alt=""
+            width={125}
+            height={23}
+            className="logo-dark h-[23px] w-auto"
+            aria-hidden="true"
+          />
         </Link>
         <div className="ml-auto flex items-center gap-1.5">
           <SourceHealthBadge />
           <ThemeToggle />
-          <CircleButton label="Cari" to="/cari">
+          <CircleButton label="Cari" to="/cari" className="hidden sm:grid">
             <IconMagnifyingGlass className="size-4" />
           </CircleButton>
-          <CircleButton label="Rak buku" to="/rak">
+          <CircleButton label="Rak buku" to="/rak" className="hidden sm:grid">
             <IconBookHeart className="size-4" />
           </CircleButton>
           <CircleButton label="Akun" to="/akun">
@@ -178,17 +192,17 @@ function ThemeToggle() {
       aria-pressed={dark}
       data-theme-toggle
       title={toggleLabel}
-      className="grid size-[40px] place-items-center rounded-full bg-ink-850 text-ink-300 transition-colors active:bg-ink-800"
+      className="grid size-[40px] place-items-center rounded-full bg-ink-850 text-ink-200 transition-colors active:bg-ink-800"
     >
       {/* dua ikon ditumpuk; yang aktif yang terlihat (fade + rotate 200ms) */}
-      <span className="relative grid size-4 place-items-center">
+      <span className="relative size-4">
         <IconMoon
-          className={`absolute size-4 transition-all duration-200 ${
+          className={`absolute inset-0 m-auto size-4 transition-all duration-200 ${
             dark ? 'scale-50 rotate-90 opacity-0' : 'scale-100 rotate-0 opacity-100'
           }`}
         />
         <IconSun
-          className={`absolute size-4 transition-all duration-200 ${
+          className={`absolute inset-0 m-auto size-4 transition-all duration-200 ${
             dark ? 'scale-100 rotate-0 opacity-100' : 'scale-50 -rotate-90 opacity-0'
           }`}
         />
@@ -202,15 +216,17 @@ function CircleButton({
   to,
   onClick,
   children,
+  className,
   ...rest
 }: {
   label: string
   to?: string
   onClick?: () => void
   children: React.ReactNode
+  className?: string
 } & React.AriaAttributes) {
   const cls =
-    'grid size-[40px] place-items-center rounded-full bg-ink-850 text-ink-300 transition-colors active:bg-ink-800'
+    `grid size-[40px] place-items-center rounded-full bg-ink-850 text-ink-300 transition-colors active:bg-ink-800 ${className ?? ''}`
   if (to) {
     return (
       <Link to={to} aria-label={label} className={cls} {...rest}>
@@ -229,20 +245,32 @@ function CircleButton({
 function BottomNav() {
   return (
     <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-ink-800 bg-ink-950/95 pb-[env(safe-area-inset-bottom)] backdrop-blur">
-      <ul className="mx-auto flex max-w-3xl">
+      <ul className="flex w-full">
         {NAV.map(({ to, label, icon: Icon }) => (
           <li key={to} className="flex-1">
             <NavLink
               to={to}
               end={to === '/'}
               className={({ isActive }) =>
-                `flex flex-col items-center gap-[3px] py-2 text-[10.5px] font-medium transition-colors ${
-                  isActive ? 'text-brand-amber' : 'text-ink-500'
+                `relative flex flex-col items-center gap-[3px] py-2 text-[10.5px] font-medium transition-colors ${
+                  isActive ? 'text-brand-amber' : 'text-ink-500 hover:text-ink-200'
                 }`
               }
             >
-              <Icon className="size-4" />
-              {label}
+              {({ isActive }) => (
+                <>
+                  {isActive && (
+                    <span
+                      aria-hidden="true"
+                      className="absolute top-0 h-0.5 w-8 rounded-b-full bg-brand-amber"
+                    />
+                  )}
+                  <span className="grid size-4 place-items-center">
+                    <Icon className="size-4" />
+                  </span>
+                  {label}
+                </>
+              )}
             </NavLink>
           </li>
         ))}

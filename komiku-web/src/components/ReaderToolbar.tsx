@@ -1,4 +1,4 @@
-import { IconAngleLeft, IconHouse, IconShare, IconEllipsisV, IconBolt } from '../icons'
+import { IconAngleLeft, IconHouse, IconShare, IconEllipsisV } from '../icons'
 
 interface ReaderToolbarProps {
   title: string
@@ -12,17 +12,6 @@ interface ReaderToolbarProps {
   chip?: string | null
   /** badge sumber (muncul hanya untuk manga non-komiku) */
   badge?: React.ReactNode
-  /**
-   * Kalau diisi, tombol unduh (bolt) muncul di kanan sebelum menu —
-   * hanya ReaderMarathon yang mengirim; Reader.tsx tetap tanpa tombol.
-   */
-  onDownload?: () => void
-  /**
-   * Kalau diisi, tombol ekspor PDF (download arrow) muncul di samping tombol
-   * offline. Terpisah dari "Simpan untuk dibaca offline" — PDF di-generate
-   * server-side dan masuk tab Unduhan di Rak.
-   */
-  onExportPdf?: () => void
   /**
    * Node favorit (HeartButton) — Reader menyuntikkannya ketika series membawa
    * title_key (flow unified), supaya heart bisa dipakai tanpa reader tahu
@@ -47,8 +36,6 @@ export default function ReaderToolbar({
   onMore,
   chip,
   badge,
-  onDownload,
-  onExportPdf,
   heart,
   visible = true,
 }: ReaderToolbarProps) {
@@ -92,40 +79,6 @@ export default function ReaderToolbar({
           <span className="shrink-0 rounded-[5px] bg-brand-red px-2 py-[3px] text-[10.5px] font-semibold text-white">
             {chip}
           </span>
-        )}
-        {onExportPdf && (
-          <button
-            onClick={onExportPdf}
-            aria-label="Ekspor PDF"
-            title="Ekspor chapter ini sebagai PDF"
-            className="grid size-11 place-items-center rounded-full text-white/90 active:bg-white/10"
-          >
-            <svg
-              width="18"
-              height="18"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2.2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              aria-hidden="true"
-            >
-              <path d="M12 3v12" />
-              <polyline points="7 10 12 15 17 10" />
-              <path d="M4 19h16" />
-            </svg>
-          </button>
-        )}
-        {onDownload && (
-          <button
-            onClick={onDownload}
-            aria-label="Simpan untuk dibaca offline"
-            title="Simpan untuk dibaca offline"
-            className="grid size-11 place-items-center rounded-full text-white/90 active:bg-white/10"
-          >
-            <IconBolt className="size-4" />
-          </button>
         )}
         <button
           onClick={onShare}

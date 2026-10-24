@@ -69,7 +69,7 @@ export default function ReaderFooter({
             <IconArrowLeft className="size-3.5 shrink-0" />
             <span className="truncate">Sebelumnya</span>
             {prevName ? (
-              <span className="truncate font-medium opacity-70">· {prevName}</span>
+              <span className="hidden truncate font-medium opacity-70 sm:inline">· {prevName}</span>
             ) : null}
           </Link>
         )}
@@ -83,7 +83,7 @@ export default function ReaderFooter({
             Berikutnya
             <IconArrowRight className="size-3.5 shrink-0" />
             {nextName ? (
-              <span className="truncate font-medium opacity-80">· {nextName}</span>
+              <span className="hidden truncate font-medium opacity-80 sm:inline">· {nextName}</span>
             ) : null}
           </Link>
         ) : (

@@ -562,8 +562,6 @@ export default function Reader() {
         onBack={() => navigate(seriesHref(seriesId) ?? '/')}
         onHome={() => navigate('/')}
         onShare={() => setToast('Bagikan: salin URL halaman ini')}
-        onDownload={onOfflineDownload}
-        onExportPdf={parseUnifiedKey(chapterId) ? onExportPdf : undefined}
         onMore={() => setMenuOpen(true)}
         chip={settings.marathon ? 'Maraton' : null}
         badge={source && source !== 'komiku' ? <SourceBadge source={source} /> : null}
@@ -663,6 +661,10 @@ export default function Reader() {
         onClose={() => setSheetOpen(false)}
         onChange={onChange}
         onReset={onReset}
+        onExportPdf={parseUnifiedKey(chapterId) ? onExportPdf : undefined}
+        onOfflineDownload={onOfflineDownload}
+        exportingPdf={exportingPdf}
+        downloading={downloading}
       />
     </div>
   )
