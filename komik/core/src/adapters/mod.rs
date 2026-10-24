@@ -44,4 +44,35 @@ pub fn is_genre(slug: &str, name: &str) -> bool {
     true
 }
 
+#[cfg(test)]
+mod tests {
+    use super::is_genre;
+
+    #[test]
+    fn is_genre_buang_taxonomy_non_genre() {
+        // status/origin/format harus dibuang
+        assert!(!is_genre("tamat", "Tamat"));
+        assert!(!is_genre("completed", "Completed"));
+        assert!(!is_genre("jepang", "Jepang"));
+        assert!(!is_genre("china", "China"));
+        assert!(!is_genre("novel", "Novel"));
+        assert!(!is_genre("fanfiction", "Fanfiction"));
+        assert!(!is_genre("htl", "HTL"));
+        assert!(!is_genre("latest", "Latest"));
+        assert!(!is_genre("manhwa", "Manhwa"));
+        assert!(!is_genre("webtoon", "Webtoon"));
+        // case-insensitive di slug maupun nama
+        assert!(!is_genre("TAMAT", "tamat"));
+    }
+
+    #[test]
+    fn is_genre_pertahankan_genre_asli() {
+        assert!(is_genre("action", "Action"));
+        assert!(is_genre("romance", "Romance"));
+        assert!(is_genre("fantasy", "Fantasy"));
+        assert!(is_genre("slice-of-life", "Slice of Life"));
+        assert!(is_genre("martial-arts", "Martial Arts"));
+    }
+}
+
 use crate::model::SOURCE_PRIORITY;
