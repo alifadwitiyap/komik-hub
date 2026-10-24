@@ -36,29 +36,67 @@ fn progress_file(username: &str) -> PathBuf {
     progress_dir().join(format!("{username}.json"))
 }
 
+/// Versi skema state. Naikkan saat bentuk JSON berubah; beri migrasi di
+/// `CURRENT_SCHEMA_VERSION` sebelum baca.
+const CURRENT_SCHEMA_VERSION: u32 = 1;
+
 #[derive(Debug, Default, Serialize, Deserialize)]
 struct ProgressState {
+    /// Versi skema file. `#[serde(default)]` → file lama (tanpa field) dibaca
+    /// sebagai versi 1 — tidak pernah panic.
+    #[serde(default = "schema_v1")]
+    schema_version: u32,
     #[serde(default)]
     entries: Vec<Value>,
 }
 
+fn schema_v1() -> u32 {
+    1
+}
+
 fn read_state(path: &Path) -> ProgressState {
-    std::fs::read(path)
+    let st = std::fs::read(path)
         .ok()
         .and_then(|b| serde_json::from_slice::<ProgressState>(&b).ok())
-        .unwrap_or_default()
+        .unwrap_or_default();
+    // Migrasi naik (versi > CURRENT belum dikenal → diamkan ke default yang
+    // aman? Tidak: jangan jatuhkan data. Hanya catat bila lebih baru).
+    debug_assert!(st.schema_version <= CURRENT_SCHEMA_VERSION);
+    st
 }
 
 /// Tulis atomik (temp + rename) — pola sama `notif.rs`/`downloads.rs`: state
 /// tidak boleh setengah tertulis kalau proses mati di tengah.
+///
+/// Dua penyesuaian Windows (sama `read.rs`):
+///  - nama file temp UNIK per tulis (pid + counter). Temp shared → dua penulis
+///    saling menimpa lalu rename yang salah → state korup.
+///  - `rename` GAGAL di Windows kalau file tujuan sedang dibuka proses lain
+///    (mis. GET paralel) → retry singkat.
 fn write_state(path: &Path, st: &ProgressState) -> anyhow::Result<()> {
     if let Some(parent) = path.parent() {
         std::fs::create_dir_all(parent)?;
     }
-    let tmp = path.with_extension("json.tmp");
+    static SEQ: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
+    let seq = SEQ.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+    let tmp = path.with_extension(format!("json.tmp.{}.{}", std::process::id(), seq));
     std::fs::write(&tmp, serde_json::to_vec(st)?)?;
-    std::fs::rename(&tmp, path)?;
-    Ok(())
+    let mut last: Option<std::io::Error> = None;
+    for attempt in 0..10 {
+        match std::fs::rename(&tmp, path) {
+            Ok(()) => return Ok(()),
+            Err(e) => {
+                last = Some(e);
+                // Windows: file tujuan sedang dibuka → tunggu sebentar, coba lagi.
+                std::thread::sleep(std::time::Duration::from_millis(5 * (attempt + 1)));
+            }
+        }
+    }
+    let _ = std::fs::remove_file(&tmp);
+    Err(anyhow::anyhow!(
+        "gagal rename state progress: {}",
+        last.map(|e| e.to_string()).unwrap_or_default()
+    ))
 }
 
 /// GET /api/progress -> {entries:[...]}
@@ -87,6 +125,7 @@ async fn put_progress(headers: HeaderMap, Json(req): Json<PutProgressReq>) -> Re
         )));
     }
     let st = ProgressState {
+        schema_version: CURRENT_SCHEMA_VERSION,
         entries: req.entries,
     };
     let body = serde_json::to_vec(&st)
@@ -129,6 +168,7 @@ mod tests {
         let path = dir.join("progress").join("alif.json");
 
         let st = ProgressState {
+            schema_version: CURRENT_SCHEMA_VERSION,
             entries: vec![json!({ "seriesId": 1308, "page": 5, "at": 1 })],
         };
         write_state(&path, &st).expect("tulis");
@@ -151,6 +191,30 @@ mod tests {
         std::fs::write(&bad, b"{bukan json").unwrap();
         assert!(read_state(&bad).entries.is_empty());
         let _ = std::fs::remove_file(&bad);
+    }
+
+    #[test]
+    fn file_lama_tanpa_schema_version_dibaca_v1() {
+        // Back-compat: file yang ditulis versi lama (tanpa field schema_version)
+        // harus tetap terbaca — default ke versi 1, bukan korup/gagal.
+        let dir = std::env::temp_dir().join(format!(
+            "komiku-progress-lama-{}-{}",
+            std::process::id(),
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap()
+                .as_nanos()
+        ));
+        let path = dir.join("progress").join("alif.json");
+        std::fs::create_dir_all(path.parent().unwrap()).unwrap();
+        std::fs::write(&path, b"{\"entries\":[{\"seriesId\":1308,\"page\":5}]}").unwrap();
+
+        let st = read_state(&path);
+        assert_eq!(st.schema_version, 1);
+        assert_eq!(st.entries.len(), 1);
+        assert_eq!(st.entries[0]["page"], 5);
+
+        let _ = std::fs::remove_dir_all(&dir);
     }
 
     #[test]

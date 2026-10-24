@@ -52,17 +52,36 @@ fn read_file(username: &str) -> PathBuf {
     users_dir().join("read").join(format!("{username}.json"))
 }
 
+/// Versi skema state. Naikkan saat bentuk JSON berubah; beri migrasi di
+/// `CURRENT_SCHEMA_VERSION` sebelum baca.
+const CURRENT_SCHEMA_VERSION: u32 = 1;
+
 #[derive(Debug, Default, Serialize, Deserialize)]
 struct ReadState {
+    /// Versi skema file. `#[serde(default)]` → file lama (tanpa field) dibaca
+    /// sebagai versi 1 — tidak pernah panic.
+    #[serde(default = "schema_v1")]
+    schema_version: u32,
     #[serde(default)]
     marks: Marks,
 }
 
+fn schema_v1() -> u32 {
+    1
+}
+
 fn read_state(path: &Path) -> ReadState {
-    std::fs::read(path)
+    let mut st = std::fs::read(path)
         .ok()
         .and_then(|b| serde_json::from_slice::<ReadState>(&b).ok())
-        .unwrap_or_default()
+        .unwrap_or_default();
+    // Normalisasi: file baru (default) atau file lama tanpa schema_version
+    // dianggap versi 1. Jangan biarkan 0 tertulis — 0 bukan versi valid.
+    if st.schema_version == 0 {
+        st.schema_version = CURRENT_SCHEMA_VERSION;
+    }
+    debug_assert!(st.schema_version <= CURRENT_SCHEMA_VERSION);
+    st
 }
 
 /// Tulis atomik (temp + rename) — pola sama `progress.rs`/`notif.rs`.
