@@ -117,7 +117,10 @@ self.addEventListener('fetch', (e) => {
 /** cache-first untuk gambar, dengan pemangkasan entri terlama. */
 async function cacheFirstImage(req) {
   const cache = await caches.open(IMG)
-  const hit = await cache.match(req)
+  // ignoreVary: gambar same-origin immutable — varian mime (WebP/AVIF) tidak
+  // relevan untuk cache SW; match cukup berdasar URL. Tanpa ini, `Vary:
+  // Accept` dari server bikin miss saat offline (Accept <img> ≠ Accept fetch).
+  const hit = await cache.match(req, { ignoreVary: true })
   if (hit) return hit
   try {
     const res = await fetch(req)
