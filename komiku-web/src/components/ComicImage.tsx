@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { imgSrc, imgSrcSet, imgUrl, READER_SIZES } from '../imgUrl'
+import { imgSrc, imgSrcSet, imgUrl, pickWidth, READER_SIZES } from '../imgUrl'
 import { acquireImageSlot, recordImageSettle } from '../imgQueue'
 import { aspectOf, rememberAspect } from '../pageMemory'
 
@@ -165,6 +165,16 @@ export default function ComicImage({
   const releaseRef = useRef<(() => void) | null>(null)
   const startedAtRef = useRef(0)
   const [measured, setMeasured] = useState<{ url: string; ratio: number } | null>(null)
+  // Lebar viewport → dipakai memilih lebar default `src` (fallback browser
+  // tanpa srcset). Resize memicu re-render ringan.
+  const [vpW, setVpW] = useState<number>(() =>
+    typeof window !== 'undefined' ? window.innerWidth : 900,
+  )
+  useEffect(() => {
+    const onResize = () => setVpW(window.innerWidth)
+    window.addEventListener('resize', onResize)
+    return () => window.removeEventListener('resize', onResize)
+  }, [])
   const ref = useRef<HTMLImageElement | null>(null)
   const slotRef = useRef<HTMLDivElement | null>(null)
   // onLoad terbaru tanpa memicu efek ulang tiap render induk
@@ -177,6 +187,12 @@ export default function ComicImage({
   const ratio =
     (measured?.url === url ? measured.ratio : null) ?? aspectOf(url) ?? fallbackRatio
   const srcSet = imgSrcSet(src, undefined, buster || undefined)
+  // Lebar default `src` (fallback kalau browser tak pakai srcset): adaptif
+  // terhadap viewport + koneksi — error lambat → 480px (hemat data).
+  const defaultWidth = pickWidth(vpW)
+  // LQIP / dominant-color placeholder: thumbnail 32px proxy, di-blur, tampil
+  // sampai gambar penuh `shown` → kotak tak kosong saat scroll.
+  const lqip = started ? imgSrc(src, 32, buster || undefined) : ''
 
   // chapter berganti → reset state gambar
   useEffect(() => {
@@ -290,6 +306,15 @@ export default function ComicImage({
 
   return (
     <div className="relative">
+      {/** LQIP: thumbnail blur sebagai placeholder selama gambar penuh belum `shown`.
+          Crossfade halus via opacity; tidak menangkap pointer. */}
+      {started && lqip && (
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-0 bg-cover bg-center blur-md transition-opacity duration-200"
+          style={{ backgroundImage: `url(${lqip})`, opacity: shown ? 0 : 1 }}
+        />
+      )}
       {stuck && (
         <button
           type="button"
@@ -322,7 +347,7 @@ export default function ComicImage({
       key={attempt}
       ref={ref}
       // Tanpa `started`: TIDAK ada src sama sekali = 0 byte terunduh.
-      src={started ? imgSrc(src, 640, buster || undefined) : undefined}
+      src={started ? imgSrc(src, defaultWidth, buster || undefined) : undefined}
       srcSet={started ? srcSet : undefined}
       sizes={started && srcSet ? sizes : undefined}
       alt={alt}

@@ -61,6 +61,9 @@ export const IMG_HOSTS = [
 /** Lebar yang dilayani proxy `/img` (px). Harus di dalam rentang server 96..1400. */
 export const READER_WIDTHS = [480, 640, 900] as const
 
+/** Alias publik untuk lebar responsif yang didukung proxy (kelipatan READER_WIDTHS). */
+export const RESPONSIVE_WIDTHS = READER_WIDTHS
+
 /** `sizes` halaman reader: kontainer `max-w-3xl` (768 px) di layar lebar. */
 export const READER_SIZES = '(min-width: 800px) 768px, 100vw'
 
@@ -136,6 +139,19 @@ export function slowLink(): boolean {
   if (!c) return false
   if (c.saveData) return true
   return c.effectiveType === 'slow-2g' || c.effectiveType === '2g'
+}
+
+/**
+ * Pilih lebar gambar utama berdasarkan lebar viewport + kondisi koneksi.
+ * Jaringan lambat (Save-Data/2G) dipaksa lebar terkecil (480px) untuk hemat
+ * data; selain itu senada dengan kontainer reader (`max-w-3xl` = 768px):
+ * viewport ≤ 768px cukup 640px, sedangkan layar lebar memakai 900px.
+ */
+export function pickWidth(viewportW: number): number {
+  if (slowLink()) return READER_WIDTHS[0]
+  if (viewportW <= 480) return READER_WIDTHS[0]
+  if (viewportW <= 768) return READER_WIDTHS[1]
+  return READER_WIDTHS[2]
 }
 
 /** Mode pembaca tersimpan; `undefined` = belum pernah memilih (default). */
