@@ -1034,6 +1034,7 @@ dependencies = [
  "image",
  "komik-core",
  "once_cell",
+ "ravif",
  "reqwest",
  "serde",
  "serde_json",

@@ -24,7 +24,7 @@
 use axum::{
     body::Body,
     extract::Query,
-    http::{header, HeaderValue, StatusCode},
+    http::{header, HeaderMap, HeaderValue, StatusCode},
     response::{IntoResponse, Response},
     Json,
 };
@@ -96,9 +96,38 @@ fn sha1_hex(s: &str) -> String {
     h.finalize().iter().map(|b| format!("{b:02x}")).collect()
 }
 
-fn cache_path(key: &str) -> PathBuf {
+/// Format output proxy /img. WebP default; AVIF (opsional) untuk sampul/
+/// thumbnail kecil via negosiasi Accept. Passthrough = byte asli (tanpa resize).
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum ImgFormat {
+    WebP,
+    Avif,
+    Passthrough,
+}
+
+impl ImgFormat {
+    fn ext(self) -> &'static str {
+        match self {
+            Self::WebP => "webp",
+            Self::Avif => "avif",
+            Self::Passthrough => "",
+        }
+    }
+
+    fn mime(self) -> &'static str {
+        match self {
+            Self::WebP => "image/webp",
+            Self::Avif => "image/avif",
+            Self::Passthrough => "application/octet-stream",
+        }
+    }
+}
+
+/// Path cache untuk varian format tertentu — ekstensi ikut menentukan format,
+/// sehingga WebP dan AVIF tidak saling menimpa di disk.
+fn cache_path_fmt(key: &str, fmt: ImgFormat) -> PathBuf {
     let shard = &key[0..2];
-    cache_dir().join(shard).join(format!("{key}.webp"))
+    cache_dir().join(shard).join(format!("{key}.{}", fmt.ext()))
 }
 
 /// Path byte asli hasil fetch upstream (kunci = URL saja, bukan URL+lebar).
@@ -144,15 +173,17 @@ fn err(status: StatusCode, msg: &str) -> Response {
     (status, Json(serde_json::json!({ "error": msg }))).into_response()
 }
 
-fn immutable(bytes: Vec<u8>, etag: &str, cache: &str) -> Response {
+fn immutable(bytes: Vec<u8>, etag: &str, cache: &str, mime: &'static str) -> Response {
     let body = Body::from(bytes);
     let mut resp = Response::new(body);
     let h = resp.headers_mut();
-    h.insert(header::CONTENT_TYPE, HeaderValue::from_static("image/webp"));
+    h.insert(header::CONTENT_TYPE, HeaderValue::from_static(mime));
     h.insert(
         header::CACHE_CONTROL,
         HeaderValue::from_static("public, max-age=31536000, immutable"),
     );
+    // Vary: Accept — respons beda per varian (webp/avif) yang dinegosiasikan.
+    h.insert("vary", HeaderValue::from_static("Accept"));
     if let Ok(v) = HeaderValue::from_str(etag) {
         h.insert(header::ETAG, v);
     }
@@ -195,6 +226,44 @@ fn resize_encode(src: &[u8], target_w: u32) -> Result<Vec<u8>, String> {
     };
     let enc = webp::Encoder::from_rgb(rgb.as_raw(), rgb.width(), rgb.height());
     Ok(enc.encode(q).to_vec())
+}
+
+/// Decode → resize (decode/lebar/filter sama seperti `resize_encode`) → AVIF
+/// lossy via `ravif` (rav1e). Kualitas 72 (rentang valid 1..=100); dipakai
+/// hanya untuk sampul/thumbnail kecil (w<=320) saat klien meminta image/avif.
+fn resize_encode_avif(src: &[u8], target_w: u32) -> Result<Vec<u8>, String> {
+    let img = image::load_from_memory(src).map_err(|e| format!("decode: {e}"))?;
+    let (sw, sh) = (img.width(), img.height());
+    if sw == 0 || sh == 0 {
+        return Err("dimensi tak valid".into());
+    }
+    let w = target_w.min(sw); // jangan pernah memperbesar
+    let h = ((sh as u64 * w as u64) / sw as u64).max(1) as u32;
+    // Filter sama dengan resize_encode: Lanczos3 untuk line-art, Triangle untuk
+    // gambar besar agar CPU tidak meledak.
+    let filter = if (sw as u64 * sh as u64) > 12_000_000 {
+        FilterType::Triangle
+    } else {
+        FilterType::Lanczos3
+    };
+    let small = if w == sw {
+        img
+    } else {
+        img.resize_exact(w, h, filter)
+    };
+    let rgb = small.to_rgb8();
+    // Kualitas AVIF: thumbnail kecil, 72 sudah tak terbedakan.
+    let q = 72.0;
+    // ravif butuh &[RGB8]; bangun dari byte RGB mentah.
+    let pixels: Vec<ravif::RGB8> = rgb
+        .as_raw()
+        .chunks_exact(3)
+        .map(|c| ravif::RGB8::new(c[0], c[1], c[2]))
+        .collect();
+    let img = ravif::Img::new(&pixels[..], rgb.width() as usize, rgb.height() as usize);
+    let enc = ravif::Encoder::new().with_quality(q);
+    let res = enc.encode_rgb(img).map_err(|e| format!("encode avif: {e}"))?;
+    Ok(res.avif_file)
 }
 
 async fn fetch_upstream(url: &str) -> Result<(String, Vec<u8>), String> {
@@ -279,7 +348,7 @@ fn evict_if_needed() {
 }
 
 /// Handler `/img`. Isi cache di disk; miss → ambil dari CDN, resize, simpan.
-pub async fn img_handler(Query(q): Query<ImgQuery>) -> Response {
+pub async fn img_handler(Query(q): Query<ImgQuery>, headers: HeaderMap) -> Response {
     if q.u.len() > 2048 || !crate::hosts::host_allowed(&q.u) {
         return err(StatusCode::FORBIDDEN, "host gambar tidak diizinkan");
     }
@@ -287,13 +356,27 @@ pub async fn img_handler(Query(q): Query<ImgQuery>) -> Response {
     if raw_w != 0 && !(W_MIN..=W_MAX).contains(&raw_w) {
         return err(StatusCode::BAD_REQUEST, "lebar di luar rentang");
     }
-    // kunci cache: URL + lebar (0 = passthrough byte asli)
-    let key = sha1_hex(&format!("{}|{}", q.u, raw_w));
-    let path = cache_path(&key);
+
+    // Negosiasi AVIF (opsional): hanya bila klien menerima `image/avif` DAN
+    // lebar kecil (sampul/thumbnail, w<=320). WebP tetap default untuk yang lain.
+    let accepts_avif = headers
+        .get(header::ACCEPT)
+        .and_then(|v| v.to_str().ok())
+        .map(|v| v.split(',').any(|t| t.trim_start().starts_with("image/avif")))
+        .unwrap_or(false);
+    let fmt = if accepts_avif && raw_w != 0 && raw_w <= 320 {
+        ImgFormat::Avif
+    } else {
+        ImgFormat::WebP
+    };
+
+    // kunci cache unik per format (WebP vs AVIF berbeda, tidak saling timpa).
+    let key = sha1_hex(&format!("{}|{}|{}", q.u, raw_w, fmt.ext()));
+    let path = cache_path_fmt(&key, fmt);
     let etag = format!("\"{key}\"");
 
     if let Ok(bytes) = std::fs::read(&path) {
-        return immutable(bytes, &etag, "hit");
+        return immutable(bytes, &etag, "hit", fmt.mime());
     }
 
     // single-flight: kunci per key supaya decode/encode tidak dobel
@@ -309,7 +392,7 @@ pub async fn img_handler(Query(q): Query<ImgQuery>) -> Response {
     if let Ok(bytes) = std::fs::read(&path) {
         drop(guard);
         inflight_release(&key).await;
-        return immutable(bytes, &etag, "hit");
+        return immutable(bytes, &etag, "hit", fmt.mime());
     }
 
     // --- byte ASLI di-cache terpisah, dipakai bersama semua lebar ---
@@ -337,40 +420,74 @@ pub async fn img_handler(Query(q): Query<ImgQuery>) -> Response {
     if raw_w == 0 {
         drop(guard);
         inflight_release(&key).await;
-        let mut resp = immutable(upstream.clone(), &etag, "miss-passthrough");
-        resp.headers_mut().insert(
-            header::CONTENT_TYPE,
-            HeaderValue::from_static(sniff_type(&upstream)),
-        );
-        return resp;
+        return immutable(upstream.clone(), &etag, "miss-passthrough", sniff_type(&upstream));
     }
 
     let fetch_ms = t_fetch.elapsed().as_millis() as u64;
     // Decode + encode di blocking pool (CPU-bound, jangan menahan worker async).
     let t_enc = std::time::Instant::now();
-    let src = upstream.clone();
     let target = raw_w;
-    // salinan untuk jalur gagal: byte asli lebih baik daripada halaman kosong
     let fallback = upstream.clone();
-    let encoded = match tokio::task::spawn_blocking(move || resize_encode(&src, target)).await {
-        Ok(Ok(v)) => v,
-        Ok(Err(e)) => {
-            tracing::warn!("img resize gagal: {e} — kirim byte asli");
-            fallback
+
+    // Encode sesuai format yang dinegosiasikan; bila encoder gagal, turun ke
+    // WebP lalu ke byte asli — jangan pernah 500.
+    let (encoded, out_fmt): (Vec<u8>, ImgFormat) = if fmt == ImgFormat::Avif {
+        let r = tokio::task::spawn_blocking({
+            let src = upstream.clone();
+            move || resize_encode_avif(&src, target)
+        })
+        .await;
+        match r {
+            Ok(Ok(v)) => (v, ImgFormat::Avif),
+            _ => {
+                tracing::warn!("img avif gagal — fallback WebP");
+                match tokio::task::spawn_blocking({
+                    let src = upstream.clone();
+                    move || resize_encode(&src, target)
+                })
+                .await
+                {
+                    Ok(Ok(v)) => (v, ImgFormat::WebP),
+                    _ => {
+                        tracing::warn!("img webp fallback juga gagal — kirim byte asli");
+                        (fallback, ImgFormat::Passthrough)
+                    }
+                }
+            }
         }
-        Err(e) => {
-            tracing::warn!("img resize panik: {e} — kirim byte asli");
-            fallback
+    } else {
+        let r = tokio::task::spawn_blocking({
+            let src = upstream.clone();
+            move || resize_encode(&src, target)
+        })
+        .await;
+        match r {
+            Ok(Ok(v)) => (v, ImgFormat::WebP),
+            _ => {
+                tracing::warn!("img resize gagal — kirim byte asli");
+                (fallback, ImgFormat::Passthrough)
+            }
         }
     };
 
+    // Simpan ke cache hanya jika hasilnya format terencode; gunakan kunci cache
+    // format yang benar (bisa beda dari yang diminta saat terjadi fallback).
+    if out_fmt != ImgFormat::Passthrough {
+        let write_key = if out_fmt == fmt {
+            key.clone()
+        } else {
+            sha1_hex(&format!("{}|{}|{}", q.u, raw_w, out_fmt.ext()))
+        };
+        write_atomic(&cache_path_fmt(&write_key, out_fmt), &encoded);
+    }
+
     tracing::info!(
-        "img miss w={raw_w} fetch={fetch_ms}ms encode={}ms upstream={}B out={}B",
+        "img miss w={raw_w} fetch={fetch_ms}ms encode={}ms upstream={}B out={}B fmt={}",
         t_enc.elapsed().as_millis(),
         upstream.len(),
-        encoded.len()
+        encoded.len(),
+        out_fmt.ext()
     );
-    write_atomic(&path, &encoded);
 
     drop(guard);
     inflight_release(&key).await;
@@ -380,7 +497,12 @@ pub async fn img_handler(Query(q): Query<ImgQuery>) -> Response {
         std::thread::spawn(evict_if_needed);
     }
 
-    immutable(encoded, &etag, "miss")
+    let mime = if out_fmt == ImgFormat::Passthrough {
+        sniff_type(&encoded)
+    } else {
+        out_fmt.mime()
+    };
+    immutable(encoded, &etag, "miss", mime)
 }
 
 async fn inflight_release(key: &str) {
@@ -415,7 +537,7 @@ mod tests {
     #[test]
     fn path_cache_ter_shard() {
         let key = sha1_hex("https://x/1.webp|480");
-        let p = cache_path(&key);
+        let p = cache_path_fmt(&key, ImgFormat::WebP);
         let s = p.to_string_lossy().replace('\\', "/");
         assert!(s.contains("/imgcache/"), "path: {s}");
         assert!(s.ends_with(&format!("{key}.webp")), "path: {s}");
@@ -445,5 +567,32 @@ mod tests {
         let out = resize_encode(&buf, 900).expect("encode");
         let back = image::load_from_memory(&out).expect("decode hasil");
         assert_eq!((back.width(), back.height()), (300, 400));
+    }
+
+    #[test]
+    fn resize_avif_menghasilkan_bytes() {
+        let mut buf = Vec::new();
+        let img = image::RgbImage::from_pixel(300, 400, image::Rgb([10, 10, 10]));
+        image::DynamicImage::ImageRgb8(img)
+            .write_to(&mut std::io::Cursor::new(&mut buf), image::ImageFormat::Png)
+            .unwrap();
+        let out = resize_encode_avif(&buf, 200).expect("encode avif");
+        assert!(!out.is_empty());
+        // AVIF/HEIF wajib memuat box "ftyp" di awal file.
+        assert!(
+            out.windows(4).any(|w| w == b"ftyp"),
+            "output bukan AVIF: len={}",
+            out.len()
+        );
+    }
+
+    #[test]
+    fn kunci_cache_beda_per_format() {
+        let k_webp = sha1_hex("https://x/1.webp|200|webp");
+        let k_avif = sha1_hex("https://x/1.webp|200|avif");
+        assert_ne!(k_webp, k_avif, "WebP dan AVIF harus punya kunci cache beda");
+        assert!(cache_path_fmt(&k_avif, ImgFormat::Avif)
+            .to_string_lossy()
+            .ends_with(".avif"));
     }
 }
