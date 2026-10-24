@@ -22,10 +22,14 @@ Catatan kontrak: cache offline hidup sepenuhnya di browser (Cache Storage SW),
 tidak menyentuh rak unduhan server. Karena itu /api/unified/downloads TIDAK
 boleh bertambah — itu bukti tidak ada PDF yang dibuat.
 """
+import json
 import os
+import random
 import re
+import string
 import sys
 import time
+import urllib.request
 from playwright.sync_api import sync_playwright
 
 BASE = "http://127.0.0.1:8788"
@@ -39,6 +43,10 @@ os.makedirs(SHOTS, exist_ok=True)
 HANDLE = "komiku:6426"
 SERIES_URL = BASE + "/manga/" + HANDLE
 RANGE_N = 2  # range 2 chapter
+
+# akun throwaway — mencegah LoginPromoModal intercept klik pada rute non-baca
+USER = "e2edlcache" + "".join(random.choice(string.ascii_lowercase + string.digits)
+                              for _ in range(6))
 
 passed, failed = [], []
 
@@ -71,6 +79,8 @@ def chapter_numbers_from(labels):
 with sync_playwright() as p:
     browser = p.chromium.launch(headless=True)
     ctx = browser.new_context(viewport={"width": 1280, "height": 900}, locale="id-ID")
+    # akun aktif → header X-Komik-User + skip LoginPromoModal (intercept klik)
+    ctx.add_init_script(f"localStorage.setItem('komik-akun-v1', {json.dumps(USER)});")
     page = ctx.new_page()
     errors = []
     page.on("pageerror", lambda e: errors.append(str(e)))
