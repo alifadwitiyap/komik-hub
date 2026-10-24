@@ -174,7 +174,7 @@ export default function ReaderMarathon() {
 
   // maraton = chaining selalu aktif (tanpa hambatan).
   const chainExhausted = blocks.length >= MAX_BLOCKS || (tail && !tail.nextId)
-  const NEXT_CHAPTER_AT = 0.8 // muat chapter berikutnya saat 80% chapter terbaca
+  const NEXT_CHAPTER_AT = 0.7 // muat chapter berikutnya saat 70% chapter terbaca
 
   // Progres baca SEBENARNYA (= posisi scroll), bukan posisi muat: chaining
   // sudah memuat chapter berikutnya lebih dulu, jadi progres harus mengikuti
@@ -270,8 +270,10 @@ export default function ReaderMarathon() {
 
   useEffect(() => {
     if (chainExhausted) return
-    //GERBANG juga di sini: jaring pengaman baru dipasang setelah chapter
-    // terakhir selesai dimuat, jadi scroll cepat tak lagi memicu preload.
+    // GERBANG juga di sini: jaring pengaman baru dipasang setelah chapter
+    // terakhir selesai dimuat (termasuk gambar yang GAGAL — gagal ikut
+    // dihitung "beres" via onSettled), jadi scroll cepat tak memicu preload
+    // sebelum chapter terakhir penuh.
     if (!lastBlockSettled) return
     const el = bottomRef.current
     if (!el) return
