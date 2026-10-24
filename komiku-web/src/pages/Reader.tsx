@@ -486,7 +486,7 @@ export default function Reader() {
         aria-label="Masuk fullscreen"
         title="Masuk fullscreen"
         onClick={() => autoFS.requestEnter()}
-        className={`fixed left-1/2 top-16 z-40 rounded-lg border border-white/20 bg-black/60 px-3 py-1.5 text-[11px] font-semibold text-white/90 transition-opacity ${
+        className={`fixed left-1/2 top-16 z-40 flex min-h-[44px] min-w-[112px] items-center justify-center rounded-full border border-white/25 bg-black/70 px-5 text-[13px] font-semibold text-white shadow-lg transition-opacity select-none touch-manipulation ${
           chrome.visible ? 'opacity-100' : 'pointer-events-none opacity-0'
         }`}
       >
