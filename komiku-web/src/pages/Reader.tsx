@@ -10,6 +10,7 @@ import ReaderToolbar from '../components/ReaderToolbar'
 import SourceBadge from '../components/SourceBadge'
 import { imgSrc, imgUrl, mountAheadPx } from '../imgUrl'
 import { downloadChapterImages } from '../chapterOffline'
+import { unifiedApi } from '../api'
 import { useReaderSettings } from '../hooks/useReaderSettings'
 import { useChromeOnScroll } from '../hooks/useChromeOnScroll'
 import { useAutoFullscreen } from '../hooks/useAutoFullscreen'
@@ -218,6 +219,23 @@ export default function Reader() {
   const activeHandle =
     parseUnifiedKey(chapterId)?.handle ??
     (typeof data?.series?.id === 'string' ? data.series.id : null)
+
+  // Ekspor PDF (unified-only): generate server-side, masuk tab Unduhan di Rak.
+  const [exportingPdf, setExportingPdf] = useState(false)
+  const onExportPdf = useCallback(async () => {
+    const u = parseUnifiedKey(chapterId)
+    if (!u || exportingPdf) return
+    setExportingPdf(true)
+    setToast('Membuat PDF…')
+    try {
+      const res = await unifiedApi.downloadPdf(u.handle, u.number)
+      setToast(`PDF siap: ${res.filename}`)
+    } catch {
+      setToast('Gagal membuat PDF — coba lagi nanti.')
+    } finally {
+      setExportingPdf(false)
+    }
+  }, [chapterId, exportingPdf])
 
   /** setel scroll ke anchor; return true kalau posisi sudah final */
   const apply = (idx: number, anchor: ReadingAnchor): boolean => {
@@ -531,6 +549,7 @@ export default function Reader() {
         onHome={() => navigate('/')}
         onShare={() => setToast('Bagikan: salin URL halaman ini')}
         onDownload={onOfflineDownload}
+        onExportPdf={parseUnifiedKey(chapterId) ? onExportPdf : undefined}
         onMore={() => setMenuOpen(true)}
         chip={settings.marathon ? 'Maraton' : null}
         badge={source && source !== 'komiku' ? <SourceBadge source={source} /> : null}
