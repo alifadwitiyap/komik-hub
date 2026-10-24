@@ -50,6 +50,7 @@ mati, dst).
 from __future__ import annotations
 
 import argparse
+import json
 import os
 import sys
 import time
@@ -174,6 +175,36 @@ def poll_dismiss_key(page, expect: bool, timeout_s: float = 8.0) -> bool:
             pass
         time.sleep(0.15)
     return False
+
+
+def get_reader_url(base: str) -> str:
+    """Cari satu series + chapter via API untuk dapat URL reader valid."""
+    req = urllib.request.Request(
+        base + "/api/unified/search?q=martial",
+        headers={"X-Komik-User": "e2e-promo-alif"},
+    )
+    with urllib.request.urlopen(req, timeout=40) as r:
+        d = json.load(r)
+    rows = (d.get("items") or []) if isinstance(d, dict) else []
+    handle = None
+    for it in rows:
+        if isinstance(it, dict) and it.get("source") and it.get("native_id"):
+            handle = f"{it['source']}:{it['native_id']}"
+            break
+    if not handle:
+        raise PrereqMissing("search tidak mengembalikan series")
+    req2 = urllib.request.Request(
+        base + f"/api/unified/series/{handle}",
+        headers={"X-Komik-User": "e2e-promo-alif"},
+    )
+    with urllib.request.urlopen(req2, timeout=40) as r:
+        sd = json.load(r)
+    chs = sd.get("chapters") or []
+    if not chs:
+        raise PrereqMissing("series tanpa chapter")
+    ch = chs[len(chs) // 2]
+    num = ch.get("number") or ch.get("name")
+    return f"/baca/{handle}/{num}"
 
 
 def main() -> int:
@@ -312,6 +343,29 @@ def main() -> int:
             # onClick={dismiss} menutup modal; panel stopPropagation.
             page.mouse.click(1100, 200)
             check("7b. klik backdrop menutup modal", wait_invisible(page.locator(SEL_MODAL)))
+            ctx.close()
+
+            # ---- 8. rute baca /baca -> modal TIDAK muncul, fullscreen reachable
+            print("== 8. /baca: modal tidak muncul & tombol fullscreen reachable ==")
+            ctx, page = goto_fresh(p, base)
+            page.on("pageerror", lambda e: errors.append(str(e)))
+            reader_url = get_reader_url(base)
+            page.goto(base + reader_url, wait_until="networkidle")
+            page.wait_for_timeout(2000)
+            check("8a. halaman baca termuat (body tidak kosong)",
+                  len(page.inner_text("body").strip()) > 50)
+            check("8b. /baca: modal TIDAK muncul",
+                  wait_visible(page.locator(SEL_MODAL), timeout_s=4.0) is False)
+            fs = page.evaluate("""() => {
+                const all = [...document.querySelectorAll('button[aria-label="Masuk fullscreen"]')];
+                const btn = all.find(x => x.getBoundingClientRect().width < 1000) || all[0];
+                if (!btn) return null;
+                const r = btn.getBoundingClientRect();
+                const at = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
+                return { found: true, atIsBtn: at === btn || (at && btn.contains(at)) };
+            }""")
+            check("8c. tombol fullscreen reachable di reader (tak tertutup modal)",
+                  bool(fs and fs["atIsBtn"]), f"hit-test={fs}")
             ctx.close()
 
             check("tidak ada error JS", not errors, "; ".join(errors[:2]))
