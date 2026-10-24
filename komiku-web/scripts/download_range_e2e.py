@@ -125,8 +125,15 @@ with sync_playwright() as p:
 
     unduh_btn = page.locator(f"button:has-text('Unduh ({RANGE_N})')").first
     check(f"seri: Unduh ({RANGE_N}) enabled", unduh_btn.is_enabled())
-    page.screenshot(path=SHOTS + "/1-range-selected.png")
+    # klik Unduh → pilihan jenis (Offline / PDF)
     unduh_btn.click()
+    page.wait_for_timeout(400)
+    offline_btn = page.locator("button:has-text('Offline')").first
+    check("seri: menu pilihan 'Offline' muncul", offline_btn.count() > 0)
+    pdf_btn = page.locator("button:has-text('PDF')").first
+    check("seri: menu pilihan 'PDF' muncul", pdf_btn.count() > 0)
+    offline_btn.click()
+    page.screenshot(path=SHOTS + "/1-range-selected.png")
 
     # tunggu pesan selesai "tersimpan offline" (cache, bukan PDF)
     saw_done = False

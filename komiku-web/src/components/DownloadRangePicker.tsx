@@ -113,7 +113,10 @@ interface RangeSelectBarProps {
   needEnd?: boolean
   busy?: boolean
   max?: number
-  onDownload: () => void
+  /** Kedua aksi unduh (cache offline + PDF). Satu tombol dulu, setelah
+   *  diklik tampil pilihan jenis unduhan. */
+  onDownloadOffline: () => void
+  onDownloadPdf: () => void
   children?: ReactNode
 }
 
@@ -121,6 +124,10 @@ interface RangeSelectBarProps {
  * Bar info seleksi (menggantikan UI centang): "N dipilih · maks 30" +
  * tombol "Unduh (N)". Disabled kalau baru satu anchor (hint "Pilih chapter
  * akhir"); range > 30 → pesan clamp eksplisit. `children` = baris progres.
+ *
+ * Alur jenis unduhan: klik "Unduh (N)" → dua tombol pilihan (Offline / PDF)
+ * muncul di tempatnya; salah satu diklik → aksi dijalankan + bar kembali ke
+ * tombol tunggal. `busy` menonaktifkan keduanya.
  */
 export function RangeSelectBar({
   count,
@@ -128,24 +135,54 @@ export function RangeSelectBar({
   needEnd = false,
   busy = false,
   max = RANGE_MAX,
-  onDownload,
+  onDownloadOffline,
+  onDownloadPdf,
   children,
 }: RangeSelectBarProps) {
+  const [showType, setShowType] = useState(false)
+  const disabled = busy || needEnd || count === 0
   return (
     <div className="rounded-xl border border-ink-800 bg-ink-900 p-3">
       <div className="flex items-center justify-between gap-2">
         <p className="text-[12px] font-semibold text-ink-200">
           {count} dipilih <span className="text-ink-500">· maks {max}</span>
         </p>
-        <button
-          type="button"
-          onClick={onDownload}
-          disabled={busy || needEnd || count === 0}
-          title={needEnd ? 'Pilih chapter akhir' : undefined}
-          className="rounded-lg bg-brand-amber px-3 py-1.5 text-[11.5px] font-bold text-ink-950 disabled:opacity-50"
-        >
-          {busy ? 'Mengunduh…' : `Unduh (${count})`}
-        </button>
+        {!showType ? (
+          <button
+            type="button"
+            onClick={() => setShowType(true)}
+            disabled={disabled}
+            title={needEnd ? 'Pilih chapter akhir' : undefined}
+            className="rounded-lg bg-brand-amber px-3 py-1.5 text-[11.5px] font-bold text-ink-950 disabled:opacity-50"
+          >
+            {busy ? 'Mengunduh…' : `Unduh (${count})`}
+          </button>
+        ) : (
+          <div className="flex gap-1.5">
+            <button
+              type="button"
+              onClick={() => {
+                setShowType(false)
+                onDownloadOffline()
+              }}
+              disabled={busy}
+              className="rounded-lg border border-brand-amber-dim bg-brand-amber/10 px-2.5 py-1.5 text-[11.5px] font-semibold text-brand-amber disabled:opacity-50"
+            >
+              Offline
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setShowType(false)
+                onDownloadPdf()
+              }}
+              disabled={busy}
+              className="rounded-lg border border-ink-600 px-2.5 py-1.5 text-[11.5px] font-semibold text-ink-200 hover:bg-ink-850 disabled:opacity-50"
+            >
+              PDF
+            </button>
+          </div>
+        )}
       </div>
 
       {needEnd && (

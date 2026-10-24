@@ -6,6 +6,7 @@ import {
   cancelRun,
   getRuns,
   runBusy,
+  startRun,
   startRunCache,
   subscribeRuns,
 } from '../downloadStore'
@@ -51,6 +52,7 @@ export default function Series() {
   // mengarahkan handle ber-':' ke SeriesUnified).
   const dlHandle = /^\d+$/.test(id) ? `komiku:${id}` : null
   const [pickMode, setPickMode] = useState(false)
+  const [showDlType, setShowDlType] = useState(false)
   /** index tampil anchor "Awal" dan "Akhir" di `chapters` (inklusif). */
   const [anchor, setAnchor] = useState<number | null>(null)
   const [rangeEnd, setRangeEnd] = useState<number | null>(null)
@@ -193,7 +195,7 @@ export default function Series() {
     }
   }
 
-  const startDownload = () => {
+  const runDownload = (cache: boolean) => {
     if (dlBusy || rangeList.length === 0 || !dlHandle) return
     // chapter tanpa nomor yang bisa diparse = dilewati, jangan dikarang
     const skipped = pickedChapters.length - downloadable.length
@@ -210,8 +212,11 @@ export default function Series() {
     setAnchor(null)
     setRangeEnd(null)
     setDlMsg(skipped > 0 ? `${skipped} chapter dilewati: nomor tak terbaca` : null)
-    startRunCache(dlHandle, data?.series.title ?? id, numbers)
+    if (cache) startRunCache(dlHandle, data?.series.title ?? id, numbers)
+    else startRun(dlHandle, data?.series.title ?? id, numbers)
   }
+  const startDownloadOffline = () => runDownload(true)
+  const startDownloadPdf = () => runDownload(false)
 
   // Tombol baca utama mengikuti riwayat:
   // - sudah pernah baca  -> "Baca <chapter sebelumnya>" (chapter tepat sebelum
@@ -395,14 +400,41 @@ export default function Series() {
                 <p className="text-[12px] font-semibold text-ink-200">
                   {selCount} dipilih <span className="text-ink-500">· maks {BATCH_MAX}</span>
                 </p>
-                <button
-                  type="button"
-                  onClick={startDownload}
-                  disabled={dlBusy || rangeEnd == null || downloadable.length === 0}
-                  className="rounded-lg bg-brand-amber px-3 py-1.5 text-[11.5px] font-bold text-ink-950 disabled:opacity-50"
-                >
-                  {dlBusy ? 'Mengunduh…' : `Unduh (${dlCount})`}
-                </button>
+                {!showDlType ? (
+                  <button
+                    type="button"
+                    onClick={() => setShowDlType(true)}
+                    disabled={dlBusy || rangeEnd == null || downloadable.length === 0}
+                    className="rounded-lg bg-brand-amber px-3 py-1.5 text-[11.5px] font-bold text-ink-950 disabled:opacity-50"
+                  >
+                    {dlBusy ? 'Mengunduh…' : `Unduh (${dlCount})`}
+                  </button>
+                ) : (
+                  <div className="flex gap-1.5">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowDlType(false)
+                        startDownloadOffline()
+                      }}
+                      disabled={dlBusy}
+                      className="rounded-lg border border-brand-amber-dim bg-brand-amber/10 px-2.5 py-1.5 text-[11.5px] font-semibold text-brand-amber disabled:opacity-50"
+                    >
+                      Offline
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowDlType(false)
+                        startDownloadPdf()
+                      }}
+                      disabled={dlBusy}
+                      className="rounded-lg border border-ink-600 px-2.5 py-1.5 text-[11.5px] font-semibold text-ink-200 hover:bg-ink-850 disabled:opacity-50"
+                    >
+                      PDF
+                    </button>
+                  </div>
+                )}
               </div>
             )}
             {hint && <p className="mt-1.5 text-[11px] text-ink-400">{hint}</p>}

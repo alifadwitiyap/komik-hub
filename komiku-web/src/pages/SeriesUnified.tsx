@@ -13,6 +13,7 @@ import {
   cancelRun,
   getRuns,
   runBusy,
+  startRun,
   startRunCache,
   subscribeRuns,
   type DlRun,
@@ -167,7 +168,7 @@ export default function SeriesUnified() {
     return () => document.removeEventListener('pointerdown', onDown as EventListener)
   }, [pickMode, dlBusy, resetRange])
 
-  const downloadSelected = () => {
+  const runDownload = (cache: boolean) => {
     if (dlBusy || selectedRefs.length === 0) return
     // LANGSUNG keluar dari mode pilih: baris chapter kembali jadi Link ke
     // reader dan tombol Unduh tak lagi tertekan. Unduhan jalan di store
@@ -176,8 +177,12 @@ export default function SeriesUnified() {
     setPickMode(false)
     setDlMsg(null)
     range.reset()
-    startRunCache(handle, data?.manga.title ?? '', selectedRefs.map((r) => r.number))
+    const numbers = selectedRefs.map((r) => r.number)
+    if (cache) startRunCache(handle, data?.manga.title ?? '', numbers)
+    else startRun(handle, data?.manga.title ?? '', numbers)
   }
+  const downloadSelectedOffline = () => runDownload(true)
+  const downloadSelectedPdf = () => runDownload(false)
 
   // Catatan: TIDAK ada abort saat unmount — store yang memegang run
   // (lihat downloadStore), navigasi ke chapter lain / halaman lain bukan
@@ -422,7 +427,8 @@ export default function SeriesUnified() {
               clamped={range.clamped}
               needEnd={range.needEnd}
               busy={dlBusy}
-              onDownload={downloadSelected}
+              onDownloadOffline={downloadSelectedOffline}
+              onDownloadPdf={downloadSelectedPdf}
             />
           </div>
         )}
