@@ -1,14 +1,14 @@
 import { Link, NavLink, Route, Routes, useLocation, useParams } from 'react-router-dom'
-import { useEffect, useRef, useState } from 'react'
+import { lazy, Suspense, useEffect, useRef, useState } from 'react'
 import Home from './pages/Home'
 import Search from './pages/Search'
 import Series from './pages/Series'
-import SeriesUnified from './pages/SeriesUnified'
-import Reader from './pages/Reader'
-import ReaderMarathon from './pages/ReaderMarathon'
 import Rak from './pages/Rak'
-import Akun from './pages/Akun'
-import Notifikasi from './pages/Notifikasi'
+const SeriesUnified = lazy(() => import('./pages/SeriesUnified'))
+const Reader = lazy(() => import('./pages/Reader'))
+const ReaderMarathon = lazy(() => import('./pages/ReaderMarathon'))
+const Akun = lazy(() => import('./pages/Akun'))
+const Notifikasi = lazy(() => import('./pages/Notifikasi'))
 import { IconHouse, IconRectangleHistory, IconMoon, IconSun, IconMagnifyingGlass, IconBookHeart, IconBell, IconUser } from './icons'
 import NotifPanel from './components/NotifPanel'
 import SourceHealthBadge from './components/SourceHealthBadge'
@@ -49,20 +49,22 @@ export default function App() {
         )}
 
         <main className={immersive ? '' : 'pb-24 pt-14'}>
-          <Routes>
-            <Route path="/" element={<Home />} />
-            <Route path="/cari" element={<Search />} />
-            <Route path="/rak" element={<Rak />} />
-            <Route path="/akun" element={<Akun />} />
-            <Route path="/notifikasi" element={<Notifikasi />} />
-            {/* manga: id komiku lama (angka) ATAU handle unified 'sumber:id' */}
-            <Route path="/manga/:handle" element={<SeriesRoute />} />
-            <Route path="/baca/:chapterId" element={<Reader />} />
-            <Route path="/baca/:handle/:number" element={<Reader />} />
-            <Route path="/maraton/:chapterId" element={<ReaderMarathon />} />
-            <Route path="/maraton/:handle/:number" element={<ReaderMarathon />} />
-            <Route path="*" element={<NotFound />} />
-          </Routes>
+          <Suspense fallback={<Spinner label="Memuat…" />}>
+            <Routes>
+              <Route path="/" element={<Home />} />
+              <Route path="/cari" element={<Search />} />
+              <Route path="/rak" element={<Rak />} />
+              <Route path="/akun" element={<Akun />} />
+              <Route path="/notifikasi" element={<Notifikasi />} />
+              {/* manga: id komiku lama (angka) ATAU handle unified 'sumber:id' */}
+              <Route path="/manga/:handle" element={<SeriesRoute />} />
+              <Route path="/baca/:chapterId" element={<Reader />} />
+              <Route path="/baca/:handle/:number" element={<Reader />} />
+              <Route path="/maraton/:chapterId" element={<ReaderMarathon />} />
+              <Route path="/maraton/:handle/:number" element={<ReaderMarathon />} />
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+          </Suspense>
         </main>
 
         {!immersive && <BottomNav />}
