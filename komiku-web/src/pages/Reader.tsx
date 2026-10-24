@@ -548,9 +548,7 @@ export default function Reader() {
           else autoFS.requestEnter()
         }}
         className={`fixed left-1/2 top-16 z-40 flex min-h-[44px] min-w-[112px] items-center justify-center rounded-full border border-white/25 bg-black/70 px-5 text-[13px] font-semibold text-white shadow-lg transition-opacity select-none touch-manipulation ${
-          chrome.visible || autoFS.active || autoFS.nativeActive
-            ? 'opacity-100'
-            : 'pointer-events-none opacity-0'
+          chrome.visible ? 'opacity-100' : 'pointer-events-none opacity-0'
         }`}
       >
         ⛶ Layar penuh
