@@ -427,6 +427,9 @@ impl Source for ShinigamiSource {
                 if name.is_empty() {
                     return None;
                 }
+                if !super::is_genre(slug, name) {
+                    return None;
+                }
                 Some((slug.to_string(), name.to_string()))
             })
             .collect())

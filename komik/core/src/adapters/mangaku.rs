@@ -222,7 +222,12 @@ impl Source for MangakuSource {
             .iter()
             .filter_map(|g| {
                 let o = g.as_object()?;
-                Some((str_of(o.get("slug"))?, str_of(o.get("name"))?))
+                let slug = str_of(o.get("slug"))?;
+                let name = str_of(o.get("name"))?;
+                if !super::is_genre(&slug, &name) {
+                    return None;
+                }
+                Some((slug, name))
             })
             .collect())
     }

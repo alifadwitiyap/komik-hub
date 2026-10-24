@@ -417,6 +417,9 @@ impl Source for KiryuuSource {
             .filter_map(|it| {
                 let slug = it["slug"].as_str()?;
                 let name = it["name"].as_str().unwrap_or(slug);
+                if !super::is_genre(slug, name) {
+                    return None;
+                }
                 Some((slug.to_string(), name.to_string()))
             })
             .collect())
