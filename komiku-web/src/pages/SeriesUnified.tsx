@@ -13,7 +13,7 @@ import {
   cancelRun,
   getRuns,
   runBusy,
-  startRun,
+  startRunCache,
   subscribeRuns,
   type DlRun,
 } from '../downloadStore'
@@ -81,7 +81,7 @@ export default function SeriesUnified() {
       // baru ke halaman yang menemukan run sudah selesai.
       if (!run || !watchingRef.current) return
       watchingRef.current = false
-      announceFinish(run, { mountedRef, navigate, setDlMsg })
+      announceFinish(run, { mountedRef, setDlMsg })
     }
     const unsub = subscribeRuns(sync)
     sync(getRuns())
@@ -176,7 +176,7 @@ export default function SeriesUnified() {
     setPickMode(false)
     setDlMsg(null)
     range.reset()
-    startRun(handle, data?.manga.title ?? '', selectedRefs.map((r) => r.number))
+    startRunCache(handle, data?.manga.title ?? '', selectedRefs.map((r) => r.number))
   }
 
   // Catatan: TIDAK ada abort saat unmount — store yang memegang run
@@ -518,11 +518,9 @@ function announceFinish(
   run: DlRun,
   {
     mountedRef,
-    navigate,
     setDlMsg,
   }: {
     mountedRef: { current: boolean }
-    navigate: ReturnType<typeof useNavigate>
     setDlMsg: (msg: string | null) => void
   },
 ): void {
@@ -537,17 +535,9 @@ function announceFinish(
   }
   const msg =
     fail > 0
-      ? `${ok} selesai, ${fail} gagal — lihat tab Unduhan di Rak.`
-      : `Unduhan selesai — ${ok} chapter masuk tab Unduhan.`
+      ? `${ok} tersimpan, ${fail} gagal`
+      : `${ok} chapter tersimpan offline`
   setDlMsg(msg)
-  navigate('/rak?tab=unduhan', {
-    state: {
-      flash:
-        fail > 0
-          ? `Unduhan selesai — ${ok} chapter masuk, ${fail} gagal.`
-          : `Unduhan selesai — ${ok} chapter masuk tab Unduhan.`,
-    },
-  })
 }
 
 /**

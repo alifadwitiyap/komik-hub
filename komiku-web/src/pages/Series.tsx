@@ -1,12 +1,12 @@
 import { imgUrl } from '../imgUrl'
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { Link, useNavigate, useParams } from 'react-router-dom'
+import { Link, useParams } from 'react-router-dom'
 import { api } from '../api'
 import {
   cancelRun,
   getRuns,
   runBusy,
-  startRun,
+  startRunCache,
   subscribeRuns,
 } from '../downloadStore'
 import type { DlRun } from '../downloadStore'
@@ -77,7 +77,6 @@ export default function Series() {
       mountedRef.current = false
     }
   }, [])
-  const navigate = useNavigate()
 
   useEffect(() => {
     if (!id) return
@@ -129,20 +128,20 @@ export default function Series() {
     if (wasBusyRef.current && !dlBusy && run && handledRunAtRef.current !== run.startedAt) {
       handledRunAtRef.current = run.startedAt
       if (mountedRef.current) {
+        const ok = run.jobs.filter((j) => j.state === 'ok').length
         const failed = run.jobs.filter((j) => j.state === 'fail').length
         const cancels = run.jobs.filter((j) => j.error === 'Dibatalkan').length
         const msg =
           cancels > 0 && cancels === failed
             ? 'Unduhan dibatalkan.'
             : failed > 0
-              ? `${run.jobs.length - failed} selesai, ${failed} gagal — yang berhasil tetap tersimpan.`
-              : 'Unduhan selesai.'
+              ? `${ok} tersimpan, ${failed} gagal`
+              : `${ok} chapter tersimpan offline`
         setDlMsg(msg)
-        navigate('/rak?tab=unduhan', { state: { flash: msg } })
       }
     }
     wasBusyRef.current = dlBusy
-  }, [dlBusy, run, navigate])
+  }, [dlBusy, run])
 
   if (error) return <Empty title="Gagal memuat manga" body={error} />
   if (!data) return <Spinner label="Memuat manga…" />
@@ -211,7 +210,7 @@ export default function Series() {
     setAnchor(null)
     setRangeEnd(null)
     setDlMsg(skipped > 0 ? `${skipped} chapter dilewati: nomor tak terbaca` : null)
-    startRun(dlHandle, data?.series.title ?? id, numbers)
+    startRunCache(dlHandle, data?.series.title ?? id, numbers)
   }
 
   // Tombol baca utama mengikuti riwayat:
