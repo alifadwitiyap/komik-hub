@@ -320,7 +320,7 @@ export default function Search() {
 
       {/* Tiga dropdown filter — menggantikan baris chip yang memakan 3 baris. */}
       <div className="mt-3 flex flex-wrap gap-2">
-        <div className="relative min-w-0 flex-1">
+        <div className="relative flex min-w-0 flex-1 basis-28">
           <select
             aria-label="Filter tipe"
             value={tipe ?? ''}
@@ -336,7 +336,7 @@ export default function Search() {
           </select>
           <SelectChevron />
         </div>
-        <div className="relative min-w-0 flex-1">
+        <div className="relative flex min-w-0 flex-1 basis-28">
           <select
             aria-label="Filter status"
             value={status ?? ''}
@@ -352,7 +352,7 @@ export default function Search() {
           </select>
           <SelectChevron />
         </div>
-        <div className="relative min-w-0 flex-1">
+        <div className="relative flex min-w-0 flex-1 basis-28 max-w-full">
           <select
             aria-label="Filter genre"
             value={genreSlug ?? ''}

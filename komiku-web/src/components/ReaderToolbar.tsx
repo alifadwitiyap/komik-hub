@@ -58,7 +58,7 @@ export default function ReaderToolbar({
         <button
           onClick={onBack}
           aria-label="Kembali"
-          className="grid size-10 place-items-center rounded-full text-white/90 active:bg-white/10"
+          className="grid size-11 place-items-center rounded-full text-white/90 active:bg-white/10"
         >
           <IconAngleLeft className="size-4" />
         </button>
@@ -66,7 +66,7 @@ export default function ReaderToolbar({
           <button
             onClick={onHome}
             aria-label="Beranda"
-            className="grid size-10 place-items-center rounded-full text-white/90 active:bg-white/10"
+            className="grid size-11 place-items-center rounded-full text-white/90 active:bg-white/10"
           >
             <IconHouse className="size-4" />
           </button>
@@ -90,7 +90,7 @@ export default function ReaderToolbar({
           <button
             onClick={onDownload}
             aria-label="Unduh offline"
-            className="grid size-10 place-items-center rounded-full text-white/90 active:bg-white/10"
+            className="grid size-11 place-items-center rounded-full text-white/90 active:bg-white/10"
           >
             <IconBolt className="size-4" />
           </button>
@@ -98,14 +98,14 @@ export default function ReaderToolbar({
         <button
           onClick={onShare}
           aria-label="Bagikan"
-          className="grid size-10 place-items-center rounded-full text-white/90 active:bg-white/10"
+          className="grid size-11 place-items-center rounded-full text-white/90 active:bg-white/10"
         >
           <IconShare className="size-4" />
         </button>
         <button
           onClick={onMore}
           aria-label="Menu"
-          className="grid size-10 place-items-center rounded-full text-white/90 active:bg-white/10"
+          className="grid size-11 place-items-center rounded-full text-white/90 active:bg-white/10"
         >
           <IconEllipsisV className="size-4" />
         </button>
