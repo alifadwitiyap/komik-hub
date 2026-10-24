@@ -42,7 +42,7 @@ export default function HeartButton({ manga, className = '', labeled = false }: 
       stroke={loved ? '#f59e0b' : 'currentColor'}
       strokeWidth="36"
       aria-hidden="true"
-      className={labeled ? 'size-4' : 'size-5'}
+      className={labeled ? 'size-4' : 'size-6'}
     >
       <path d={HEART_D} />
     </svg>
@@ -80,7 +80,7 @@ export default function HeartButton({ manga, className = '', labeled = false }: 
         e.stopPropagation()
         toggleFavorite(manga)
       }}
-      className={`relative grid place-items-center rounded-full p-2 transition-colors ${className}`}
+      className={`relative grid place-items-center rounded-full p-2.5 transition-colors ${className}`}
     >
       {heart}
       {count > 0 && (

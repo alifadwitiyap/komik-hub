@@ -174,7 +174,7 @@ function ThemeToggle() {
       aria-pressed={dark}
       data-theme-toggle
       title={toggleLabel}
-      className="grid size-[35px] place-items-center rounded-full bg-ink-850 text-ink-300 transition-colors active:bg-ink-800"
+      className="grid size-[40px] place-items-center rounded-full bg-ink-850 text-ink-300 transition-colors active:bg-ink-800"
     >
       {/* dua ikon ditumpuk; yang aktif yang terlihat (fade + rotate 200ms) */}
       <span className="relative grid size-4 place-items-center">
@@ -206,7 +206,7 @@ function CircleButton({
   children: React.ReactNode
 } & React.AriaAttributes) {
   const cls =
-    'grid size-[35px] place-items-center rounded-full bg-ink-850 text-ink-300 transition-colors active:bg-ink-800'
+    'grid size-[40px] place-items-center rounded-full bg-ink-850 text-ink-300 transition-colors active:bg-ink-800'
   if (to) {
     return (
       <Link to={to} aria-label={label} className={cls} {...rest}>

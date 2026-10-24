@@ -9,6 +9,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { notifApi, type NotifItem } from '../api'
+import { getUser } from '../account'
 
 const POLL_MS = 60_000
 
@@ -83,6 +84,13 @@ export function useNotifications() {
   }, [])
 
   const load = useCallback(async () => {
+    // tanpa akun, server balas 401 — jangan polling (hindari console error tiap halaman)
+    if (!getUser()) {
+      if (mounted.current && !hasData.current) {
+        setState((s) => ({ ...s, loading: false }))
+      }
+      return
+    }
     try {
       apply(await notifApi.list())
     } catch {

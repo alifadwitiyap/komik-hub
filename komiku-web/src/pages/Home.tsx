@@ -402,7 +402,7 @@ export function MangaCard({ manga }: { manga: Manga }) {
                 handle: manga.handle ?? String(manga.id),
                 source: manga.source ?? 'komiku',
               }}
-              className="size-7 bg-black/60 text-white backdrop-blur hover:bg-black/75"
+              className="size-9 bg-black/60 text-white backdrop-blur hover:bg-black/75"
             />
           </div>
         ) : (
