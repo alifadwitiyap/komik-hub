@@ -46,7 +46,11 @@ export default function LoginPromoModal() {
 
   const dismissedAt = readDismissTime()
   const dismissedRecently = dismissedAt !== null && Date.now() - dismissedAt < DISMISS_TTL
-  const visible = getUser() === null && pathname !== '/akun' && !dismissedRecently
+  // Scope 1: modal tidak menampilkan diri di rute baca (reader/maraton) supaya
+  // tidak memblokir kontrol fullscreen & alur baca. Tetap tampil di halaman
+  // non-baca (home/cari/rak/seri).
+  const isReading = /^\/(baca|maraton)/.test(pathname)
+  const visible = getUser() === null && pathname !== '/akun' && !isReading && !dismissedRecently
 
   // kalau user jadi login dari mana pun → popup menutup (re-evaluasi visibility)
   useEffect(() => {
