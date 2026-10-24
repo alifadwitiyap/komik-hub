@@ -318,11 +318,10 @@ export default function Reader() {
   }, [data, loadedCount, images.length])
 
   // ---- prefetch chapter berikutnya (UX) ----
-  // Saat pembaca hampir mencapai akhir chapter, hangatkan data + halaman
-  // pertama chapter berikutnya sehingga "Baca Berikutnya" terasa instan.
-  // Dilewati kalau mode hemat / saveData aktif (jangan boros bandwidth).
-  // Pemicu pakai scroll threshold (>= ~600px dari dasar), lebih deterministik
-  // daripada IntersectionObserver di lingkungan ini.
+  // Saat pembaca sudah membaca ~70% chapter (rasio progres scroll), hangatkan
+  // data + halaman pertama chapter berikutnya sehingga "Baca Berikutnya"
+  // terasa instan. Dilewati kalau mode hemat / saveData aktif (jangan boros
+  // bandwidth), atau saat posisi baca sedang dipulihkan (anchor restore).
   useEffect(() => {
     if (!data || images.length === 0 || !chapterId) return
     const nextId = data.chapter?.next ? String(data.chapter.next.id) : null
@@ -342,8 +341,11 @@ export default function Reader() {
     const scrollable = () =>
       document.documentElement.scrollHeight - window.innerHeight
     const onScroll = () => {
+      // jangan prefetch saat restore anchor sedang berjalan
+      if (pending.current) return
       if (prefetchedNext.current) return
-      if (window.scrollY >= scrollable() - 600) {
+      const total = scrollable()
+      if (total > 0 && window.scrollY / total >= 0.7) {
         prefetchedNext.current = true
         const ctrl = new AbortController()
         loadChapter(nextId, ctrl.signal)
