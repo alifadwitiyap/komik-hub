@@ -1,4 +1,5 @@
 import { unifiedApi } from './api'
+import { downloadChapterImages } from './chapterOffline'
 
 /**
  * Batch unduh PDF (kontrak POST /api/unified/download-pdf).
@@ -143,6 +144,41 @@ export async function downloadChapters(
       } catch (e) {
         // abort bawaan user: fetch gagal dengan AbortError — jangan beri
         // label gagal, pemanggil yang menutup UI-nya.
+        if (signal?.aborted) return
+        onUpdate(index, { state: 'fail', error: (e as Error).message })
+      }
+    })
+  }
+}
+
+/**
+ * Unduh beberapa chapter KE CACHE OFFLINE (bukan generate PDF). Untuk tiap
+ * chapter: fetch metadata (daftar gambar) → cache semua halaman via service
+ * worker (`downloadChapterImages`). Sama `downloadChapters` dalam hal chunk/
+ * concurrency/abort — bedanya hasilnya bukan file PDF di server, melainkan
+ * byte gambar di Cache Storage browser, jadi kebaca saat internet/server mati.
+ */
+export async function cacheChapters(
+  list: readonly ChapterRef[],
+  onUpdate: (index: number, patch: Partial<JobProgress>) => void,
+  signal?: AbortSignal,
+): Promise<void> {
+  for (let offset = 0; offset < list.length; offset += CHUNK_SIZE) {
+    if (signal?.aborted) return
+    const jobs = list
+      .slice(offset, offset + CHUNK_SIZE)
+      .map((ref, k) => ({ ref, index: offset + k }))
+    await pool(jobs, CONCURRENCY, async ({ ref, index }) => {
+      if (signal?.aborted) return
+      onUpdate(index, { state: 'run' })
+      try {
+        const ch = await unifiedApi.chapter(ref.handle, ref.number, signal)
+        const images = ch?.images ?? []
+        if (images.length === 0) throw new Error('chapter tanpa halaman')
+        const { ok, fail } = await downloadChapterImages(images)
+        if (ok === 0) throw new Error(`${fail} halaman gagal diunduh`)
+        onUpdate(index, { state: 'ok' })
+      } catch (e) {
         if (signal?.aborted) return
         onUpdate(index, { state: 'fail', error: (e as Error).message })
       }

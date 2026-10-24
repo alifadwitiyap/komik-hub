@@ -24,7 +24,7 @@
  *     (lihat helper `runBusy` di halaman series).
  */
 
-import { downloadChapters, saveGeneratedPdf } from './downloadBatch'
+import { cacheChapters, downloadChapters, saveGeneratedPdf } from './downloadBatch'
 
 export interface DlJob {
   number: string
@@ -151,4 +151,40 @@ export function cancelRun(handle: string): void {
   const rec = recs.find((r) => r.handle === handle && runBusy(r))
   if (!rec) return
   rec.ctrl.abort()
+}
+
+/**
+ * Mulai run unduhan KE CACHE OFFLINE (mode baru). Sama `startRun` dalam hal
+ * run/progres/batal, tapi tiap chapter di-cache ke browser (service worker)
+ * alih-alih di-generate jadi PDF di server.
+ */
+export function startRunCache(handle: string, seriesTitle: string, numbers: string[]): void {
+  if (numbers.length === 0) return
+  if (recs.some((r) => r.handle === handle && runBusy(r))) return
+
+  const rec: RunRec = {
+    handle,
+    seriesTitle,
+    startedAt: Date.now(),
+    saved: 0,
+    ctrl: new AbortController(),
+    jobs: numbers.map((number) => ({ number, state: 'wait' as const })),
+  }
+  const at = recs.findIndex((r) => r.handle === handle)
+  if (at >= 0) recs.splice(at, 1, rec)
+  else recs.push(rec)
+  emit()
+
+  void cacheChapters(
+    numbers.map((number) => ({ handle, number })),
+    (index, patch) => patchJob(rec, index, patch),
+    rec.ctrl.signal,
+  ).then(() => {
+    if (!rec.ctrl.signal.aborted) return
+    if (!rec.jobs.some((j) => j.state !== 'ok')) return
+    rec.jobs = rec.jobs.map((j) =>
+      j.state === 'ok' ? j : { ...j, state: 'fail' as const, error: 'Dibatalkan' },
+    )
+    emit()
+  })
 }
