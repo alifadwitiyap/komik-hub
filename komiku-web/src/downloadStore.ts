@@ -187,4 +187,14 @@ export function startRunCache(handle: string, seriesTitle: string, numbers: stri
     )
     emit()
   })
+
+  // Hangatkan chunk rute baca (Reader/ReaderMarathon) lewat service worker.
+  // Setelah code-splitting, halaman-halaman ini adalah lazy chunk — kalau user
+  // mengunduh dari halaman Series lalu langsung offline SEBELUM pernah membuka
+  // reader, chunk-nya belum ada di cache SW → navigasi offline gagal dgn
+  // "Failed to fetch dynamically imported module". Dengan me-import chunk di
+  // sini (saat masih online), SW men-cache-nya (cache-first aset same-origin),
+  // sehingga baca offline dari unduhan series tetap berfungsi.
+  void import('./pages/Reader')
+  void import('./pages/ReaderMarathon')
 }
