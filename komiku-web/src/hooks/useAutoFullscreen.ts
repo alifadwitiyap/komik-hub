@@ -20,6 +20,7 @@ import {
   EXIT_SCROLL_THRESHOLD_PX,
   PENDING_TTL_MS,
 } from './autoFullscreenLogic'
+import { FS_TOGGLE_ATTR, isInteractiveTarget } from '../readerControls'
 
 export interface AutoFullscreenControl {
   /** immersive (pseudo-fullscreen) aktif — chrome disembunyikan via CSS/state */
@@ -32,6 +33,12 @@ export interface AutoFullscreenControl {
   requestEnter: () => void
   /** paksa keluar + reset hitungan */
   reset: () => void
+  /**
+   * Batalkan NIAT fullscreen (`pending`) tanpa keluar dari fullscreen yang
+   * sudah aktif. Dipakai saat pembaca menyentuh kontrol halaman / membuka
+   * sheet: tap berikutnya tidak boleh "mewarisi" niat dari flick sebelumnya.
+   */
+  cancelPending: () => void
 }
 
 export function useAutoFullscreen(
@@ -49,6 +56,9 @@ export function useAutoFullscreen(
   enabledRef.current = enabled
   const restoringRef = useRef(restoring)
   restoringRef.current = restoring
+  /** true saat native ATAU immersive aktif — dibaca listener tanpa re-bind */
+  const activeRef = useRef(false)
+  activeRef.current = immersive || nativeActive
 
   const clearPending = useCallback(() => {
     if (pendingTimerRef.current) {
@@ -68,8 +78,18 @@ export function useAutoFullscreen(
   }, [])
 
   const requestEnter = useCallback(() => {
-    if (!enabledRef.current) return
+    // Tombol manual harus selalu bisa masuk fullscreen, independen dari
+    // preferensi auto-fullscreen. `enabled` hanya meng-gate deteksi AUTO
+    // (wheel/scroll), bukan jalur manual.
     if (busyRef.current) return
+    // Sudah fullscreen (native) → jangan minta lagi; tap berikutnya berarti
+    // "keluar", bukan "masuk". State diselaraskan di sini supaya tombol tidak
+    // terus menampilkan "Masuk layar penuh" padahal layar sudah penuh
+    // (mis. masuk lewat setelan reader / F11) — itu terasa seperti tombol mati.
+    if (document.fullscreenElement) {
+      setNativeActive(true)
+      return
+    }
     clearPending()
     const el = document.documentElement
     if (typeof el.requestFullscreen === 'function') {
@@ -101,25 +121,58 @@ export function useAutoFullscreen(
     exit()
   }, [clearPending, exit])
 
-  // Sinkron dengan state fullscreen asli browser (mis. user menekan Esc).
-  // Saat keluar fullscreen, kosongkan SEMUA state aktif (native + immersive)
-  // dan reset akumulasi → scroll berikutnya bisa memicu lagi.
+  // Sinkron dengan state fullscreen asli browser — DUA ARAH:
+  // - keluar (Esc / swipe): kosongkan native + immersive
+  // - masuk dari jalur lain (F11, setelan `fullscreen` di sheet reader):
+  //   `nativeActive` ikut menyala, kalau tidak tombol manual salah label dan
+  //   requestEnter() jadi no-op (terasa "kadang tidak bisa dipencet").
   useEffect(() => {
     const onChange = () => {
-      if (!document.fullscreenElement) {
-        busyRef.current = false
-        setNativeActive(false)
-        setImmersive(false)
+      if (document.fullscreenElement) {
+        setNativeActive(true)
+        return
       }
+      busyRef.current = false
+      setNativeActive(false)
+      setImmersive(false)
     }
     document.addEventListener('fullscreenchange', onChange)
+    onChange() // halaman dibuka saat sudah fullscreen (reload / deep-link)
     return () => document.removeEventListener('fullscreenchange', onChange)
   }, [])
+
+  // Lapis pengaman niat: sentuhan pada kontrol APA PUN membatalkan `pending`.
+  //
+  // `pending` berarti "tap berikutnya di area baca = masuk layar penuh". Kalau
+  // niat itu bertahan saat user menekan tombol (mis. tombol melingkar "Muat
+  // ulang" halaman), tap tersebut bisa terbaca sebagai perintah fullscreen —
+  // laporan user "pencet tombol lingkaran malah fullscreen". Menangkap
+  // pointerdown di fase capture membuat niat mati SEBELUM handler tombol
+  // berjalan, jadi tombol selalu melakukan tugasnya sendiri.
+  useEffect(() => {
+    const onPointerDown = (e: PointerEvent) => {
+      const el = e.target as Element | null
+      // Tombol layar penuh sendiri: jangan batalkan niat di sini. Niat itulah
+      // yang membuat tombol tampil sebagai pil berteks ("Layar penuh");
+      // mematikannya saat pointerdown membuat tombol hilang (inert +
+      // pointer-events:none) sebelum event click sampai, sehingga tap-nya
+      // dibuang dan tombol terasa mati. requestEnter() di onClick yang
+      // membersihkan niat.
+      if (el && typeof el.closest === 'function' && el.closest(`[${FS_TOGGLE_ATTR}]`)) return
+      if (isInteractiveTarget(e.target)) clearPending()
+    }
+    document.addEventListener('pointerdown', onPointerDown, true)
+    return () => document.removeEventListener('pointerdown', onPointerDown, true)
+  }, [clearPending])
 
   // Lapis 1 — deteksi intent: wheel velocity → arm pending.
   useEffect(() => {
     const onWheel = (e: WheelEvent) => {
       if (!enabledRef.current || restoringRef.current()) return
+      // saat sudah fullscreen, scroll turun tidak perlu "menyiapkan" masuk
+      // lagi — kalau di-arm, tap berikutnya jadi masuk (no-op) alih-alih
+      // keluar. Ini yang bikin tombol terasa "kadang tidak responsif".
+      if (activeRef.current || document.fullscreenElement) return
       const now = performance.now()
       samplesRef.current = pruneFlickSamples(
         [...samplesRef.current, { t: now, dy: e.deltaY }],
@@ -151,5 +204,12 @@ export function useAutoFullscreen(
     return () => window.removeEventListener('scroll', onScroll)
   }, [exit, clearPending, immersive, nativeActive])
 
-  return { active: immersive, nativeActive, pending, requestEnter, reset }
+  return {
+    active: immersive,
+    nativeActive,
+    pending,
+    requestEnter,
+    reset,
+    cancelPending: clearPending,
+  }
 }

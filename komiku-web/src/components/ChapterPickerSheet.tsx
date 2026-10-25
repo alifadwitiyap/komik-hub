@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { usePickableChapters, type PickableChapter } from '../hooks/usePickableChapters'
 import { useReadMarks } from '../hooks/useReadMarks'
@@ -79,15 +79,22 @@ export default function ChapterPickerSheet({
   // pencarian) — tanpa ini, Tab keyboard masih jalan ke tombol di belakang
   // sheet dan screen reader tidak tahu ini dialog. Saat ditutup, fokus
   // kembali ke elemen yang membuka sheet.
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (!open) return
-    const opener = document.activeElement as HTMLElement | null
-    const t = setTimeout(() => searchRef.current?.focus({ preventScroll: true }), 0)
+    // activeElement bisa <body> kalau sheet dibuka lewat tap (iOS tidak
+    // memfokuskan <button> saat disentuh). Menyimpan <body> bikin
+    // "kembali ke pemicu" jadi no-op → fokus pembaca layar jatuh ke awal
+    // dokumen. Kalau bukan elemen nyata, jangan diingat.
+    const ae = document.activeElement
+    const opener = ae instanceof HTMLElement && ae !== document.body ? ae : null
+    // Fokus SINKRON (layout effect, bukan setTimeout): iOS hanya membuka
+    // keyboard kalau focus() terjadi di task yang sama dengan gesture tap.
+    // Dengan setTimeout, keyboard tidak muncul dan sheet "terasa mati".
+    searchRef.current?.focus({ preventScroll: true })
     return () => {
-      clearTimeout(t)
       // preventScroll: mengembalikan fokus ke tombol pemicu tidak boleh
       // menggulir halaman (reader sedang menampilkan chapter baru).
-      opener?.focus?.({ preventScroll: true })
+      opener?.focus({ preventScroll: true })
     }
   }, [open])
 
@@ -109,6 +116,14 @@ export default function ChapterPickerSheet({
       const first = focusables[0]
       const last = focusables[focusables.length - 1]
       const active = document.activeElement
+      // fokus nyasar ke luar dialog (mis. setelah tap area kosong) → tarik
+      // kembali ke elemen pertama, jangan biarkan Tab jalan ke halaman di
+      // belakang sheet.
+      if (!active || !panel.contains(active)) {
+        e.preventDefault()
+        first.focus()
+        return
+      }
       if (e.shiftKey && active === first) {
         e.preventDefault()
         last.focus()
@@ -123,16 +138,35 @@ export default function ChapterPickerSheet({
 
   // SCROLL LOCK: sheet adalah overlay — halaman di belakang tidak boleh
   // ikut ter-scroll (atau chrome reader ikut hilang) saat sheet terbuka.
-  // Roda mouse di area daftar (list) tetap boleh menggulir daftar.
+  //
+  // Versi lama cuma memblokir event `wheel`; di HP tidak ada wheel, jadi
+  // sentuhan tetap menggulir halaman di belakang sheet. Sekarang scroll
+  // dikunci di dokumen (menutup touch + wheel + PageDown sekaligus), dan
+  // daftar chapter tetap bisa digulir karena dia scroller sendiri
+  // (`overflow-y-auto overscroll-contain`).
   useEffect(() => {
     if (!open) return
-    const onWheel = (e: WheelEvent) => {
-      const t = e.target as Node | null
-      if (t && listRef.current?.contains(t)) return
-      e.preventDefault()
+    const html = document.documentElement
+    const body = document.body
+    const prev = {
+      htmlOverflow: html.style.overflow,
+      htmlOverscroll: html.style.overscrollBehavior,
+      bodyOverflow: body.style.overflow,
+      bodyPaddingRight: body.style.paddingRight,
     }
-    document.addEventListener('wheel', onWheel, { passive: false })
-    return () => document.removeEventListener('wheel', onWheel)
+    // diukur SEBELUM overflow disembunyikan; tanpa kompensasi ini layout
+    // desktop bergeser saat scrollbar hilang.
+    const scrollbar = window.innerWidth - html.clientWidth
+    html.style.overflow = 'hidden'
+    html.style.overscrollBehavior = 'none'
+    body.style.overflow = 'hidden'
+    if (scrollbar > 0) body.style.paddingRight = `${scrollbar}px`
+    return () => {
+      html.style.overflow = prev.htmlOverflow
+      html.style.overscrollBehavior = prev.htmlOverscroll
+      body.style.overflow = prev.bodyOverflow
+      body.style.paddingRight = prev.bodyPaddingRight
+    }
   }, [open])
 
   const filtered = useMemo(() => {
@@ -170,27 +204,33 @@ export default function ChapterPickerSheet({
       className="fixed inset-0 z-50 flex items-end justify-center bg-black/60"
       onClick={onClose}
     >
+      {/* dvh (bukan vh): 85vh di browser HP termasuk tinggi bilah alamat,
+          jadi sheet bisa lebih tinggi dari layar dan footer-nya ketutup. */}
       <div
         ref={panelRef}
         role="dialog"
         aria-modal="true"
-        aria-label="Pilih Chapter"
+        aria-labelledby="chapter-picker-title"
+        aria-describedby="chapter-picker-desc"
         data-chapter-picker
-        className="flex max-h-[85vh] w-full max-w-md flex-col overflow-hidden rounded-t-2xl border-t border-white/10 bg-night-dark/97 backdrop-blur"
+        className="flex max-h-[85dvh] w-full max-w-md flex-col overflow-hidden rounded-t-2xl border-t border-white/10 bg-night-dark/97 backdrop-blur"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex items-start gap-3 px-4 pb-3 pt-3">
+        <div className="flex shrink-0 items-start gap-3 px-4 pb-3 pt-3">
           <div className="min-w-0 flex-1">
-            <h2 className="font-display text-[15px] font-bold text-white">Pilih Chapter</h2>
-            <p className="truncate text-[11.5px] text-white/55">
+            <h2 id="chapter-picker-title" className="font-display text-[15px] font-bold text-white">
+              Pilih Chapter
+            </h2>
+            <p id="chapter-picker-desc" className="truncate text-[11.5px] text-white/55">
               {seriesTitle ? seriesTitle : 'Series ini'}
               {chapters.length > 0 ? ` · ${chapters.length} chapter` : ''}
             </p>
           </div>
           <button
+            type="button"
             onClick={onClose}
-            aria-label="Tutup"
-            className="grid size-8 shrink-0 place-items-center rounded-full text-white/70 active:bg-white/10"
+            aria-label="Tutup pilih chapter"
+            className="grid size-11 shrink-0 place-items-center rounded-full text-white/70 active:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/80"
           >
             <svg viewBox="0 0 24 24" className="size-4" fill="none" stroke="currentColor" strokeWidth="2">
               <path d="M6 6l12 12M18 6L6 18" strokeLinecap="round" />
@@ -198,8 +238,8 @@ export default function ChapterPickerSheet({
           </button>
         </div>
 
-        <div className="px-4 pb-3">
-          <div className="flex items-center gap-2 rounded-xl border border-white/15 bg-white/5 px-3">
+        <div className="shrink-0 px-4 pb-3">
+          <div className="flex items-center gap-2 rounded-xl border border-white/15 bg-white/5 pl-3 pr-1">
             <svg
               viewBox="0 0 24 24"
               className="size-4 shrink-0 text-white/50"
@@ -211,19 +251,28 @@ export default function ChapterPickerSheet({
               <circle cx="11" cy="11" r="7" />
               <path d="m20 20-3.5-3.5" strokeLinecap="round" />
             </svg>
+            {/* text-base (16px) — di bawah 16px iOS Safari auto-zoom saat
+                input difokuskan, dan halaman yang sudah ter-zoom bikin sheet
+                ini keluar dari layar 390px. */}
             <input
               ref={searchRef}
               value={q}
               onChange={(e) => setQ(e.target.value)}
               placeholder="Cari nomor atau judul chapter…"
               aria-label="Cari chapter"
-              className="w-full bg-transparent py-2.5 text-[13px] text-white placeholder:text-white/40 focus:outline-none"
+              type="text"
+              enterKeyHint="search"
+              autoComplete="off"
+              autoCorrect="off"
+              spellCheck={false}
+              className="w-full min-w-0 bg-transparent py-3 text-base text-white placeholder:text-white/40 focus:outline-none"
             />
             {q && (
               <button
+                type="button"
                 onClick={() => setQ('')}
                 aria-label="Bersihkan pencarian"
-                className="text-white/50 active:text-white/80"
+                className="grid size-11 shrink-0 place-items-center rounded-full text-white/60 active:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/80"
               >
                 <svg viewBox="0 0 24 24" className="size-4" fill="none" stroke="currentColor" strokeWidth="2">
                   <path d="M6 6l12 12M18 6L6 18" strokeLinecap="round" />
@@ -232,6 +281,16 @@ export default function ChapterPickerSheet({
             )}
           </div>
         </div>
+
+        {/* Pembaca layar tidak melihat daftar berubah saat mengetik — jumlah
+            hasil (dan status muat/gagal) harus bisa didengar. */}
+        <p role="status" aria-live="polite" className="sr-only">
+          {loading
+            ? 'Memuat daftar chapter'
+            : error
+              ? `Gagal memuat chapter: ${error}`
+              : `${filtered.length} chapter ditemukan`}
+        </p>
 
         {loading ? (
           <p className="px-4 pb-8 pt-2 text-center text-[12.5px] text-white/50">
@@ -265,7 +324,7 @@ export default function ChapterPickerSheet({
                           ? `${c.title} — sudah dibaca`
                           : `${c.title} — belum dibaca`
                     }
-                    className={`flex items-center gap-3 rounded-xl px-3 py-2.5 transition-colors ${
+                    className={`flex min-h-11 items-center gap-3 rounded-xl px-3 py-2.5 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/80 ${
                       isCurrent
                         ? 'bg-brand-amber/20 ring-1 ring-inset ring-brand-amber/60'
                         : 'hover:bg-white/5 active:bg-white/10'
@@ -276,7 +335,7 @@ export default function ChapterPickerSheet({
                         isCurrent
                           ? 'text-brand-amber-soft'
                           : read
-                            ? 'text-white/30'
+                            ? 'text-white/55'
                             : 'text-white/60'
                       }`}
                       title={c.number || c.title}
@@ -288,7 +347,7 @@ export default function ChapterPickerSheet({
                         isCurrent
                           ? 'font-bold text-white'
                           : read
-                            ? 'text-white/40'
+                            ? 'text-white/65'
                             : 'text-white/85'
                       }`}
                     >
@@ -306,18 +365,30 @@ export default function ChapterPickerSheet({
           </ul>
         )}
 
-        {latest && (
-          <div className="border-t border-white/10 px-4 py-3">
+        {/* Bar aksi di bawah sheet = zona jempol. "Tutup" selalu ada (walau
+            belum ada chapter terbaru / daftar gagal dimuat) supaya menutup
+            sheet tidak perlu menjangkau X di pojok atas. */}
+        <div className="flex shrink-0 items-center gap-2 border-t border-white/10 px-4 pb-[calc(0.75rem+env(safe-area-inset-bottom))] pt-3">
+          {latest && (
             <Link
               to={hrefFor(latest.key)}
               replace
               onClick={onClose}
-              className="block rounded-xl bg-white/10 py-2.5 text-center text-[13px] font-bold text-white active:bg-white/20"
+              className="flex min-h-11 min-w-0 flex-1 items-center justify-center rounded-xl bg-brand-amber px-3 text-[13px] font-bold text-white active:bg-brand-amber/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/80"
             >
-              Lompat ke chapter terbaru · {latest.number}
+              <span className="truncate">Lompat ke chapter terbaru · {latest.number}</span>
             </Link>
-          </div>
-        )}
+          )}
+          <button
+            type="button"
+            onClick={onClose}
+            className={`grid min-h-11 shrink-0 place-items-center rounded-xl border border-white/15 px-4 text-[13px] font-bold text-white/85 active:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/80 ${
+              latest ? '' : 'flex-1'
+            }`}
+          >
+            Tutup
+          </button>
+        </div>
       </div>
     </div>
   )

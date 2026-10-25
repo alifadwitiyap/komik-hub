@@ -12,8 +12,16 @@
  */
 /** jendela waktu deteksi flick (ms) */
 export const FLICK_WINDOW_MS = 150
-/** kecepatan minimum untuk dianggap flick (px per ms) */
-export const FLICK_VELOCITY_PX_PER_MS = 0.6
+/**
+ * Kecepatan minimum untuk dianggap flick (px per ms).
+ *
+ * Dinaikkan 0.6 -> 1.5 (600 -> 1500 px/s). Dengan 0.6, scroll baca biasa
+ * ikut terdeteksi: 30 px per event dengan jeda 45 ms = 0,67 px/ms sudah
+ * menyalakan niat, lalu tap berikutnya (yang dimaksudkan untuk memunculkan
+ * toolbar) malah masuk layar penuh — keluhan "kadang tap malah fullscreen".
+ * 1.5 hanya tercapai oleh flick yang benar-benar cepat (mis. 120 px/8 ms).
+ */
+export const FLICK_VELOCITY_PX_PER_MS = 1.5
 /** jumlah minimal event wheel dalam jendela untuk validasi flick */
 export const FLICK_MIN_EVENTS = 3
 /** masa berlaku niat (`pending`) sebelum hangus (ms) */

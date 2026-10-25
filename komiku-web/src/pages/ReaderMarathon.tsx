@@ -3,13 +3,16 @@ import { Link, useNavigate, useParams } from 'react-router-dom'
 import ChapterPickerSheet from '../components/ChapterPickerSheet'
 import ComicImage from '../components/ComicImage'
 import ReaderFooter from '../components/ReaderFooter'
+import ReaderFullscreenButton from '../components/ReaderFullscreenButton'
 import ReaderMenu from '../components/ReaderMenu'
 import ReaderSettingsSheet from '../components/ReaderSettingsSheet'
 import ReaderToolbar from '../components/ReaderToolbar'
 import SourceBadge from '../components/SourceBadge'
 import { mountAheadPx } from '../imgUrl'
+import { tapHitsReaderControl } from '../readerControls'
 import { useReaderSettings } from '../hooks/useReaderSettings'
 import { useChromeOnScroll } from '../hooks/useChromeOnScroll'
+import { useAutoFullscreen } from '../hooks/useAutoFullscreen'
 import type { ChapterResponse } from '../types'
 import { Empty } from '../App'
 import { useProgress } from '../hooks/useProgress'
@@ -80,12 +83,25 @@ export default function ReaderMarathon() {
   const [chapterPickerOpen, setChapterPickerOpen] = useState(false)
   const [toast, setToast] = useState<string | null>(null)
   const [nextLoadFailed, setNextLoadFailed] = useState(false)
+  /** sedang mengambil chapter berikutnya — untuk status "memuat" di dasar */
+  const [loadingNext, setLoadingNext] = useState(false)
+  /** awal gesture tap — membedakan tap dari scroll (sama seperti Reader) */
+  const tapStart = useRef<{ x: number; y: number; t: number } | null>(null)
   const bottomRef = useRef<HTMLDivElement | null>(null)
   /** chapterId yang sudah/sedang di-fetch — cegah fetch ganda & loop abort */
   const fetchedRef = useRef<Set<string>>(new Set())
   const { save } = useProgress()
   const navigate = useNavigate()
   const { settings, onChange, onReset, filterStyle } = useReaderSettings()
+  /**
+   * Layar penuh di maraton: HANYA jalur manual (`enabled=false` mematikan
+   * deteksi flick). Di mode ini scroll ke bawah adalah cara membaca — kalau
+   * flick juga meng-arm "niat fullscreen", tap untuk berhenti membaca malah
+   * masuk layar penuh. Tombol manual tetap tersedia supaya kontrolnya sama
+   * dengan reader biasa.
+   */
+  const autoFS = useAutoFullscreen(false)
+  const fsActive = autoFS.active || autoFS.nativeActive
   // seberapa jauh di luar layar halaman boleh mulai diminta (lihat ComicImage)
   const mountAhead = useMemo(
     () => mountAheadPx(typeof window !== 'undefined' ? window.innerHeight : 800),
@@ -108,6 +124,7 @@ export default function ReaderMarathon() {
     setTailIdx(-1)
     setError(null)
     setNextLoadFailed(false)
+    setLoadingNext(false)
     // indeks gambar global kembali dari 0 → penanda settled harus dikosongkan
     setSettled(new Set())
     // channel baru: chrome tampil lagi (jangan warisi keadaan tersembunyi)
@@ -238,6 +255,7 @@ export default function ReaderMarathon() {
     const nextId = lastBlock?.nextId
     if (!nextId || fetchedRef.current.has(nextId)) return
     fetchedRef.current.add(nextId)
+    setLoadingNext(true)
     loadChapter(nextId)
       .then((d) => {
         setNextLoadFailed(false)
@@ -248,6 +266,7 @@ export default function ReaderMarathon() {
         fetchedRef.current.delete(nextId)
         setNextLoadFailed(true)
       })
+      .finally(() => setLoadingNext(false))
   }, [lastBlock, pushBlock])
 
   useEffect(() => {
@@ -293,25 +312,69 @@ export default function ReaderMarathon() {
   if (error) return <Empty title="Gagal memuat mode maraton" body={error} />
   if (blocks.length === 0) {
     return (
-      <div className="grid min-h-screen place-items-center bg-night">
-        <div className="flex flex-col items-center gap-3">
-          <span className="size-6 animate-spin rounded-full border-2 border-white/20 border-t-brand-red" />
-          <p className="text-[14px] text-white/80">Menyiapkan maraton…</p>
+      <div className="flex min-h-dvh flex-col items-center justify-center gap-8 bg-night px-6">
+        <div role="status" aria-live="polite" className="flex flex-col items-center gap-3">
+          <span
+            aria-hidden="true"
+            className="size-6 animate-spin rounded-full border-2 border-white/20 border-t-brand-red motion-reduce:animate-none"
+          />
+          <p className="text-[14px] font-medium text-white/85">Menyiapkan maraton…</p>
           <div className="h-0.5 w-44 overflow-hidden rounded-full bg-white/15">
             <div className="h-full w-1/3 animate-[loadbar_1.2s_ease-in-out_infinite] rounded-full bg-brand-red" />
           </div>
         </div>
+        <button
+          type="button"
+          onClick={() => navigate(-1)}
+          className="min-h-11 rounded-xl border border-white/25 px-5 text-[13px] font-semibold text-white/85 active:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70"
+        >
+          Kembali
+        </button>
         <style>{`@keyframes loadbar{0%{transform:translateX(-100%)}100%{transform:translateX(320%)}}`}</style>
       </div>
     )
   }
 
   return (
-    <div className={`relative min-h-screen ${settings.nightShift ? 'bg-night-dark' : 'bg-white'}`}>
-      <button
-        aria-label={chrome.visible ? 'Sembunyikan kontrol' : 'Tampilkan kontrol'}
-        onClick={chrome.toggle}
-        className="fixed inset-0 z-10"
+    <div className={`relative min-h-dvh ${settings.nightShift ? 'bg-night-dark' : 'bg-white'}`}>
+      {/* Tap area baca — div (bukan button) supaya tidak jadi satu tombol
+          raksasa di pohon aksesibilitas. Guard tap-vs-drag mencegah toggle
+          saat jari hanya menggulir. Tap pada kontrol halaman (lingkaran
+          "Muat ulang"/"Coba lagi") tidak boleh ikut men-toggle chrome. */}
+      <div
+        aria-hidden="true"
+        data-testid="marathon-tap-layer"
+        onPointerDown={(e) => {
+          tapStart.current = { x: e.clientX, y: e.clientY, t: performance.now() }
+        }}
+        onPointerCancel={() => {
+          tapStart.current = null
+        }}
+        onClick={(e) => {
+          const start = tapStart.current
+          tapStart.current = null
+          if (start) {
+            const moved = Math.hypot(e.clientX - start.x, e.clientY - start.y)
+            if (moved > 12 || performance.now() - start.t > 900) return
+          }
+          if (tapHitsReaderControl(e.clientX, e.clientY)) return
+          if (fsActive) {
+            autoFS.reset()
+            chrome.show()
+          } else chrome.toggle()
+        }}
+        className="fixed inset-0 z-10 touch-manipulation"
+      />
+
+      <ReaderFullscreenButton
+        active={fsActive}
+        visible={chrome.visible || fsActive}
+        onToggle={() => {
+          if (fsActive) {
+            autoFS.reset()
+            chrome.show()
+          } else autoFS.requestEnter()
+        }}
       />
 
       <ReaderToolbar
@@ -321,7 +384,6 @@ export default function ReaderMarathon() {
         onHome={() => navigate('/')}
         onShare={() => setToast('Bagikan: salin URL halaman ini')}
         onMore={() => setMenuOpen(true)}
-        chip="Maraton"
         badge={curSource && curSource !== 'komiku' ? <SourceBadge source={curSource} /> : null}
         visible={chrome.visible}
       />
@@ -347,14 +409,18 @@ export default function ReaderMarathon() {
       />
 
       {toast && (
-        <p className="fixed bottom-28 left-1/2 z-40 -translate-x-1/2 rounded-full bg-black/80 px-4 py-2 text-[12px] text-white">
+        <p
+          role="status"
+          aria-live="polite"
+          className="pointer-events-none fixed bottom-[calc(9.5rem+env(safe-area-inset-bottom))] left-1/2 z-40 -translate-x-1/2 rounded-full bg-black/85 px-4 py-2 text-[12px] font-medium text-white shadow-lg"
+        >
           {toast}
         </p>
       )}
 
       {/* progres chapter berjalan — update per gambar, transisi halus */}
       <div
-        className={`fixed inset-x-0 top-12 z-30 h-0.5 bg-black/20 transition-opacity duration-200 ${
+        className={`fixed inset-x-0 top-[calc(env(safe-area-inset-top)+3rem)] z-30 h-0.5 bg-black/20 transition-opacity duration-200 ${
           chrome.visible ? 'opacity-100' : 'pointer-events-none opacity-0'
         }`}
         aria-hidden={!chrome.visible}
@@ -365,10 +431,18 @@ export default function ReaderMarathon() {
         />
       </div>
 
-      {/* banner maraton inline — muncul di dalam alur baca, bukan di chrome */}
-      <div className="mx-auto max-w-3xl px-4 pt-3">
-        <p className="rounded-lg border border-brand-amber-dim/60 bg-brand-amber-dim/10 px-3 py-2 text-center text-[11px] font-medium text-brand-amber">
-          Maraton · Mode Baca Marathon — chapter berikutnya otomatis terbuka tanpa hambatan
+      {/* banner maraton inline — muncul di dalam alur baca, bukan di chrome.
+          Teks 12px + warna reader-muted: kontras aman di tema terang & gelap.
+          pt = tinggi toolbar + safe-area supaya tidak tertutup toolbar fixed.
+          Chip "Maraton" di toolbar DIHAPUS: judul sudah menyebut mode ini, dan
+          di 390 px chip itu memakan ~60 px lebar judul sampai terpotong. */}
+      <div className="mx-auto max-w-3xl pl-4 pr-16 pt-[calc(env(safe-area-inset-top)+3.5rem)] lg:pr-4">
+        <p
+          className={`rounded-lg border border-brand-amber-dim/60 bg-brand-amber-dim/10 px-3 py-2 text-center text-[12px] font-medium leading-snug ${
+            settings.nightShift ? 'text-reader-muted-night' : 'text-reader-muted'
+          }`}
+        >
+          Chapter berikutnya terbuka otomatis.
         </p>
       </div>
 
@@ -379,7 +453,11 @@ export default function ReaderMarathon() {
           return (
             <div key={b.chapterId}>
               {bi > 0 && (
-                <p className="my-4 text-center text-[11px] font-medium text-ink-500">
+                <p
+                  className={`my-4 text-center text-[12px] font-medium ${
+                    settings.nightShift ? 'text-reader-muted-night' : 'text-reader-muted'
+                  }`}
+                >
                   {b.chapterName}
                 </p>
               )}
@@ -405,21 +483,53 @@ export default function ReaderMarathon() {
           )
         })}
 
-        {/* penanda bawah + muat manual kalau auto-advance gagal */}
-        <div ref={bottomRef} className="h-32" />
+        {/* penanda bawah untuk IntersectionObserver chaining */}
+        <div ref={bottomRef} className="h-36" />
+      </div>
+
+      {/**
+       * Status + jalan keluar chaining DI LUAR kontainer ber-`filter`.
+       *
+       * Kontainer flow memakai `filter` (kecerahan/night shift) → itu membuat
+       * stacking-context baru, sehingga apa pun di dalamnya berada DI BAWAH
+       * overlay tap-tengah `fixed inset-0 z-10`. Link "Baca Chapter Berikutnya"
+       * yang dulu dirender di dalam flow jadi tidak pernah bisa diklik — tap-nya
+       * hanya men-toggle chrome. Dengan dipindah ke sini + `relative z-20`,
+       * link benar-benar menerima klik.
+       */}
+      <div className="relative z-20 mx-auto max-w-3xl">
+        {loadingNext && !nextLoadFailed && (
+          <div
+            role="status"
+            aria-live="polite"
+            className={`pointer-events-none mx-4 mb-24 flex items-center justify-center gap-2 text-[12px] font-medium ${
+              settings.nightShift ? 'text-reader-muted-night' : 'text-reader-muted'
+            }`}
+          >
+            <span
+              aria-hidden="true"
+              className="size-4 animate-spin rounded-full border-2 border-ink-600 border-t-brand-amber motion-reduce:animate-none"
+            />
+            Memuat chapter berikutnya…
+          </div>
+        )}
         {nextLoadFailed && tail?.nextId && (
           <div className="mx-4 mb-24">
             <Link
               to={marathonHref(tail.nextId)}
               replace
-              className="block rounded-xl bg-brand-amber py-3 text-center text-[13px] font-bold text-ink-950"
+              className="flex min-h-11 items-center justify-center rounded-xl bg-brand-amber px-4 py-3 text-center text-[13px] font-bold text-white active:bg-brand-amber-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber focus-visible:ring-offset-2"
             >
               Baca Chapter Berikutnya — {tail.nextName ?? 'chapter berikutnya'}
             </Link>
           </div>
         )}
         {chainExhausted && (
-          <p className="px-4 pb-28 text-center text-[12px] text-ink-500">
+          <p
+            className={`px-4 pb-28 text-center text-[12px] ${
+              settings.nightShift ? 'text-reader-muted-night' : 'text-reader-muted'
+            }`}
+          >
             {blocks.length >= MAX_BLOCKS
               ? `Berhenti di ${MAX_BLOCKS} chapter — mulai maraton lagi dari sini.`
               : 'Semua chapter sudah terbaca.'}

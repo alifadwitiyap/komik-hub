@@ -13,27 +13,74 @@ import { aspectOf, rememberAspect } from '../pageMemory'
 const STUCK_MS = 2000
 
 /**
- * Ren der tombol "Coba lagi" melalui portal ke document.body dengan posisi
- * fixed mengikuti kotak placeholder gambar yang gagal. Ini MENGGAGALKAN
- * stacking-context yang dibuat `filter`/`transform` pada kontainer flow
- * reader — tanpa portal, z-index tombol hanya naik dalam konteks itu dan
- * tetap DI BAWAH overlay `ReaderFooter` (fixed z-30) / tap-tengah (z-10),
- * sehingga tombol tak bisa diklik saat memberinya di bawah footer. Dengan
- * portal, tombol ikut stacking-context akar dan z-40 > z-30.
+ * Lapisan kontrol halaman DI ATAS overlay tap-tengah reader.
+ *
+ * Kontrol reader (tombol "Coba lagi", tombol muat ulang melingkar) HARUS
+ * dirender lewat portal ke document.body dengan posisi fixed mengikuti kotak
+ * halaman. Alasannya stacking-context: kontainer flow reader selalu punya
+ * `filter` (kecerahan/perisai malam, lihat useReaderSettings.filterStyle),
+ * dan `filter` membentuk stacking-context baru. z-index apa pun di dalamnya
+ * (termasuk z-40) tetap DI BAWAH overlay tap-tengah `fixed inset-0 z-10` milik
+ * Reader — akibatnya klik pada tombol melingkar jatuh ke overlay dan malah
+ * memicu fullscreen (laporan user). Dengan portal, kontrol ikut stacking
+ * context akar: z-40 > z-10, jadi kliknya benar-benar mengenai tombol.
+ *
+ * `pointer-events-none` di lapisan + `pointer-events-auto` di tombol: area
+ * halaman selain tombol tetap bisa men-toggle chrome seperti biasa.
  */
-function FixedRetry({
+/**
+ * Cadangan tinggi area chrome reader kalau elemennya belum ada di DOM:
+ * toolbar atas ±48px dan footer bawah ±108px.
+ */
+const CHROME_TOP_PX = 56
+const CHROME_BOTTOM_PX = 120
+
+function PageControlLayer({
   targetRef,
-  onRetry,
+  minVisible = 120,
+  className,
+  children,
 }: {
   targetRef: React.RefObject<HTMLDivElement | null>
-  onRetry: () => void
+  /** tinggi area halaman yang harus terlihat agar kontrol ditampilkan */
+  minVisible?: number
+  className?: string
+  children: React.ReactNode
 }) {
-  const [rect, setRect] = useState<DOMRect | null>(null)
+  // Kotak halaman DIPOTONG ke area baca (viewport minus chrome): kontrol harus
+  // selalu berada di bagian halaman yang benar-benar terlihat. Kalau memakai
+  // tinggi halaman penuh, tombol di tengah halaman panjang bisa berada di luar
+  // layar (tak bisa dipencet) — atau tampak "melayang" di halaman lain.
+  const [rect, setRect] = useState<{
+    left: number
+    top: number
+    width: number
+    height: number
+  } | null>(null)
 
   useEffect(() => {
     const update = () => {
       const el = targetRef.current
-      if (el) setRect(el.getBoundingClientRect())
+      if (!el) {
+        setRect(null)
+        return
+      }
+      // tinggi chrome dibaca dari DOM supaya safe-area iPhone ikut terhitung
+      const toolbar = document.querySelector<HTMLElement>('[data-reader-chrome="toolbar"]')
+      const footer = document.querySelector<HTMLElement>('[data-reader-chrome="footer"]')
+      const topInset = toolbar?.offsetHeight ?? CHROME_TOP_PX
+      const bottomInset = footer?.offsetHeight ?? CHROME_BOTTOM_PX
+
+      const r = el.getBoundingClientRect()
+      const left = Math.max(r.left, 0)
+      const top = Math.max(r.top, topInset)
+      const right = Math.min(r.right, window.innerWidth)
+      const bottom = Math.min(r.bottom, window.innerHeight - bottomInset)
+      if (right <= left || bottom - top < minVisible) {
+        setRect(null) // halaman (hampir) di luar area baca → jangan tampilkan
+        return
+      }
+      setRect({ left, top, width: right - left, height: bottom - top })
     }
     update()
     window.addEventListener('scroll', update, { passive: true })
@@ -42,28 +89,53 @@ function FixedRetry({
       window.removeEventListener('scroll', update)
       window.removeEventListener('resize', update)
     }
-  }, [targetRef])
+  }, [targetRef, minVisible])
 
   if (!rect) return null
 
   return (
     <div
-      className="fixed left-0 top-0 z-40 flex flex-col items-center justify-center gap-2 px-4 py-10 text-center"
+      className={`pointer-events-none fixed z-40 flex items-center justify-center ${className ?? ''}`}
       style={{
+        left: rect.left,
+        top: rect.top,
         width: rect.width,
         height: rect.height,
-        transform: `translate(${rect.left}px, ${rect.top}px)`,
       }}
     >
-      <p className="text-[12px] text-ink-400">Halaman gagal dimuat.</p>
+      {children}
+    </div>
+  )
+}
+
+function FixedRetry({
+  targetRef,
+  onRetry,
+}: {
+  targetRef: React.RefObject<HTMLDivElement | null>
+  onRetry: () => void
+}) {
+  return (
+    <PageControlLayer
+      targetRef={targetRef}
+      minVisible={190}
+      className="flex-col gap-3 px-4 text-center"
+    >
+      <p
+        role="status"
+        className="rounded-lg bg-black/70 px-3 py-1.5 text-[13px] font-medium text-white"
+      >
+        Halaman gagal dimuat.
+      </p>
       <button
         type="button"
+        data-reader-control="page-retry"
         onClick={onRetry}
-        className="rounded-lg border border-brand-amber-dim bg-white/80 px-3 py-1.5 text-[12px] font-semibold text-brand-amber"
+        className="pointer-events-auto inline-flex min-h-11 items-center justify-center rounded-xl border border-brand-amber-dim bg-white/90 px-4 text-[13px] font-bold text-brand-amber shadow-md transition-colors active:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber"
       >
         Coba lagi
       </button>
-    </div>
+    </PageControlLayer>
   )
 }
 
@@ -305,7 +377,7 @@ export default function ComicImage({
   }
 
   return (
-    <div className="relative">
+    <div ref={slotRef} className="relative">
       {/** LQIP: thumbnail blur sebagai placeholder selama gambar penuh belum `shown`.
           Crossfade halus via opacity; tidak menangkap pointer. */}
       {started && lqip && (
@@ -315,34 +387,46 @@ export default function ComicImage({
           style={{ backgroundImage: `url(${lqip})`, opacity: shown ? 0 : 1 }}
         />
       )}
-      {stuck && (
-        <button
-          type="button"
-          aria-label="Muatin ulang halaman ini"
-          title="Muatin ulang halaman ini"
-          onClick={() => {
-            setStuck(false)
-            setBuster(Date.now())
-            setAttempt((a) => a + 1)
-          }}
-          className="absolute left-1/2 top-1/2 z-40 flex h-20 w-20 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border-2 border-brand-amber-dim bg-ink-900/85 text-ink-100 shadow-xl transition hover:bg-ink-900 hover:text-white focus:outline-none focus:ring-2 focus:ring-brand-amber"
-        >
-          <svg
-            width="34"
-            height="34"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2.2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            aria-hidden="true"
-          >
-            <path d="M21 12a9 9 0 1 1-2.64-6.36" />
-            <polyline points="21 3 21 9 15 9" />
-          </svg>
-        </button>
-      )}
+      {/**
+       * Tombol "muat ulang" melingkar — sengaja LEWAT PORTAL (bukan absolute
+       * di dalam halaman) supaya tidak tertimpa overlay tap-tengah reader.
+       * Lihat PageControlLayer di atas. Tombol ini HANYA me-refresh gambar;
+       * tidak pernah menyentuh fullscreen.
+       */}
+      {stuck &&
+        createPortal(
+          <PageControlLayer targetRef={slotRef}>
+            <button
+              type="button"
+              data-reader-control="page-reload"
+              aria-label="Muat ulang halaman ini"
+              title="Muat ulang halaman ini"
+              onClick={() => {
+                setStuck(false)
+                setBuster(Date.now())
+                setAttempt((a) => a + 1)
+              }}
+              className="pointer-events-auto flex size-20 touch-manipulation flex-col items-center justify-center gap-0.5 rounded-full border border-white/30 bg-black/70 text-white shadow-xl backdrop-blur-sm transition-colors active:bg-black/85 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/80"
+            >
+              <svg
+                width="28"
+                height="28"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2.2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                aria-hidden="true"
+              >
+                <path d="M21 12a9 9 0 1 1-2.64-6.36" />
+                <polyline points="21 3 21 9 15 9" />
+              </svg>
+              <span className="text-[11px] font-semibold leading-none">Muat ulang</span>
+            </button>
+          </PageControlLayer>,
+          document.body,
+        )}
       <img
       key={attempt}
       ref={ref}

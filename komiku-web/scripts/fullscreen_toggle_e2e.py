@@ -29,20 +29,20 @@ with sync_playwright() as p:
     page.goto(BASE + CHAPTER_URL, wait_until="networkidle")
     page.wait_for_timeout(4000)
 
-    enter = page.locator('button[aria-label="Masuk fullscreen"]')
-    check("mula: tombol 'Masuk fullscreen' ada", enter.count() > 0)
+    enter = page.locator('button[aria-label="Masuk layar penuh"]')
+    check("mula: tombol 'Masuk layar penuh' ada", enter.count() > 0)
 
     # klik 1 → masuk
     enter.first.click()
     page.wait_for_timeout(800)
-    out = page.locator('button[aria-label="Keluar fullscreen"]')
-    check("klik 1: masuk fullscreen ('Keluar fullscreen' muncul)", out.count() > 0)
+    out = page.locator('button[aria-label="Keluar layar penuh"]')
+    check("klik 1: masuk fullscreen ('Keluar layar penuh' muncul)", out.count() > 0)
 
     # klik 2 → keluar
     out.first.click()
     page.wait_for_timeout(800)
-    enter2 = page.locator('button[aria-label="Masuk fullscreen"]')
-    check("klik 2: keluar fullscreen ('Masuk fullscreen' muncul lagi)", enter2.count() > 0)
+    enter2 = page.locator('button[aria-label="Masuk layar penuh"]')
+    check("klik 2: keluar fullscreen ('Masuk layar penuh' muncul lagi)", enter2.count() > 0)
 
     check("console: tanpa pageerror", not errors, "; ".join(errors)[:120])
     browser.close()

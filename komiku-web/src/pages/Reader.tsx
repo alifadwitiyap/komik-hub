@@ -4,11 +4,13 @@ import ChapterPickerSheet from '../components/ChapterPickerSheet'
 import ComicImage from '../components/ComicImage'
 import HeartButton from '../components/HeartButton'
 import ReaderFooter from '../components/ReaderFooter'
+import ReaderFullscreenButton from '../components/ReaderFullscreenButton'
 import ReaderMenu from '../components/ReaderMenu'
 import ReaderSettingsSheet from '../components/ReaderSettingsSheet'
 import ReaderToolbar from '../components/ReaderToolbar'
 import SourceBadge from '../components/SourceBadge'
 import { imgSrc, imgUrl, mountAheadPx } from '../imgUrl'
+import { tapHitsReaderControl } from '../readerControls'
 import { downloadChapterImages } from '../chapterOffline'
 import { unifiedApi } from '../api'
 import { useReaderSettings } from '../hooks/useReaderSettings'
@@ -95,6 +97,8 @@ export default function Reader() {
   const [sheetOpen, setSheetOpen] = useState(false)
   const [chapterPickerOpen, setChapterPickerOpen] = useState(false)
   const [toast, setToast] = useState<string | null>(null)
+  /** awal gesture tap di area baca — dipakai membedakan tap dari scroll/drag */
+  const tapStart = useRef<{ x: number; y: number; t: number } | null>(null)
   const { save, recent } = useProgress()
   const navigate = useNavigate()
 
@@ -471,6 +475,14 @@ export default function Reader() {
     return () => clearTimeout(t)
   }, [toast])
 
+  // Membuka menu/sheet = pembaca sedang MENGELOLA reader, bukan membaca.
+  // Niat fullscreen yang ter-arm dari flick sebelumnya (masa berlaku 2 detik)
+  // harus dibatalkan, kalau tidak tap pertama setelah sheet ditutup tiba-tiba
+  // masuk layar penuh.
+  useEffect(() => {
+    if (menuOpen || sheetOpen || chapterPickerOpen) autoFS.cancelPending()
+  }, [menuOpen, sheetOpen, chapterPickerOpen, autoFS.cancelPending])
+
   if (error) return <Empty title="Gagal memuat chapter" body={error} />
   // chapter sukses tapi sumber tak kirim gambar: pesan jelas, jangan halaman kosong (QA gap D)
   if (data && images.length === 0) {
@@ -483,14 +495,25 @@ export default function Reader() {
   }
   if (!data) {
     return (
-      <div className="grid min-h-screen place-items-center bg-night">
-        <div className="flex flex-col items-center gap-3">
-          <span className="size-6 animate-spin rounded-full border-2 border-white/20 border-t-brand-red" />
-          <p className="text-[14px] text-white/80">Memuat…</p>
+      <div className="flex min-h-dvh flex-col items-center justify-center gap-8 bg-night px-6">
+        <div role="status" aria-live="polite" className="flex flex-col items-center gap-3">
+          <span
+            aria-hidden="true"
+            className="size-6 animate-spin rounded-full border-2 border-white/20 border-t-brand-red motion-reduce:animate-none"
+          />
+          <p className="text-[14px] font-medium text-white/85">Memuat…</p>
           <div className="h-0.5 w-44 overflow-hidden rounded-full bg-white/15">
             <div className="h-full w-1/3 animate-[loadbar_1.2s_ease-in-out_infinite] rounded-full bg-brand-red" />
           </div>
         </div>
+        {/* jalan keluar saat jaringan lambat / request menggantung */}
+        <button
+          type="button"
+          onClick={() => navigate(-1)}
+          className="min-h-11 rounded-xl border border-white/25 px-5 text-[13px] font-semibold text-white/85 active:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70"
+        >
+          Kembali
+        </button>
         <style>{`@keyframes loadbar{0%{transform:translateX(-100%)}100%{transform:translateX(320%)}}`}</style>
       </div>
     )
@@ -509,52 +532,92 @@ export default function Reader() {
   const legacySeriesId = typeof seriesId === 'number' ? seriesId : null
 
   const chromeHidden = !chrome.visible || autoFS.active || autoFS.nativeActive
+  const fsActive = autoFS.active || autoFS.nativeActive
+  // tombol manual ikut tampil saat ada niat fullscreen (pending) supaya
+  // konsekuensi tap terlihat jelas — bukan kejutan.
+  const showFsButton = chrome.visible || autoFS.pending || fsActive
 
   return (
-    <div className={`relative min-h-screen ${settings.nightShift ? 'bg-night-dark' : 'bg-white'}`}>
-      {/* tap tengah: toggle chrome. Saat ada niat (pending) → eksekusi
-          fullscreen (tap = gesture asli). Saat aktif → keluar. */}
-      <button
-        aria-label={
-          autoFS.pending
-            ? 'Masuk fullscreen'
-            : chromeHidden && !autoFS.active && !autoFS.nativeActive
-              ? 'Tampilkan kontrol'
-              : chromeHidden
-                ? 'Keluar fullscreen / sembunyikan'
-                : 'Sembunyikan kontrol'
-        }
-        onClick={() => {
-          if (autoFS.pending) autoFS.requestEnter()
-          else if (autoFS.active || autoFS.nativeActive) autoFS.reset()
+    <div className={`relative min-h-dvh ${settings.nightShift ? 'bg-night-dark' : 'bg-white'}`}>
+      {/**
+       * Tap area baca: toggle chrome / eksekusi fullscreen saat ada niat.
+       *
+       * BUKAN <button> penuh layar: elemen ini sengaja `aria-hidden` supaya
+       * pembaca layar tidak melihat "satu tombol raksasa" yang menelan seluruh
+       * konten. Kontrol yang butuh fokus keyboard ada di toolbar + tombol
+       * layar penuh.
+       *
+       * Guard tap-vs-drag: sentuhan yang bergeser >12px atau ditahan >900ms
+       * (biasanya scroll/menahan halaman) TIDAK dianggap tap, jadi tidak
+       * memicu fullscreen tak sengaja. Kontrol melingkar (muat ulang halaman)
+       * dirender lewat portal di atas lapisan ini — lihat ComicImage.
+       */}
+      <div
+        aria-hidden="true"
+        data-testid="reader-tap-layer"
+        onPointerDown={(e) => {
+          tapStart.current = { x: e.clientX, y: e.clientY, t: performance.now() }
+          // Niat fullscreen dibatalkan SEJAK sentuhan pertama kalau jari
+          // mendarat di kontrol halaman. Ini lapis kedua: hook fullscreen juga
+          // membatalkan niat saat pointerdown menyentuh elemen interaktif,
+          // tapi di sini kita sudah tahu titiknya (termasuk toleransi 12px).
+          if (tapHitsReaderControl(e.clientX, e.clientY)) autoFS.cancelPending()
+        }}
+        onPointerCancel={() => {
+          tapStart.current = null
+        }}
+        onClick={(e) => {
+          const start = tapStart.current
+          tapStart.current = null
+          if (start) {
+            const moved = Math.hypot(e.clientX - start.x, e.clientY - start.y)
+            if (moved > 12 || performance.now() - start.t > 900) return
+          }
+          // Tap pada kontrol halaman (lingkaran "Muat ulang"/"Coba lagi")
+          // BUKAN tap area baca: jangan toggle chrome, dan jangan pernah
+          // dianggap niat fullscreen — batalkan niat yang mungkin masih
+          // ter-arm dari flick sebelumnya.
+          if (tapHitsReaderControl(e.clientX, e.clientY)) {
+            autoFS.cancelPending()
+            return
+          }
+          // Keluar layar penuh = kembali ke mode baca normal, jadi chrome
+          // (toolbar + footer) harus tampil lagi — kalau tidak, tombol keluar
+          // ikut hilang dan pembaca seperti terjebak tanpa kontrol.
+          if (fsActive) {
+            autoFS.reset()
+            chrome.show()
+          } else if (autoFS.pending) autoFS.requestEnter()
           else chrome.toggle()
         }}
-        className="fixed inset-0 z-10"
+        className="fixed inset-0 z-10 touch-manipulation"
       />
-      {/* tombol fullscreen manual — jalur eksplisit (fallback iOS / saat
-          pending hangus). Muncul bareng chrome biar gak ganggu baca.
-          Toggle: sekali klik masuk, klik lagi keluar. */}
-      <button
-        aria-label={
-          autoFS.active || autoFS.nativeActive
-            ? 'Keluar fullscreen'
-            : 'Masuk fullscreen'
-        }
-        title={
-          autoFS.active || autoFS.nativeActive
-            ? 'Keluar fullscreen'
-            : 'Masuk fullscreen'
-        }
-        onClick={() => {
-          if (autoFS.active || autoFS.nativeActive) autoFS.reset()
-          else autoFS.requestEnter()
+      {/**
+       * Tombol layar penuh manual — jalur eksplisit (fallback iOS / saat
+       * pending hangus). Komponen bersama Reader & Marathon: kotak 44×44 ikon
+       * saja saat idle (tidak menutupi kredit pojok halaman), melebar jadi pil
+       * berteks saat niat aktif/layar penuh. Lihat ReaderFullscreenButton.
+       */}
+      <ReaderFullscreenButton
+        active={fsActive}
+        pending={autoFS.pending}
+        visible={showFsButton}
+        onToggle={() => {
+          if (fsActive) {
+            autoFS.reset()
+            chrome.show()
+          } else autoFS.requestEnter()
         }}
-        className={`fixed left-1/2 top-16 z-40 flex min-h-[44px] min-w-[112px] items-center justify-center rounded-full border border-white/25 bg-black/70 px-5 text-[13px] font-semibold text-white shadow-lg transition-opacity select-none touch-manipulation ${
-          chrome.visible ? 'opacity-100' : 'pointer-events-none opacity-0'
-        }`}
-      >
-        ⛶ Layar penuh
-      </button>
+      />
+      {/* Pengumuman untuk pembaca layar: niat fullscreen adalah perilaku yang
+          tidak terlihat, jadi keadaannya harus bisa didengar. */}
+      <p role="status" aria-live="polite" className="sr-only">
+        {autoFS.pending && !fsActive
+          ? 'Niat layar penuh aktif. Ketuk area baca untuk masuk layar penuh, atau tombol Layar penuh.'
+          : fsActive
+            ? 'Layar penuh aktif.'
+            : ''}
+      </p>
 
       <ReaderToolbar
         title={chapter.name}
@@ -591,7 +654,11 @@ export default function Reader() {
       />
 
       {toast && (
-        <p className="fixed bottom-28 left-1/2 z-40 -translate-x-1/2 rounded-full bg-black/80 px-4 py-2 text-[12px] text-white">
+        <p
+          role="status"
+          aria-live="polite"
+          className="pointer-events-none fixed bottom-[calc(9.5rem+env(safe-area-inset-bottom))] left-1/2 z-40 -translate-x-1/2 rounded-full bg-black/85 px-4 py-2 text-[12px] font-medium text-white shadow-lg"
+        >
           {toast}
         </p>
       )}
@@ -600,15 +667,30 @@ export default function Reader() {
       {/* 2b — sumber pindah (fallback): SATU baris kecil berisi catatan
           persis dari server. User tetap tenang, tanpa dialog. */}
       {data.switched_from && data.note ? (
-        <p className="mx-auto max-w-3xl px-4 pt-2 text-[11px] text-ink-500">{data.note}</p>
+        // Warna teks memakai token PERMUKAAN BACA (bukan ink-* yang berubah
+        // mengikuti tema app): latar reader selalu putih atau #131313, jadi
+        // ink-500 versi tema gelap (#9aa0a8) hanya 2,5:1 di atas putih.
+        <p
+          className={`mx-auto max-w-3xl px-4 pr-16 pt-[calc(env(safe-area-inset-top)+3.5rem)] text-[12px] leading-relaxed max-sm:text-[12.5px] max-sm:leading-[1.7] ${
+            settings.nightShift ? 'text-reader-muted-night' : 'text-reader-muted'
+          }`}
+        >
+          {data.note}
+        </p>
       ) : null}
-      <div ref={flowRef} className="mx-auto flex max-w-3xl flex-col" style={filterStyle}>
+      <div
+        ref={flowRef}
+        className="reader-flow mx-auto flex max-w-3xl flex-col"
+        style={filterStyle}
+      >
         {images.map((src, i) => (
           <div
             key={`${chapter.id}-${i}`}
             className={
               settings.readMode === 'webtoon'
-                ? 'flex h-screen w-full items-center justify-center'
+                ? // dvh (bukan vh): 100vh di browser mobile termasuk bilah
+                  // alamat yang bisa menyusut → halaman terpotong di bawah.
+                  'flex h-dvh w-full items-center justify-center'
                 : ''
             }
           >
@@ -633,7 +715,13 @@ export default function Reader() {
             />
           </div>
         ))}
-        <div className="h-10" />
+        {/* Ruang bawah: footer fixed TIDAK boleh menutupi ekor halaman
+            terakhir saat chrome tampil. Tinggi footer terukur (390 px):
+            10 + 44 + 8 + 44 + 10 = 116 px + safe-area. Dulu spacer-nya
+            h-36 (144 px) — di iPhone (inset 34 px → footer 150 px) sisa
+            6 px ekor halaman tertutup. Sekarang 120 px + safe-area, jadi
+            selalu ≥ tinggi footer di semua perangkat. */}
+        <div className="h-[calc(7.5rem+env(safe-area-inset-bottom))]" />
       </div>
 
       <ReaderMenu

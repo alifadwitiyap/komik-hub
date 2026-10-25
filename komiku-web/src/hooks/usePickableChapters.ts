@@ -51,22 +51,26 @@ export function usePickableChapters({
   chapterKey,
   legacySeriesId,
 }: PickableChaptersInput): PickableChaptersState {
-  const [chapters, setChapters] = useState<PickableChapter[]>([])
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  /**
+   * Satu state "hasil per permintaan", di-key dengan kombinasi input.
+   *
+   * Kenapa bukan tiga state terpisah (chapters/loading/error): dengan state
+   * terpisah ada frame di mana `loading` masih false sementara `chapters`
+   * sudah dikosongkan — sheet sempat menampilkan "Belum ada chapter di series
+   * ini." padahal fetch baru saja dimulai. Dengan state ber-key, loading/error
+   * SELALU cocok dengan daftar yang sedang ditampilkan.
+   */
+  const sig = enabled && chapterKey ? `${chapterKey}|${legacySeriesId ?? ''}` : ''
+  const [result, setResult] = useState<{
+    sig: string
+    chapters: PickableChapter[]
+    error: string | null
+  } | null>(null)
 
   useEffect(() => {
-    if (!enabled || !chapterKey) {
-      setChapters([])
-      setLoading(false)
-      setError(null)
-      return
-    }
+    if (!sig || !chapterKey) return
     const ctrl = new AbortController()
     const unified = parseUnifiedKey(chapterKey)
-
-    setLoading(true)
-    setError(null)
 
     const job = unified
       ? unifiedApi.series(unified.handle, ctrl.signal).then((r) =>
@@ -87,18 +91,27 @@ export function usePickableChapters({
         : Promise.resolve([] as PickableChapter[])
 
     job
-      .then((list) => setChapters(sortAscending(list)))
-      .catch((e: Error) => {
-        if (e.name === 'AbortError') return
-        setError(e.message)
-        setChapters([])
+      .then((list) => {
+        // request sudah dibatalkan (sheet ditutup / chapter berganti) →
+        // jangan timpa hasil permintaan yang lebih baru.
+        if (ctrl.signal.aborted) return
+        setResult({ sig, chapters: sortAscending(list), error: null })
       })
-      .finally(() => setLoading(false))
+      .catch((e: Error) => {
+        if (e.name === 'AbortError' || ctrl.signal.aborted) return
+        setResult({ sig, chapters: [], error: e.message })
+      })
 
     return () => ctrl.abort()
-  }, [enabled, chapterKey, legacySeriesId])
+  }, [sig, chapterKey, legacySeriesId])
 
-  return { chapters, loading, error }
+  // hasil basi (sig lama) dianggap "belum ada" → loading, bukan daftar lama.
+  const active = result && result.sig === sig ? result : null
+  return {
+    chapters: active?.chapters ?? [],
+    loading: sig !== '' && active === null,
+    error: active?.error ?? null,
+  }
 }
 
 /** Nomor chapter legacy: field `number` kalau ada, else parse dari nama. */

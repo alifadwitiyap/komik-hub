@@ -97,8 +97,12 @@ export default function ReaderMenu({
       onClick: onOpenSettings,
     },
   ]
+  // z-50, setara sheet preferensi/pemilih chapter: kontrol halaman
+  // ("Muat ulang"/"Coba lagi") di-portal ke <body> dengan z-40 dan selalu
+  // menang atas #root pada z-index yang sama — tanpa ini tombol melingkar
+  // itu melayang DI ATAS backdrop menu yang sedang terbuka.
   return (
-    <div className="fixed inset-0 z-40 flex items-end bg-black/40" onClick={onClose}>
+    <div className="fixed inset-0 z-50 flex items-end bg-black/40" onClick={onClose}>
       <div
         className="w-full rounded-t-2xl bg-night-dark/95 px-2 pb-5 pt-3 backdrop-blur"
         onClick={(e) => e.stopPropagation()}
