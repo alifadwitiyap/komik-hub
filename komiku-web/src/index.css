@@ -176,23 +176,33 @@ body {
 }
 
 /* ---------------------------------------------------------------------------
-   RITME BACA MOBILE (viewport <= 639 px - acuan 390x844)
+   RITME BACA RAPAT — SEMUA VIEWPORT (bukan cuma mobile)
    Halaman manga dari sumber datang tanpa jeda: dua gambar menempel persis.
-   row-gap 0 — halaman nyambung rapat (mengikuti preferensi user: tanpa pita
-   putih di antara halaman).
-
-   HANYA di bawah 640 px: layout desktop/tablet tetap rapat seperti semula,
-   jadi tidak ada perubahan komposisi di layar besar.
+   row-gap 0 di semua lebar layar; tidak ada pita/area kosong antar halaman
+   di HP maupun desktop.
 
    Kelas .reader-flow dipasang di Reader.tsx pada kontainer flow. Marathon
    (ReaderMarathon.tsx) memakai markup sendiri tanpa kelas ini, jadi rantai
    maraton tidak ikut bergeser.
 
+   .reader-page = pembungkus satu halaman. line-height 0 mematikan ruang
+   baseline inline (kalau suatu saat <img> tidak lagi display:block, tetap
+   tidak ada celah 4-5 px di bawah gambar). .manga-img dipaksa display:block
+   supaya tidak bergantung pada preflight Tailwind.
+
    Jarak vertikal ini ikut terukur oleh pageMemory/anchor (top & height tiap
    <img> dibaca ulang saat scroll), jadi posisi baca tetap presisi.
    --------------------------------------------------------------------------- */
-@media (max-width: 639.98px) {
-  .reader-flow {
-    row-gap: 0;
-  }
+.reader-flow {
+  row-gap: 0;
+  column-gap: 0;
+}
+
+.reader-page {
+  line-height: 0;
+}
+
+.manga-img {
+  display: block;
+  vertical-align: top;
 }

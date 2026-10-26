@@ -77,10 +77,25 @@ export function useReaderSettings() {
     }
   }, [settings.fullscreen])
 
-  /** CSS filter untuk tumpukan gambar: kecerahan + perisai malam. */
-  const filterStyle = {
-    filter: `brightness(${settings.brightness}%)${settings.nightShift ? ' sepia(0.4) hue-rotate(-12deg)' : ''}`,
-  }
+  /**
+   * CSS filter untuk tumpukan gambar: kecerahan + perisai malam.
+   *
+   * PENTING: kalau tidak ada yang perlu difilter (brightness 100 & night shift
+   * mati), JANGAN pasang `filter` sama sekali. `brightness(100%)` tetap
+   * membuat stacking context + layer GPU sepanjang seluruh chapter (bisa
+   * puluhan ribu px). Layer sebesar itu dirasterisasi per-tile dan bisa
+   * memunculkan garis tipis di batas tile — salah satu sumber "garis-garis"
+   * yang terlihat di HP. Tanpa filter, gambar digambar langsung ke layer
+   * halaman: tidak ada tile seam, dan memori GPU jauh lebih kecil.
+   */
+  const filterStyle =
+    settings.brightness === 100 && !settings.nightShift
+      ? undefined
+      : {
+          filter: `brightness(${settings.brightness}%)${
+            settings.nightShift ? ' sepia(0.4) hue-rotate(-12deg)' : ''
+          }`,
+        }
 
   return { settings, onChange, onReset, filterStyle }
 }

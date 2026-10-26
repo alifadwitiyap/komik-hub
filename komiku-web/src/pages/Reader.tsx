@@ -529,7 +529,16 @@ export default function Reader() {
   const showFsButton = chrome.visible
 
   return (
-    <div className={`relative min-h-dvh ${settings.nightShift ? 'bg-night-dark' : 'bg-white'}`}>
+    // overflow-x-clip: jaring pengaman. Kalau satu gambar (mis. spread halaman
+    // ganda) meluber ke samping, Chrome mobile menganggap halaman lebih lebar
+    // dari viewport lalu melakukan shrink-to-fit — seluruh UI mengecil dan
+    // "bergaris". Clip mencegahnya tanpa membuat scroll container (beda dari
+    // overflow-hidden) dan tanpa memengaruhi elemen fixed.
+    <div
+      className={`relative min-h-dvh overflow-x-clip ${
+        settings.nightShift ? 'bg-night-dark' : 'bg-white'
+      }`}
+    >
       {/**
        * Tap area baca: toggle chrome / eksekusi fullscreen saat ada niat.
        *
@@ -649,22 +658,38 @@ export default function Reader() {
           {data.note}
         </p>
       ) : null}
+      {/*
+        FLOW RAPAT — satu kolom tanpa jarak antar halaman.
+
+        Webtoon: lebar penuh (edge-to-edge), halaman menempel seperti strip
+        manhwa. Gulir Halaman: lebar kolom baca (max-w-3xl) di tengah.
+
+        DULU mode webtoon membungkus tiap halaman dengan
+        `flex h-dvh items-center justify-center` + gambar `max-h-dvh
+        object-contain`. Dua akibatnya, dua-duanya terlihat sebagai "garis":
+          1. object-contain memaksa gambar masuk kotak 100dvh → sisa ruang di
+             kiri/kanan (atau atas/bawah) terisi warna holder = pita abu-abu
+             vertikal di tiap halaman.
+          2. Holder adalah flex item dengan lebar content-based, jadi
+             `max-w-full` pada <img> tidak punya acuan (persentase terhadap
+             lebar tak tentu = none) → gambar selebar atribut `width` (1000px)
+             untuk satu frame. Chrome mobile lalu melakukan shrink-to-fit:
+             layout viewport melebar (375 → 688) dan SELURUH halaman
+             diperkecil. Itu sumber tampilan "menyempit + bergaris" di HP.
+
+        Sekarang tidak ada tinggi paksa dan tidak ada object-contain: setiap
+        halaman mengalir setinggi rasio aslinya, menempel persis halaman
+        berikutnya.
+      */}
       <div
         ref={flowRef}
-        className="reader-flow mx-auto flex max-w-3xl flex-col"
+        className={`reader-flow mx-auto flex w-full flex-col ${
+          settings.readMode === 'webtoon' ? '' : 'max-w-3xl'
+        }`}
         style={filterStyle}
       >
         {images.map((src, i) => (
-          <div
-            key={`${chapter.id}-${i}`}
-            className={
-              settings.readMode === 'webtoon'
-                ? // dvh (bukan vh): 100vh di browser mobile termasuk bilah
-                  // alamat yang bisa menyusut → halaman terpotong di bawah.
-                  'flex h-dvh w-full items-center justify-center'
-                : ''
-            }
-          >
+          <div key={`${chapter.id}-${i}`} className="reader-page w-full">
             <ComicImage
               src={src}
               alt={`${chapter.name} halaman ${i + 1}`}
@@ -678,11 +703,9 @@ export default function Reader() {
               onLoad={() => {
                 setLoadedPages((s) => (s.has(i) ? s : new Set(s).add(i)))
               }}
-              className={
-                settings.readMode === 'webtoon'
-                  ? 'manga-img max-h-dvh max-w-full object-contain'
-                  : 'manga-img w-full'
-              }
+              // block + w-full: tidak ada baseline gap inline, tidak ada
+              // letterbox — lebar gambar selalu = lebar kolom baca.
+              className="manga-img block w-full"
             />
           </div>
         ))}

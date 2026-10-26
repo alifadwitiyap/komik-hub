@@ -377,7 +377,12 @@ export default function ComicImage({
   }
 
   return (
-    <div ref={slotRef} className="relative bg-ink-800">
+    // Holder SENGAJA transparan (bukan bg-ink-800). Latar abu-abu membuat
+    // setiap halaman yang belum decode tampil sebagai pita/persegi abu di
+    // antara halaman putih — persis "garis-garis" yang dikeluhkan user.
+    // Kotak tetap memesan tinggi lewat atribut width/height <img>, jadi tidak
+    // ada layout shift; isyarat "sedang memuat" datang dari LQIP blur.
+    <div ref={slotRef} className="relative">
       {/** LQIP: thumbnail blur sebagai placeholder selama gambar penuh belum `shown`.
           Crossfade halus via opacity; tidak menangkap pointer. */}
       {started && lqip && (
@@ -465,12 +470,9 @@ export default function ComicImage({
         settledRef.current?.(false)
         settle()
       }}
-      // Latar kotak gambar SENGAJA non-putih: token ink-* di tema terang ini
-      // bernilai putih/nyaris putih (ink-900 = #ffffff), jadi selagi gambar
-      // belum decode kotaknya "bolong" tak terlihat — identik dengan strip
-      // putih milik halaman sumber. ink-800 = abu terang -> kotak kosong jelas
-      // terbaca sebagai "sedang memuat", bukan gagal load.
-      className={`select-none bg-ink-800 transition-opacity duration-200 ${
+      // Tanpa latar: selama gambar belum decode, yang terlihat adalah
+      // permukaan baca (putih / #131313 saat night shift) — bukan pita abu.
+      className={`select-none transition-opacity duration-200 ${
         shown ? 'opacity-100' : 'opacity-0'
       } ${className ?? ''}`}
       draggable={false}
