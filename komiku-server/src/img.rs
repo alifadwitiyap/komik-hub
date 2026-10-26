@@ -193,6 +193,18 @@ fn immutable(bytes: Vec<u8>, etag: &str, cache: &str, mime: &'static str) -> Res
     resp
 }
 
+/// AVIF hanya untuk thumbnail 160–320 px. LQIP reader memakai 96 px dan
+/// di-blur; AVIF di lebar itu tidak terlihat bedanya tapi encode-nya jauh
+/// lebih mahal (terukur 32 s vs 6 s cold di debug) — dan satu chapter memicu
+/// satu LQIP per halaman. 0 (passthrough) juga selalu WebP.
+fn negotiated_format(accepts_avif: bool, raw_w: u32) -> ImgFormat {
+    if accepts_avif && (160..=320).contains(&raw_w) {
+        ImgFormat::Avif
+    } else {
+        ImgFormat::WebP
+    }
+}
+
 /// Decode → resize (lebar `w`, rasio dipertahankan) → WebP lossy.
 /// Kualitas diturunkan untuk gambar kecil: di 480 px q72 sudah tak terbedakan
 /// dari aslinya di layar HP, dan selisih byte-nya besar.
@@ -360,17 +372,19 @@ pub async fn img_handler(Query(q): Query<ImgQuery>, headers: HeaderMap) -> Respo
     }
 
     // Negosiasi AVIF (opsional): hanya bila klien menerima `image/avif` DAN
-    // lebar kecil (sampul/thumbnail, w<=320). WebP tetap default untuk yang lain.
+    // lebar thumbnail sungguhan (160–320). WebP tetap default untuk yang lain.
+    //
+    // LQIP reader memakai lebar MINIMUM (96 px) dan di-blur. AVIF di ukuran itu
+    // tidak terlihat bedanya, tapi encode-nya jauh lebih mahal: terukur 32 s vs
+    // 4,3 s untuk satu halaman (cold, debug). Setiap halaman memicu satu LQIP,
+    // jadi seluruh CPU server habis untuk placeholder dan halaman yang sedang
+    // dibaca ikut tertunda. WebP sudah lebih dari cukup untuk blur 96 px.
     let accepts_avif = headers
         .get(header::ACCEPT)
         .and_then(|v| v.to_str().ok())
         .map(|v| v.split(',').any(|t| t.trim_start().starts_with("image/avif")))
         .unwrap_or(false);
-    let fmt = if accepts_avif && raw_w != 0 && raw_w <= 320 {
-        ImgFormat::Avif
-    } else {
-        ImgFormat::WebP
-    };
+    let fmt = negotiated_format(accepts_avif, raw_w);
 
     // kunci cache unik per format (WebP vs AVIF berbeda, tidak saling timpa).
     let key = sha1_hex(&format!("{}|{}|{}", q.u, raw_w, fmt.ext()));
@@ -586,6 +600,16 @@ mod tests {
             "output bukan AVIF: len={}",
             out.len()
         );
+    }
+
+    #[test]
+    fn avif_hanya_thumbnail_bukan_lqip() {
+        assert!(matches!(negotiated_format(true, 96), ImgFormat::WebP));
+        assert!(matches!(negotiated_format(true, 160), ImgFormat::Avif));
+        assert!(matches!(negotiated_format(true, 320), ImgFormat::Avif));
+        assert!(matches!(negotiated_format(true, 321), ImgFormat::WebP));
+        assert!(matches!(negotiated_format(true, 0), ImgFormat::WebP));
+        assert!(matches!(negotiated_format(false, 200), ImgFormat::WebP));
     }
 
     #[test]
