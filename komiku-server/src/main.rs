@@ -16,6 +16,7 @@ mod notif;
 mod pdf;
 mod progress;
 mod read;
+mod resilience;
 mod routes;
 mod unified;
 mod user;

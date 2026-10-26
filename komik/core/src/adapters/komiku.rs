@@ -407,7 +407,7 @@ impl KomikuSource {
                             "HTTP {} dari {}: {}",
                             status,
                             url,
-                            &body[..body.len().min(200)]
+                            body.chars().take(200).collect::<String>()
                         );
                     }
                     return serde_json::from_str(&body).map_err(|e| {

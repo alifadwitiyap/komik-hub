@@ -244,7 +244,20 @@ async fn catalogue(State(st): State<AppState>) -> Res<Value> {
             }
         }
     }
-    let raw = api::catalogue().await?;
+    // Graceful degradation: kalau upstream katalog gagal, sajikan cache lama
+    // (walau sudah lewat TTL) daripada 502. Katalog 5.6 MB berubah lambat;
+    // data basi jauh lebih berguna daripada halaman kosong.
+    let raw = match api::catalogue().await {
+        Ok(v) => v,
+        Err(e) => {
+            let guard = st.catalogue.read().await;
+            if let Some((val, _)) = guard.as_ref() {
+                tracing::warn!("catalogue upstream gagal, sajikan cache lama: {e:#}");
+                return Ok(Json(val.clone()));
+            }
+            return Err(AppError::new(e));
+        }
+    };
     // raw: { success, message, data: { "#": [...], "A": [...], ... } }
     let mut letters = serde_json::Map::new();
     if let Some(buckets) = raw.get("data").and_then(|d| d.as_object()) {

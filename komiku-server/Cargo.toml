@@ -13,6 +13,8 @@ reqwest = { version = "0.12", default-features = false, features = ["default-tls
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 anyhow = "1"
+# Implementasi Source untuk wrapper circuit breaker (test + production).
+async-trait = "0.1"
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 # `compression-gzip` menarik async-compression (encoder gzip) + futures-core

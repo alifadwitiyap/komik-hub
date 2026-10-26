@@ -102,7 +102,12 @@ impl KiryuuSource {
         let status = resp.status();
         let body = resp.text().await.unwrap_or_default();
         if !status.is_success() {
-            anyhow::bail!("DoH balas {} untuk {}: {}", status, self.host, &body[..body.len().min(120)]);
+            anyhow::bail!(
+                "DoH balas {} untuk {}: {}",
+                status,
+                self.host,
+                body.chars().take(120).collect::<String>()
+            );
         }
         let v: Value = serde_json::from_str(&body)
             .map_err(|e| anyhow::anyhow!("DoH bukan JSON ({})", e))?;

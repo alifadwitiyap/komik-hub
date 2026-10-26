@@ -19,25 +19,49 @@ pub const BASE_CONTENT: &str = "https://content.komikid.org/";
 const UA: &str = "Mozilla/5.0 (Linux; Android 13; SM-S908B) AppleWebKit/537.36 \
 (KHTML, like Gecko) Chrome/131.0.0.0 Mobile Safari/537.36";
 
-/// Klien tunggal dengan timeout & keep-alive; aman dipakai bersama antar task.
+/// Timeout per PERCOBAAN untuk endpoint legacy. Dulu 30 s × 3 percobaan =
+/// ~91 s saat upstream hang; sekarang 8 s × 2 = ~16 s (dan 522/523 yang
+/// dijawab Cloudflare langsung gagal tanpa retry).
+const REQUEST_TIMEOUT: Duration = Duration::from_secs(8);
+/// Katalog A-Z 5.6 MB boleh lebih lambat; tetap dibatasi supaya request
+/// pertama saat sumber mati tidak menggantung selamanya.
+const CATALOGUE_TIMEOUT: Duration = Duration::from_secs(20);
+/// Percobaan maksimum. Retry hanya untuk 401/403 (seed basi) dan galat
+/// jaringan; status HTTP non-2xx lain (mis. 522) langsung dikembalikan.
+const MAX_ATTEMPTS: u32 = 2;
+
+/// Klien tunggal dengan keep-alive; timeout dipasang PER REQUEST supaya
+/// katalog (berat) bisa punya batas berbeda dari endpoint ringan.
 static CLIENT: Lazy<reqwest::Client> = Lazy::new(|| {
     reqwest::Client::builder()
         .user_agent(UA)
-        .timeout(Duration::from_secs(30))
         .pool_idle_timeout(Duration::from_secs(90))
         .build()
-        .expect("klien HTTP gagal dibuat")
+        // Jangan panic di jalur request: client default tetap fungsional.
+        .unwrap_or_default()
 });
 
 /// GET dengan seed segar. Retry sekali saat 401/403 karena seed berbasis waktu.
 pub async fn get(base: &str, path_suffix: &str, query: &[(&str, String)]) -> Result<Value> {
+    get_with_timeout(base, path_suffix, query, REQUEST_TIMEOUT).await
+}
+
+async fn get_with_timeout(
+    base: &str,
+    path_suffix: &str,
+    query: &[(&str, String)],
+    timeout: Duration,
+) -> Result<Value> {
     let url = format!("{base}{path_suffix}");
 
     let mut last_err = None;
-    for _attempt in 0..3 {
+    for attempt in 0..MAX_ATTEMPTS {
         let resp = CLIENT
             .get(&url)
             .query(query)
+            // Menimpa timeout client (tidak ada default global): batas total
+            // satu percobaan, termasuk baca body.
+            .timeout(timeout)
             .header("x-secure-seeds", crypto::x_secure_seeds())
             .header("x-package-name", "id.komiku.plus")
             .header("x-version-code", "11")
@@ -54,11 +78,16 @@ pub async fn get(base: &str, path_suffix: &str, query: &[(&str, String)]) -> Res
                 {
                     // seed kedaluwarsa -> generate ulang
                     last_err = Some(anyhow!("HTTP {status} (seed ditolak)"));
-                    tokio::time::sleep(Duration::from_millis(400)).await;
+                    if attempt + 1 < MAX_ATTEMPTS {
+                        tokio::time::sleep(Duration::from_millis(400)).await;
+                    }
                     continue;
                 }
                 let body = r.text().await.context("baca body gagal")?;
                 if !status.is_success() {
+                    // 5xx (termasuk 522/523 Cloudflare) TIDAK di-retry:
+                    // mengulang tidak menyembuhkan origin timeout, hanya
+                    // menambah waktu tunggu user.
                     return Err(anyhow!(
                         "HTTP {status} dari {url}: {}",
                         body.chars().take(200).collect::<String>()
@@ -69,11 +98,13 @@ pub async fn get(base: &str, path_suffix: &str, query: &[(&str, String)]) -> Res
             }
             Err(e) => {
                 last_err = Some(anyhow!(e));
-                tokio::time::sleep(Duration::from_millis(500)).await;
+                if attempt + 1 < MAX_ATTEMPTS {
+                    tokio::time::sleep(Duration::from_millis(500)).await;
+                }
             }
         }
     }
-    Err(last_err.unwrap_or_else(|| anyhow!("gagal setelah 3 percobaan")))
+    Err(last_err.unwrap_or_else(|| anyhow!("gagal setelah {MAX_ATTEMPTS} percobaan")))
 }
 
 /// Pencarian: `page/{n}/?s={q}` — perhatikan key hasilnya `manga`, bukan `data`.
@@ -88,7 +119,13 @@ pub async fn search(q: &str, page: u32) -> Result<Value> {
 
 /// Katalog A-Z lengkap (5.6 MB). Di-cache di `routes::catalogue`.
 pub async fn catalogue() -> Result<Value> {
-    get(BASE_INDEX, "", &[("content", "mangalist".into())]).await
+    get_with_timeout(
+        BASE_INDEX,
+        "",
+        &[("content", "mangalist".into())],
+        CATALOGUE_TIMEOUT,
+    )
+    .await
 }
 
 pub async fn homepage() -> Result<Value> {

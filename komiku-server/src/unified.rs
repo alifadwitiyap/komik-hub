@@ -58,7 +58,7 @@ use serde_json::{json, Value};
 use komik_core::adapters::all_sources;
 use komik_core::aggregator::Aggregator;
 use komik_core::model::{title_key, Manga};
-use komik_core::source::{Source, PER_SOURCE_TIMEOUT_SECS};
+use komik_core::source::Source;
 
 use crate::downloads::{self, DownloadEntry, DownloadStore};
 use crate::pdf;
@@ -76,17 +76,36 @@ const SERIES_CHAPTER_LIMIT: u32 = 2000;
 
 // ------------------------------------------------------------------ agregator
 
+/// Batas total satu request unified yang punya fallback berurutan
+/// (series/chapter). Fan-out daftar sudah dibatasi timeout per sumber;
+/// angka ini mencegah fallback 4 sumber × 6 s menahan koneksi user ~24 s.
+const UNIFIED_REQUEST_BUDGET: std::time::Duration = std::time::Duration::from_secs(15);
+
 /// Satu instance Aggregator untuk seluruh proses (pola OnceCell seperti
 /// `api::CLIENT` — client & cache dipakai bersama semua request).
+///
+/// Sumber dibungkus [`crate::resilience::ResilientSource`] supaya sumber yang
+/// timeout tidak ditembak ulang setiap request (cache core sengaja tidak
+/// menyimpan hasil yang sebagian gagal). Timeout per sumber 6 s, bukan 10 s
+/// default core: satu sumber mati tidak boleh menahan request user lama.
 fn aggregator() -> &'static Aggregator {
     static AGG: std::sync::OnceLock<Aggregator> = std::sync::OnceLock::new();
     AGG.get_or_init(|| {
         let client = reqwest::Client::builder()
             .user_agent(UA_MOBILE)
-            .timeout(std::time::Duration::from_secs(2 * PER_SOURCE_TIMEOUT_SECS))
+            .timeout(std::time::Duration::from_secs(
+                2 * crate::resilience::SOURCE_TIMEOUT_SECS,
+            ))
             .build()
             .unwrap_or_default();
-        Aggregator::new(all_sources(client))
+        let sources = crate::resilience::ResilientSource::wrap_all(
+            all_sources(client),
+            crate::resilience::SOURCE_COOLDOWN,
+            crate::resilience::SOURCE_INNER_TIMEOUT,
+        );
+        Aggregator::new(sources).with_timeout(std::time::Duration::from_secs(
+            crate::resilience::SOURCE_TIMEOUT_SECS,
+        ))
     })
 }
 
@@ -693,15 +712,22 @@ pub struct SeriesQuery {
 
 async fn u_series(Path(handle): Path<String>, Query(q): Query<SeriesQuery>) -> Res<Value> {
     validate_handle(&handle)?;
-    let merged = aggregator()
-        .series_merged(
+    // Budget total: core boleh fallback berurutan antar sumber; tanpa batas
+    // ini 4 sumber × 6 s bisa menahan koneksi user ~24 s.
+    let merged = match tokio::time::timeout(
+        UNIFIED_REQUEST_BUDGET,
+        aggregator().series_merged(
             &handle,
             SERIES_CHAPTER_LIMIT,
             None,
             q.last_source.as_deref(),
-        )
-        .await
-        .map_err(classify_core_err)?;
+        ),
+    )
+    .await
+    {
+        Ok(r) => r.map_err(classify_core_err)?,
+        Err(_) => return Err(budget_err("series")),
+    };
     let manga = MangaOut::from(&merged.manga);
     let chapters: Vec<ChapterRow> = merged.chapters.iter().map(ChapterRow::from).collect();
     Ok(Json(json!({
@@ -736,6 +762,15 @@ fn classify_core_err(e: anyhow::Error) -> AppError {
     }
 }
 
+/// Galat saat budget request unified habis. Sengaja 502 (upstream), bukan
+/// 504: kontrak frontend sudah mengenal 502 + hint "sumber lambat".
+fn budget_err(op: &str) -> AppError {
+    AppError::new(anyhow::anyhow!(
+        "permintaan {op} melebihi batas {} detik (sumber lambat/tidak merespons)",
+        UNIFIED_REQUEST_BUDGET.as_secs()
+    ))
+}
+
 /// Halaman chapter lintas sumber: {title, number, source, images, prev, next,
 /// switched_from, note}. SATU panggilan `read_chapter_any`: kalau chapter
 /// tidak ada di sumber handle (atau gambarnya kosong), core ambil dari sumber
@@ -743,6 +778,16 @@ fn classify_core_err(e: anyhow::Error) -> AppError {
 /// selalu dari sumber yang MELAYANI.
 async fn u_chapter(Path((handle, number)): Path<(String, String)>) -> Res<Value> {
     validate_handle(&handle)?;
+    // Budget total: series_resolve + read_chapter_any berurutan, masing-masing
+    // bisa fallback antar sumber. Tanpa batas, dua jalur ini bisa menumpuk
+    // timeout jauh melewati 6 s per sumber.
+    match tokio::time::timeout(UNIFIED_REQUEST_BUDGET, u_chapter_inner(handle, number)).await {
+        Ok(r) => r,
+        Err(_) => Err(budget_err("chapter")),
+    }
+}
+
+async fn u_chapter_inner(handle: String, number: String) -> Res<Value> {
     // title_key SERIES (bukan judul chapter): web pakai utk favorit dan
     // sejarah lintas sumber. Series di-resolve lebih dulu supaya cache
     // aggregator (diisi halaman series) bisa dipakai ulang; kalau resolve

@@ -46,7 +46,6 @@ use tokio::sync::Mutex;
 use komik_core::adapters::all_sources;
 use komik_core::aggregator::Aggregator;
 use komik_core::model::Chapter;
-use komik_core::source::PER_SOURCE_TIMEOUT_SECS;
 
 use crate::routes::{AppError, Res};
 use crate::user::{require_user, user_file, users_dir};
@@ -245,10 +244,19 @@ fn aggregator() -> &'static Aggregator {
     AGG.get_or_init(|| {
         let client = reqwest::Client::builder()
             .user_agent(UA_MOBILE)
-            .timeout(std::time::Duration::from_secs(2 * PER_SOURCE_TIMEOUT_SECS))
+            .timeout(std::time::Duration::from_secs(
+                2 * crate::resilience::SOURCE_TIMEOUT_SECS,
+            ))
             .build()
             .unwrap_or_default();
-        Aggregator::new(all_sources(client))
+        let sources = crate::resilience::ResilientSource::wrap_all(
+            all_sources(client),
+            crate::resilience::SOURCE_COOLDOWN,
+            crate::resilience::SOURCE_INNER_TIMEOUT,
+        );
+        Aggregator::new(sources).with_timeout(std::time::Duration::from_secs(
+            crate::resilience::SOURCE_TIMEOUT_SECS,
+        ))
     })
 }
 
@@ -495,28 +503,36 @@ fn apply_favorites(existing: &mut BTreeMap<String, Favorite>, incoming: Vec<FavI
 /// ambil nomor tertinggi. Kegagalan sumber -> log warn + LANJUT (jangan abort).
 async fn fetch_snapshots(fav: &Favorite) -> Vec<(String, String)> {
     let agg = aggregator();
-    let names: Vec<String> = agg
-        .sources
-        .iter()
-        .map(|s| s.id().as_str().to_string())
-        .collect();
+    let title = fav.title.clone();
+    // Paralel per sumber: sebelumnya loop berurutan, jadi satu sumber mati
+    // (6 s) menahan snapshot sumber lain di belakangnya. Kegagalan satu
+    // sumber tetap dilewati, bukan membatalkan snapshot.
+    let mut set = tokio::task::JoinSet::new();
+    for src in agg.sources.clone() {
+        let name = src.id().as_str().to_string();
+        let title = title.clone();
+        set.spawn(async move {
+            let res = agg
+                .series_resolve(&title, NOTIF_CHAPTER_LIMIT, Some(&name))
+                .await;
+            (name, res)
+        });
+    }
     let mut out = Vec::new();
-    let title = fav.title.as_str();
-    for name in names {
-        match agg
-            .series_resolve(&fav.title, NOTIF_CHAPTER_LIMIT, Some(&name))
-            .await
-        {
-            Ok(o) => {
+    while let Some(joined) = set.join_next().await {
+        match joined {
+            Ok((name, Ok(o))) => {
                 if let Some(hi) = highest_chapter(&o.detail.chapters) {
                     out.push((name, hi));
                 }
             }
-            Err(e) => {
+            Ok((name, Err(e))) => {
                 tracing::warn!("notif: '{title}' sumber {name} gagal (lewati): {e:#}");
             }
+            Err(e) => tracing::warn!("notif: task snapshot gagal (lewati): {e}"),
         }
     }
+    out.sort_by(|a, b| a.0.cmp(&b.0));
     out
 }
 

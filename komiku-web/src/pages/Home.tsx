@@ -60,7 +60,8 @@ export default function Home() {
   // Komiku di atasnya tetap utuh.
   const [latest, setLatest] = useState<Manga[] | null>(null)
   useEffect(() => {
-    if (error) return
+    // JANGAN di-gate oleh `error` legacy: homepage Komiku yang mati tidak
+    // boleh membatalkan/menghalangi feed unified dari sumber lain.
     const ctrl = new AbortController()
     unifiedApi
       .popular(1, ctrl.signal)
@@ -71,7 +72,7 @@ export default function Home() {
       .then((r) => setLatest(r.items.map(toMangaCard)))
       .catch(() => setLatest([]))
     return () => ctrl.abort()
-  }, [error])
+  }, [])
 
   // SwipeRefresh replika: tarik dari atas saat scroll sudah di puncak
   const onTouchStart = (e: React.TouchEvent) => {
@@ -95,10 +96,17 @@ export default function Home() {
     touchY.current = 0
   }
 
-  if (error) return <Empty title="Gagal memuat beranda" body={error} />
-  if (!data) return <Spinner label="Memuat beranda…" />
+  // Halaman TIDAK boleh mati hanya karena homepage legacy Komiku gagal.
+  // Tunggu sampai setidaknya satu feed unified selesai (null = masih jalan);
+  // kalau semuanya kosong DAN legacy error, baru tampilkan pesan gagal.
+  if (!data && popular === null && latest === null) {
+    return <Spinner label="Memuat beranda…" />
+  }
+  if (!data && (popular?.length ?? 0) === 0 && (latest?.length ?? 0) === 0 && error) {
+    return <Empty title="Gagal memuat beranda" body={error} />
+  }
 
-  const sections = Object.entries(data)
+  const sections = Object.entries((data ?? {}) as Homepage)
     .filter(([k, v]) => k !== 'success' && typeof v === 'object' && v && 'data' in v)
     .map(([k, v]) => ({ key: k, ...(v as HomeSection) }))
     .filter((s) => s.data.length > 0)
@@ -137,6 +145,13 @@ export default function Home() {
               refreshing ? 'animate-spin' : ''
             }`}
           />
+        </div>
+      )}
+
+      {/* Legacy Komiku gagal: beri tahu tanpa memblokir feed sumber lain. */}
+      {error && (
+        <div className="mx-2.5 mt-3 rounded-lg border border-ink-800 bg-ink-900 px-3 py-2 text-[12px] text-ink-300">
+          Sebagian konten Komiku tidak tersedia — menampilkan sumber lain.
         </div>
       )}
 
