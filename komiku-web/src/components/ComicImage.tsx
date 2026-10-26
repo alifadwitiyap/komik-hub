@@ -377,7 +377,7 @@ export default function ComicImage({
   }
 
   return (
-    <div ref={slotRef} className="relative">
+    <div ref={slotRef} className="relative bg-ink-800">
       {/** LQIP: thumbnail blur sebagai placeholder selama gambar penuh belum `shown`.
           Crossfade halus via opacity; tidak menangkap pointer. */}
       {started && lqip && (
