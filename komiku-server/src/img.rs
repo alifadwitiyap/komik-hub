@@ -206,7 +206,9 @@ fn resize_encode(src: &[u8], target_w: u32) -> Result<Vec<u8>, String> {
     let h = ((sh as u64 * w as u64) / sw as u64).max(1) as u32;
     // Lanczos3 lebih tajam untuk line-art manga; Triangle dipakai kalau
     // gambarnya besar supaya CPU tidak meledak (rasio downscale ekstrem).
-    let filter = if (sw as u64 * sh as u64) > 12_000_000 {
+    // Ambang 2M px: banner halaman (720x8300-plus = 6-7M px) jatuh ke Triangle
+    // (cepat), halaman normal (720x1200 ≈ 0.9M px) tetap Lanczos3.
+    let filter = if (sw as u64 * sh as u64) > 2_000_000 {
         FilterType::Triangle
     } else {
         FilterType::Lanczos3

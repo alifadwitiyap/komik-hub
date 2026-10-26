@@ -10,7 +10,7 @@ import { aspectOf, rememberAspect } from '../pageMemory'
  * koneksi lambat bisa lebih lama — timer ini hanya menandai, tidak memblokir
  * apa pun; tombol refresh murni opsional.
  */
-const STUCK_MS = 2000
+const STUCK_MS = 20000
 
 /**
  * Lapisan kontrol halaman DI ATAS overlay tap-tengah reader.
@@ -262,9 +262,9 @@ export default function ComicImage({
   // Lebar default `src` (fallback kalau browser tak pakai srcset): adaptif
   // terhadap viewport + koneksi — error lambat → 480px (hemat data).
   const defaultWidth = pickWidth(vpW)
-  // LQIP / dominant-color placeholder: thumbnail 32px proxy, di-blur, tampil
-  // sampai gambar penuh `shown` → kotak tak kosong saat scroll.
-  const lqip = started ? imgSrc(src, 32, buster || undefined) : ''
+  // LQIP / dominant-color placeholder: thumbnail 96px proxy (min lebar server),
+  // di-blur, tampil sampai gambar penuh `shown` → kotak tak kosong saat scroll.
+  const lqip = started ? imgSrc(src, 96, buster || undefined) : ''
 
   // chapter berganti → reset state gambar
   useEffect(() => {
@@ -439,7 +439,7 @@ export default function ComicImage({
       // termuat, rasio intrinsik asli yang berlaku (height: auto)
       width={1000}
       height={Math.round(1000 / ratio)}
-      loading={eager ? 'eager' : 'lazy'}
+      loading={started ? 'eager' : 'lazy'}
       // LCP: halaman pertama diminta prioritas tinggi. Gambar lanjutan
       // sengaja `low` — mereka boleh menunggu, yang penting halaman yang
       // sedang dibaca tidak kalah rebutan.

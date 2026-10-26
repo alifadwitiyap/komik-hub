@@ -680,7 +680,7 @@ export default function Reader() {
               }}
               className={
                 settings.readMode === 'webtoon'
-                  ? 'manga-img max-h-full max-w-full object-contain'
+                  ? 'manga-img max-h-dvh max-w-full object-contain'
                   : 'manga-img w-full'
               }
             />
