@@ -177,10 +177,9 @@ body {
 
 /* ---------------------------------------------------------------------------
    RITME BACA MOBILE (viewport <= 639 px - acuan 390x844)
-   Halaman manga dari sumber datang tanpa jeda: dua gambar menempel persis,
-   jadi pembaca kehilangan penanda "ini halaman baru" - paling parah di mode
-   malam (#131313), karena seam antar halaman hilang sama sekali. row-gap
-   10 px memberi napas antar halaman.
+   Halaman manga dari sumber datang tanpa jeda: dua gambar menempel persis.
+   row-gap 0 — halaman nyambung rapat (mengikuti preferensi user: tanpa pita
+   putih di antara halaman).
 
    HANYA di bawah 640 px: layout desktop/tablet tetap rapat seperti semula,
    jadi tidak ada perubahan komposisi di layar besar.
@@ -194,6 +193,6 @@ body {
    --------------------------------------------------------------------------- */
 @media (max-width: 639.98px) {
   .reader-flow {
-    row-gap: 0.625rem; /* 10 px antar halaman */
+    row-gap: 0;
   }
 }
