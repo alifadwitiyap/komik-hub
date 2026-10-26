@@ -242,4 +242,19 @@ try:
 except Exception:
     pass
 
+# Budget: LQIP 96px cold ≤ 64s (baseline 32s ×2 tol). RSS server < 500MB
+# (baseline AS 1.1GB). Wajib lolos sebelum claim perf fix.
+GATE = {
+    "lqip_cold_s_le": 64.0,
+    "server_rss_kb_lt": 500_000,
+}
+fails = []
+if "img0_96_lqip_cold_s" in res and res["img0_96_lqip_cold_s"] > GATE["lqip_cold_s_le"]:
+    fails.append(f"LQIP cold {res['img0_96_lqip_cold_s']}s > {GATE['lqip_cold_s_le']}s")
+if res.get("server_rss_kb", 0) >= GATE["server_rss_kb_lt"]:
+    fails.append(f"RSS {res.get('server_rss_kb')}KB >= {GATE['server_rss_kb_lt']}KB")
+res["gate"] = GATE
+res["gate_pass"] = not fails
+res["gate_fails"] = fails
+
 print(json.dumps(res, indent=1))
