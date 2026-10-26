@@ -89,10 +89,7 @@ export default function Reader() {
   // (`pending.current`) berjalan scroll programatik TIDAK memicunya
   const chrome = useChromeOnScroll(() => pending.current !== null)
   const { settings, onChange, onReset, filterStyle } = useReaderSettings()
-  const autoFS = useAutoFullscreen(
-    settings.autoFullscreen && !settings.fullscreen,
-    () => pending.current !== null,
-  )
+  const autoFS = useAutoFullscreen()
   const [menuOpen, setMenuOpen] = useState(false)
   const [sheetOpen, setSheetOpen] = useState(false)
   const [chapterPickerOpen, setChapterPickerOpen] = useState(false)
@@ -475,14 +472,6 @@ export default function Reader() {
     return () => clearTimeout(t)
   }, [toast])
 
-  // Membuka menu/sheet = pembaca sedang MENGELOLA reader, bukan membaca.
-  // Niat fullscreen yang ter-arm dari flick sebelumnya (masa berlaku 2 detik)
-  // harus dibatalkan, kalau tidak tap pertama setelah sheet ditutup tiba-tiba
-  // masuk layar penuh.
-  useEffect(() => {
-    if (menuOpen || sheetOpen || chapterPickerOpen) autoFS.cancelPending()
-  }, [menuOpen, sheetOpen, chapterPickerOpen, autoFS.cancelPending])
-
   if (error) return <Empty title="Gagal memuat chapter" body={error} />
   // chapter sukses tapi sumber tak kirim gambar: pesan jelas, jangan halaman kosong (QA gap D)
   if (data && images.length === 0) {
@@ -533,9 +522,11 @@ export default function Reader() {
 
   const chromeHidden = !chrome.visible || autoFS.active || autoFS.nativeActive
   const fsActive = autoFS.active || autoFS.nativeActive
-  // tombol manual ikut tampil saat ada niat fullscreen (pending) supaya
-  // konsekuensi tap terlihat jelas — bukan kejutan.
-  const showFsButton = chrome.visible || autoFS.pending || fsActive
+  // Tombol manual ikut arah scroll di SEMUA keadaan (termasuk fullscreen):
+  // turun = sembunyi, naik = tampil, supaya area baca tetap bersih saat
+  // membaca. Tombol keluar tetap bisa dijangkau lewat tap tengah (toggle
+  // chrome) atau scroll ke atas.
+  const showFsButton = chrome.visible
 
   return (
     <div className={`relative min-h-dvh ${settings.nightShift ? 'bg-night-dark' : 'bg-white'}`}>
@@ -557,11 +548,6 @@ export default function Reader() {
         data-testid="reader-tap-layer"
         onPointerDown={(e) => {
           tapStart.current = { x: e.clientX, y: e.clientY, t: performance.now() }
-          // Niat fullscreen dibatalkan SEJAK sentuhan pertama kalau jari
-          // mendarat di kontrol halaman. Ini lapis kedua: hook fullscreen juga
-          // membatalkan niat saat pointerdown menyentuh elemen interaktif,
-          // tapi di sini kita sudah tahu titiknya (termasuk toleransi 12px).
-          if (tapHitsReaderControl(e.clientX, e.clientY)) autoFS.cancelPending()
         }}
         onPointerCancel={() => {
           tapStart.current = null
@@ -574,21 +560,11 @@ export default function Reader() {
             if (moved > 12 || performance.now() - start.t > 900) return
           }
           // Tap pada kontrol halaman (lingkaran "Muat ulang"/"Coba lagi")
-          // BUKAN tap area baca: jangan toggle chrome, dan jangan pernah
-          // dianggap niat fullscreen — batalkan niat yang mungkin masih
-          // ter-arm dari flick sebelumnya.
-          if (tapHitsReaderControl(e.clientX, e.clientY)) {
-            autoFS.cancelPending()
-            return
-          }
-          // Keluar layar penuh = kembali ke mode baca normal, jadi chrome
-          // (toolbar + footer) harus tampil lagi — kalau tidak, tombol keluar
-          // ikut hilang dan pembaca seperti terjebak tanpa kontrol.
-          if (fsActive) {
-            autoFS.reset()
-            chrome.show()
-          } else if (autoFS.pending) autoFS.requestEnter()
-          else chrome.toggle()
+          // BUKAN tap area baca: jangan toggle chrome.
+          if (tapHitsReaderControl(e.clientX, e.clientY)) return
+          // Tap area baca hanya toggle chrome (toolbar/footer). Fullscreen
+          // HANYA lewat tombol layar penuh — bukan dari tap.
+          chrome.toggle()
         }}
         className="fixed inset-0 z-10 touch-manipulation"
       />
@@ -600,7 +576,6 @@ export default function Reader() {
        */}
       <ReaderFullscreenButton
         active={fsActive}
-        pending={autoFS.pending}
         visible={showFsButton}
         onToggle={() => {
           if (fsActive) {
@@ -609,14 +584,10 @@ export default function Reader() {
           } else autoFS.requestEnter()
         }}
       />
-      {/* Pengumuman untuk pembaca layar: niat fullscreen adalah perilaku yang
+      {/* Pengumuman untuk pembaca layar: status fullscreen adalah perilaku yang
           tidak terlihat, jadi keadaannya harus bisa didengar. */}
       <p role="status" aria-live="polite" className="sr-only">
-        {autoFS.pending && !fsActive
-          ? 'Niat layar penuh aktif. Ketuk area baca untuk masuk layar penuh, atau tombol Layar penuh.'
-          : fsActive
-            ? 'Layar penuh aktif.'
-            : ''}
+        {fsActive ? 'Layar penuh aktif.' : ''}
       </p>
 
       <ReaderToolbar

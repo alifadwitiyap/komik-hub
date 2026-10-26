@@ -94,13 +94,10 @@ export default function ReaderMarathon() {
   const navigate = useNavigate()
   const { settings, onChange, onReset, filterStyle } = useReaderSettings()
   /**
-   * Layar penuh di maraton: HANYA jalur manual (`enabled=false` mematikan
-   * deteksi flick). Di mode ini scroll ke bawah adalah cara membaca — kalau
-   * flick juga meng-arm "niat fullscreen", tap untuk berhenti membaca malah
-   * masuk layar penuh. Tombol manual tetap tersedia supaya kontrolnya sama
-   * dengan reader biasa.
+   * Layar penuh di maraton: HANYA jalur manual (tombol). Auto-fullscreen
+   * dihapus — scroll adalah cara membaca, tap cuma toggle chrome.
    */
-  const autoFS = useAutoFullscreen(false)
+  const autoFS = useAutoFullscreen()
   const fsActive = autoFS.active || autoFS.nativeActive
   // seberapa jauh di luar layar halaman boleh mulai diminta (lihat ComicImage)
   const mountAhead = useMemo(
@@ -358,17 +355,15 @@ export default function ReaderMarathon() {
             if (moved > 12 || performance.now() - start.t > 900) return
           }
           if (tapHitsReaderControl(e.clientX, e.clientY)) return
-          if (fsActive) {
-            autoFS.reset()
-            chrome.show()
-          } else chrome.toggle()
+          // Tap area baca hanya toggle chrome. Fullscreen HANYA lewat tombol.
+          chrome.toggle()
         }}
         className="fixed inset-0 z-10 touch-manipulation"
       />
 
       <ReaderFullscreenButton
         active={fsActive}
-        visible={chrome.visible || fsActive}
+        visible={chrome.visible}
         onToggle={() => {
           if (fsActive) {
             autoFS.reset()

@@ -15,8 +15,6 @@ export interface ReaderSettings {
   nightShift: boolean
   keepScreenOn: boolean
   fullscreen: boolean
-  /** Auto fullscreen setelah beberapa kali scroll turun. */
-  autoFullscreen: boolean
   /** Berapa banyak gambar yang dihangatkan lebih awal (hemat kuota ↔ siap). */
   prefetchMode: 'hemat' | 'seimbang' | 'siapkan'
   /** Arah baca: 'ltr' (kiri→kanan, default) atau 'rtl' (kanan→kiri). */
@@ -34,7 +32,6 @@ export const DEFAULT_SETTINGS: ReaderSettings = {
   nightShift: false,
   keepScreenOn: false,
   fullscreen: false,
-  autoFullscreen: true,
   prefetchMode: 'seimbang',
   direction: 'ltr',
   zoom: 1,

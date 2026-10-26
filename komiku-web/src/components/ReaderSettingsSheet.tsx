@@ -127,12 +127,6 @@ export default function ReaderSettingsSheet({
           toggle={settings.fullscreen}
           onToggle={(v) => onChange({ fullscreen: v })}
         />
-        <Row
-          icon={<IconExpand className="size-4" />}
-          label="Fullscreen Otomatis (scroll)"
-          toggle={settings.autoFullscreen}
-          onToggle={(v) => onChange({ autoFullscreen: v })}
-        />
         <Row icon={<IconBolt className="size-4" />} label="Prefetch" />
         <div className="flex gap-2 px-4 pb-2">
           {(
