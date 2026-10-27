@@ -162,8 +162,19 @@ export const unifiedApi = {
   /** Daftar unduhan + total_bytes (buffer TTL 24 jam, tanpa limit byte). */
   downloads: (signal?: AbortSignal) =>
     get<DownloadsResponse>('/unified/downloads', signal),
-  /** URL file PDF (respons attachment; auto-unduh ke perangkat). */
-  downloadFileUrl: (id: string) => `${BASE}/unified/downloads/${encodeURIComponent(id)}`,
+  /**
+   * URL file PDF (respons attachment; auto-unduh ke perangkat).
+   *
+   * `filename` opsional dikirim sebagai `?fn=` — server mengabaikannya, tapi
+   * service worker memakainya untuk menulis ulang `Content-Disposition`
+   * dengan RFC 5987 (`filename*=UTF-8''…`). Server saat ini mengirim nama
+   * UTF-8 mentah di header, yang di-decode Latin-1 oleh sebagian browser →
+   * "Iâ€™ll…". Nama dari JSON tetap dipakai untuk atribut `download`.
+   */
+  downloadFileUrl: (id: string, filename?: string) =>
+    `${BASE}/unified/downloads/${encodeURIComponent(id)}${
+      filename ? `?fn=${encodeURIComponent(filename)}` : ''
+    }`,
   deleteDownload: (id: string, signal?: AbortSignal) =>
     send<{ deleted: boolean }>(
       'DELETE',

@@ -69,7 +69,9 @@ export type GeneratedHandler = (id: string, filename: string) => void
 export function saveGeneratedPdf(id: string, filename: string): boolean {
   if (typeof document === 'undefined' || !document.body) return false
   const a = document.createElement('a')
-  a.href = unifiedApi.downloadFileUrl(id)
+  // `filename` ikut di URL (`?fn=`) supaya SW bisa menulis header RFC 5987;
+  // atribut `download` tetap jadi penentu nama di browser yang menghormatinya.
+  a.href = unifiedApi.downloadFileUrl(id, filename)
   a.download = filename || 'chapter.pdf'
   a.rel = 'noopener'
   a.style.display = 'none'
@@ -176,7 +178,15 @@ export async function cacheChapters(
         const images = ch?.images ?? []
         if (images.length === 0) throw new Error('chapter tanpa halaman')
         const { ok, fail } = await downloadChapterImages(images)
-        if (ok === 0) throw new Error(`${fail} halaman gagal diunduh`)
+        // Sukses hanya kalau SEMUA halaman (semua lebar) tersimpan. Sebelumnya
+        // `ok !== 0` dianggap sukses → 1 dari 40 halaman gagal tetap dilaporkan
+        // "tersimpan" dan user baru sadar saat offline. Kegagalan sebagian
+        // harus jadi kegagalan chapter, dengan jumlah yang jujur.
+        if (fail > 0) {
+          throw new Error(
+            `${fail} dari ${images.length} halaman gagal disimpan (${ok} tersimpan)`,
+          )
+        }
         onUpdate(index, { state: 'ok' })
       } catch (e) {
         if (signal?.aborted) return

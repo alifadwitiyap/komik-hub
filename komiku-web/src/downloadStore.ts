@@ -36,6 +36,13 @@ export interface DlRun {
   /** 'sumber:native_id' (unified) atau 'komiku:<id>' (legacy). */
   handle: string
   seriesTitle: string
+  /**
+   * Jenis unduhan: 'pdf' = generate PDF server + auto-unduh ke perangkat;
+   * 'cache' = simpan byte gambar ke Cache Storage (offline reader).
+   * Dipakai UI supaya pesan akhir tidak menyebut "tersimpan offline" untuk
+   * batch PDF yang gagal, dan sebaliknya.
+   */
+  mode: 'pdf' | 'cache'
   jobs: DlJob[]
   startedAt: number
   /**
@@ -65,6 +72,7 @@ function snapshot(runs: readonly RunRec[]): DlRun[] {
   return runs.map((r) => ({
     handle: r.handle,
     seriesTitle: r.seriesTitle,
+    mode: r.mode,
     startedAt: r.startedAt,
     saved: r.saved,
     jobs: r.jobs.map((j) => ({ ...j })),
@@ -107,6 +115,7 @@ export function startRun(handle: string, seriesTitle: string, numbers: string[])
   const rec: RunRec = {
     handle,
     seriesTitle,
+    mode: 'pdf',
     startedAt: Date.now(),
     saved: 0,
     ctrl: new AbortController(),
@@ -165,6 +174,7 @@ export function startRunCache(handle: string, seriesTitle: string, numbers: stri
   const rec: RunRec = {
     handle,
     seriesTitle,
+    mode: 'cache',
     startedAt: Date.now(),
     saved: 0,
     ctrl: new AbortController(),

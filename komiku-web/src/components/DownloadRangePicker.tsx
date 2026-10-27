@@ -185,14 +185,22 @@ export function RangeSelectBar({
         )}
       </div>
 
-      {needEnd && (
-        <p className="mt-1.5 text-[11px] font-semibold text-ink-500">Pilih chapter akhir</p>
-      )}
-      {clamped && (
-        <p className="mt-1.5 text-[11px] font-semibold text-brand-amber">
-          Maksimal {max} chapter — {max} pertama yang diambil
-        </p>
-      )}
+      {/* Slot hint TINGGI TETAP. Hint "Pilih chapter akhir" baru muncul
+          setelah tap pertama; kalau bar bertambah tinggi saat itu, seluruh
+          daftar chapter bergeser dan tap kedua mendarat di baris lain
+          (2 tap → 3 chapter terpilih). Slot ini selalu memesan satu baris,
+          jadi tinggi bar sama sebelum & sesudah tap. */}
+      <div className="mt-1.5 min-h-4" aria-live="polite">
+        {needEnd ? (
+          <p className="text-[11px] font-semibold leading-4 text-ink-500">
+            Pilih chapter akhir
+          </p>
+        ) : clamped ? (
+          <p className="text-[11px] font-semibold leading-4 text-brand-amber">
+            Maksimal {max} chapter — {max} pertama yang diambil
+          </p>
+        ) : null}
+      </div>
       {children}
     </div>
   )

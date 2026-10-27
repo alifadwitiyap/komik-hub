@@ -65,6 +65,10 @@ async function cachePage(raw: string): Promise<boolean> {
     targets.map(async (url) => {
       try {
         const res = await fetch(url, { cache: 'no-cache' })
+        // SW menandai `X-Komiku-Cached: 0` kalau cache.put GAGAL (kuota penuh).
+        // Respons jaringan tetap ok supaya gambar tampil, tapi byte-nya TIDAK
+        // tersimpan — tanpa cek ini halaman dihitung sukses palsu.
+        if (res.headers.get('x-komiku-cached') === '0') return false
         return res.ok
       } catch {
         return false
@@ -72,5 +76,6 @@ async function cachePage(raw: string): Promise<boolean> {
     }),
   )
 
+  // Satu lebar gagal = halaman gagal (offline di viewport lain akan 504).
   return results.length > 0 && results.every(Boolean)
 }

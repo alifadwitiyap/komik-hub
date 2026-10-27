@@ -205,6 +205,10 @@ interface DlJob {
 interface DlRun {
   handle: string
   seriesTitle: string
+  /** 'pdf' = generate PDF + auto-unduh; 'cache' = simpan gambar offline. */
+  mode?: 'pdf' | 'cache'
+  /** jumlah PDF yang sudah terkirim ke perangkat (mode pdf). */
+  saved?: number
   jobs: DlJob[]
   startedAt: number
 }
@@ -259,6 +263,8 @@ function ActiveDownloads({ runs }: { runs: DlRun[] }) {
       {runs.map((run) => {
         const total = run.jobs.length
         const done = run.jobs.filter((j) => j.state === 'ok').length
+        const fail = run.jobs.filter((j) => j.state === 'fail').length
+        const failMsg = run.jobs.find((j) => j.state === 'fail' && j.error)?.error
         const pct = total > 0 ? Math.round((done / total) * 100) : 0
         const current =
           run.jobs.find((j) => j.state === 'run') ?? run.jobs.find((j) => j.state === 'wait')
@@ -270,7 +276,13 @@ function ActiveDownloads({ runs }: { runs: DlRun[] }) {
                 <p className="text-[11.5px] text-ink-400">
                   {done}/{total} chapter
                   {current ? ` · Chapter ${current.number}` : ''} · {pct}%
+                  {run.mode === 'pdf' && run.saved ? ` · ${run.saved} PDF terkirim` : ''}
                 </p>
+                {fail > 0 && (
+                  <p className="mt-0.5 truncate text-[11px] text-brand-red">
+                    {fail} gagal{failMsg ? ` · ${failMsg}` : ''}
+                  </p>
+                )}
               </div>
               <button
                 onClick={() => void loadStore().then((s) => s?.cancelRun(run.handle))}
@@ -411,7 +423,7 @@ function DownloadsTab() {
                         </span>
                       </span>
                       <a
-                        href={unifiedApi.downloadFileUrl(d.id)}
+                        href={unifiedApi.downloadFileUrl(d.id, d.filename)}
                         target="_blank"
                         rel="noreferrer noopener"
                         className="rounded-lg bg-brand-amber px-3 py-1.5 text-[11.5px] font-bold text-ink-950"
@@ -419,7 +431,7 @@ function DownloadsTab() {
                         Baca
                       </a>
                       <a
-                        href={unifiedApi.downloadFileUrl(d.id)}
+                        href={unifiedApi.downloadFileUrl(d.id, d.filename)}
                         download={d.filename || 'chapter.pdf'}
                         className="rounded-lg border border-ink-700 px-3 py-1.5 text-[11.5px] font-semibold text-ink-300"
                       >

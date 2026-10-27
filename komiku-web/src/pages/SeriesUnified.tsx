@@ -39,7 +39,7 @@ export default function SeriesUnified() {
   const { recent } = useProgress()
   // --- unduh PDF mode range (2-tap Awal/Akhir) ------------------------------
   const [pickMode, setPickMode] = useState(false)
-  const [dlMsg, setDlMsg] = useState<string | null>(null)
+  const [dlSummary, setDlSummary] = useState<DlSummary | null>(null)
   /**
    * Run unduhan milik halaman ini (dari store module-level — hidup lintas
    * halaman). `dlBusy` masih dipakai UI (mode seleksi, tombol Batal) walau
@@ -82,7 +82,8 @@ export default function SeriesUnified() {
       // baru ke halaman yang menemukan run sudah selesai.
       if (!run || !watchingRef.current) return
       watchingRef.current = false
-      announceFinish(run, { mountedRef, setDlMsg })
+      const summary = announceFinish(run, mountedRef)
+      if (summary) setDlSummary(summary)
     }
     const unsub = subscribeRuns(sync)
     sync(getRuns())
@@ -175,7 +176,7 @@ export default function SeriesUnified() {
     // (lintas halaman) — hanya tombol Batal yang membatalkan, jadi user
     // bebas navigasi.
     setPickMode(false)
-    setDlMsg(null)
+    setDlSummary(null)
     range.reset()
     const numbers = selectedRefs.map((r) => r.number)
     if (cache) startRunCache(handle, data?.manga.title ?? '', numbers)
@@ -206,6 +207,9 @@ export default function SeriesUnified() {
     ? dlRun.jobs.filter((j) => j.state === 'ok' || j.state === 'fail').length
     : 0
   const dlFail = dlRun ? dlRun.jobs.filter((j) => j.state === 'fail').length : 0
+  // Pesan kegagalan pertama — dirender supaya user tahu KENAPA gagal, bukan
+  // cuma angka. (`job.error` sebelumnya tidak pernah tampil di UI.)
+  const dlError = dlRun?.jobs.find((j) => j.state === 'fail' && j.error)?.error ?? null
 
   const chapterLabel = (c: UnifiedChapterOut) => c.title || `Chapter ${c.number}`
 
@@ -379,7 +383,34 @@ export default function SeriesUnified() {
 
         {/* Mode seleksi range (2-tap Awal/Akhir) → POST /unified/download-pdf.
             Info seleksi + baris progres mengisi ulang tempat UI centang lama. */}
-        {!pickMode && dlMsg && <p className="mb-3 text-[11px] text-ink-400">{dlMsg}</p>}
+        {!pickMode && dlSummary && (
+          <div
+            className={`mb-3 rounded-xl border px-3 py-2 text-[11.5px] ${
+              dlSummary.fail > 0 || dlSummary.errors.length > 0
+                ? 'border-brand-red/40 bg-brand-red/10 text-brand-red'
+                : 'border-ink-800 bg-ink-900 text-ink-300'
+            }`}
+          >
+            <p className="font-semibold">{dlSummaryHeadline(dlSummary)}</p>
+            {dlSummary.mode === 'pdf' && !dlSummary.cancelled && dlSummary.ok > 0 && (
+              <p className="mt-0.5 text-[11px] text-ink-400">
+                {dlSummary.saved} dari {dlSummary.ok} file PDF terkirim ke perangkat
+              </p>
+            )}
+            {dlSummary.errors.length > 0 && (
+              <ul className="mt-1 space-y-0.5">
+                {dlSummary.errors.slice(0, 3).map((e) => (
+                  <li key={e.number} className="truncate">
+                    Chapter {e.number}: {e.error}
+                  </li>
+                ))}
+                {dlSummary.errors.length > 3 && (
+                  <li>+{dlSummary.errors.length - 3} chapter gagal lainnya</li>
+                )}
+              </ul>
+            )}
+          </div>
+        )}
         {/* Ringkasan compact: judul, rentang chapter, n/M, bar progres,
             tombol Batal. SENGAJA di LUAR blok pickMode — setelah "Unduh"
             diklik mode pilih keluar (baris kembali Link), tapi kartu progres
@@ -409,7 +440,11 @@ export default function SeriesUnified() {
               <p className="mt-1.5 text-[11px] text-ink-500">
                 Berjalan di latar belakang — boleh buka chapter lain.
               </p>
-              {dlFail > 0 && <p className="mt-1 text-[11px] text-brand-red">{dlFail} gagal</p>}
+              {dlFail > 0 && (
+                <p className="mt-1 truncate text-[11px] text-brand-red">
+                  {dlFail} gagal{dlError ? ` · ${dlError}` : ''}
+                </p>
+              )}
               <button
                 type="button"
                 onClick={() => cancelRun(handle)}
@@ -515,35 +550,48 @@ export default function SeriesUnified() {
 }
 
 /**
- * Umumkan hasil run yang baru selesai: pesan di halaman + navigate ke tab
- * Unduhan (kontrak `location.state.flash` yang dibaca Rak). Hanya dipanggil
- * saat instance ini MENYAKSIKAN transisi busy → selesai; kalau user sudah
- * pindah halaman (unmounted), Rak yang menampilkan progresnya.
+ * Ringkasan hasil run yang baru selesai. Hanya dipanggil saat instance ini
+ * MENYAKSIKAN transisi busy → selesai; kalau user sudah pindah halaman
+ * (unmounted), Rak yang menampilkan progresnya.
+ *
+ * `errors` membawa `job.error` apa adanya supaya UI bisa menjelaskan
+ * kegagalan (mis. "3 dari 40 halaman gagal disimpan"), bukan sekadar
+ * menghitung chapter lalu menyebut semuanya "tersimpan".
  */
-function announceFinish(
-  run: DlRun,
-  {
-    mountedRef,
-    setDlMsg,
-  }: {
-    mountedRef: { current: boolean }
-    setDlMsg: (msg: string | null) => void
-  },
-): void {
+interface DlSummary {
+  ok: number
+  fail: number
+  saved: number
+  mode: 'pdf' | 'cache'
+  cancelled: boolean
+  errors: { number: string; error: string }[]
+}
+
+function announceFinish(run: DlRun, mountedRef: { current: boolean }): DlSummary | null {
+  if (!mountedRef.current) return null
   const ok = run.jobs.filter((j) => j.state === 'ok').length
-  const fail = run.jobs.filter((j) => j.state === 'fail').length
-  const cancelled = run.jobs.some((j) => j.error === 'Dibatalkan')
-  if (!mountedRef.current) return
-  if (cancelled) {
-    // sisa chapter dilewati store — bukan kegagalan unduhan
-    setDlMsg('Unduhan dibatalkan')
-    return
+  const failed = run.jobs.filter((j) => j.state === 'fail')
+  const cancelled = failed.some((j) => j.error === 'Dibatalkan')
+  // 'Dibatalkan' = penanda abort store, bukan kegagalan unduhan. Chapter yang
+  // benar-benar gagal (error lain) tetap dilaporkan.
+  const realFails = failed.filter((j) => j.error !== 'Dibatalkan')
+  return {
+    ok,
+    fail: realFails.length,
+    saved: run.saved,
+    mode: run.mode,
+    cancelled,
+    errors: realFails.map((j) => ({
+      number: j.number,
+      error: j.error || 'gagal diunduh',
+    })),
   }
-  const msg =
-    fail > 0
-      ? `${ok} tersimpan, ${fail} gagal`
-      : `${ok} chapter tersimpan offline`
-  setDlMsg(msg)
+}
+
+function dlSummaryHeadline(s: DlSummary): string {
+  if (s.cancelled) return `Unduhan dibatalkan${s.ok > 0 ? ` · ${s.ok} tersimpan` : ''}`
+  if (s.fail > 0) return `${s.ok} tersimpan, ${s.fail} gagal`
+  return s.mode === 'pdf' ? `${s.ok} chapter selesai` : `${s.ok} chapter tersimpan offline`
 }
 
 /**
