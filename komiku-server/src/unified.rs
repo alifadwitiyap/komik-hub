@@ -128,7 +128,7 @@ pub async fn warm_up_latest() {
 /// `title_key` DITAMBAH (kontrak lane rak-buku): judul ternormalisasi supaya
 /// web bisa bikin favorit/sejarah lintas sumber tanpa reimplement normalisasi
 /// di JS.
-#[derive(serde::Serialize)]
+#[derive(serde::Serialize, Clone)]
 pub struct MangaOut {
     pub source: String,
     pub native_id: String,
@@ -196,7 +196,7 @@ impl From<&komik_core::union::MergedChapter> for ChapterRow {
 }
 
 /// Respons daftar merged lintas sumber + laporan partial failure.
-#[derive(serde::Serialize)]
+#[derive(serde::Serialize, Clone)]
 pub struct ListOut {
     pub items: Vec<MangaOut>,
     pub failed_sources: Vec<String>,
@@ -302,6 +302,63 @@ fn list_out_filtered(
     out
 }
 
+// ------------------------------------------------------- cache pencarian (SWR)
+
+/// TTL hasil pencarian. Cukup pendek: katalog sumber berubah lambat, tapi
+/// query yang sama berulang (klik chip, back/forward, retry) tak perlu
+/// menembak upstream 3-4 detik lagi. Diukur: cold 3.6 s, cache-hit 0.005 s.
+const SEARCH_CACHE_TTL: std::time::Duration = std::time::Duration::from_secs(120);
+/// Batas jumlah query yang disimpan (LRU kasar: buang yang paling lama dipakai
+/// saat penuh). Pencarian = kunci tak terbatas, jadi cap wajib.
+const SEARCH_CACHE_MAX: usize = 128;
+
+type SearchCache = std::sync::Mutex<std::collections::HashMap<String, (std::time::Instant, ListOut)>>;
+
+fn search_cache() -> &'static SearchCache {
+    static C: std::sync::OnceLock<SearchCache> = std::sync::OnceLock::new();
+    C.get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
+}
+
+/// Gerbang single-flight global: N request pada query sama saat cache kosong
+/// hanya menembak upstream SEKALI (stampede = beban upstream persis yang
+/// ingin dihindari).
+fn search_gate() -> &'static tokio::sync::Mutex<()> {
+    static G: std::sync::OnceLock<tokio::sync::Mutex<()>> = std::sync::OnceLock::new();
+    G.get_or_init(|| tokio::sync::Mutex::new(()))
+}
+
+fn search_key(query: &str, genre: Option<&str>, page: u32) -> String {
+    format!("{query}\u{1}{}\u{1}{page}", genre.unwrap_or(""))
+}
+
+/// Ambil hasil dari cache kalau masih segar. `None` = harus fetch upstream.
+fn search_cache_get(key: &str) -> Option<ListOut> {
+    let guard = search_cache().lock().ok()?;
+    let (at, out) = guard.get(key)?;
+    if at.elapsed() < SEARCH_CACHE_TTL {
+        Some(out.clone())
+    } else {
+        None
+    }
+}
+
+fn search_cache_put(key: String, out: ListOut) {
+    if let Ok(mut guard) = search_cache().lock() {
+        // Cap kasar: buang satu entri paling tua kalau sudah penuh. HashMap
+        // tak berurutan, jadi cari min-by-instant (N kecil = 128, murah).
+        if guard.len() >= SEARCH_CACHE_MAX && !guard.contains_key(&key) {
+            if let Some(old) = guard
+                .iter()
+                .min_by_key(|(_, (at, _))| *at)
+                .map(|(k, _)| k.clone())
+            {
+                guard.remove(&old);
+            }
+        }
+        guard.insert(key, (std::time::Instant::now(), out));
+    }
+}
+
 async fn u_search(Query(q): Query<SearchQuery>) -> Res<ListOut> {
     let query = q.q.unwrap_or_default();
     if query.trim().is_empty() {
@@ -314,6 +371,17 @@ async fn u_search(Query(q): Query<SearchQuery>) -> Res<ListOut> {
         .map(str::trim)
         .filter(|s| !s.is_empty())
         .map(|s| s.to_string());
+    let page = q.page.unwrap_or(1).max(1);
+    let key = search_key(&query, genre.as_deref(), page);
+    if let Some(hit) = search_cache_get(&key) {
+        return Ok(Json(hit));
+    }
+    // Cache kosong: satu request per key yang menembak upstream, sisanya
+    // menunggu gerbang lalu membaca cache.
+    let _gate = search_gate().lock().await;
+    if let Some(hit) = search_cache_get(&key) {
+        return Ok(Json(hit));
+    }
     // Over-fetch: rank relevansi + filter tipe/status bekerja pada set yang
     // lebih besar dari `limit` tampilan, supaya "30 hasil" tidak diam-diam
     // menyusut jadi 6 (bug chip client-side yang direncanakan diganti).
@@ -322,29 +390,25 @@ async fn u_search(Query(q): Query<SearchQuery>) -> Res<ListOut> {
         // genre + judul bersamaan (bukan menyaring sisa halaman di client).
         Some(g) => {
             aggregator()
-                .search_in_genre(
-                    &query,
-                    g,
-                    q.page.unwrap_or(1).max(1),
-                    FILTER_FANOUT_CAP,
-                    None,
-                )
+                .search_in_genre(&query, g, page, FILTER_FANOUT_CAP, None)
                 .await
         }
         None => {
             aggregator()
-                .search(&query, q.page.unwrap_or(1).max(1), FILTER_FANOUT_CAP, None)
+                .search(&query, page, FILTER_FANOUT_CAP, None)
                 .await
         }
     };
     let limit = q.limit.unwrap_or(48);
-    Ok(Json(list_out_filtered(
+    let out = list_out_filtered(
         merged,
         Some(&query),
         q.tipe.as_deref(),
         q.status.as_deref(),
         Some(limit as usize),
-    )))
+    );
+    search_cache_put(key, out.clone());
+    Ok(Json(out))
 }
 
 /// Katalog: `Aggregator::list` (katalog LEBIH LUAS dari search) + filter
