@@ -1,7 +1,8 @@
 import { imgUrl } from '../imgUrl'
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { Link, useParams } from 'react-router-dom'
+import { Link, useNavigate, useParams } from 'react-router-dom'
 import { api } from '../api'
+import { getUser } from '../account'
 import {
   cancelRun,
   getRuns,
@@ -37,6 +38,7 @@ const BATCH_MAX = 30
 export default function Series() {
   const { handle } = useParams<{ handle: string }>()
   const id = handle ?? ''
+  const navigate = useNavigate()
   const [data, setData] = useState<SeriesData | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [showAll, setShowAll] = useState(false)
@@ -197,6 +199,10 @@ export default function Series() {
 
   const runDownload = (cache: boolean) => {
     if (dlBusy || rangeList.length === 0 || !dlHandle) return
+    if (getUser() === null) {
+      navigate('/akun')
+      return
+    }
     // chapter tanpa nomor yang bisa diparse = dilewati, jangan dikarang
     const skipped = pickedChapters.length - downloadable.length
     if (downloadable.length === 0) {

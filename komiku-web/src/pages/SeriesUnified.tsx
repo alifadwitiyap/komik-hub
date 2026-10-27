@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { imgUrl } from '../imgUrl'
 import { unifiedApi } from '../api'
+import { getUser } from '../account'
 import type { MangaOut, UnifiedChapterOut } from '../types'
 import { Empty, Spinner } from '../App'
 import SourceBadge from '../components/SourceBadge'
@@ -171,6 +172,13 @@ export default function SeriesUnified() {
 
   const runDownload = (cache: boolean) => {
     if (dlBusy || selectedRefs.length === 0) return
+    // Unduhan wajib akun (server menolak 401 tanpa X-Komik-User). Kalau
+    // belum login, arahkan ke halaman akun — jangan kirim request yang
+    // pasti 401.
+    if (getUser() === null) {
+      navigate('/akun')
+      return
+    }
     // LANGSUNG keluar dari mode pilih: baris chapter kembali jadi Link ke
     // reader dan tombol Unduh tak lagi tertekan. Unduhan jalan di store
     // (lintas halaman) — hanya tombol Batal yang membatalkan, jadi user
