@@ -380,33 +380,6 @@ fn fnv1a(bytes: &[u8]) -> u64 {
 
 // ------------------------------------------------------------------ deteksi
 
-/// Deteksi satu "chapter baru": sumber dengan nomor STRICTLY lebih tinggi dari
-/// baseline-nya. Sumber tanpa baseline -> dilewati (None utk sumber itu).
-/// Mengembalikan (sumber, nomor_tertinggi) dengan nomor TERBESAR di antara
-/// kandidat baru — dipakai sbg nomor chapter notifikasi.
-fn detect_new(
-    baseline: &BTreeMap<String, String>,
-    current: &[(String, String)],
-) -> Option<(String, String)> {
-    let mut best: Option<(String, String)> = None;
-    for (src, num) in current {
-        let Some(base) = baseline.get(src) else {
-            continue; // baseline belum ada -> jangan notifikasi (bab pre-existing)
-        };
-        if cmp_num_or_str(num, base) != Ordering::Greater {
-            continue;
-        }
-        let better = match &best {
-            None => true,
-            Some((_, bnum)) => cmp_num_or_str(num, bnum) == Ordering::Greater,
-        };
-        if better {
-            best = Some((src.clone(), num.clone()));
-        }
-    }
-    best
-}
-
 /// Semua sumber yang muncul lebih tinggi dari baseline-nya (untuk field
 /// `sources` pada notifikasi).
 fn detect_new_sources(
@@ -1002,82 +975,10 @@ mod tests {
         let _ = std::fs::remove_dir_all(&dir);
     }
 
-    // ---- detect_new ----------------------------------------------------
+    // ---- detect_new_sources ----------------------------------------------
 
     #[test]
-    fn detect_new_numeric() {
-        let mut base = BTreeMap::new();
-        base.insert("komiku".to_string(), "1194".to_string());
-        let current = vec![("komiku".to_string(), "1195".to_string())];
-        assert_eq!(
-            detect_new(&base, &current),
-            Some(("komiku".to_string(), "1195".to_string()))
-        );
-    }
-
-    #[test]
-    fn detect_new_decimal() {
-        let mut base = BTreeMap::new();
-        base.insert("kiryuu".to_string(), "44.1".to_string());
-        let current = vec![("kiryuu".to_string(), "44.2".to_string())];
-        assert_eq!(
-            detect_new(&base, &current),
-            Some(("kiryuu".to_string(), "44.2".to_string()))
-        );
-    }
-
-    /// Fallback string: "extra-9" / "extra-10" TIDAK parse f64, jadi dibanding
-    /// LEKSIKOGRAFIS — BUKAN numerik. Byte pertama yang beda setelah "extra-"
-    /// adalah '1'(0x31) vs '9'(0x39); '1' < '9' sehingga "extra-10" < "extra-9"
-    /// -> TIDAK dianggap baru. Perilaku ini dipatok (pin). Kontras berupa kasus
-    /// positif string-benar: "extra-9" > "extra-1" (byte '9' > '1') -> terdeteksi.
-    #[test]
-    fn detect_new_string_fallback_is_lexicographic() {
-        let mut base = BTreeMap::new();
-        base.insert("mangaku".to_string(), "extra-9".to_string());
-        // "extra-10" lexicographically LESS than "extra-9" -> NOT new.
-        let cur10 = vec![("mangaku".to_string(), "extra-10".to_string())];
-        assert_eq!(
-            detect_new(&base, &cur10),
-            None,
-            "string compare: 'extra-10' < 'extra-9'"
-        );
-
-        // Kasus positif string: '9'(0x39) > '1'(0x31) -> "extra-9" > "extra-1".
-        let mut base2 = BTreeMap::new();
-        base2.insert("mangaku".to_string(), "extra-1".to_string());
-        let cur9 = vec![("mangaku".to_string(), "extra-9".to_string())];
-        assert_eq!(
-            detect_new(&base2, &cur9),
-            Some(("mangaku".to_string(), "extra-9".to_string()))
-        );
-    }
-
-    #[test]
-    fn detect_new_equal_is_none() {
-        let mut base = BTreeMap::new();
-        base.insert("komiku".to_string(), "44.1".to_string());
-        let current = vec![("komiku".to_string(), "44.1".to_string())];
-        assert_eq!(detect_new(&base, &current), None);
-    }
-
-    #[test]
-    fn detect_new_lower_is_none() {
-        let mut base = BTreeMap::new();
-        base.insert("komiku".to_string(), "1195".to_string());
-        let current = vec![("komiku".to_string(), "1194".to_string())];
-        assert_eq!(detect_new(&base, &current), None);
-    }
-
-    #[test]
-    fn detect_new_missing_baseline_is_none() {
-        let base = BTreeMap::new(); // kosong -> tak ada baseline
-        let current = vec![("komiku".to_string(), "1195".to_string())];
-        assert_eq!(detect_new(&base, &current), None);
-    }
-
-    #[test]
-    fn detect_new_picks_highest_across_sources() {
+    fn detect_new_sources_hanya_yang_naik() {
         let mut base = BTreeMap::new();
         base.insert("komiku".to_string(), "10".to_string());
         base.insert("kiryuu".to_string(), "5".to_string());
@@ -1085,12 +986,6 @@ mod tests {
             ("komiku".to_string(), "11".to_string()),
             ("kiryuu".to_string(), "6".to_string()),
         ];
-        // komiku lebih tinggi (11 > 6) -> itu yang jadi nomor notifikasi.
-        assert_eq!(
-            detect_new(&base, &current),
-            Some(("komiku".to_string(), "11".to_string()))
-        );
-        // dan sources = dua-duanya yang baru.
         let mut srcs = detect_new_sources(&base, &current);
         srcs.sort();
         assert_eq!(srcs, vec!["kiryuu".to_string(), "komiku".to_string()]);
