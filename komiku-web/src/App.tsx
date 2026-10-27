@@ -12,7 +12,6 @@ const Notifikasi = lazy(() => import('./pages/Notifikasi'))
 import { IconHouse, IconRectangleHistory, IconMoon, IconSun, IconMagnifyingGlass, IconBookHeart, IconBell, IconUser } from './icons'
 import NotifPanel from './components/NotifPanel'
 import SourceHealthBadge from './components/SourceHealthBadge'
-import LoginPromoModal from './components/LoginPromoModal'
 import { startFavoritesSync } from './notifStore'
 import { startReadMarksSync } from './readMarks'
 import { captureFromUrl } from './account'
@@ -68,8 +67,6 @@ export default function App() {
         </main>
 
         {!immersive && <BottomNav />}
-
-        <LoginPromoModal />
       </div>
     </NotifCountsProvider>
   )
