@@ -947,6 +947,14 @@ async fn fetch_image(url: &str) -> anyhow::Result<Vec<u8>> {
     if !crate::hosts::host_allowed(url) {
         anyhow::bail!("host gambar tidak diizinkan ({url})");
     }
+    // Reuse byte ASLI yang sudah ada di cache /img. Reader mengisi cache ini
+    // untuk setiap halaman yang dibaca, jadi unduhan PDF chapter yang sudah
+    // pernah dibuka tidak menyentuh CDN sama sekali (0 round-trip/halaman).
+    // Byte-nya identik dengan yang dikirim /img, jadi PDF tetap lossless
+    // untuk halaman JPEG.
+    if let Some(bytes) = crate::img::cached_raw(url) {
+        return Ok(bytes);
+    }
     // Referer di header REQUEST (bukan client): ClientBuilder tanpa fitur
     // default tidak punya `header`.
     let resp = image_client()

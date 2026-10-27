@@ -82,6 +82,22 @@ fn cache_dir() -> &'static PathBuf {
     })
 }
 
+/// Batas encode paralel. Decode+resize+encode itu CPU-bound: tanpa batas,
+/// satu unduhan offline (3 lebar x 6 halaman) mengirim 18 encode sekaligus ke
+/// blocking pool, 4 core berebut, tiap encode jadi 3-20 s, dan RSS membengkak
+/// (tiap encode memegang buffer RGBA satu halaman). Semaphore = jumlah core
+/// membuat antrean terjadi di layer async (murah) alih-alih di CPU.
+fn encode_gate() -> &'static tokio::sync::Semaphore {
+    static S: OnceCell<tokio::sync::Semaphore> = OnceCell::new();
+    S.get_or_init(|| {
+        let n = std::thread::available_parallelism()
+            .map(|v| v.get())
+            .unwrap_or(2)
+            .clamp(2, 8);
+        tokio::sync::Semaphore::new(n)
+    })
+}
+
 /// Single-flight per key: dua permintaan halaman yang sama tidak men-decode
 /// dan menulis file yang sama bersamaan.
 fn inflight() -> &'static Mutex<HashMap<String, Arc<Mutex<()>>>> {
@@ -134,6 +150,20 @@ fn cache_path_fmt(key: &str, fmt: ImgFormat) -> PathBuf {
 fn raw_cache_path(key: &str) -> PathBuf {
     let shard = &key[0..2];
     cache_dir().join("raw").join(shard).join(format!("{key}.bin"))
+}
+
+/// Byte ASLI satu URL yang sudah tersimpan di cache disk.
+///
+/// Dipakai unduhan PDF: halaman yang sudah pernah dibaca (reader selalu
+/// mengisi cache raw) tidak perlu diunduh ulang dari CDN — hemat satu
+/// round-trip per halaman, dan tetap benar karena kuncinya URL (byte identik
+/// dengan yang diterima /img). None = belum ada di cache.
+pub fn cached_raw(url: &str) -> Option<Vec<u8>> {
+    let path = raw_cache_path(&sha1_hex(url));
+    match std::fs::read(&path) {
+        Ok(b) if !b.is_empty() => Some(b),
+        _ => None,
+    }
 }
 
 /// Tulis file lewat temp UNIK lalu rename. Di Windows `rename` gagal kalau
@@ -444,6 +474,10 @@ pub async fn img_handler(Query(q): Query<ImgQuery>, headers: HeaderMap) -> Respo
     let t_enc = std::time::Instant::now();
     let target = raw_w;
     let fallback = upstream.clone();
+
+    // Slot encode (lihat `encode_gate`). Diambil SETELAH fetch: fetch itu IO,
+    // tidak boleh memakan slot CPU.
+    let _permit = encode_gate().acquire().await.ok();
 
     // Encode sesuai format yang dinegosiasikan; bila encoder gagal, turun ke
     // WebP lalu ke byte asli — jangan pernah 500.

@@ -22,7 +22,14 @@ export interface OfflineDownloadResult {
   fail: number
 }
 
-const CONCURRENCY = 6
+/**
+ * Halaman yang diproses bersamaan. Tiap halaman = 3 permintaan `/img`
+ * (480/640/900), jadi 6 halaman = 18 encode paralel di server. Terukur di
+ * mesin 4 core: encode yang sendirian ~0,1 s jadi 3-20 s saat 18-nya rebutan,
+ * dan `/img` mulai balas 504. 2 halaman = maks 6 permintaan, masih memakai
+ * seluruh core tanpa membuat antrean server meledak.
+ */
+const CONCURRENCY = 2
 
 /**
  * `onProgress(done, total)` dipanggil setelah tiap halaman selesai diproses.
