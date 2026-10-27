@@ -78,6 +78,15 @@ async fn main() -> anyhow::Result<()> {
     // apa adanya, jadi tidak ada regresi untuk konsumen non-browser.
     let app = app.layer(tower_http::compression::CompressionLayer::new());
 
+    // Fail-fast (P0-1): cek direktori unduhan SAAT BOOT, bukan saat user
+    // pertama menekan "Unduh PDF". Server sengaja tetap jalan (fitur baca
+    // tidak boleh mati karena disk unduhan), tapi log ini harus langsung
+    // menunjuk penyebabnya; endpoint unduhan lalu membalas 500 yang jelas —
+    // BUKAN 502 "sumber lambat" yang menyesatkan.
+    if let Err(e) = unified::init_download_store() {
+        tracing::error!("direktori unduhan TIDAK siap - unduhan PDF akan gagal 500: {e:#}");
+    }
+
     let listener = tokio::net::TcpListener::bind(("0.0.0.0", port)).await?;
     tracing::info!("komiku-server di http://localhost:{port}");
     if dist.is_dir() {

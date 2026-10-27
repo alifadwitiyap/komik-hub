@@ -526,9 +526,8 @@ fn classify_age(age: std::time::Duration) -> CacheAge {
 /// Slot cache health: `(waktu probe, payload)`. `None` = belum pernah probe.
 /// Satu slot global (bukan per-sumber) karena payload = satu snapshot gabungan.
 fn health_cache() -> &'static tokio::sync::Mutex<Option<(std::time::Instant, HealthOut)>> {
-    static CACHE: std::sync::OnceLock<
-        tokio::sync::Mutex<Option<(std::time::Instant, HealthOut)>>,
-    > = std::sync::OnceLock::new();
+    static CACHE: std::sync::OnceLock<tokio::sync::Mutex<Option<(std::time::Instant, HealthOut)>>> =
+        std::sync::OnceLock::new();
     CACHE.get_or_init(|| tokio::sync::Mutex::new(None))
 }
 
@@ -887,8 +886,22 @@ fn store() -> anyhow::Result<&'static std::sync::Arc<DownloadStore>> {
         .map_err(|e| anyhow::anyhow!("store unduhan tidak tersedia: {e}"))
 }
 
+/// Cek boot: buka store unduhan sekali supaya direktori yang tidak bisa
+/// ditulis ketahuan SAAT START, bukan saat user pertama menekan "Unduh PDF".
+/// Galat dikembalikan apa adanya (tidak ditelan) agar log boot menunjuk path
+/// penyebabnya. Sengaja TIDAK mematikan proses: gangguan disk unduhan tidak
+/// boleh ikut mematikan fitur baca; endpoint unduhan akan membalas 500 jelas.
+pub fn init_download_store() -> anyhow::Result<()> {
+    store().map(|_| ())
+}
+
 /// Konkurensi pengambilan gambar per chapter (chapter biasanya 10-60 halaman).
 const PAGE_CONCURRENCY: usize = 6;
+
+/// Batas TOTAL satu unduhan PDF (resolve series + ambil semua gambar +
+/// encode). Tanpa ini chapter 300 halaman bisa menahan request ~25 menit
+/// (300/6 batch x 30 s); timeout per gambar tetap ada, ini pagar keseluruhan.
+const DOWNLOAD_PDF_BUDGET: std::time::Duration = std::time::Duration::from_secs(120);
 
 #[derive(Deserialize)]
 struct DownloadPdfReq {
@@ -909,20 +922,36 @@ fn referer_for(url: &str) -> String {
     }
 }
 
+/// Klien bersama untuk gambar chapter. Dulu satu Client dibuat PER GAMBAR
+/// (10-60 halaman = 10-60 handshake + connection pool baru) — penyebab utama
+/// PDF lambat (P1-4a). Satu client = keep-alive & pool dipakai ulang; timeout
+/// tetap PER REQUEST supaya satu host macet tidak menahan seluruh batch.
+fn image_client() -> &'static reqwest::Client {
+    static C: std::sync::OnceLock<reqwest::Client> = std::sync::OnceLock::new();
+    C.get_or_init(|| {
+        reqwest::Client::builder()
+            .user_agent(UA_MOBILE)
+            .pool_idle_timeout(std::time::Duration::from_secs(90))
+            .build()
+            // jangan panic di jalur request: client default tetap fungsional
+            .unwrap_or_default()
+    })
+}
+
+/// Batas satu gambar (termasuk baca body).
+const IMAGE_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(30);
+
 /// Ambil satu gambar chapter server-side. Host WAJIB di allowlist `hosts.rs`
 /// (guard SSRF) + UA mobile + Referer host.
 async fn fetch_image(url: &str) -> anyhow::Result<Vec<u8>> {
     if !crate::hosts::host_allowed(url) {
         anyhow::bail!("host gambar tidak diizinkan ({url})");
     }
-    let client = reqwest::Client::builder()
-        .user_agent(UA_MOBILE)
-        .timeout(std::time::Duration::from_secs(30))
-        .build()?;
     // Referer di header REQUEST (bukan client): ClientBuilder tanpa fitur
     // default tidak punya `header`.
-    let resp = client
+    let resp = image_client()
         .get(url)
+        .timeout(IMAGE_TIMEOUT)
         .header(reqwest::header::REFERER, referer_for(url))
         .send()
         .await?;
@@ -993,9 +1022,15 @@ async fn generate_pdf(
     let pages = fetch_pages(&out.pages.images)
         .await
         .map_err(AppError::new)?;
-    let (bytes, report) = pdf::write_pdf_bytes(&pages).map_err(AppError::new)?;
-    let entry = store()
-        .map_err(AppError::new)?
+    // Encode PDF itu CPU-bound: jalankan di blocking pool supaya pagar waktu
+    // DOWNLOAD_PDF_BUDGET di u_download_pdf tetap bisa memutus request,
+    // bukan tertahan worker async.
+    let (bytes, report) = tokio::task::spawn_blocking(move || pdf::write_pdf_bytes(&pages))
+        .await
+        .map_err(|e| AppError::internal(format!("task PDF gagal: {e}")))?
+        .map_err(|e| AppError::internal(format!("gagal membentuk PDF: {e:#}")))?;
+    let store = store().map_err(|e| AppError::internal(format!("{e:#}")))?;
+    let entry = store
         .store_pdf(
             username,
             handle,
@@ -1006,7 +1041,7 @@ async fn generate_pdf(
             bytes,
         )
         .await
-        .map_err(AppError::new)?;
+        .map_err(|e| AppError::internal(format!("gagal menyimpan PDF: {e:#}")))?;
     tracing::info!(
         "unduhan {} {} selesai: {} halaman ({} lossless, {} re-encode), {} byte",
         series_title,
@@ -1030,7 +1065,24 @@ async fn u_download_pdf(headers: HeaderMap, Json(req): Json<DownloadPdfReq>) -> 
     if number.is_empty() {
         return Err(AppError::bad_request("parameter number wajib diisi"));
     }
-    let entry = generate_pdf(&username, &req.handle, number).await?;
+    // Fail-fast sebelum kerja berat: kalau store tidak siap (disk tidak
+    // writable), balas 500 yang jelas SEKARANG - bukan setelah fetch + encode
+    // puluhan detik, dan bukan 502 "sumber lambat".
+    store().map_err(|e| AppError::internal(format!("{e:#}")))?;
+    // Pagar TOTAL (P1-4b): timeout per gambar saja tidak cukup — chapter
+    // panjang bisa menumpuk puluhan batch. Batas ini mencakup resolve series,
+    // semua gambar, dan encode.
+    let entry = tokio::time::timeout(
+        DOWNLOAD_PDF_BUDGET,
+        generate_pdf(&username, &req.handle, number),
+    )
+    .await
+    .map_err(|_| {
+        AppError::new(anyhow::anyhow!(
+            "unduhan PDF melebihi batas {} detik",
+            DOWNLOAD_PDF_BUDGET.as_secs()
+        ))
+    })??;
     Ok(Json(json!({
         "id": entry.id,
         "filename": entry.filename,
@@ -1052,7 +1104,8 @@ async fn u_download_pdf(headers: HeaderMap, Json(req): Json<DownloadPdfReq>) -> 
 /// menampilkan sisa waktu tanpa menghitung sendiri.
 async fn u_downloads(headers: HeaderMap) -> Res<Value> {
     let username = require_user(&headers)?;
-    let (items, total) = store()?.list(&username).await;
+    let store = store().map_err(|e| AppError::internal(format!("{e:#}")))?;
+    let (items, total) = store.list(&username).await;
     let ttl_ms = downloads::TTL_SECS * 1000;
     let items: Vec<Value> = items
         .into_iter()
@@ -1073,38 +1126,31 @@ async fn u_downloads(headers: HeaderMap) -> Res<Value> {
 /// GET /api/unified/downloads/{id} -> byte PDF + Content-Disposition
 /// attachment.
 ///
-/// ## Seam: browser navigation tidak mengirim header
-/// Kartu Rak membuka file ini via `<a href>` (bukan fetch ber-header), jadi
-/// request itu TIDAK membawa `X-Komik-User`. Aturannya:
-/// - Header akun VALID  -> hanya id yang ADA di index akun itu (isolasi; id
-///   akun lain -> 404 walau filenya masih dipakai orang lain).
-/// - Tanpa header valid -> file PDF content-addressed dan dibagi, jadi boleh
-///   dilayani selama file fisiknya masih ada di disk; kalau sudah disapu TTL
-///   -> 404. Cabang ini menjaga tombol Baca/Unduh-lagi tetap bekerja.
+/// ## Wajib akun (P1-5)
+/// Sebelumnya request TANPA header dilayani selama file ada di disk — siapa
+/// pun yang tahu/pewarisi id bisa mengunduh PDF akun lain. Sekarang sama
+/// seperti route ber-scope akun lain: header `X-Komik-User` valid WAJIB (401
+/// kalau hilang/invalid/belum terdaftar), dan id harus milik akun itu (404
+/// kalau bukan) supaya keberadaan file akun lain tidak bocor.
 ///
 /// Tidak ada lagi update LRU (`last_opened_at` dihapus; satu-satunya cap
 /// waktu = `downloaded_at`, dasar TTL).
 async fn u_download_file(headers: HeaderMap, Path(id): Path<String>) -> Result<Response, AppError> {
-    let store = store().map_err(AppError::new)?;
+    let username = require_user(&headers)?;
+    let store = store().map_err(|e| AppError::internal(format!("{e:#}")))?;
     let not_found = || AppError::not_found(format!("unduhan {id} tidak ditemukan"));
-    match require_user(&headers) {
-        // akun valid: hanya boleh melihat unduhannya sendiri
-        Ok(username) => {
-            if store.get(&username, &id).await.is_none() {
-                return Err(not_found());
-            }
+    // Isolasi akun: id akun lain -> 404 (bukan 403) supaya tidak membocorkan
+    // bahwa file itu ada.
+    let entry = store.get(&username, &id).await.ok_or_else(not_found)?;
+    let path = store.pdf_path(&id);
+    let bytes = tokio::fs::read(&path).await.map_err(|e| {
+        if e.kind() == std::io::ErrorKind::NotFound {
+            AppError::not_found(format!("file unduhan {id} tidak ada di disk"))
+        } else {
+            // Galat disk NYATA (izin/IO) = 500, bukan 502 "sumber lambat".
+            AppError::internal(format!("gagal membaca {}: {e}", path.display()))
         }
-        // navigasi tanpa header valid: file dibagi, boleh selama ada di disk
-        Err(_) => {
-            if !store.pdf_path(&id).exists() {
-                return Err(not_found());
-            }
-        }
-    }
-    let entry = store.get_any(&id).await.ok_or_else(not_found)?;
-    let bytes = tokio::fs::read(store.pdf_path(&id))
-        .await
-        .map_err(|_| AppError::not_found(format!("file unduhan {id} tidak ada di disk")))?;
+    })?;
     Response::builder()
         .header(header::CONTENT_TYPE, "application/pdf")
         .header(
@@ -1124,7 +1170,7 @@ async fn u_download_file(headers: HeaderMap, Path(id): Path<String>) -> Result<R
 /// yang menunjuknya.
 async fn u_download_delete(headers: HeaderMap, Path(id): Path<String>) -> Res<Value> {
     let username = require_user(&headers)?;
-    let store = store().map_err(AppError::new)?;
+    let store = store().map_err(|e| AppError::internal(format!("{e:#}")))?;
     if store.delete(&username, &id).await {
         Ok(Json(json!({ "deleted": true })))
     } else {
@@ -1135,7 +1181,7 @@ async fn u_download_delete(headers: HeaderMap, Path(id): Path<String>) -> Res<Va
 /// DELETE /api/unified/downloads -> hapus SEMUA MILIK akun (modal "hapus semua").
 async fn u_download_delete_all(headers: HeaderMap) -> Res<Value> {
     let username = require_user(&headers)?;
-    let store = store().map_err(AppError::new)?;
+    let store = store().map_err(|e| AppError::internal(format!("{e:#}")))?;
     let before = store.list(&username).await.0.len();
     let changed = store.clear_all(&username).await;
     Ok(Json(json!({ "deleted": if changed { before } else { 0 } })))
@@ -1547,5 +1593,32 @@ mod tests {
             None,
         );
         assert_eq!(out0.items.len(), 0);
+    }
+
+    // ------------------------------------------------ akses file PDF (P1-5)
+
+    fn status(err: AppError) -> u16 {
+        use axum::response::IntoResponse;
+        err.into_response().status().as_u16()
+    }
+
+    /// GET /downloads/{id} TANPA header WAJIB 401. Dulu cabang ini melayani
+    /// file apa pun yang masih ada di disk (P1-5). Handler dipanggil langsung
+    /// supaya tes tidak butuh jaringan.
+    #[tokio::test]
+    async fn download_file_tanpa_header_401() {
+        let res = u_download_file(HeaderMap::new(), Path("0123456789abcdef".into())).await;
+        let err = res.err().expect("tanpa header harus galat, bukan 200");
+        assert_eq!(status(err), 401);
+    }
+
+    /// Header ada tapi tidak valid / akun belum terdaftar tetap 401.
+    #[tokio::test]
+    async fn download_file_header_tidak_valid_401() {
+        let mut h = HeaderMap::new();
+        h.insert("x-komik-user", "Bukan Valid!".parse().unwrap());
+        let res = u_download_file(h, Path("0123456789abcdef".into())).await;
+        let err = res.err().expect("header invalid harus galat, bukan 200");
+        assert_eq!(status(err), 401);
     }
 }

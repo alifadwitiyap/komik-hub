@@ -28,11 +28,14 @@ pub struct AppState {
 const CATALOGUE_TTL: Duration = Duration::from_secs(30 * 60);
 
 /// Error -> respons JSON yang bisa dibaca frontend (bukan stack trace).
-/// Klasifikasi status: 502 = sumber gagal (default), 400 = input klien
-/// tidak valid, 404 = entitas tidak ada. Hint "sumber lambat" hanya utk 502
-/// (QA batch a1a095e3: BUG-3 — 500/502 untuk galat klien menyesatkan).
+/// Klasifikasi status: 502 = sumber gagal (default), 500 = galat internal
+/// server (disk/IO/encoding), 400 = input klien tidak valid, 404 = entitas
+/// tidak ada, 401 = belum terautentikasi. Hint "sumber lambat" hanya utk 502
+/// (QA batch a1a095e3: BUG-3 — 500/502 untuk galat klien menyesatkan; QA
+/// P0-1: galat disk tidak boleh jadi 502 "sumber lambat").
 enum ErrKind {
     Upstream,
+    Internal,
     BadRequest,
     NotFound,
     Unauthorized,
@@ -49,6 +52,16 @@ impl AppError {
         AppError {
             err: e.into(),
             kind: ErrKind::Upstream,
+        }
+    }
+
+    /// Galat di sisi server sendiri (disk penuh/tidak writable, gagal
+    /// encode PDF, state store rusak) — 500 tanpa hint "sumber lambat":
+    /// upstream tidak bisa disalahkan, jadi jangan menyuruh user coba lagi.
+    pub fn internal(msg: impl Into<String>) -> Self {
+        AppError {
+            err: anyhow::anyhow!(msg.into()),
+            kind: ErrKind::Internal,
         }
     }
 
@@ -89,6 +102,14 @@ impl IntoResponse for AppError {
                     Json(
                         json!({ "error": msg, "hint": "sumber sedang lambat/menolak; coba lagi" }),
                     ),
+                )
+                    .into_response()
+            }
+            ErrKind::Internal => {
+                tracing::error!("galat internal saat melayani request: {msg}");
+                (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    Json(json!({ "error": msg })),
                 )
                     .into_response()
             }
@@ -366,4 +387,59 @@ pub fn router(state: AppState) -> Router {
         .layer(
             tower_http::cors::CorsLayer::permissive(), // dev: Vite di port lain
         )
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use axum::body::to_bytes;
+
+    async fn body_json(res: Response) -> Value {
+        let bytes = to_bytes(res.into_body(), usize::MAX).await.unwrap();
+        serde_json::from_slice(&bytes).unwrap()
+    }
+
+    /// Galat disk/IO (P0-1) HARUS 500 tanpa hint "sumber lambat" — upstream
+    /// tidak bisa disalahkan, jadi user tidak boleh disuruh "coba lagi".
+    #[tokio::test]
+    async fn internal_jadi_500_tanpa_hint() {
+        let res = AppError::internal("disk penuh saat menulis PDF").into_response();
+        assert_eq!(res.status(), StatusCode::INTERNAL_SERVER_ERROR);
+        let v = body_json(res).await;
+        assert_eq!(v["error"], "disk penuh saat menulis PDF");
+        assert!(
+            v.get("hint").is_none(),
+            "500 tidak boleh membawa hint upstream"
+        );
+    }
+
+    /// Default `AppError::new` tetap 502 + hint (kontrak lama tidak berubah).
+    #[tokio::test]
+    async fn upstream_tetap_502_dengan_hint() {
+        let res = AppError::new(anyhow::anyhow!("timeout ke sumber")).into_response();
+        assert_eq!(res.status(), StatusCode::BAD_GATEWAY);
+        let v = body_json(res).await;
+        assert!(v["hint"].as_str().is_some_and(|h| h.contains("lambat")));
+    }
+
+    /// Jalur `?` (From<E>) tetap upstream — hanya pemanggil yang memilih
+    /// `AppError::internal` untuk galat server sendiri.
+    #[tokio::test]
+    async fn from_error_anyhow_tetap_upstream() {
+        fn f() -> Result<(), AppError> {
+            Err(anyhow::anyhow!("gagal fetch").into())
+        }
+        assert_eq!(
+            f().unwrap_err().into_response().status(),
+            StatusCode::BAD_GATEWAY
+        );
+    }
+
+    #[tokio::test]
+    async fn bad_request_400_tanpa_hint() {
+        let res = AppError::bad_request("q wajib").into_response();
+        assert_eq!(res.status(), StatusCode::BAD_REQUEST);
+        let v = body_json(res).await;
+        assert!(v.get("hint").is_none());
+    }
 }

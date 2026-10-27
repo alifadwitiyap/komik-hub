@@ -16,16 +16,16 @@
 //! fisiknya bila tak ada pemegang lain.
 //!
 //! ## Refcount DIHAPUS (pilihan paling sederhana)
-//! Dulu ada `refs.json`. Satu-satunya pemakaiannya adalah cabang
-//! `u_download_file` "navigasi tanpa header" + keputusan hapus file. Index
-//! per-akun SUDAH sumber kebenaran tunggal, jadi refcount cuma duplikat state
-//! yang bisa desinkron. Maka refs dibuang: "masih dipegang akun mana pun?"
-//! dijawab dengan memindai index semua akun (`any_holder_locked`), dan cabang
-//! tanpa header cukup cek file masih ada di disk.
+//! Dulu ada `refs.json`. Satu-satunya pemakaiannya adalah keputusan hapus
+//! file. Index per-akun SUDAH sumber kebenaran tunggal, jadi refcount cuma
+//! duplikat state yang bisa desinkron. Maka refs dibuang: "masih dipegang
+//! akun mana pun?" dijawab dengan memindai index semua akun
+//! (`any_holder_locked`).
 //!
 //! Satu mutex (`Mutex<State>`) memegang SEMUA akun; tiap akses me-lazy-load file
 //! akun itu dari disk lebih dulu, jadi state benar setelah restart server.
 
+use anyhow::Context;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
@@ -94,7 +94,8 @@ fn index_path(dir: &Path, username: &str) -> PathBuf {
     dir.join("index").join(format!("{username}.json"))
 }
 
-/// Username yang punya file index di disk (untuk `get_any` lintas restart).
+/// Username yang punya file index di disk (akun yang hanya ada di disk ikut
+/// dipindai saat sapu TTL / hapus file).
 fn index_users(dir: &Path) -> Vec<String> {
     let mut out = Vec::new();
     let Ok(rd) = std::fs::read_dir(dir.join("index")) else {
@@ -116,11 +117,21 @@ fn index_users(dir: &Path) -> Vec<String> {
 
 impl DownloadStore {
     /// Buka store dari direktori (sub-dir index dibuat kalau belum ada).
-    /// Index yang rusak di-reset (bukan bikin server gagal start).
+    /// Index yang rusak di-reset (bukan bikin server gagal start), TAPI galat
+    /// direktori TIDAK ditelan: direktori yang tidak bisa dibuat/ditulis
+    /// dilaporkan dengan path jelas supaya boot bisa fail-fast (P0-1).
     pub fn open(dir: impl Into<PathBuf>) -> anyhow::Result<Arc<Self>> {
         let dir = dir.into();
-        std::fs::create_dir_all(&dir)?;
-        let _ = std::fs::create_dir_all(dir.join("index"));
+        std::fs::create_dir_all(&dir)
+            .with_context(|| format!("gagal membuat direktori unduhan {}", dir.display()))?;
+        let index = dir.join("index");
+        std::fs::create_dir_all(&index).with_context(|| {
+            format!("gagal membuat direktori index unduhan {}", index.display())
+        })?;
+        // Cek tulis NYATA (bukan sekadar ada): direktori bisa ada tapi dimiliki
+        // user lain / read-only — persis kasus QA yang dulu berakhir 502.
+        ensure_writable(&dir)?;
+        ensure_writable(&index)?;
         Ok(Arc::new(DownloadStore {
             dir,
             state: Mutex::new(State {
@@ -174,25 +185,6 @@ impl DownloadStore {
         u.index.items.iter().find(|e| e.id == id).cloned()
     }
 
-    /// Cari entri `id` di SEMUA akun (untuk melayani unduhan file yang dibagi
-    /// lewat navigasi browser tanpa header — metadata diambil dari pemegang
-    /// mana pun). Akun yang hanya ada di disk ikut dipindai.
-    pub async fn get_any(&self, id: &str) -> Option<DownloadEntry> {
-        let mut st = self.state.lock().await;
-        for name in Self::all_usernames(&self.dir, &st) {
-            if let Some(e) = Self::ensure_user(&self.dir, &mut st, &name)
-                .index
-                .items
-                .iter()
-                .find(|e| e.id == id)
-                .cloned()
-            {
-                return Some(e);
-            }
-        }
-        None
-    }
-
     /// Hapus entri `id` MILIK `username`. `false` kalau akun itu tidak punya
     /// entri tersebut. File fisik hanya dihapus bila akun lain tidak lagi
     /// menunjuk id itu.
@@ -204,7 +196,9 @@ impl DownloadStore {
         if u.index.items.len() == before {
             return false;
         }
-        Self::save_index(&self.dir, username, &u.index);
+        if let Err(e) = Self::save_index(&self.dir, username, &u.index) {
+            tracing::error!("{e:#}");
+        }
         Self::drop_file_if_unheld(&self.dir, &mut st, id);
         true
     }
@@ -219,7 +213,9 @@ impl DownloadStore {
             return false;
         }
         let ids: Vec<String> = u.index.items.drain(..).map(|e| e.id).collect();
-        Self::save_index(&self.dir, username, &u.index);
+        if let Err(e) = Self::save_index(&self.dir, username, &u.index) {
+            tracing::error!("{e:#}");
+        }
         for id in ids {
             Self::drop_file_if_unheld(&self.dir, &mut st, &id);
         }
@@ -246,7 +242,9 @@ impl DownloadStore {
         let now = now_millis();
 
         let mut st = self.state.lock().await;
-        std::fs::write(self.pdf_path(&id), &bytes)?;
+        let path = self.pdf_path(&id);
+        std::fs::write(&path, &bytes)
+            .with_context(|| format!("gagal menulis PDF {}", path.display()))?;
         let entry = DownloadEntry {
             id: id.clone(),
             handle: handle.to_string(),
@@ -261,7 +259,7 @@ impl DownloadStore {
         let u = Self::ensure_user(&self.dir, &mut st, username);
         u.index.items.retain(|e| e.id != id);
         u.index.items.push(entry.clone());
-        Self::save_index(&self.dir, username, &u.index);
+        Self::save_index(&self.dir, username, &u.index)?;
         Ok(entry)
     }
 
@@ -288,7 +286,9 @@ impl DownloadStore {
             });
             if u.index.items.len() != before {
                 removed += before - u.index.items.len();
-                Self::save_index(&self.dir, &name, &u.index);
+                if let Err(e) = Self::save_index(&self.dir, &name, &u.index) {
+                    tracing::error!("{e:#}");
+                }
             }
         }
         // File fisik dicek SETELAH semua index dibersihkan: id yang masih
@@ -346,8 +346,12 @@ impl DownloadStore {
         false
     }
 
-    fn save_index(dir: &Path, username: &str, idx: &Index) {
-        let _ = write_json(&index_path(dir, username), idx);
+    /// Tulis index satu akun. Galat TIDAK ditelan: pemanggil kritis
+    /// (store_pdf) meneruskannya, pemanggil best-effort mencatatnya sebagai
+    /// error (bukan hilang tanpa jejak).
+    fn save_index(dir: &Path, username: &str, idx: &Index) -> anyhow::Result<()> {
+        let path = index_path(dir, username);
+        write_json(&path, idx).with_context(|| format!("gagal menyimpan {}", path.display()))
     }
 }
 
@@ -398,6 +402,22 @@ fn read_json<T: for<'de> Deserialize<'de>>(path: &Path) -> Option<T> {
             None
         }
     }
+}
+
+/// Pastikan direktori BENAR-BENAR bisa ditulis: buat file probe lalu hapus.
+/// create_dir_all saja tidak cukup - direktori bisa sudah ada tapi dimiliki
+/// user lain / read-only (kasus QA: data/downloads milik root). Galat memuat
+/// path supaya log boot langsung menunjuk penyebabnya.
+pub fn ensure_writable(dir: &Path) -> anyhow::Result<()> {
+    let probe = dir.join(format!(
+        ".write-probe-{}-{}",
+        std::process::id(),
+        now_millis()
+    ));
+    std::fs::write(&probe, b"ok")
+        .with_context(|| format!("direktori {} tidak bisa ditulis", dir.display()))?;
+    let _ = std::fs::remove_file(&probe);
+    Ok(())
 }
 
 fn write_json<T: Serialize>(path: &Path, value: &T) -> anyhow::Result<()> {
@@ -663,8 +683,8 @@ mod tests {
 
     #[tokio::test]
     async fn state_per_akun_bertahan_lintas_restart() {
-        // Buka-tutup store: index dibaca ulang dari disk, dan `get_any`
-        // (jalur navigasi tanpa header) tetap menemukan file.
+        // Buka-tutup store: index dibaca ulang dari disk dan entri akun
+        // tetap bisa ditemukan setelah restart.
         let dir = temp_dir("restart");
         let id = {
             let store = DownloadStore::open(&dir).unwrap();
@@ -677,8 +697,8 @@ mod tests {
         let store2 = DownloadStore::open(&dir).unwrap();
         assert_eq!(store2.list("alif").await.0.len(), 1, "index akun bertahan");
         assert!(
-            store2.get_any(&id).await.is_some(),
-            "get_any menemukan file lintas restart"
+            store2.get("alif", &id).await.is_some(),
+            "entri akun ditemukan lintas restart"
         );
         let _ = std::fs::remove_dir_all(&dir);
     }
@@ -754,5 +774,49 @@ mod tests {
         let f = DownloadStore::filename_for("One Piece: Romance Dawn /", "1195");
         assert!(!f.contains('/') && !f.contains(':'), "nama file: {f}");
         assert!(f.ends_with(".pdf"));
+    }
+
+    // ---- WRITABILITY (P0-1) --------------------------------------------
+
+    /// Direktori yang bisa ditulis lolos probe; file probe tidak tertinggal.
+    #[test]
+    fn ensure_writable_ok_tanpa_sisa_probe() {
+        let dir = temp_dir("writable-ok");
+        std::fs::create_dir_all(&dir).unwrap();
+        ensure_writable(&dir).unwrap();
+        assert_eq!(
+            std::fs::read_dir(&dir).unwrap().count(),
+            0,
+            "probe harus dihapus"
+        );
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    /// Path yang bukan direktori (file biasa) HARUS gagal dengan path di
+    /// pesan, bukan panic / diam-diam lolos.
+    #[test]
+    fn ensure_writable_gagal_jelas_untuk_file() {
+        let dir = temp_dir("writable-file");
+        std::fs::create_dir_all(&dir).unwrap();
+        let f = dir.join("bukan-dir");
+        std::fs::write(&f, b"x").unwrap();
+        let err = ensure_writable(&f).unwrap_err();
+        assert!(
+            format!("{err:#}").contains("tidak bisa ditulis"),
+            "pesan: {err:#}"
+        );
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    /// open() meneruskan galat direktori (tidak ditelan): path yang menunjuk
+    /// file biasa tidak bisa dijadikan store.
+    #[test]
+    fn open_gagal_jika_direktori_tidak_bisa_dibuat() {
+        let dir = temp_dir("open-gagal");
+        std::fs::create_dir_all(&dir).unwrap();
+        let f = dir.join("file");
+        std::fs::write(&f, b"x").unwrap();
+        assert!(DownloadStore::open(&f).is_err());
+        let _ = std::fs::remove_dir_all(&dir);
     }
 }
