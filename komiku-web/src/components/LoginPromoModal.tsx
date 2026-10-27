@@ -7,6 +7,7 @@ import {
   isValidUsername,
   USERNAME_RULE,
 } from '../account'
+import { subscribeRuns, getRuns, runBusy } from '../downloadStore'
 
 const DISMISS_KEY = 'komik.login-promo.dismissed.v1'
 const DISMISS_TTL = 24 * 60 * 60 * 1000 // 24 jam
@@ -44,13 +45,24 @@ export default function LoginPromoModal() {
   const panelRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
 
+  // Jangan timpa halaman yang sedang ada unduhan aktif: modal fullscreen
+  // (z-50) akan menutupi kartu progres + tombol Batal dan membuat interaksi
+  // (mis. membatalkan unduhan) tidak bisa dipencet.
+  const [downloadBusy, setDownloadBusy] = useState(false)
+  useEffect(() => {
+    const sync = (runs: ReturnType<typeof getRuns>) =>
+      setDownloadBusy(runs.some(runBusy))
+    sync(getRuns())
+    return subscribeRuns(sync)
+  }, [])
+
   const dismissedAt = readDismissTime()
   const dismissedRecently = dismissedAt !== null && Date.now() - dismissedAt < DISMISS_TTL
   // Scope 1: modal tidak menampilkan diri di rute baca (reader/maraton) supaya
   // tidak memblokir kontrol fullscreen & alur baca. Tetap tampil di halaman
   // non-baca (home/cari/rak/seri).
   const isReading = /^\/(baca|maraton)/.test(pathname)
-  const visible = getUser() === null && pathname !== '/akun' && !isReading && !dismissedRecently
+  const visible = getUser() === null && pathname !== '/akun' && !isReading && !dismissedRecently && !downloadBusy
 
   // kalau user jadi login dari mana pun → popup menutup (re-evaluasi visibility)
   useEffect(() => {
