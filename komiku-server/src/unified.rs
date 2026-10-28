@@ -773,8 +773,107 @@ pub struct SeriesQuery {
     last_source: Option<String>,
 }
 
+/// Cache respons `/api/unified/series/{handle}`.
+///
+/// Yang di-cache adalah **respons JSON final** (bukan potongan), jadi
+/// `representative_source`, `manga.last_chapter` (ceiling), dan daftar union
+/// tersimpan PERSIS seperti yang dihitung dari 4 sumber. Ceiling tetap
+/// dipertahankan: nilai lama disajikan maksimal `SERIES_CACHE_TTL`, lalu
+/// dihitung ulang penuh (union 4 sumber) saat refresh.
+///
+/// Kenapa perlu: `series_merged` = resolve primary (fase A) + fan-out 3 sumber
+/// (fase B) berurutan. Di host kecil, 12 request bersamaan untuk handle sama
+/// = 12 fan-out identik → semua saling rebut CPU → melewati budget 15 s → 502.
+/// Dengan cache + single-flight, burst itu jadi SATU fan-out.
+const SERIES_CACHE_TTL: std::time::Duration = std::time::Duration::from_secs(300);
+const SERIES_CACHE_MAX: usize = 256;
+
+type SeriesCache = std::collections::HashMap<String, (std::time::Instant, serde_json::Value)>;
+
+fn series_cache() -> &'static std::sync::Mutex<SeriesCache> {
+    static C: std::sync::OnceLock<std::sync::Mutex<SeriesCache>> = std::sync::OnceLock::new();
+    C.get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
+}
+
+/// Kunci cache: handle + last_source (sticky source mengubah hasil union
+/// primary, jadi tidak boleh berbagi entri).
+fn series_key(handle: &str, last_source: Option<&str>) -> String {
+    format!("{handle}\u{1}{}", last_source.unwrap_or(""))
+}
+
+/// Gerbang single-flight PER HANDLE: N request bersamaan pada handle sama
+/// hanya menembak fan-out SEKALI; sisanya menunggu lalu membaca cache.
+fn series_gate(key: &str) -> std::sync::Arc<tokio::sync::Mutex<()>> {
+    use std::collections::HashMap;
+    use std::sync::{Mutex, OnceLock};
+    static G: OnceLock<Mutex<HashMap<String, std::sync::Arc<tokio::sync::Mutex<()>>>>> =
+        OnceLock::new();
+    let map = G.get_or_init(|| Mutex::new(HashMap::new()));
+    let mut guard = map.lock().unwrap_or_else(|e| e.into_inner());
+    guard
+        .entry(key.to_string())
+        .or_insert_with(|| std::sync::Arc::new(tokio::sync::Mutex::new(())))
+        .clone()
+}
+
+/// Batas fan-out serentak lintas handle berbeda. Handle BERBEDA memang perlu
+/// fan-out sendiri (ceiling masing-masing), tapi PC jadul tumbang kalau 12
+/// handle dihitung serentak — jadi antrekan, jangan tolak.
+fn series_fanout_permits() -> &'static tokio::sync::Semaphore {
+    static S: std::sync::OnceLock<tokio::sync::Semaphore> = std::sync::OnceLock::new();
+    S.get_or_init(|| tokio::sync::Semaphore::new(3))
+}
+
+fn series_cache_get(key: &str) -> Option<serde_json::Value> {
+    let guard = series_cache().lock().ok()?;
+    let (at, out) = guard.get(key)?;
+    if at.elapsed() < SERIES_CACHE_TTL {
+        Some(out.clone())
+    } else {
+        None
+    }
+}
+
+fn series_cache_put(key: String, out: serde_json::Value) {
+    if let Ok(mut guard) = series_cache().lock() {
+        if guard.len() >= SERIES_CACHE_MAX && !guard.contains_key(&key) {
+            if let Some(old) = guard
+                .iter()
+                .min_by_key(|(_, (at, _))| *at)
+                .map(|(k, _)| k.clone())
+            {
+                guard.remove(&old);
+            }
+        }
+        guard.insert(key, (std::time::Instant::now(), out));
+    }
+}
+
 async fn u_series(Path(handle): Path<String>, Query(q): Query<SeriesQuery>) -> Res<Value> {
     validate_handle(&handle)?;
+    let key = series_key(&handle, q.last_source.as_deref());
+
+    // 1. Cache segar -> seketika (tidak menyentuh upstream sama sekali).
+    if let Some(hit) = series_cache_get(&key) {
+        return Ok(Json(hit));
+    }
+
+    // 2. Single-flight per handle: yang menang gerbang menghitung, sisanya
+    //    menunggu lalu membaca cache yang baru diisi (bukan fan-out sendiri).
+    let gate = series_gate(&key);
+    let _guard = gate.lock().await;
+
+    // Double-check: bisa jadi request lain mengisi cache saat kita menunggu.
+    if let Some(hit) = series_cache_get(&key) {
+        return Ok(Json(hit));
+    }
+
+    // 3. Batasi fan-out serentak lintas handle (antre, bukan tolak).
+    let _permit = series_fanout_permits()
+        .acquire()
+        .await
+        .map_err(|_| AppError::new(anyhow::anyhow!("gerbang fan-out series ditutup")))?;
+
     // Budget total: core boleh fallback berurutan antar sumber; tanpa batas
     // ini 4 sumber × 6 s bisa menahan koneksi user ~24 s.
     let merged = match tokio::time::timeout(
@@ -793,7 +892,7 @@ async fn u_series(Path(handle): Path<String>, Query(q): Query<SeriesQuery>) -> R
     };
     let manga = MangaOut::from(&merged.manga);
     let chapters: Vec<ChapterRow> = merged.chapters.iter().map(ChapterRow::from).collect();
-    Ok(Json(json!({
+    let out = json!({
         "manga": manga,
         "chapters": chapters,
         // Sumber manga PRIMARY (metadata tidak berubah oleh union).
@@ -810,7 +909,9 @@ async fn u_series(Path(handle): Path<String>, Query(q): Query<SeriesQuery>) -> R
             .map(|(s, _)| s.as_str().to_string())
             .collect::<Vec<_>>(),
         "from_cache": merged.from_cache,
-    })))
+    });
+    series_cache_put(key, out.clone());
+    Ok(Json(out))
 }
 
 /// Klasifikasi galat core: "tidak ditemukan"/"tidak ada" = entitas absen
@@ -851,28 +952,20 @@ async fn u_chapter(Path((handle, number)): Path<(String, String)>) -> Res<Value>
 }
 
 async fn u_chapter_inner(handle: String, number: String) -> Res<Value> {
-    // title_key SERIES (bukan judul chapter): web pakai utk favorit dan
-    // sejarah lintas sumber. Series di-resolve lebih dulu supaya cache
-    // aggregator (diisi halaman series) bisa dipakai ulang; kalau resolve
-    // gagal, jangan gagalkan baca chapter — pakai kunci judul chapter.
-    let series = aggregator()
-        .series_resolve(&handle, SERIES_CHAPTER_LIMIT, None)
-        .await
-        .ok()
-        .map(|o| {
-            (
-                o.detail.manga.title_key.clone(),
-                o.detail.manga.title.clone(),
-            )
-        });
     let out = aggregator()
         .read_chapter_any(&handle, &number, None, SERIES_CHAPTER_LIMIT)
         .await
         .map_err(classify_core_err)?;
-    let (key, series_title) = match &series {
-        Some((k, t)) if !k.is_empty() => (k.clone(), Some(t.clone())),
-        _ => (title_key(&out.pages.title), None),
+    // title_key + judul SERIES sudah diperoleh `read_chapter_any` saat resolve
+    // (tanpa round-trip upstream tambahan). Sebelumnya kita `series_resolve`
+    // dulu hanya untuk metadata ini — itu SATU resolve upstream penuh yang
+    // redundan karena `read_chapter_any` resolve lagi di dalamnya. Kalau
+    // gagal kosong, fallback ke judul chapter seperti sebelumnya.
+    let key = match out.series_title_key.as_deref() {
+        Some(k) if !k.is_empty() => k.to_string(),
+        _ => title_key(&out.pages.title),
     };
+    let series_title = out.series_title.as_deref().filter(|t| !t.is_empty());
     Ok(Json(json!({
         "title": out.pages.title,
         "number": out.pages.number,

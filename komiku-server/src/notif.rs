@@ -626,8 +626,17 @@ async fn run_check_cycle(store: Arc<NotifStore>) {
     }
 
     // Fase 2+3: fetch (di luar lock) lalu deteksi+mutasi per akun di bawah lock.
+    //
+    // Paralel ANTAR-FAVORIT dengan batas konkurensi: dulu loop ini serial
+    // (`for (key, fav) ... snapshot().await`), jadi N favorit = N giliran
+    // menunggu, tiap giliran fan-out 4 sumber. Di host kecil (PC jadul) itu
+    // membuat cycle notif menahan CPU/koneksi berjam-jam dan berebut dengan
+    // request baca user. Batas 3 supaya tidak membanjiri host.
+    const SNAPSHOT_CONCURRENCY: usize = 3;
     for (username, favorites) in &per_user {
-        let mut snaps: Vec<(String, Vec<(String, String)>)> = Vec::new();
+        let sem = std::sync::Arc::new(tokio::sync::Semaphore::new(SNAPSHOT_CONCURRENCY));
+        let mut set: tokio::task::JoinSet<(String, Vec<(String, String)>)> =
+            tokio::task::JoinSet::new();
         for (key, fav) in favorites {
             if fav.baselines.is_empty() {
                 // Baseline kosong: coba isi sekarang (favorit lama yg fill-nya
@@ -640,8 +649,25 @@ async fn run_check_cycle(store: Arc<NotifStore>) {
                 tokio::spawn(async move { fill_baselines(&s, &u, &k).await });
                 continue;
             }
-            let snap = store.snapshot(key, fav).await;
-            snaps.push((key.clone(), snap));
+            let store2 = store.clone();
+            let k = key.clone();
+            let f = fav.clone();
+            let sem2 = sem.clone();
+            set.spawn(async move {
+                let _permit = match sem2.acquire_owned().await {
+                    Ok(p) => p,
+                    Err(_) => return (k, Vec::new()),
+                };
+                let snap = store2.snapshot(&k, &f).await;
+                (k, snap)
+            });
+        }
+        let mut snaps: Vec<(String, Vec<(String, String)>)> = Vec::new();
+        while let Some(joined) = set.join_next().await {
+            match joined {
+                Ok((k, snap)) => snaps.push((k, snap)),
+                Err(e) => tracing::warn!("notif: snapshot favorit gagal (lewati): {e}"),
+            }
         }
         if snaps.is_empty() {
             continue;

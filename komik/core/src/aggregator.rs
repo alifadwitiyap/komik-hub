@@ -242,6 +242,16 @@ pub struct ReadOutcomeX {
     pub switched_from: Option<SourceId>,
     /// Catatan 1 baris untuk UI (badge + catatan kecil); `None` kalau tidak pindah.
     pub note: Option<String>,
+    /// `title_key` SERIES pemilik chapter (bukan judul chapter). Diisi dari
+    /// `manga` yang SUDAH dimuat saat resolve — supaya pemanggil tidak perlu
+    /// `series_resolve` terpisah hanya untuk metadata ini (itu satu round-trip
+    /// upstream penuh di jalur panas baca chapter).
+    #[serde(default)]
+    pub series_title_key: Option<String>,
+    /// Judul series pemilik chapter (untuk breadcrumb reader). Sumber sama
+    /// seperti `series_title_key`.
+    #[serde(default)]
+    pub series_title: Option<String>,
 }
 
 /// Minimum chapter yang dimuat per sumber saat membaca: `read_chapter_any`
@@ -1162,7 +1172,15 @@ impl Aggregator {
                             format!("chapter {number} tidak ada di {p} — dibaca dari {sid}")
                         }
                     });
-                    let outcome = ReadOutcomeX { pages, prev, next, switched_from, note };
+                    let outcome = ReadOutcomeX {
+                        pages,
+                        prev,
+                        next,
+                        switched_from,
+                        note,
+                        series_title_key: Some(manga.title_key.clone()),
+                        series_title: Some(manga.title.clone()),
+                    };
                     self.cache_put(&read_key, &outcome);
                     return Ok(outcome);
                 }
