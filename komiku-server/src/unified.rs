@@ -960,7 +960,10 @@ pub fn init_download_store() -> anyhow::Result<()> {
 }
 
 /// Konkurensi pengambilan gambar per chapter (chapter biasanya 10-60 halaman).
-const PAGE_CONCURRENCY: usize = 6;
+/// Berapa gambar chapter diambil PARALEL saat merakit PDF. Kecil = puncak RAM
+/// lebih rendah (byte in-flight sedikit) dengan tukar waktu. 6 → 3 menghemat
+/// puncak ~separuh; di VPS kecil itu lebih berharga daripada beberapa detik.
+const PAGE_CONCURRENCY: usize = 3;
 
 /// Batas TOTAL satu unduhan PDF (resolve series + ambil semua gambar +
 /// encode). Tanpa ini chapter 300 halaman bisa menahan request ~25 menit
@@ -1034,6 +1037,11 @@ async fn fetch_image(url: &str) -> anyhow::Result<Vec<u8>> {
 }
 
 /// Ambil semua gambar chapter (konkuren per batch, urutan dipertahankan).
+///
+/// Memori: SEMUA byte halaman ditahan sampai PDF dirakit — itu tak terhindarkan
+/// karena `write_pdf_bytes` butuh seluruh set sekaligus. Yang bisa ditekan
+/// adalah puncak sementara: `PAGE_CONCURRENCY` kecil membatasi berapa byte
+/// in-flight pada satu waktu (terukur: 6 → +27 MB puncak di chapter 18 halaman).
 async fn fetch_pages(urls: &[String]) -> anyhow::Result<Vec<pdf::Page>> {
     let mut slots: Vec<Option<Vec<u8>>> = vec![None; urls.len()];
     for (batch, chunk) in urls.chunks(PAGE_CONCURRENCY).enumerate() {
