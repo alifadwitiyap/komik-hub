@@ -15,7 +15,15 @@ use std::time::Duration;
 /// [`crate::source::PER_SOURCE_TIMEOUT_SECS`] karena probe hanya menjawab
 /// hidup/mati — tak ada payload besar. Tetap dibatasi supaya satu sumber
 /// menggantung tak menahan seluruh vektor probe sampai timeout aggregator penuh.
-pub const PROBE_TIMEOUT_SECS: u64 = 5;
+/// Batas waktu SATU probe sumber (health endpoint).
+///
+/// Kenapa 30 s, bukan 5 s: di production VPS kecil, satu request pun membayar
+/// 0,5–1,5 s overhead (terukur: `/api/health` 37 byte = 0,24–3,8 s). Sumber
+/// yang sehat butuh 1–5 s, jadi timeout 5 s melaporkan "mati" untuk sumber yang
+/// sebenarnya hidup. 30 s membuat laporan health JUJUR; biayanya health jadi
+/// lambat saat ada sumber benar-benar mati — itu diterima, karena health bukan
+/// jalur kritis dan hasilnya di-cache (stale-while-revalidate).
+pub const PROBE_TIMEOUT_SECS: u64 = 30;
 
 /// Klasifikasi hasil probe.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -244,6 +252,14 @@ mod tests {
             Duration::from_secs(PROBE_TIMEOUT_SECS),
             "timeout default harus tetap sama dengan konstannya"
         );
+    }
+
+    /// Nilai 30 s dipatok: sumber sehat di VPS kecil butuh 1-5 s, dan request
+    /// pun membayar overhead 0,5-1,5 s. Turun ke 5 s lagi = sumber hidup
+    /// dilaporkan mati (regresi yang pernah terjadi di production).
+    #[test]
+    fn probe_timeout_is_30_seconds() {
+        assert_eq!(PROBE_TIMEOUT_SECS, 30);
     }
 
     /// `probe_sources` (tanpa timeout eksplisit) memakai default dan tetap
