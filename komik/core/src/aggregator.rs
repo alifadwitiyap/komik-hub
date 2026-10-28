@@ -810,7 +810,15 @@ impl Aggregator {
         // BUKAN judul — mencari sebagai judul sering meleset, sehingga sticky
         // tak jatuh ke sumber yang diminta. Detail primary dipakai ulang saat
         // loop sampai ke sumber handle supaya tak dobel request.
+        //
+        // FAILOVER: kalau primary mati total, judul tidak didapat dari sana.
+        // Pakai judul yang PERNAH diingat untuk handle ini (remember_title);
+        // tanpa itu, resolve-by-title memakai native_id ("1160") yang tidak
+        // pernah cocok di sumber lain.
         let mut primary_detail: Option<(Manga, SeriesDetail)> = None;
+        // FAILOVER: judul yang pernah diingat untuk handle ini (kalau ada),
+        // dipakai kalau primary mati dan judul tidak didapat dari sana.
+        let remembered_title = self.recall_title(id).map(|(t, _)| t);
         if sid.is_some() && order.len() > 1 {
             if let Some(primary_src) =
                 self.sources.iter().find(|s| Some(&s.id()) == sid.as_ref())
@@ -818,6 +826,19 @@ impl Aggregator {
                 if let SeriesLoad::Ok(manga, detail) =
                     self.load_series(primary_src, &native, limit as usize).await
                 {
+                    // Simpan mapping handle -> judul PERMANEN (TTL panjang).
+                    //
+                    // Kenapa: saat sumber primary MATI TOTAL (bukan sekadar
+                    // chapter hilang), judul series tidak diketahui — handle
+                    // hanya berisi native_id ("komiku:1160"), dan kode sendiri
+                    // mencatat "slug/id BUKAN judul". Akibatnya failover ke
+                    // sumber lain mustahil: resolve-by-title memakai "1160"
+                    // yang tidak pernah cocok.
+                    //
+                    // Dengan menyimpan judul saat pertama kali berhasil
+                    // dibuka, kunjungan berikutnya tetap bisa failover walau
+                    // primary mati.
+                    self.remember_title(id, &manga.title, &manga.title_key);
                     primary_detail = Some((manga, detail));
                 }
             }
@@ -831,9 +852,12 @@ impl Aggregator {
                     None => self.load_series(src, &native, limit as usize).await,
                 }
             } else {
-                let title = primary_detail
-                    .as_ref()
-                    .map(|(m, _)| m.title.clone())
+                // FAILOVER: kalau primary mati, `primary_detail` kosong dan
+                // judul tidak tersedia. Pakai judul yang diingat (kalau ada)
+                // demi bisa resolve di sumber lain.
+                let title = remembered_title
+                    .clone()
+                    .or_else(|| primary_detail.as_ref().map(|(m, _)| m.title.clone()))
                     .unwrap_or_else(|| native.clone());
                 self.load_series_by_title(src, &title, limit as usize).await
             };
@@ -1056,7 +1080,11 @@ impl Aggregator {
         // Judul untuk resolve lintas sumber: dari series pertama yang kebetulan
         // termuat; kalau primary tak bisa diakses, native id dipakai sebagai
         // tebakan judul (slug) — sama seperti fase 2 `series_resolve`.
-        let mut title_hint: Option<String> = None;
+        //
+        // FAILOVER: kalau primary mati, judul tidak didapat dari sana. Pakai
+        // judul yang PERNAH diingat (remember_title) supaya resolve-by-title
+        // di sumber lain memakai judul asli, bukan native_id ("1160").
+        let mut title_hint: Option<String> = self.recall_title(id).map(|(t, _)| t);
         let mut primary_miss: Option<PrimaryMiss> = None;
         // Sumber yang gagal DIAKSES (bukan "tidak ada") — untuk pesan akhir.
         let mut inaccessible: Vec<(SourceId, SourceError)> = Vec::new();
@@ -1411,6 +1439,33 @@ impl Aggregator {
 
     fn cache_key(&self, op: &str, source: Option<&str>, arg: &str) -> String {
         format!("{}:{}:{}", op, source.unwrap_or("*"), arg)
+    }
+
+    /// Ingat judul series untuk sebuah handle (TTL panjang: 30 hari).
+    ///
+    /// Dipakai untuk FAILOVER saat sumber primary mati total: tanpa judul,
+    /// handle `komiku:1160` tidak bisa dicari di sumber lain (native_id bukan
+    /// judul). Disimpan dengan TTL 30 hari (judul series praktis tidak berubah,
+    /// dan failover tetap bertahan jauh setelah TTL data biasa 10 menit).
+    fn remember_title(&self, handle: &str, title: &str, title_key: &str) {
+        let key = format!("title-of:{handle}");
+        if let Some(cache) = &self.cache {
+            if let Ok(v) = serde_json::to_value((title.to_string(), title_key.to_string())) {
+                let _ = cache.set_expiring_in(
+                    &key,
+                    std::time::Duration::from_secs(30 * 24 * 60 * 60),
+                    v,
+                );
+            }
+        }
+    }
+
+    /// Ambil judul series yang pernah diingat untuk handle ini.
+    fn recall_title(&self, handle: &str) -> Option<(String, String)> {
+        let key = format!("title-of:{handle}");
+        self.cache
+            .as_ref()
+            .and_then(|c| c.fresh_json::<(String, String)>(&key))
     }
 
     /// Kumpulkan daftar chapter dari SEMUA sumber yang punya series dengan judul

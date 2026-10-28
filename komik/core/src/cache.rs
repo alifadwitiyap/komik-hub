@@ -395,6 +395,17 @@ impl Cache {
         self.set(key, serde_json::to_value(value)?)
     }
 
+    /// Set dengan TTL khusus per-entri (memory + disk). Dipakai untuk data
+    /// yang harus bertahan jauh melewati `DEFAULT_TTL` (mis. mapping handle ->
+    /// judul untuk failover lintas-sumber, TTL 30 hari).
+    pub fn set_expiring_in(&self, key: &str, ttl: Duration, value: Value) -> anyhow::Result<()> {
+        self.mem.set_expiring_in(key, ttl, value.clone());
+        match &self.disk {
+            Some(d) => d.set_expiring_in(key, ttl, value),
+            None => Ok(()),
+        }
+    }
+
     /// Tulis penanda negatif dengan [`NEGATIVE_TTL`] (memory + disk, TTL
     /// pendek — bukan `DEFAULT_TTL`). Nilai apa adanya; hanya KEBERADAAN
     /// entri yang berarti ("tidak ada"). Kegagalan jaringan/429/timeout
