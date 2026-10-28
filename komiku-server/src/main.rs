@@ -9,6 +9,7 @@
 
 mod api;
 mod crypto;
+mod debugnet;
 mod downloads;
 mod hosts;
 mod img;

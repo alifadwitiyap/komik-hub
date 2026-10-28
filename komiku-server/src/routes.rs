@@ -371,6 +371,9 @@ async fn health() -> Res<Value> {
 pub fn router(state: AppState) -> Router {
     Router::new()
         .route("/api/health", get(health))
+        // Diagnostik jaringan per host (allowlist-guarded). Dipakai untuk
+        // memisahkan DNS vs egress vs upstream saat satu sumber "mati".
+        .route("/api/debug/net", get(crate::debugnet::net_probe))
         .route("/api/homepage", get(homepage))
         .route("/api/search", get(search))
         .route("/api/categories", get(categories))

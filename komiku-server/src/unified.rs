@@ -68,7 +68,7 @@ use crate::user::{require_user, users_dir};
 /// UA Android: adapter komiku/mangaku/shinigami WAJIB UA mobile (kalau tidak,
 /// host balas halaman/error tanpa data). Adapter kiryuu membuat client
 /// pinned DoH sendiri secara internal, jadi client ini cukup untuk 3 sumber.
-const UA_MOBILE: &str = "Mozilla/5.0 (Linux; Android 13; SM-S908B) AppleWebKit/537.36 \
+pub(crate) const UA_MOBILE: &str = "Mozilla/5.0 (Linux; Android 13; SM-S908B) AppleWebKit/537.36 \
                           (KHTML, like Gecko) Chrome/131.0.0.0 Mobile Safari/537.36";
 /// Batas panjang daftar chapter yang di-fetch (dan di-cache core) supaya
 /// navigasi prev/next tetap jalan untuk manga panjang (One Piece dst).
