@@ -1,0 +1,46 @@
+# docker-compose.prod.yml — stack production dari image GHCR (TANPA build lokal).
+#
+# Kenapa terpisah dari `docker-compose.yml`: file itu memakai `build:` + tag
+# lokal (`komiku-server:latest`), jadi `docker compose pull` TIDAK mengambil
+# image baru — host tetap menjalankan versi lama selamanya. Di VPS, pakai file
+# INI:
+#
+#   docker compose -f docker-compose.prod.yml pull
+#   docker compose -f docker-compose.prod.yml up -d
+#
+# Pin versi: set IMAGE_TAG=<sha> untuk rollback/reproduce; default `latest`
+# mengikuti main.
+#
+# CATATAN: `deploy/Dockerfile` menghasilkan SATU image all-in-one (Caddy +
+# binary Rust + dist web, listen :8080). Jadi hanya ada satu service di sini —
+# bukan server & web terpisah seperti compose dev.
+name: komik-hub
+
+services:
+  app:
+    image: ghcr.io/alifadwitiyap/komik-hub:${IMAGE_TAG:-latest}
+    environment:
+      # PORT = port PUBLIK Caddy di dalam image (backend Rust selalu 8788
+      # internal, lihat deploy/entrypoint.sh). Jangan set 8788 di sini.
+      PORT: 8080
+      RUST_LOG: info
+      KOMIKU_DOWNLOADS_DIR: /data/downloads
+      KOMIKU_NOTIF_DIR: /data
+      KOMIKU_IMGCACHE_DIR: /data/imgcache
+    volumes:
+      # Data unduhan + state notifikasi tetap di host supaya PDF lama kebaca
+      # setelah image diganti.
+      - ./komiku-server/downloads:/data/downloads
+      - ./komiku-server/data:/data
+    ports:
+      # Caddy di dalam image listen :8080 (lihat deploy/Caddyfile). Kalau di
+      # depan ada Caddy host/Cloudflare, cukup expose ke loopback.
+      - "${APP_BIND:-127.0.0.1}:${APP_PORT:-8080}:8080"
+    restart: unless-stopped
+    # Batas RAM eksplisit: container kecil harus GAGAL JELAS saat kehabisan,
+    # bukan memicu OOM-killer host yang ikut membunuh Caddy/SSH.
+    mem_limit: ${APP_MEM_LIMIT:-512m}
+    networks: [komiknet]
+
+networks:
+  komiknet:
