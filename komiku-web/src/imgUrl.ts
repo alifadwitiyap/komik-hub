@@ -95,8 +95,31 @@ export function isProxyable(raw: string | null | undefined): boolean {
 }
 
 /**
+ * URL untuk atribut `src` di READER: langsung ke CDN, tanpa proxy `/img`.
+ *
+ * Kenapa: proxy `/img` memangkas byte user (480px → −74%) tapi server yang
+ * membayar — decode + encode CPU-bound, ~3 MB RAM per gambar in-flight, dan
+ * puncaknya +20 MB per batch. Di VPS kecil itu yang bikin sumber "mati" karena
+ * request lain kehabisan waktu. Langsung CDN = server tidak menyentuh byte
+ * gambar sama sekali; beban pindah ke perangkat user (kuota ~3-4x lebih besar).
+ *
+ * Konsekuensi yang diterima: gambar reader tidak lagi same-origin, jadi TIDAK
+ * bisa di-cache service worker. Fitur unduh-offline tetap memakai [`imgSrc`]
+ * (proxy) — lihat `chapterOffline.ts`.
+ */
+export function imgDirect(raw: string | null | undefined, buster?: number): string {
+  if (!raw) return ''
+  if (!buster) return raw
+  const sep = raw.includes('?') ? '&' : '?'
+  return `${raw}${sep}t=${buster}`
+}
+
+/**
  * URL untuk atribut `src`: lewat proxy `/img?u=…&w=…` bila host diizinkan,
  * selain itu URL asli (fail-open: host baru tetap tampil, hanya tanpa resize).
+ *
+ * Dipakai untuk UNDUH OFFLINE (byte harus same-origin supaya bisa masuk Cache
+ * Storage). Tampilan reader memakai [`imgDirect`].
  */
 export function imgSrc(
   raw: string | null | undefined,

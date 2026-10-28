@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { imgSrc, imgSrcSet, imgUrl, pickWidth, READER_SIZES } from '../imgUrl'
+import { imgDirect, imgUrl, READER_SIZES } from '../imgUrl'
 import { acquireImageSlot, recordImageSettle } from '../imgQueue'
 import { aspectOf, rememberAspect } from '../pageMemory'
 
@@ -237,16 +237,6 @@ export default function ComicImage({
   const releaseRef = useRef<(() => void) | null>(null)
   const startedAtRef = useRef(0)
   const [measured, setMeasured] = useState<{ url: string; ratio: number } | null>(null)
-  // Lebar viewport → dipakai memilih lebar default `src` (fallback browser
-  // tanpa srcset). Resize memicu re-render ringan.
-  const [vpW, setVpW] = useState<number>(() =>
-    typeof window !== 'undefined' ? window.innerWidth : 900,
-  )
-  useEffect(() => {
-    const onResize = () => setVpW(window.innerWidth)
-    window.addEventListener('resize', onResize)
-    return () => window.removeEventListener('resize', onResize)
-  }, [])
   const ref = useRef<HTMLImageElement | null>(null)
   const slotRef = useRef<HTMLDivElement | null>(null)
   // onLoad terbaru tanpa memicu efek ulang tiap render induk
@@ -258,13 +248,14 @@ export default function ComicImage({
   // rasio w/h: hasil decode terbaru → memori kunjungan lalu → cadangan.
   const ratio =
     (measured?.url === url ? measured.ratio : null) ?? aspectOf(url) ?? fallbackRatio
-  const srcSet = imgSrcSet(src, undefined, buster || undefined)
-  // Lebar default `src` (fallback kalau browser tak pakai srcset): adaptif
-  // terhadap viewport + koneksi — error lambat → 480px (hemat data).
-  const defaultWidth = pickWidth(vpW)
-  // LQIP / dominant-color placeholder: thumbnail 96px proxy (min lebar server),
-  // di-blur, tampil sampai gambar penuh `shown` → kotak tak kosong saat scroll.
-  const lqip = started ? imgSrc(src, 96, buster || undefined) : ''
+  // Reader ambil gambar LANGSUNG dari CDN: server tidak decode/encode, jadi
+  // RAM & CPU VPS tidak dipakai untuk menampilkan halaman. Tradeoff yang
+  // dipilih: kuota data user ~3-4x lebih besar. Unduh-offline tetap via proxy
+  // (`imgSrc` di chapterOffline.ts) karena byte-nya harus same-origin.
+  const srcSet = undefined
+  // LQIP: thumbnail kecil tetap dari CDN apa adanya — tidak ada proxy, jadi
+  // placeholder = URL asli (browser yang menskalakan). Server nol biaya.
+  const lqip = ''
 
   // chapter berganti → reset state gambar
   useEffect(() => {
@@ -436,7 +427,7 @@ export default function ComicImage({
       key={attempt}
       ref={ref}
       // Tanpa `started`: TIDAK ada src sama sekali = 0 byte terunduh.
-      src={started ? imgSrc(src, defaultWidth, buster || undefined) : undefined}
+      src={started ? imgDirect(src, buster || undefined) : undefined}
       srcSet={started ? srcSet : undefined}
       sizes={started && srcSet ? sizes : undefined}
       alt={alt}
