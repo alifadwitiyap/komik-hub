@@ -5,6 +5,7 @@ import type { Manga, UnifiedGenre } from '../types'
 import { Empty, Spinner } from '../App'
 import { MangaCard } from './Home'
 import { clearRecent, listRecent, rememberSearch } from '../recentSearches'
+import { useUnifiedSearch } from '../hooks/useUnifiedSearch'
 import { IconMagnifyingGlass } from '../icons'
 
 /**
@@ -28,9 +29,6 @@ import { IconMagnifyingGlass } from '../icons'
  * - Feed hibrida mode eksplorasi: tanpa filter → `popular` (feed lama yang
  *   terbukti); ada filter → `catalogue` (katalog menyaring di server).
  */
-
-/** Jumlah sumber yang digabung server (untuk chip "n/4 sumber gagal"). */
-const TOTAL_SOURCES = 4
 
 /** Chip tipe (manga_type di MangaOut). */
 const TIPE = ['Manga', 'Manhwa', 'Manhua']
@@ -113,49 +111,29 @@ export default function Search() {
   }
 
   // ---- mode cari ---------------------------------------------------------
-  const [results, setResults] = useState<Manga[]>([])
-  // mulai true: tanpa ini render pertama (sebelum effect jalan) memicu
-  // kedipan "Tidak ada hasil" sebelum pencarian sungguh dijalankan.
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  /**
+   * Seluruh protokol pencarian (termasuk fase 2 dan fallback legacy) tinggal
+   * di hook. Halaman tidak perlu tahu ada dua fase.
+   */
+  const search = useUnifiedSearch(
+    query,
+    page,
+    { tipe, status, genre: genreSlug },
+    searching,
+    // Fallback hanya saat TIDAK ada filter: /api/search lama tidak menerima
+    // tipe/status/genre, jadi memakainya dengan filter aktif akan memalsukan
+    // jumlah hasil.
+    tipe || status || genreSlug
+      ? undefined
+      : (signal) => api.search(query, page, signal).then((r) => r.manga),
+  )
+  const results = search.items
+  const loading = search.loading
+  const error = search.error
+  /** total sumber dari server (untuk cakupan genre + chip) */
+  const sourcesTotal = search.sourcesTotal
   /** sumber yang gagal pada request terakhir (hanya mode unified). */
-  const [failedSources, setFailedSources] = useState(0)
-
-  useEffect(() => {
-    if (!searching) return
-    const ctrl = new AbortController()
-    setLoading(true)
-    setError(null)
-    setFailedSources(0)
-    unifiedApi
-      // tipe/status/genre dikirim ke server: hasil & jumlahnya dari feed
-      // yang sudah difilter, bukan chip yang menyaring sisa halaman.
-      .search(query, page, ctrl.signal, { tipe, status, genre: genreSlug })
-      .then((r) => {
-        setResults(r.items.map(toMangaCard))
-        setFailedSources(r.failed_sources?.length ?? 0)
-        setLoading(false)
-      })
-      // Fallback ke flow Komiku lama kalau unified mati total (route belum
-      // dikompilasi di server, 5xx, jaringan) — pencarian tetap berfungsi.
-      // Hanya dipakai saat TIDAK ada filter: /api/search lama tidak menerima
-      // tipe/status/genre, jadi memakainya dengan filter aktif akan
-      // memalsukan jumlah hasil.
-      .catch((e: Error) => {
-        if (e.name === 'AbortError') return
-        if (tipe || status || genreSlug) {
-          setError('Filter butuh layanan gabungan (belum siap).')
-          setLoading(false)
-          return
-        }
-        api
-          .search(query, page, ctrl.signal)
-          .then((r) => setResults(r.manga))
-          .catch((e2: Error) => e2.name !== 'AbortError' && setError(e2.message))
-          .finally(() => setLoading(false))
-      })
-    return () => ctrl.abort()
-  }, [query, page, searching, tipe, status, genreSlug])
+  const failedSources = search.failedSources
 
   // ---- mode eksplorasi ---------------------------------------------------
   const [genres, setGenres] = useState<UnifiedGenre[]>([])
@@ -166,6 +144,8 @@ export default function Search() {
   const [listLoading, setListLoading] = useState(true)
   const [listError, setListError] = useState<string | null>(null)
   const [listFailed, setListFailed] = useState(0)
+  /** total sumber dari server untuk chip mode eksplorasi (0 = belum dilaporkan) */
+  const [listSourcesTotal, setListSourcesTotal] = useState(0)
   /** handle yang sudah masuk daftar — cegah duplikat lintas halaman. */
   const seen = useRef<Set<string>>(new Set())
   /** filter aktif → feed pindah ke katalog (bukan populer). */
@@ -208,6 +188,9 @@ export default function Search() {
         setItems(mapped)
         setHasMore(mapped.length > 0)
         setListFailed(r.failed_sources?.length ?? 0)
+        setListSourcesTotal(
+          r.sources_total ?? (r.sources_ok ?? 0) + (r.failed_sources?.length ?? 0),
+        )
         setListLoading(false)
       })
       .catch((e: Error) => {
@@ -363,8 +346,8 @@ export default function Search() {
             {genreList.map((g) => (
               <option key={g.slug} value={g.slug}>
                 {g.name}
-                {g.sources.length < TOTAL_SOURCES
-                  ? ` (${g.sources.length}/${TOTAL_SOURCES})`
+                {sourcesTotal > 0 && g.sources.length < sourcesTotal
+                  ? ` (${g.sources.length}/${sourcesTotal})`
                   : ''}
               </option>
             ))}
@@ -432,7 +415,20 @@ export default function Search() {
                 <p data-search-count className="text-[12px] text-ink-500">
                   {results.length} hasil untuk “{query}”{filterSuffix}
                 </p>
-                {failedSources > 0 && <FailedSourceChip count={failedSources} />}
+                {search.completing && (
+                  <span
+                    data-search-completing
+                    role="status"
+                    aria-live="polite"
+                    className="inline-flex items-center gap-1 rounded-full bg-ink-500/10 px-2 py-0.5 text-[11px] text-ink-400"
+                  >
+                    <span className="inline-block h-1.5 w-1.5 animate-pulse rounded-full bg-ink-400" />
+                    melengkapi hasil…
+                  </span>
+                )}
+                {failedSources > 0 && (
+                  <FailedSourceChip count={failedSources} total={search.sourcesTotal} />
+                )}
               </div>
               {results.length === 0 ? (
                 <Empty
@@ -475,7 +471,7 @@ export default function Search() {
                 <p className="text-[12px] text-ink-500" data-search-count>
                   {items.length} komik{filterSuffix}
                 </p>
-                {listFailed > 0 && <FailedSourceChip count={listFailed} />}
+                {listFailed > 0 && <FailedSourceChip count={listFailed} total={listSourcesTotal} />}
               </div>
               {items.length === 0 ? (
                 <Empty
@@ -528,17 +524,20 @@ function ResultGrid({ items }: { items: Manga[] }) {
  * dimuat". Warna & bentuknya meniru pill kesehatan sumber di TopBar supaya
  * bahasa visualnya sama.
  */
-function FailedSourceChip({ count }: { count: number }) {
+function FailedSourceChip({ count, total }: { count: number; total: number }) {
+  // `total` datang dari server (`sources_total`), bukan konstanta di web:
+  // tambah sumber ke-5 di Rust dan chip ini tetap benar tanpa disentuh.
+  const label = total > 0 ? `${count} dari ${total} sumber gagal` : `${count} sumber gagal`
   return (
     <span
       data-source-failed
       role="status"
-      aria-label={`${count} dari ${TOTAL_SOURCES} sumber gagal dimuat`}
-      title={`${count} dari ${TOTAL_SOURCES} sumber gagal dimuat`}
+      aria-label={label}
+      title={label}
       className="inline-flex items-center gap-1 rounded-full bg-warn/12 px-2 py-0.5 text-[11px] font-bold text-warn ring-1 ring-warn/30"
     >
       <span aria-hidden="true">⚠</span>
-      {count}/{TOTAL_SOURCES} sumber gagal
+      {total > 0 ? `${count}/${total}` : count} sumber gagal
     </span>
   )
 }

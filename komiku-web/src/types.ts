@@ -57,6 +57,20 @@ export interface UnifiedListResult {
   failed_sources: string[]
   /** hasil dilayani dari cache server (bukan scrape baru) */
   from_cache?: boolean
+  /**
+   * Jumlah sumber yang digabung server. Dikirim server supaya web tidak
+   * hardcode `TOTAL_SOURCES = 4` — tambah sumber ke-5 di Rust dan UI tetap benar.
+   * Opsional: server lama belum punya field ini.
+   */
+  sources_total?: number
+  /** Berapa sumber yang berhasil pada panggilan ini. */
+  sources_ok?: number
+  /**
+   * Sumber yang BELUM selesai (mode dua fase). Tidak kosong = hasil ini
+   * parsial; panggil ulang dengan kunci sama dan hasil lengkapnya biasanya
+   * sudah ada di cache. Kosong/absen = lengkap.
+   */
+  pending?: string[]
 }
 
 export interface UnifiedGenre {

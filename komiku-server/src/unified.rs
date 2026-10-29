@@ -202,6 +202,12 @@ pub struct ListOut {
     pub items: Vec<MangaOut>,
     pub failed_sources: Vec<String>,
     pub from_cache: bool,
+    /// Jumlah sumber yang digabung server pada panggilan ini. Dikirim supaya
+    /// client TIDAK perlu hardcode `TOTAL_SOURCES = 4` — tambah sumber ke-5
+    /// di Rust dan chip "n/m sumber gagal" di web tetap benar.
+    pub sources_total: usize,
+    /// Berapa sumber yang berhasil. `failed_sources.len()` + ini = total.
+    pub sources_ok: usize,
     /// Sumber yang BELUM selesai saat respons ini dikirim (mode dua fase).
     /// Kosong = semua sumber sudah dilaporkan. Client boleh memanggil ulang
     /// dengan kunci sama; hasil lengkap biasanya sudah ada di cache.
@@ -220,6 +226,8 @@ impl From<komik_core::aggregator::Merged<Manga>> for ListOut {
                 .map(|(s, _)| s.as_str().to_string())
                 .collect(),
             from_cache: m.from_cache,
+            sources_total: m.sources_total,
+            sources_ok: m.sources_ok,
         }
     }
 }

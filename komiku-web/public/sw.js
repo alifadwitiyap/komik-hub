@@ -23,7 +23,7 @@
 
 const SHELL = 'komiku-shell-v2'
 // v3: buang cache API lama yang mungkin masih menyimpan PDF /api/unified/downloads.
-const API = 'komiku-api-v3'
+const API = 'komiku-api-v4'
 // v4: strategi batas gambar berubah (byte + entri), cache v3 lama dibuang.
 const IMG = 'komiku-img-v4'
 
@@ -118,6 +118,19 @@ self.addEventListener('fetch', (e) => {
   }
 
   // 3) API metadata → stale-while-revalidate
+  //
+  //    KECUALI pencarian dua fase. `/api/unified/search` sengaja membalas
+  //    hasil parsial lebih dulu lalu menyelesaikan sisanya di background;
+  //    client memanggil ULANG dengan URL yang sama untuk mengambil hasil
+  //    lengkap. Kalau panggilan ulang itu dilayani cache SW, ia akan
+  //    mengembalikan respons fase 1 yang sama — pending tidak pernah selesai
+  //    dan hasil lengkap tidak pernah terlihat user. Jadi pencarian SELALU
+  //    ke jaringan (cache server di Rust yang menangani pengulangan).
+  if (url.pathname.startsWith('/api/unified/search')) {
+    e.respondWith(fetch(req))
+    return
+  }
+
   if (url.pathname.startsWith('/api/')) {
     e.respondWith(staleWhileRevalidate(req, API))
     return

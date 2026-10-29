@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { SourceStatus } from '../components/SourceStatus'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { imgUrl } from '../imgUrl'
 import { unifiedApi } from '../api'
@@ -35,6 +36,14 @@ export default function SeriesUnified() {
   } | null>(
     null,
   )
+  /**
+   * Sumber yang gagal dilaporkan server untuk halaman ini. Server sudah lama
+   * mengirimnya; sebelumnya dibuang sehingga user tidak tahu daftar chapter
+   * yang ia lihat lebih tipis dari seharusnya.
+   */
+  const [failedSources, setFailedSources] = useState<string[]>([])
+  /** Naikkan untuk memicu muat ulang (tombol "Coba lagi" di SourceStatus). */
+  const [reloadKey, setReloadKey] = useState(0)
   const [error, setError] = useState<string | null>(null)
   const [showAll, setShowAll] = useState(false)
   const { recent } = useProgress()
@@ -106,16 +115,17 @@ export default function SeriesUnified() {
     setPickMode(false)
     unifiedApi
       .series(handle, ctrl.signal, lastSourceRef.current)
-      .then((r) =>
+      .then((r) => {
         setData({
           manga: r.manga,
           chapters: r.chapters ?? [],
           representative_source: r.representative_source ?? null,
-        }),
-      )
+        })
+        setFailedSources(r.failed_sources ?? [])
+      })
       .catch((e: Error) => e.name !== 'AbortError' && setError(e.message))
     return () => ctrl.abort()
-  }, [handle])
+  }, [handle, reloadKey])
 
   // urut nomor DESC (terbaru dulu). Nomor bisa "1195", "1.5", "extra-9" —
   // bandingkan numerik kalau bisa, jatuh ke string supaya tidak pernah NaN.
@@ -393,6 +403,15 @@ export default function SeriesUnified() {
             </span>
           )}
         </h2>
+
+        {/* Kalau ada sumber yang gagal, katakan SEBELUM daftar chapter:
+            user harus tahu daftar ini lebih tipis dari seharusnya, bukan
+            menyimpulkan series-nya memang cuma segini. */}
+        <SourceStatus
+          failed={failedSources}
+          onRetry={() => setReloadKey((k) => k + 1)}
+          className="mb-3"
+        />
 
         {/* Mode seleksi range (2-tap Awal/Akhir) → POST /unified/download-pdf.
             Info seleksi + baris progres mengisi ulang tempat UI centang lama. */}
