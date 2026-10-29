@@ -175,10 +175,15 @@ function FavoritesTab({ entries }: { entries: rakStore.FavoriteEntry[] }) {
 }
 
 function Cover({ src, title }: { src: string | null; title: string }) {
+  // `failed` menutup kasus cover yang URL-nya ADA tapi gagal dimuat (host mati,
+  // 403, DNS hilang). Tanpa ini, <img> gagal tampil sebagai ikon rusak dan
+  // seluruh kartu terlihat broken — padahal fallback inisial sudah tersedia.
+  const [failed, setFailed] = useState(false)
+  const showImg = !!src && !failed
   return (
     <div className="size-12 shrink-0 overflow-hidden rounded-lg bg-ink-850">
-      {src ? (
-        <img referrerPolicy="no-referrer" src={imgUrl(src)} alt="" loading="lazy" className="size-full object-cover" />
+      {showImg ? (
+        <img referrerPolicy="no-referrer" src={imgUrl(src)} alt="" loading="lazy" onError={() => setFailed(true)} className="size-full object-cover" />
       ) : (
         <span className="grid size-full place-items-center text-[15px] font-bold text-ink-500">
           {title.slice(0, 1)}

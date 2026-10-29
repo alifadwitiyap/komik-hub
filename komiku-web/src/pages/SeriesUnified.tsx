@@ -221,6 +221,9 @@ export default function SeriesUnified() {
 
   const chapterLabel = (c: UnifiedChapterOut) => c.title || `Chapter ${c.number}`
 
+  // Cover gagal dimuat → tampilkan judul, bukan ikon gambar rusak.
+  const [coverFailed, setCoverFailed] = useState(false)
+
   return (
     <div className="mx-auto max-w-3xl">
       {/* Hero sampul */}
@@ -240,8 +243,8 @@ export default function SeriesUnified() {
           <div className="mt-3 flex gap-4">
             <div className="w-28 shrink-0 sm:w-32">
               <div className="aspect-[3/4] overflow-hidden rounded-xl border border-ink-700 bg-ink-850 shadow-lg">
-                {m.cover_url ? (
-                  <img referrerPolicy="no-referrer" src={imgUrl(m.cover_url)} alt={m.title} className="size-full object-cover" />
+                {m.cover_url && !coverFailed ? (
+                  <img referrerPolicy="no-referrer" src={imgUrl(m.cover_url)} alt={m.title} onError={() => setCoverFailed(true)} className="size-full object-cover" />
                 ) : (
                   <span className="grid size-full place-items-center p-2 text-center text-[11px] text-ink-500">
                     {m.title}

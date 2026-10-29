@@ -59,6 +59,9 @@ export default function Series() {
   const [anchor, setAnchor] = useState<number | null>(null)
   const [rangeEnd, setRangeEnd] = useState<number | null>(null)
   const [dlMsg, setDlMsg] = useState<string | null>(null)
+  // Cover yang gagal dimuat (host mati / 403 / DNS hilang) → tampilkan judul,
+  // bukan ikon gambar rusak.
+  const [coverFailed, setCoverFailed] = useState(false)
   // Progres unduhan tinggal di downloadStore (module-level): batch tetap
   // jalan + terlihat walau user pindah halaman. Halaman ini cuma subscribe.
   const [runs, setRuns] = useState<DlRun[]>([])
@@ -275,8 +278,8 @@ export default function Series() {
           <div className="mt-3 flex gap-4">
             <div className="w-28 shrink-0 sm:w-32">
               <div className="aspect-[3/4] overflow-hidden rounded-xl border border-ink-700 bg-ink-850 shadow-lg">
-                {s.thumbnail ? (
-                  <img referrerPolicy="no-referrer" src={imgUrl(s.thumbnail)} alt={s.title} className="size-full object-cover" />
+                {s.thumbnail && !coverFailed ? (
+                  <img referrerPolicy="no-referrer" src={imgUrl(s.thumbnail)} alt={s.title} onError={() => setCoverFailed(true)} className="size-full object-cover" />
                 ) : (
                   <span className="grid size-full place-items-center p-2 text-center text-[11px] text-ink-500">
                     {s.title}
