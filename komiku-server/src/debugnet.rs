@@ -44,6 +44,24 @@ const DEBUG_HOSTS: &[&str] = &[
     "cloudflare-dns.com",
     "img.komiku.org",
     "cdnkuma.my.id",
+    // CDN gambar chapter — WAJIB ada di sini supaya "gambar 502" bisa
+    // didiagnosis per tahap (DNS/TCP/TLS/HTTP) tanpa menebak. Tanpa entri ini
+    // endpoint hanya menjawab "host tidak ada di allowlist debug".
+    "image2.komiku.to",
+    "image3.komiku.to",
+    "image4.komiku.to",
+    "image5.komiku.to",
+    "image6.komiku.to",
+    "image7.komiku.to",
+    "image8.komiku.to",
+    "image9.komiku.to",
+    "image10.komiku.to",
+    "image11.komiku.to",
+    "thumbnail.komiku.org",
+    "thumbnail.komiku.to",
+    "assets.shngm.id",
+    "storage.shngm.id",
+    "cdn.kiryuu.io",
 ];
 
 fn host_debuggable(host: &str) -> bool {
