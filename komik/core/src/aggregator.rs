@@ -804,7 +804,6 @@ impl Aggregator {
             push_unique(&mut order, src);
         }
 
-        let mut last_err: Option<String> = None;
         // Judul asli untuk resolve lintas-sumber: muat series dari sumber
         // handle dulu (sekali). Slug/id handle ("solo-leveling", "1308")
         // BUKAN judul — mencari sebagai judul sering meleset, sehingga sticky
@@ -843,6 +842,11 @@ impl Aggregator {
                 }
             }
         }
+        // Kumpulkan kegagalan SEMUA sumber, bukan hanya yang terakhir.
+        // Versi lama menyimpan `last_err` saja sehingga kegagalan sumber
+        // pertama (mis. komiku timeout TLS) tertimpa oleh "kiryuu: tidak ada"
+        // dan pesan akhirnya menuduh sumber yang salah.
+        let mut errs: Vec<String> = Vec::new();
         for src in &order {
             // Sumber dari handle: `series(native_id)` langsung. Selain itu
             // (sticky / prioritas): resolve judul dulu, pola fase 2 lama.
@@ -867,14 +871,18 @@ impl Aggregator {
                     self.cache_put(&key, &detail);
                     return Ok(SeriesOutcome { detail, from_cache: false });
                 }
-                SeriesLoad::Miss => last_err = Some(format!("{}: tidak ada", src.id())),
-                SeriesLoad::Inaccessible(k) => last_err = Some(format!("{}: {k}", src.id())),
+                SeriesLoad::Miss => errs.push(format!("{}: tidak ada", src.id())),
+                SeriesLoad::Inaccessible(k) => errs.push(format!("{}: {k}", src.id())),
             }
         }
 
         anyhow::bail!(
             "gagal ambil series {id}{}",
-            last_err.map(|e| format!(" ({e})")).unwrap_or_default()
+            if errs.is_empty() {
+                String::new()
+            } else {
+                format!(" ({})", errs.join("; "))
+            }
         )
     }
 
