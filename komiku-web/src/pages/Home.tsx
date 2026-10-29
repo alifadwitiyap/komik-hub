@@ -248,7 +248,7 @@ function BackdropCarousel({ items }: { items: Manga[] }) {
             >
               <div className="relative aspect-[2/1.1]">
                 {img && (
-                  <img
+                  <img referrerPolicy="no-referrer"
                     src={imgUrl(img)}
                     alt=""
                     role="presentation"
@@ -387,7 +387,7 @@ export function MangaCard({ manga }: { manga: Manga }) {
       {/* cover replika item_trend: radius 6, badge tipe di kanan bawah */}
       <div className="relative aspect-[62/82] overflow-hidden rounded-md border border-ink-800 bg-ink-850">
         {img && !failed ? (
-          <img
+          <img referrerPolicy="no-referrer"
             src={imgUrl(img)}
             alt={manga.title}
             loading="lazy"
@@ -464,7 +464,7 @@ export function Row({ manga }: { manga: Manga }) {
     >
       <div className="size-12 shrink-0 overflow-hidden rounded-lg bg-ink-850">
         {img && !failed && (
-          <img
+          <img referrerPolicy="no-referrer"
             src={imgUrl(img)}
             alt=""
             loading="lazy"

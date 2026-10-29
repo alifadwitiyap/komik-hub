@@ -92,7 +92,7 @@ function Card({
       {/* cover replika item_trend: rasio sampul 62/82, rounded-xl */}
       <div className="relative aspect-[62/82] overflow-hidden rounded-xl border border-ink-800 bg-ink-850">
         {src && !failed ? (
-          <img
+          <img referrerPolicy="no-referrer"
             src={src}
             alt={title}
             loading="lazy"

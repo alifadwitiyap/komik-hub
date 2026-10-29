@@ -178,7 +178,7 @@ function Cover({ src, title }: { src: string | null; title: string }) {
   return (
     <div className="size-12 shrink-0 overflow-hidden rounded-lg bg-ink-850">
       {src ? (
-        <img src={imgUrl(src)} alt="" loading="lazy" className="size-full object-cover" />
+        <img referrerPolicy="no-referrer" src={imgUrl(src)} alt="" loading="lazy" className="size-full object-cover" />
       ) : (
         <span className="grid size-full place-items-center text-[15px] font-bold text-ink-500">
           {title.slice(0, 1)}

@@ -431,6 +431,11 @@ export default function ComicImage({
       srcSet={started ? srcSet : undefined}
       sizes={started && srcSet ? sizes : undefined}
       alt={alt}
+      // Hotlink protection: CDN (mis. v7.kiryuu.to via Cloudflare) menolak
+      // request yang membawa Referer origin kita -> 403 text/plain ->
+      // ERR_BLOCKED_BY_ORB, gambar tampil broken. Terukur: 10/10 request
+      // dengan Referer = 403, 10/10 tanpa Referer = 200.
+      referrerPolicy="no-referrer"
       // width/height = petunjuk rasio untuk layout pre-decode; setelah gambar
       // termuat, rasio intrinsik asli yang berlaku (height: auto)
       width={1000}

@@ -262,7 +262,7 @@ export default function Series() {
       <div className="relative">
         {s.cover && (
           <div className="absolute inset-0 h-56 overflow-hidden">
-            <img src={imgUrl(s.cover)} alt="" className="size-full object-cover opacity-25 blur-md" />
+            <img referrerPolicy="no-referrer" src={imgUrl(s.cover)} alt="" className="size-full object-cover opacity-25 blur-md" />
             <div className="absolute inset-0 bg-gradient-to-b from-ink-950/60 to-ink-950" />
           </div>
         )}
@@ -276,7 +276,7 @@ export default function Series() {
             <div className="w-28 shrink-0 sm:w-32">
               <div className="aspect-[3/4] overflow-hidden rounded-xl border border-ink-700 bg-ink-850 shadow-lg">
                 {s.thumbnail ? (
-                  <img src={imgUrl(s.thumbnail)} alt={s.title} className="size-full object-cover" />
+                  <img referrerPolicy="no-referrer" src={imgUrl(s.thumbnail)} alt={s.title} className="size-full object-cover" />
                 ) : (
                   <span className="grid size-full place-items-center p-2 text-center text-[11px] text-ink-500">
                     {s.title}
