@@ -459,6 +459,8 @@ pub async fn img_handler(Query(q): Query<ImgQuery>, headers: HeaderMap) -> Respo
             Err(e) => {
                 drop(guard);
                 inflight_release(&key).await;
+                crate::resilience::stats::IMG_FAIL
+                    .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
                 return err(StatusCode::BAD_GATEWAY, &e);
             }
         },

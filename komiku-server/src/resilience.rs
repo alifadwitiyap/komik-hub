@@ -42,6 +42,83 @@ pub const SOURCE_COOLDOWN: Duration = Duration::from_secs(30);
 /// 5.5 s lama membuat search komiku selalu timeout padahal upstream sehat.
 pub const SOURCE_INNER_TIMEOUT: Duration = Duration::from_millis(14_500);
 
+/// Statistik runtime per sumber, untuk endpoint `/api/stats`.
+///
+/// Sengaja global (bukan field di `ResilientSource`) supaya tidak mengubah
+/// signature `ResilientSource::new`/`wrap_all` dan tidak perlu meneruskan
+/// state ke `Aggregator`. Dihitung di `record()` — satu-satunya titik yang
+/// dilewati SEMUA operasi sumber, jadi angkanya tidak bisa bolong.
+pub mod stats {
+    use std::collections::BTreeMap;
+    use std::sync::atomic::{AtomicU64, Ordering};
+    use std::sync::Mutex;
+    use std::sync::OnceLock;
+
+    #[derive(Default, Clone, Copy)]
+    pub struct Counter {
+        pub calls: u64,
+        pub ok: u64,
+        pub fail: u64,
+        pub timeout: u64,
+        /// Berapa kali sumber ini membuka breaker (cooldown).
+        pub breaker_open: u64,
+    }
+
+    fn table() -> &'static Mutex<BTreeMap<String, Counter>> {
+        static T: OnceLock<Mutex<BTreeMap<String, Counter>>> = OnceLock::new();
+        T.get_or_init(|| Mutex::new(BTreeMap::new()))
+    }
+
+    /// Total request yang dilayani server (semua endpoint).
+    pub static REQUESTS: AtomicU64 = AtomicU64::new(0);
+    /// Total respons gambar 502 dari proxy /img (host mati / diblokir).
+    pub static IMG_FAIL: AtomicU64 = AtomicU64::new(0);
+
+    pub fn record_call(source: &str, ok: bool, is_timeout: bool) {
+        let mut t = table().lock().unwrap_or_else(|e| e.into_inner());
+        let c = t.entry(source.to_string()).or_default();
+        c.calls += 1;
+        if ok {
+            c.ok += 1;
+        } else {
+            c.fail += 1;
+            if is_timeout {
+                c.timeout += 1;
+            }
+        }
+    }
+
+    pub fn record_breaker_open(source: &str) {
+        let mut t = table().lock().unwrap_or_else(|e| e.into_inner());
+        t.entry(source.to_string()).or_default().breaker_open += 1;
+    }
+
+    /// Snapshot JSON-ready. `requests`/`img_fail` adalah angka global server.
+    pub fn snapshot() -> serde_json::Value {
+        let t = table().lock().unwrap_or_else(|e| e.into_inner());
+        let per: serde_json::Map<String, serde_json::Value> = t
+            .iter()
+            .map(|(k, c)| {
+                (
+                    k.clone(),
+                    serde_json::json!({
+                        "calls": c.calls,
+                        "ok": c.ok,
+                        "fail": c.fail,
+                        "timeout": c.timeout,
+                        "breaker_open": c.breaker_open,
+                    }),
+                )
+            })
+            .collect();
+        serde_json::json!({
+            "requests": REQUESTS.load(Ordering::Relaxed),
+            "img_fail": IMG_FAIL.load(Ordering::Relaxed),
+            "sources": per,
+        })
+    }
+}
+
 struct BreakerState {
     /// `Some(t)` = breaker terbuka sampai `t`.
     open_until: Option<Instant>,
@@ -108,9 +185,17 @@ impl ResilientSource {
 
     fn record<T>(&self, res: &SourceResult<T>) {
         match res {
-            Ok(_) => self.close(),
+            Ok(_) => {
+                stats::record_call(self.inner.id().as_str(), true, false);
+                self.close();
+            }
             Err(e) => {
                 let kind = SourceError::from(e);
+                stats::record_call(
+                    self.inner.id().as_str(),
+                    false,
+                    matches!(kind, SourceError::Timeout),
+                );
                 if kind.is_inaccessible() {
                     self.open(kind.to_string());
                 } else {
@@ -122,6 +207,7 @@ impl ResilientSource {
     }
 
     fn open(&self, reason: String) {
+        stats::record_breaker_open(self.inner.id().as_str());
         let mut st = self.state.lock().unwrap_or_else(|e| e.into_inner());
         st.open_until = Some(Instant::now() + self.cooldown);
         st.last_error = reason.clone();

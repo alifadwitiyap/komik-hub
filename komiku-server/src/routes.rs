@@ -27,6 +27,30 @@ pub struct AppState {
 
 const CATALOGUE_TTL: Duration = Duration::from_secs(30 * 60);
 
+/// Hitung request user. Probe healthcheck TIDAK dihitung supaya angka
+/// `/api/stats` tidak bias oleh container yang mengecek dirinya sendiri.
+async fn count_request(
+    req: axum::extract::Request,
+    next: axum::middleware::Next,
+) -> axum::response::Response {
+    let p = req.uri().path();
+    let is_probe = p == "/healthz" || p == "/api/health" || p == "/api/stats";
+    if !is_probe {
+        crate::resilience::stats::REQUESTS
+            .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+    }
+    next.run(req).await
+}
+
+/// `/api/stats` — angka runtime, TERPISAH dari `/healthz`.
+///
+/// Kenapa terpisah: `/healthz` dipanggil healthcheck container tiap ~30 s,
+/// jadi kalau counter ikut dihitung di sana angkanya bias oleh probe sendiri.
+/// Endpoint ini hanya menghitung request user sungguhan.
+async fn stats() -> Res<Value> {
+    Ok(Json(crate::resilience::stats::snapshot()))
+}
+
 /// Error -> respons JSON yang bisa dibaca frontend (bukan stack trace).
 /// Klasifikasi status: 502 = sumber gagal (default), 500 = galat internal
 /// server (disk/IO/encoding), 400 = input klien tidak valid, 404 = entitas
@@ -371,6 +395,7 @@ async fn health() -> Res<Value> {
 pub fn router(state: AppState) -> Router {
     Router::new()
         .route("/api/health", get(health))
+        .route("/api/stats", get(stats))
         // Diagnostik jaringan per host (allowlist-guarded). Dipakai untuk
         // memisahkan DNS vs egress vs upstream saat satu sumber "mati".
         .route("/api/debug/net", get(crate::debugnet::net_probe))
@@ -387,6 +412,7 @@ pub fn router(state: AppState) -> Router {
         // tidak diubah; handler unified stateless (aggregator statis).
         .merge(unified::unified_routes())
         .with_state(state)
+        .layer(axum::middleware::from_fn(count_request))
         .layer(
             tower_http::cors::CorsLayer::permissive(), // dev: Vite di port lain
         )

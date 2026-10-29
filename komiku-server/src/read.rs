@@ -368,6 +368,10 @@ mod tests {
     /// punya 1215 chapter — cap yang lebih kecil membuat chapter lama yang
     /// SUDAH dibaca ter-prune lalu muncul lagi sebagai "belum dibaca".
     #[test]
+    // Konstanta memang sengaja dibandingkan sebagai nilai literal: test ini
+    // adalah PENJAGA, gagal saat seseorang menurunkan PER_SERIES_CAP. Clippy
+    // melihat "assert konstan" tanpa tahu maksudnya.
+    #[allow(clippy::assertions_on_constants)]
     fn cap_per_series_mencukupi_manga_panjang() {
         assert!(
             PER_SERIES_CAP >= 1215,
