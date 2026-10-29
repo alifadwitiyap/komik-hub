@@ -22,19 +22,25 @@ use std::time::{Duration, Instant};
 use komik_core::model::{Chapter, ChapterPages, Manga, SeriesDetail, SourceId};
 use komik_core::source::{classified, Source, SourceError, SourceResult};
 
-/// Timeout per operasi sumber di server. Lebih pendek dari default core
-/// (10 s) supaya request user tidak menggantung lama saat sumber mati.
-/// 6 s masih di atas latensi normal adapter (komiku resolve ~2-3 s).
-pub const SOURCE_TIMEOUT_SECS: u64 = 6;
+/// Timeout per operasi sumber di server. Diukur: `index.komikid.org` (API komiku)
+/// punya TTFB median 5.0 s, p90 5.4 s, maks 9.6 s saat dibebani, dan memburuk
+/// saat request paralel — jadi 6 s membuat search komiku SELALU timeout
+/// (`failed_sources=['komiku']`) meski upstream sehat. 15 s memberi ruang
+/// di atas p90 + variasi beban origin. Ini kompensasi sadar: akar masalahnya
+/// origin komikid lambat (TTFB 5-9 s), bukan jaringan kita (DNS 11 ms,
+/// TCP 293 ms, TLS 310 ms).
+pub const SOURCE_TIMEOUT_SECS: u64 = 15;
 
 /// Lama sumber dilewati setelah gagal. Cukup pendek supaya pemulihan cepat,
 /// cukup panjang supaya request beruntun tidak menembak sumber mati terus.
 pub const SOURCE_COOLDOWN: Duration = Duration::from_secs(30);
 
 /// Timeout DI DALAM wrapper, sengaja sedikit lebih pendek dari timeout
-/// aggregator (6 s). Kalau sama, timeout luar bisa membatalkan future wrapper
+/// aggregator (15 s). Kalau sama, timeout luar bisa membatalkan future wrapper
 /// lebih dulu sehingga `record()` tak pernah jalan dan breaker tak terbuka.
-pub const SOURCE_INNER_TIMEOUT: Duration = Duration::from_millis(5_500);
+/// Diukur: TTFB `index.komikid.org` median 5.0 s, p90 5.4 s, maks 9.6 s —
+/// 5.5 s lama membuat search komiku selalu timeout padahal upstream sehat.
+pub const SOURCE_INNER_TIMEOUT: Duration = Duration::from_millis(14_500);
 
 struct BreakerState {
     /// `Some(t)` = breaker terbuka sampai `t`.
@@ -365,5 +371,28 @@ mod tests {
         assert!(src.search("x", 1).await.is_err());
         assert!(src.search("x", 1).await.is_err());
         assert_eq!(mock.calls(), 2, "missing bukan alasan short-circuit");
+    }
+
+    /// Timeout dalam HARUS lebih pendek dari timeout luar, kalau tidak
+    /// `record()` tak pernah jalan dan breaker tidak pernah terbuka.
+    /// Dikunci di sini karena dua konstanta ini mudah diubah terpisah.
+    #[test]
+    fn timeout_dalam_lebih_pendek_dari_luar() {
+        let luar = Duration::from_secs(SOURCE_TIMEOUT_SECS);
+        assert!(
+            SOURCE_INNER_TIMEOUT < luar,
+            "SOURCE_INNER_TIMEOUT ({:?}) harus < SOURCE_TIMEOUT_SECS ({:?})",
+            SOURCE_INNER_TIMEOUT,
+            luar
+        );
+    }
+
+    /// Nilai 15 s dipilih dari pengukuran, bukan tebakan: TTFB
+    /// index.komikid.org median 5.0 s / p90 5.4 s / maks 9.6 s.
+    /// Test ini memaku keputusan itu supaya tidak turun diam-diam.
+    #[test]
+    fn timeout_cukup_untuk_komiku_yang_lambat() {
+        assert_eq!(SOURCE_TIMEOUT_SECS, 15);
+        assert_eq!(SOURCE_INNER_TIMEOUT, Duration::from_millis(14_500));
     }
 }
