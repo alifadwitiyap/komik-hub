@@ -208,6 +208,12 @@ pub struct ListOut {
     pub sources_total: usize,
     /// Berapa sumber yang berhasil. `failed_sources.len()` + ini = total.
     pub sources_ok: usize,
+    /// Apakah masih ada item berikutnya setelah `limit` yang diminta.
+    /// Server yang menghitung (bukan `items.len() < 20` di client — itu
+    /// patah kalau limit != 20). Dikirim supaya tombol "Berikutnya" mati
+    /// hanya ketika memang sudah habis.
+    #[serde(default)]
+    pub has_more: bool,
     /// Sumber yang BELUM selesai saat respons ini dikirim (mode dua fase).
     /// Kosong = semua sumber sudah dilaporkan. Client boleh memanggil ulang
     /// dengan kunci sama; hasil lengkap biasanya sudah ada di cache.
@@ -228,6 +234,7 @@ impl From<komik_core::aggregator::Merged<Manga>> for ListOut {
             from_cache: m.from_cache,
             sources_total: m.sources_total,
             sources_ok: m.sources_ok,
+            has_more: false,
         }
     }
 }
@@ -312,6 +319,11 @@ fn list_out_filtered(
     .collect();
     let mut out = ListOut::from(komik_core::aggregator::Merged { items, ..merged });
     if let Some(max) = max {
+        // Heuristik standar infinite-scroll: halaman penuh (=limit) berarti
+        // kemungkinan besar masih ada isi. Bukan kebenaran mutlak (server
+        // over-fetch bisa membuat halaman terakhir tetap penuh), tapi jauh
+        // lebih baik daripada membandingkan dengan konstanta ajaib di client.
+        out.has_more = out.items.len() >= max;
         out.items.truncate(max);
     }
     out
@@ -348,8 +360,8 @@ fn search_gate() -> &'static tokio::sync::Mutex<()> {
     G.get_or_init(|| tokio::sync::Mutex::new(()))
 }
 
-fn search_key(query: &str, genre: Option<&str>, page: u32) -> String {
-    format!("{query}\u{1}{}\u{1}{page}", genre.unwrap_or(""))
+fn search_key(query: &str, genre: Option<&str>, page: u32, limit: u32) -> String {
+    format!("{query}\u{1}{}\u{1}{page}\u{1}{limit}", genre.unwrap_or(""))
 }
 
 /// Ambil hasil dari cache kalau masih segar. `None` = harus fetch upstream.
@@ -393,7 +405,8 @@ async fn u_search(Query(q): Query<SearchQuery>) -> Res<ListOut> {
         .filter(|s| !s.is_empty())
         .map(|s| s.to_string());
     let page = q.page.unwrap_or(1).max(1);
-    let key = search_key(&query, genre.as_deref(), page);
+    let limit = q.limit.unwrap_or(48);
+    let key = search_key(&query, genre.as_deref(), page, limit);
     if let Some(hit) = search_cache_get(&key) {
         return Ok(Json(hit));
     }
@@ -410,7 +423,6 @@ async fn u_search(Query(q): Query<SearchQuery>) -> Res<ListOut> {
     // satu panggilan per adapter dan tidak punya jalur fan-out yang sama).
     // Deadline 3 s: cukup untuk sumber cepat (shinigami ~60 ms, mangaku
     // ~1,3 s), sementara komiku (TTFB 5-9 s) diselesaikan di background.
-    let limit = q.limit.unwrap_or(48);
     let (merged, pending) = match &genre {
         // Filter genre aktif: satu panggilan per adapter yang menerima
         // genre + judul bersamaan (bukan menyaring sisa halaman di client).

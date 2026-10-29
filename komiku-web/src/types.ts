@@ -65,6 +65,8 @@ export interface UnifiedListResult {
   sources_total?: number
   /** Berapa sumber yang berhasil pada panggilan ini. */
   sources_ok?: number
+  /** Apakah masih ada item berikutnya (server yang menghitung). */
+  has_more?: boolean
   /**
    * Sumber yang BELUM selesai (mode dua fase). Tidak kosong = hasil ini
    * parsial; panggil ulang dengan kunci sama dan hasil lengkapnya biasanya

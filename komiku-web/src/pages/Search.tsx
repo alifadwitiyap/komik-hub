@@ -450,7 +450,7 @@ export default function Search() {
                   </button>
                   <span className="text-[12px] text-ink-500">Halaman {page}</span>
                   <button
-                    disabled={results.length < 20}
+                    disabled={!search.hasMore}
                     onClick={() => setPage((p) => p + 1)}
                     className="rounded-lg border border-ink-700 px-3.5 py-2 text-[13px] font-medium text-ink-300 disabled:opacity-40"
                   >

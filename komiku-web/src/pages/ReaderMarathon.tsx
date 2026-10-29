@@ -16,6 +16,7 @@ import { useAutoFullscreen } from '../hooks/useAutoFullscreen'
 import type { ChapterResponse } from '../types'
 import { Empty } from '../App'
 import { useProgress } from '../hooks/useProgress'
+import * as rakStore from '../rakStore'
 import { chapterNumberOf, markChapterRead } from '../readMarks'
 import {
   chapterKeyOf,
@@ -42,6 +43,11 @@ interface Block {
   titleKey?: string | null
   /** nomor chapter (untuk mark "sudah dibaca") */
   number?: string | null
+  /** snapshot rak: judul + sampul + handle/sumber (supaya sesi maraton
+   *  benar-benar masuk "Lanjut membaca" & Rak, tidak hanya progress). */
+  title: string
+  coverUrl: string | null
+  handle: string
 }
 
 const MAX_BLOCKS = 40 // batas aman: makin dari ini = sudah ~seribu halaman
@@ -128,7 +134,7 @@ export default function ReaderMarathon() {
     chrome.show()
     const ctrl = new AbortController()
     loadChapter(chapterId, ctrl.signal)
-      .then((d) => pushBlock(toBlock(d)))
+      .then((d) => pushBlock(toBlock(d, params.handle)))
       .catch((e: Error) => e.name !== 'AbortError' && setError(e.message))
     return () => ctrl.abort()
   }, [chapterId, pushBlock])
@@ -176,6 +182,27 @@ export default function ReaderMarathon() {
       acc += b.images.length
     }
     if (!owner) return
+    // Riwayat rak: Reader memanggil recordRead di :153; maraton sebelumnya
+    // tidak pernah — jadi sesi maraton tidak muncul di "Lanjut membaca"
+    // maupun Rak. Ini yang membuat mode unggulan produk itu "tidak ada"
+    // di riwayat.
+    if (owner.handle && owner.titleKey) {
+      rakStore.recordRead(
+        {
+          title: owner.title,
+          cover_url: owner.coverUrl,
+          handle: owner.handle,
+          source: owner.source ?? '',
+          title_key: owner.titleKey,
+        },
+        owner.number ?? String(owner.chapterId),
+      )
+    }
+    // pageId = gambar yang sedang aktif (indeks global `tailIdx`). Marathon
+    // tidak punya "posisi mata" sepresisi Reader (offsetRatio dihitung dari
+    // viewport tengah), jadi offsetRatio 0 — pulihkan ke atas halaman, yang
+    // jauh lebih baik daripada tidak pulih sama sekali (usableAnchor menolak
+    // entry tanpa pageId).
     save({
       seriesId: owner.seriesId ?? owner.chapterId,
       seriesTitle: owner.seriesTitle,
@@ -183,6 +210,10 @@ export default function ReaderMarathon() {
       chapterName: owner.chapterName,
       page: local,
       progress: (tailIdx + 1) / Math.max(1, totalPages),
+      pageId: owner.images[local] ?? undefined,
+      offsetRatio: 0,
+      source: owner.source ?? null,
+      handle: owner.handle || null,
     })
   }, [tailIdx, blocks, totalPages, save])
 
@@ -563,7 +594,7 @@ export default function ReaderMarathon() {
   )
 }
 
-function toBlock(d: ChapterResponse): Block {
+function toBlock(d: ChapterResponse, handleFromRoute?: string): Block {
   return {
     chapterId: String(d.chapter.id),
     chapterName: d.chapter.name,
@@ -577,6 +608,12 @@ function toBlock(d: ChapterResponse): Block {
     prevName: d.chapter.previous?.name ?? null,
     titleKey: d.title_key ?? null,
     number: chapterNumberOf(d.chapter),
+    title: d.series?.title ?? d.chapter.name,
+    coverUrl: d.series_cover ?? d.series?.cover ?? null,
+    // server tidak selalu mengirim series_handle (verifikasi: null di respons
+    // unified chapter) — pakai handle dari route (blok pertama) lebih dulu,
+    // baru data. Tanpa ini recordRead tidak pernah jalan karena `== ''.
+    handle: handleFromRoute ?? d.series_handle ?? d.chapter.handle ?? '',
   }
 }
 

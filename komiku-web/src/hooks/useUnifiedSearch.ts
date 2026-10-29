@@ -35,6 +35,8 @@ export interface UnifiedSearchState {
   /** Jumlah sumber yang digabung server (bukan hardcode di web). */
   sourcesTotal: number
   loading: boolean
+  /** True kalau masih ada item berikutnya (server yang menghitung). */
+  hasMore: boolean
   /** True selama fase 2 berjalan — hasil sudah tampil, tapi belum lengkap. */
   completing: boolean
   error: string | null
@@ -68,6 +70,7 @@ export function useUnifiedSearch(
   const [loading, setLoading] = useState(enabled)
   const [completing, setCompleting] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [hasMore, setHasMore] = useState(false)
   const [nonce, setNonce] = useState(0)
 
   // Nilai filter dibaca lewat ref supaya perubahan objek filter (identitas baru
@@ -109,6 +112,7 @@ export function useUnifiedSearch(
           )
           setLoading(false)
           setError(null)
+          setHasMore(r.has_more ?? false)
 
           const next = r.pending ?? []
           setPending(next)
@@ -175,6 +179,7 @@ export function useUnifiedSearch(
     failedSources,
     sourcesTotal,
     loading,
+    hasMore,
     completing,
     error,
     refresh,
