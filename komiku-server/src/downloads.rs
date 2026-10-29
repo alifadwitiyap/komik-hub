@@ -37,6 +37,17 @@ pub const TTL_SECS: i64 = 24 * 60 * 60;
 /// Batas halaman per chapter saat generate PDF (pengaman memori).
 pub const MAX_PAGES: usize = 300;
 
+/// Metadata satu PDF yang akan disimpan. Dikelompokkan supaya `store_pdf`
+/// tidak punya 7 parameter posisional yang mudah tertukar.
+pub struct PdfMeta<'a> {
+    pub username: &'a str,
+    pub handle: &'a str,
+    pub number: &'a str,
+    pub title: &'a str,
+    pub series_title: &'a str,
+    pub title_key: &'a str,
+}
+
 /// Satu entri unduhan (persis bentuk `items[]` kontrak API).
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DownloadEntry {
@@ -173,7 +184,7 @@ impl DownloadStore {
         let mut st = self.state.lock().await;
         let u = Self::ensure_user(&self.dir, &mut st, username);
         let mut items = u.index.items.clone();
-        items.sort_by(|a, b| b.downloaded_at.cmp(&a.downloaded_at));
+        items.sort_by_key(|e| std::cmp::Reverse(e.downloaded_at));
         let total = items.iter().map(|e| e.size_bytes).sum();
         (items, total)
     }
@@ -226,16 +237,8 @@ impl DownloadStore {
     /// upsert entri di index akun (id deterministik -> unduhan ulang menimpa).
     /// `downloaded_at` di-reset ke sekarang, jadi TTL 24 jam mulai dari unduhan
     /// terakhir.
-    pub async fn store_pdf(
-        &self,
-        username: &str,
-        handle: &str,
-        number: &str,
-        title: &str,
-        series_title: &str,
-        title_key: &str,
-        bytes: Vec<u8>,
-    ) -> anyhow::Result<DownloadEntry> {
+    pub async fn store_pdf(&self, meta: PdfMeta<'_>, bytes: Vec<u8>) -> anyhow::Result<DownloadEntry> {
+        let PdfMeta { username, handle, number, title, series_title, title_key } = meta;
         let id = Self::download_id(handle, number);
         let filename = Self::filename_for(series_title, number);
         let size = bytes.len() as u64;
@@ -483,24 +486,14 @@ mod tests {
         let store = DownloadStore::open(&dir).unwrap();
         let a = store
             .store_pdf(
-                "alif",
-                "komiku:1",
-                "1",
-                "Ch 1",
-                "Seri",
-                "seri",
+                PdfMeta { username: "alif", handle: "komiku:1", number: "1", title: "Ch 1", series_title: "Seri", title_key: "seri", },
                 vec![1u8; 100],
             )
             .await
             .unwrap();
         let b = store
             .store_pdf(
-                "budi",
-                "komiku:2",
-                "2",
-                "Ch 2",
-                "Seri Lain",
-                "seri lain",
+                PdfMeta { username: "budi", handle: "komiku:2", number: "2", title: "Ch 2", series_title: "Seri Lain", title_key: "seri lain", },
                 vec![2u8; 50],
             )
             .await
@@ -621,24 +614,14 @@ mod tests {
         let store = DownloadStore::open(&dir).unwrap();
         let ea = store
             .store_pdf(
-                "alif",
-                "komiku:6426",
-                "1195",
-                "Ch 1195",
-                "One Piece",
-                "one piece",
+                PdfMeta { username: "alif", handle: "komiku:6426", number: "1195", title: "Ch 1195", series_title: "One Piece", title_key: "one piece", },
                 vec![7u8; 200],
             )
             .await
             .unwrap();
         let eb = store
             .store_pdf(
-                "budi",
-                "komiku:6426",
-                "1195",
-                "Ch 1195",
-                "One Piece",
-                "one piece",
+                PdfMeta { username: "budi", handle: "komiku:6426", number: "1195", title: "Ch 1195", series_title: "One Piece", title_key: "one piece", },
                 vec![7u8; 200],
             )
             .await
@@ -666,11 +649,11 @@ mod tests {
         let dir = temp_dir("upsert");
         let store = DownloadStore::open(&dir).unwrap();
         store
-            .store_pdf("alif", "komiku:9", "9", "Ch 9", "S", "s", vec![1u8; 10])
+            .store_pdf(PdfMeta { username: "alif", handle: "komiku:9", number: "9", title: "Ch 9", series_title: "S", title_key: "s" }, vec![1u8; 10])
             .await
             .unwrap();
         store
-            .store_pdf("alif", "komiku:9", "9", "Ch 9", "S", "s", vec![1u8; 10])
+            .store_pdf(PdfMeta { username: "alif", handle: "komiku:9", number: "9", title: "Ch 9", series_title: "S", title_key: "s" }, vec![1u8; 10])
             .await
             .unwrap();
         assert_eq!(
@@ -689,7 +672,7 @@ mod tests {
         let id = {
             let store = DownloadStore::open(&dir).unwrap();
             store
-                .store_pdf("alif", "komiku:5", "5", "Ch 5", "S", "s", vec![4u8; 40])
+                .store_pdf(PdfMeta { username: "alif", handle: "komiku:5", number: "5", title: "Ch 5", series_title: "S", title_key: "s" }, vec![4u8; 40])
                 .await
                 .unwrap()
                 .id
@@ -708,11 +691,11 @@ mod tests {
         let dir = temp_dir("clear-one");
         let store = DownloadStore::open(&dir).unwrap();
         let a = store
-            .store_pdf("alif", "komiku:1", "1", "Ch 1", "S", "s", vec![1u8; 10])
+            .store_pdf(PdfMeta { username: "alif", handle: "komiku:1", number: "1", title: "Ch 1", series_title: "S", title_key: "s" }, vec![1u8; 10])
             .await
             .unwrap();
         let b = store
-            .store_pdf("budi", "komiku:2", "2", "Ch 2", "S", "s", vec![2u8; 10])
+            .store_pdf(PdfMeta { username: "budi", handle: "komiku:2", number: "2", title: "Ch 2", series_title: "S", title_key: "s" }, vec![2u8; 10])
             .await
             .unwrap();
         assert!(store.clear_all("alif").await);
@@ -734,12 +717,7 @@ mod tests {
         let store = DownloadStore::open(&dir).unwrap();
         let entry = store
             .store_pdf(
-                "alif",
-                "komiku:1",
-                "1",
-                "Chapter 1",
-                "Judul Seri",
-                "judul seri",
+                PdfMeta { username: "alif", handle: "komiku:1", number: "1", title: "Chapter 1", series_title: "Judul Seri", title_key: "judul seri", },
                 vec![1u8; 100],
             )
             .await

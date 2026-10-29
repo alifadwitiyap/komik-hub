@@ -10,11 +10,29 @@ Untuk Rak: localStorage diisi 2 entri — satu cover SEHAT (harus tampil gambar)
 dan satu cover RUSAK/host mati (harus jadi placeholder, BUKAN ikon rusak).
 Itu bukti langsung bahwa fallback onError bekerja di komponen nyata.
 """
+import os
 import json
 from playwright.sync_api import sync_playwright
 
-EXE = "/home/tresna/.cache/ms-playwright/chromium_headless_shell-1249/chrome-headless-shell-linux64/chrome-headless-shell"
-BASE = "http://localhost:8788"
+def _find_chromium() -> str | None:
+    """Cari Chromium: env override, lalu cache Playwright lokal, lalu None
+    (None = biarkan Playwright memilih instalasinya sendiri, jalur CI)."""
+    env = os.environ.get("CHROMIUM_EXE")
+    if env and os.path.exists(env):
+        return env
+    import glob
+    for pat in (
+        os.path.expanduser("~/.cache/ms-playwright/chromium_headless_shell-*/*/chrome-headless-shell"),
+        os.path.expanduser("~/.cache/ms-playwright/chromium-*/*/chrome"),
+    ):
+        hits = sorted(glob.glob(pat))
+        if hits:
+            return hits[-1]
+    return None
+
+
+EXE = _find_chromium()
+BASE = os.environ.get("BASE_URL", "http://localhost:8788")
 
 RAK = {
     "favorites": {
@@ -100,7 +118,7 @@ def audit(pg):
 
 out = []
 with sync_playwright() as p:
-    b = p.chromium.launch(executable_path=EXE, args=["--no-sandbox"])
+    b = p.chromium.launch(**({"executable_path": EXE} if EXE else {}), args=["--no-sandbox"])
     for vname, w, h, dpr in VIEWPORTS:
         ctx = b.new_context(viewport={"width": w, "height": h}, device_scale_factor=dpr)
         ctx.add_init_script(

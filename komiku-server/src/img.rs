@@ -301,7 +301,9 @@ fn resize_encode_avif(src: &[u8], target_w: u32) -> Result<Vec<u8>, String> {
     // ravif butuh &[RGB8]; bangun dari byte RGB mentah.
     let pixels: Vec<ravif::RGB8> = rgb
         .as_raw()
-        .chunks_exact(3)
+        .as_chunks::<3>()
+        .0
+        .iter()
         .map(|c| ravif::RGB8::new(c[0], c[1], c[2]))
         .collect();
     let img = ravif::Img::new(&pixels[..], rgb.width() as usize, rgb.height() as usize);
@@ -543,7 +545,7 @@ pub async fn img_handler(Query(q): Query<ImgQuery>, headers: HeaderMap) -> Respo
     inflight_release(&key).await;
 
     // sesekali bersihkan cache (murah: 1/512 penulisan)
-    if fastrand_u32() % 512 == 0 {
+    if fastrand_u32().is_multiple_of(512) {
         std::thread::spawn(evict_if_needed);
     }
 

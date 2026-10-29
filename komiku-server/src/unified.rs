@@ -24,15 +24,16 @@
 //!   Tiap ChapterRow += `source` + `handle` (sumber + handle series PEMILIK
 //!   chapter itu, bisa beda dari sumber manga primary).
 //! - GET /api/unified/chapter/{handle}/{number}
-//!   -> {title, number, source, images:[url], prev:{number,source,handle}|null,
-//!       next:{...}|null, switched_from: sumber|null, note: string|null}
+//!   -> {title, number, source, images:[url],
+//!   prev:{number,source,handle}|null, next:{...}|null,
+//!   switched_from: sumber|null, note: string|null}
 //!   (fallback lintas sumber: kalau chapter tidak ada di sumber handle, core
 //!   ambil dari sumber lain berjudul sama — cross-source chapter fallback)
 //! - GET /api/unified/series/{handle}?last_source=kiryuu (opsional)
 //!   -> sumber terakhir dibaca dicoba LEBIH DULU (sticky source)
 //! - GET /api/unified/health
 //!   -> {total, healthy, checked_at_ms,
-//!       sources:[{source,label,ok,latency_ms,error}]}
+//!   sources:[{source,label,ok,latency_ms,error}]}
 //!   Liveness PER SUMBER, bukan liveness server: SELALU 200 selama ada
 //!   baris (sumber mati = DATA, bukan galat). `label` dipetakan sisi SERVER;
 //!   probe jalan lewat `komik_core::probe` (kiryuu = Cloudflare DoH internal).
@@ -60,7 +61,7 @@ use komik_core::aggregator::Aggregator;
 use komik_core::model::{title_key, Manga};
 use komik_core::source::Source;
 
-use crate::downloads::{self, DownloadEntry, DownloadStore};
+use crate::downloads::{self, DownloadEntry, DownloadStore, PdfMeta};
 use crate::pdf;
 use crate::routes::{AppError, Res};
 use crate::user::{require_user, users_dir};
@@ -1205,12 +1206,7 @@ async fn generate_pdf(
     let store = store().map_err(|e| AppError::internal(format!("{e:#}")))?;
     let entry = store
         .store_pdf(
-            username,
-            handle,
-            number,
-            &out.pages.title,
-            &series_title,
-            &series_key,
+            PdfMeta { username, handle, number, title: &out.pages.title, series_title: &series_title, title_key: &series_key, },
             bytes,
         )
         .await
@@ -1659,11 +1655,11 @@ mod tests {
         assert!(match_filters(&a, Some("MANHWA"), None));
         assert!(match_filters(&a, Some("manhwa"), Some("COMPLETED")));
         assert!(
-            match_filters(&a, Some("Manhua"), None) == false,
+            !match_filters(&a, Some("Manhua"), None),
             "tipe beda gugur"
         );
         assert!(
-            match_filters(&a, None, Some("Ongoing")) == false,
+            !match_filters(&a, None, Some("Ongoing")),
             "status beda gugur"
         );
     }
@@ -1781,7 +1777,7 @@ mod tests {
     #[tokio::test]
     async fn download_file_tanpa_header_401() {
         let res = u_download_file(HeaderMap::new(), Path("0123456789abcdef".into())).await;
-        let err = res.err().expect("tanpa header harus galat, bukan 200");
+        let err = res.expect_err("tanpa header harus galat, bukan 200");
         assert_eq!(status(err), 401);
     }
 
@@ -1791,7 +1787,7 @@ mod tests {
         let mut h = HeaderMap::new();
         h.insert("x-komik-user", "Bukan Valid!".parse().unwrap());
         let res = u_download_file(h, Path("0123456789abcdef".into())).await;
-        let err = res.err().expect("header invalid harus galat, bukan 200");
+        let err = res.expect_err("header invalid harus galat, bukan 200");
         assert_eq!(status(err), 401);
     }
 }

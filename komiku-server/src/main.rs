@@ -95,6 +95,9 @@ async fn main() -> anyhow::Result<()> {
     }
     // Warm-up feed latest: cache cold 2-5s, panaskan sekali supaya request
     // pertama user adalah cache hit.
+    // `spawn` sudah menjalankan future-nya; `let _` membuang JoinHandle
+    // dengan sengaja (warm-up tidak perlu ditunggu atau diperiksa).
+    #[allow(clippy::let_underscore_future)]
     let _ = tokio::spawn(async { unified::warm_up_latest().await });
     axum::serve(listener, app).await?;
     Ok(())

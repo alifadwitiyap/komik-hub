@@ -132,12 +132,15 @@ struct State {
 /// Store notifikasi: state per-akun di balik satu mutex (serial tulis), cache
 /// snapshot per-series TERPISAH dan GLOBAL (biar mutex state tak dipegang saat
 /// fetch jaringan, dan fetch tetap dibagi antar-akun).
+/// Nilai cache notif per `title_key`: waktu ambil + chapter tertinggi tiap sumber.
+type CachedChapters = (i64, Vec<(String, String)>);
+
 pub struct NotifStore {
     dir: PathBuf,
     /// username -> State. Lazy-load dari `<dir>/users/<username>.json`.
     state: Mutex<BTreeMap<String, State>>,
     /// title_key -> (fetched_at_ms, [(sumber, chapter_tertinggi)]) — GLOBAL.
-    cache: Mutex<HashMap<String, (i64, Vec<(String, String)>)>>,
+    cache: Mutex<HashMap<String, CachedChapters>>,
     /// Mutex "ada check cycle berjalan" — cegah cycle bertumpuk.
     /// Sengaja Mutex (bukan AtomicBool): guard dilepas otomatis saat task
     /// selesai ATAU panic, jadi penanda tidak bisa nyangkut selamanya dan
@@ -782,7 +785,7 @@ async fn get_list(headers: HeaderMap) -> Res<Value> {
         let st = map.get_mut(&username).expect("baru dimuat");
         let unread = st.notifications.iter().filter(|n| !n.read).count();
         let mut items = st.notifications.clone();
-        items.sort_by(|a, b| b.at.cmp(&a.at));
+        items.sort_by_key(|n| std::cmp::Reverse(n.at));
         // TTL = interval efektif (jarak minimum antar siklus on-demand,
         // termasuk penggandaan saat total favorit > 50) supaya cadence check
         // konsisten dan tidak memblok request ini.
@@ -790,7 +793,7 @@ async fn get_list(headers: HeaderMap) -> Res<Value> {
         let should_check = store.checking.try_lock().is_ok()
             && st
                 .last_check_at
-                .map_or(true, |t| now.saturating_sub(t) > ttl);
+                .is_none_or(|t| now.saturating_sub(t) > ttl);
         (items, unread, st.last_check_at, should_check)
     };
     if should_check {
