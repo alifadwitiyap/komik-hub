@@ -14,8 +14,13 @@
 /// Sumber: img.komiku.org (komiku), image2..image11.komiku.to (komiku+mangaku
 /// CDN, semuanya resolve live 2026-10-15), thumbnail.komiku.org (cover
 /// komiku), assets/storage.shngm.id (shinigami), cdnkuma.my.id (mangaku),
-/// cdn.jsdelivr.net + v2.yuucdn.net + v7.kiryuu.to (kiryuu — host HTML
-/// terverifikasi, gambar multi-host).
+/// cdn.jsdelivr.net + v2.yuucdn.net + v7.kiryuu.to + cdn.kiryuu.io (kiryuu —
+/// host HTML + CDN gambar halaman; terverifikasi 2026-10-29: chapter kiryuu
+/// mengembalikan gambar dari cdn.kiryuu.io, 200 image/jpeg 690x5620).
+///
+/// `cdn.kiryuu.io` WAJIB ada di sini: tanpa itu proxy `/img` menjawab 403,
+/// sehingga unduh-offline dan PDF kiryuu gagal total — reader tampilan masih
+/// jalan karena memakai CDN langsung, jadi bug ini tidak kelihatan di UI.
 const ALLOWED_HOSTS: &[&str] = &[
     "img.komiku.org",
     "thumbnail.komiku.org",
@@ -35,6 +40,7 @@ const ALLOWED_HOSTS: &[&str] = &[
     "cdn.jsdelivr.net",
     "v2.yuucdn.net",
     "v7.kiryuu.to",
+    "cdn.kiryuu.io",
 ];
 
 /// Ambil host dari `https://host/...` tanpa crate `url` (cukup allowlist).

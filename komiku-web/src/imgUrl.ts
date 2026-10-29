@@ -56,6 +56,7 @@ export const IMG_HOSTS = [
   'cdn.jsdelivr.net',
   'v2.yuucdn.net',
   'v7.kiryuu.to',
+  'cdn.kiryuu.io',
 ] as const
 
 /** Lebar yang dilayani proxy `/img` (px). Harus di dalam rentang server 96..1400. */
