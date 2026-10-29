@@ -193,6 +193,11 @@ export default function SeriesUnified() {
   const downloadSelectedOffline = () => runDownload(true)
   const downloadSelectedPdf = () => runDownload(false)
 
+  // Cover gagal dimuat → tampilkan judul, bukan ikon gambar rusak.
+  // WAJIB di atas `if (error) return ...`: hook setelah early return membuat
+  // jumlah hook berbeda antar render → React error #310 (halaman blank).
+  const [coverFailed, setCoverFailed] = useState(false)
+
   // Catatan: TIDAK ada abort saat unmount — store yang memegang run
   // (lihat downloadStore), navigasi ke chapter lain / halaman lain bukan
   // pembatalan. Yang membatalkan hanya tombol "Batal" (cancelRun).
@@ -220,9 +225,6 @@ export default function SeriesUnified() {
   const dlError = dlRun?.jobs.find((j) => j.state === 'fail' && j.error)?.error ?? null
 
   const chapterLabel = (c: UnifiedChapterOut) => c.title || `Chapter ${c.number}`
-
-  // Cover gagal dimuat → tampilkan judul, bukan ikon gambar rusak.
-  const [coverFailed, setCoverFailed] = useState(false)
 
   return (
     <div className="mx-auto max-w-3xl">
