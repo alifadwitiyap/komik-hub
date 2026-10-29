@@ -135,7 +135,7 @@ fn x_secure_seeds() -> String {
 /// Base64 APK memakai NO_PADDING — tambah '=' sampai kelipatan 4.
 fn b64_decode_unpadded(s: &str) -> SourceResult<Vec<u8>> {
     let mut t = s.trim().to_string();
-    while t.len() % 4 != 0 {
+    while !t.len().is_multiple_of(4) {
         t.push('=');
     }
     base64::engine::general_purpose::STANDARD

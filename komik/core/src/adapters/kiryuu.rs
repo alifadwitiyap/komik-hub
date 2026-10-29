@@ -71,6 +71,9 @@ impl KiryuuSource {
         self.pinned
             .get_or_try_init(|| async {
                 let ips = self.resolve_ips().await?;
+                // `SocketAddr::new` butuh 2 argumen, jadi closure di sini bukan
+                // "redundant" — clippy menyarankan bentuk yang tidak valid di sini.
+                #[allow(clippy::redundant_closure)]
                 let addrs: Vec<SocketAddr> = ips.into_iter().map(|ip| SocketAddr::new(ip, 0)).collect();
                 // reqwest 0.12: resolve_to_addrs(domain: &str, addrs: &[SocketAddr]).
                 let dst = [format!("{}:443", self.host), format!("{}:80", self.host)];
@@ -82,7 +85,7 @@ impl KiryuuSource {
                 b.build().map_err(Into::into)
             })
             .await
-            .map(|c| c.clone())
+            .cloned()
     }
 
     /// Resolve host base via Cloudflare DoH -> A record. Cache hasil sukses.
@@ -502,10 +505,8 @@ fn extract_manga_slugs(html: &str) -> Vec<String> {
             let rest = &h[pos + "/manga/".len()..];
             let seg = rest.split('/').next().unwrap_or("");
             // hanya link manga langsung (satu segmen; buang link chapter dsb)
-            if !seg.is_empty() && rest.trim_end_matches('/') == seg {
-                if !out.iter().any(|s| s == seg) {
-                    out.push(seg.to_string());
-                }
+            if !seg.is_empty() && rest.trim_end_matches('/') == seg && !out.iter().any(|s| s == seg) {
+                out.push(seg.to_string());
             }
         }
     }
@@ -580,7 +581,7 @@ fn chapter_f64(s: &str) -> f64 {
 /// ("?"/"t"/judul) yang selama ini tampil apa adanya sebagai "★ ?".
 /// Skor 0 / di luar 0..=10 / non-numerik -> None (rating memang best-effort;
 /// "0" = belum ada rating di situs ini). DENGAN sengaja tak "bagi 10 kalau
-/// >10" — di skala situs (bestRating 10) nilai >10 lebih mungkin sampah
+/// lebih dari 10" — di skala situs (bestRating 10) nilai di atas 10 lebih mungkin sampah
 /// daripada skor 0-100, dan menyembunyikannya lebih aman daripada menampilkan
 /// angka karang.
 fn normalize_score(raw: Option<String>) -> Option<String> {

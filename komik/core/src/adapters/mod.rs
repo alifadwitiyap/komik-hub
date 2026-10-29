@@ -45,6 +45,7 @@ pub fn is_genre(slug: &str, name: &str) -> bool {
 }
 
 #[cfg(test)]
+#[allow(clippy::items_after_test_module)]
 mod tests {
     use super::is_genre;
 

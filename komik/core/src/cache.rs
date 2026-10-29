@@ -15,7 +15,7 @@ use std::collections::HashMap;
 use std::fs;
 use std::io::Write;
 use std::path::{Path, PathBuf};
-use std::sync::Mutex;
+use std::sync::{Arc, Mutex};
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 /// TTL default: 10 menit (CLI disk cache + server in-memory).
@@ -46,10 +46,15 @@ fn lock<T>(m: &Mutex<T>) -> std::sync::MutexGuard<'_, T> {
 // ---------------------------------------------------------------- TtlCache
 
 /// Tier in-memory (server, atau proses CLI yang sama).
+#[derive(Clone)]
 pub struct TtlCache {
     ttl_ms: u64,
     clock: Clock,
-    map: Mutex<HashMap<String, Entry>>,
+    /// `Arc<Mutex<..>>` (bukan `Mutex` polos) supaya `TtlCache` bisa
+    /// di-`Clone` dan klonnya berbagi isi yang SAMA. Dibutuhkan dua fase
+    /// search: task background menyelesaikan sumber lambat lalu menulis ke
+    /// cache yang sama dengan yang dibaca handler.
+    map: Arc<Mutex<HashMap<String, Entry>>>,
 }
 
 struct Entry {
@@ -62,7 +67,7 @@ impl TtlCache {
         TtlCache {
             ttl_ms: ttl.as_millis() as u64,
             clock: std::sync::Arc::new(now_ms),
-            map: Mutex::new(HashMap::new()),
+            map: Arc::new(Mutex::new(HashMap::new())),
         }
     }
 
@@ -70,7 +75,7 @@ impl TtlCache {
         TtlCache {
             ttl_ms: ttl.as_millis() as u64,
             clock,
-            map: Mutex::new(HashMap::new()),
+            map: Arc::new(Mutex::new(HashMap::new())),
         }
     }
     pub fn ttl_ms(&self) -> u64 {
@@ -152,6 +157,7 @@ impl TtlCache {
 
 /// Tier disk (CLI). Satu file JSON per kunci; tulisan atomic (tmp + rename)
 /// supaya cache tidak pernah separuh tertulis.
+#[derive(Clone)]
 pub struct DiskCache {
     dir: PathBuf,
     ttl_ms: u64,
@@ -286,6 +292,7 @@ fn fnv1a(bytes: &[u8]) -> u64 {
 // -------------------------------------------------------------------- Cache
 
 /// Satu interface untuk kedua tier: memory selalu aktif, disk opsional.
+#[derive(Clone)]
 pub struct Cache {
     mem: TtlCache,
     disk: Option<DiskCache>,

@@ -202,11 +202,17 @@ pub struct ListOut {
     pub items: Vec<MangaOut>,
     pub failed_sources: Vec<String>,
     pub from_cache: bool,
+    /// Sumber yang BELUM selesai saat respons ini dikirim (mode dua fase).
+    /// Kosong = semua sumber sudah dilaporkan. Client boleh memanggil ulang
+    /// dengan kunci sama; hasil lengkap biasanya sudah ada di cache.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub pending: Vec<String>,
 }
 
 impl From<komik_core::aggregator::Merged<Manga>> for ListOut {
     fn from(m: komik_core::aggregator::Merged<Manga>) -> Self {
         ListOut {
+            pending: Vec::new(),
             items: m.items.iter().map(MangaOut::from).collect(),
             failed_sources: m
                 .failures
@@ -308,6 +314,12 @@ fn list_out_filtered(
 /// TTL hasil pencarian. Cukup pendek: katalog sumber berubah lambat, tapi
 /// query yang sama berulang (klik chip, back/forward, retry) tak perlu
 /// menembak upstream 3-4 detik lagi. Diukur: cold 3.6 s, cache-hit 0.005 s.
+/// Deadline fase 1 pencarian dua fase. Sumber yang belum selesai dalam
+/// waktu ini dilaporkan lewat `pending` dan diselesaikan di background.
+/// 3 s: di atas latensi shinigami (~60 ms) dan mangaku (~1,3 s), di bawah
+/// TTFB komiku (5-9 s) yang justru ingin ditunda.
+const SEARCH_PHASE1_SECS: u64 = 3;
+
 const SEARCH_CACHE_TTL: std::time::Duration = std::time::Duration::from_secs(120);
 /// Batas jumlah query yang disimpan (LRU kasar: buang yang paling lama dipakai
 /// saat penuh). Pencarian = kunci tak terbatas, jadi cap wajib.
@@ -386,29 +398,46 @@ async fn u_search(Query(q): Query<SearchQuery>) -> Res<ListOut> {
     // Over-fetch: rank relevansi + filter tipe/status bekerja pada set yang
     // lebih besar dari `limit` tampilan, supaya "30 hasil" tidak diam-diam
     // menyusut jadi 6 (bug chip client-side yang direncanakan diganti).
-    let merged = match &genre {
+    // DUA FASE hanya untuk pencarian biasa (tanpa filter genre, yang butuh
+    // satu panggilan per adapter dan tidak punya jalur fan-out yang sama).
+    // Deadline 3 s: cukup untuk sumber cepat (shinigami ~60 ms, mangaku
+    // ~1,3 s), sementara komiku (TTFB 5-9 s) diselesaikan di background.
+    let limit = q.limit.unwrap_or(48);
+    let (merged, pending) = match &genre {
         // Filter genre aktif: satu panggilan per adapter yang menerima
         // genre + judul bersamaan (bukan menyaring sisa halaman di client).
-        Some(g) => {
+        Some(g) => (
             aggregator()
                 .search_in_genre(&query, g, page, FILTER_FANOUT_CAP, None)
-                .await
-        }
+                .await,
+            Vec::new(),
+        ),
         None => {
             aggregator()
-                .search(&query, page, FILTER_FANOUT_CAP, None)
+                .search_dua_fase(
+                    &query,
+                    page,
+                    FILTER_FANOUT_CAP,
+                    None,
+                    std::time::Duration::from_secs(SEARCH_PHASE1_SECS),
+                )
                 .await
         }
     };
-    let limit = q.limit.unwrap_or(48);
-    let out = list_out_filtered(
+    let mut out = list_out_filtered(
         merged,
         Some(&query),
         q.tipe.as_deref(),
         q.status.as_deref(),
         Some(limit as usize),
     );
-    search_cache_put(key, out.clone());
+    out.pending = pending.iter().map(|s| s.as_str().to_string()).collect();
+    // JANGAN cache kalau masih ada sumber pending: fase 2 yang akan mengisi
+    // cache dengan hasil lengkap. Menyimpan hasil separuh di sini membuat
+    // panggilan berikutnya menyajikan daftar tidak lengkap selama TTL.
+    if out.pending.is_empty() {
+        search_cache_put(key, out.clone());
+    }
     Ok(Json(out))
 }
 

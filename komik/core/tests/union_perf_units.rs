@@ -231,8 +231,10 @@ fn cmp_label_non_numerik_arah_kunci_desc() {
 /// mengusulkan membalik comparator label (`ka.cmp(&kb)` -> `kb.cmp(&ka)`)
 /// agar "label diurutkan DESC". Tapi comparator itu dipakai di dua tempat
 /// dengan arah BERBEDA:
-///   - `merge_chapter_lists` -> `sort_by(cmp.reverse())` -> output akhir DESC.
-///   - `pick_cross_source_neighbors` -> `cmp` langsung -> "terbesar"/"terkecil".
+///
+/// - `merge_chapter_lists` -> `sort_by(cmp.reverse())` -> output akhir DESC.
+/// - `pick_cross_source_neighbors` -> `cmp` langsung -> "terbesar"/"terkecil".
+///
 /// Membalik comparator label tanpa membalik sort site justru membuat output
 /// label jadi ASC. Test ini mengunci output yang BENAR supaya usulan fix
 /// salah tidak diam-diam merusak urutan.

@@ -260,6 +260,10 @@ pub struct ReadOutcomeX {
 const READ_CHAPTERS_MIN: u32 = 50;
 
 /// Hasil mencoba memuat series dari SATU sumber.
+// Varian `Ok` memang jauh lebih besar, tapi ini nilai sementara yang langsung
+// dipakai lalu dibuang di jalur baca series — bukan koleksi jangka panjang.
+// Boxing hanya menambah alokasi di hot path tanpa manfaat nyata.
+#[allow(clippy::large_enum_variant)]
 enum SeriesLoad {
     /// (manga, detail) — sumber terakses dan punya series-nya.
     Ok(Manga, SeriesDetail),
@@ -437,7 +441,7 @@ impl Aggregator {
             let group = by_key.remove(&k).unwrap();
             out.push(self.pick_ceiling_winner_validated(group).await);
         }
-        out.sort_by(|a, b| rank_cmp(a, b));
+        out.sort_by(rank_cmp);
         out
     }
 
@@ -554,6 +558,127 @@ impl Aggregator {
         // `last_chapter` tiap kartu = max numerik lintas sumber sekunci kanonik.
         apply_ceiling_last_chapter(&mut items);
         Merged { items: rank_by_query(items, query), ..merged }.truncate(limit)
+    }
+
+    /// Search DUA FASE: kembalikan hasil sumber cepat sekarang, selesaikan
+    /// sumber lambat di background lalu tulis ke cache.
+    ///
+    /// Kenapa: `index.komikid.org` (komiku) punya TTFB 5-9 s sementara
+    /// shinigami 59 ms. Menunggu semua sumber berarti user menatap layar
+    /// kosong selama sumber terlambat. Di sini sumber cepat langsung
+    /// dikirim, dan `pending` memberi tahu client sumber mana yang masih
+    /// diproses (client boleh panggil ulang; cache sudah terisi).
+    ///
+    /// Hasil fase 2 ditulis ke kunci cache yang SAMA dengan yang dibaca
+    /// `search()`, jadi panggilan berikutnya murah tanpa jalur kode baru.
+    pub async fn search_dua_fase(
+        &self,
+        query: &str,
+        page: u32,
+        limit: u32,
+        source: Option<&str>,
+        deadline: Duration,
+    ) -> (Merged<Manga>, Vec<SourceId>) {
+        let q = query.to_string();
+        let key = format!("search:{page}:{q}");
+        // Kunci HARUS identik dengan yang dipakai `merged()` (tanpa awalan
+        // "list" ganda) supaya hasil fase 2 benar-benar dibaca `search()`.
+        let list_key = self.cache_key("list", source, &key);
+
+        let sources = self.filtered(source);
+        let total = sources.len();
+
+        // Fase 2 sebelumnya mungkin sudah selesai: sajikan cache penuh.
+        if let Some(cache) = &self.cache {
+            if let Some(hit) = cache.fresh_json::<Vec<Manga>>(&list_key) {
+                let items = rank_by_query(hit, query);
+                return (
+                    Merged {
+                        items,
+                        failures: vec![],
+                        sources_total: total,
+                        sources_ok: total,
+                        from_cache: true,
+                    }
+                    .truncate(limit),
+                    Vec::new(),
+                );
+            }
+        }
+
+        let call = {
+            let q = q.clone();
+            move |src: Arc<dyn Source>| {
+                let q = q.clone();
+                async move { src.search(&q, page).await }
+            }
+        };
+
+        let (done, pending, mut rest) =
+            self.join_sources_until(sources, call, deadline).await;
+
+        let mut items: Vec<Manga> = Vec::new();
+        let mut failures = Vec::new();
+        let mut ok = 0usize;
+        for res in done {
+            match res {
+                Ok((_, v)) => {
+                    ok += 1;
+                    items.extend(v);
+                }
+                Err(f) => failures.push(f),
+            }
+        }
+
+        let merged = Merged {
+            items: dedup_rank(items),
+            failures,
+            sources_total: total,
+            sources_ok: ok,
+            from_cache: false,
+        };
+
+        // Fase 2: selesaikan sisa sumber di background, lalu tulis cache.
+        // Hasil fase 1 HARUS dibawa masuk: cache sengaja belum diisi saat
+        // masih ada pending, jadi `fresh_json` di dalam task akan kosong dan
+        // sumber cepat (shinigami/mangaku) hilang dari hasil akhir.
+        if !rest.is_empty() {
+            let cache = self.cache.clone();
+            let list_key = list_key.clone();
+            let q2 = q.clone();
+            let phase1: Vec<Manga> = merged.items.clone();
+            tokio::spawn(async move {
+                let mut extra: Vec<Manga> = Vec::new();
+                let mut got_any = false;
+                while let Some(joined) = rest.join_next().await {
+                    if let Ok(Ok((_, v))) = joined {
+                        got_any = true;
+                        extra.extend(v);
+                    }
+                }
+                if !got_any {
+                    return;
+                }
+                if let Some(cache) = cache {
+                    // Gabung hasil fase 1 + sisa sumber.
+                    let mut all: Vec<Manga> = phase1;
+                    all.extend(extra);
+                    let mut deduped = dedup_rank(all);
+                    apply_ceiling_last_chapter(&mut deduped);
+                    let ranked = rank_by_query(deduped, &q2);
+                    if let Err(e) = cache.set_json(&list_key, &ranked) {
+                        eprintln!("⚠ cache fase-2 gagal ditulis ({list_key}): {e}");
+                    }
+                }
+            });
+        }
+
+        let mut items = merged.items;
+        apply_ceiling_last_chapter(&mut items);
+        (
+            Merged { items: rank_by_query(items, query), ..merged }.truncate(limit),
+            pending,
+        )
     }
 
     /// Seperti [`Aggregator::search`], tapi `genre` diteruskan ke SETIAP
@@ -1385,6 +1510,76 @@ impl Aggregator {
         out
     }
 
+    /// Seperti [`Aggregator::join_sources`], tapi berhenti menunggu setelah
+    /// `deadline` dan mengembalikan sisa task yang BELUM selesai.
+    ///
+    /// Dipakai mode dua fase: user dapat hasil sumber cepat lebih dulu, sisa
+    /// sumber diselesaikan di background lalu ditulis ke cache, dan panggilan
+    /// berikutnya untuk kunci yang sama langsung instan.
+    ///
+    /// Task yang di-detach TETAP berjalan sampai selesai (bukan dibatalkan) —
+    /// itu intinya: pekerjaan lambat tidak hilang, hanya tidak ditunggu.
+    #[allow(clippy::type_complexity)]
+    async fn join_sources_until<T, F, Fut>(
+        &self,
+        sources: Vec<Arc<dyn Source>>,
+        call: F,
+        deadline: Duration,
+    ) -> (
+        Vec<Result<(Arc<dyn Source>, T), (SourceId, String)>>,
+        Vec<SourceId>,
+        tokio::task::JoinSet<Result<(Arc<dyn Source>, T), (SourceId, String)>>,
+    )
+    where
+        T: Send + 'static,
+        F: Fn(Arc<dyn Source>) -> Fut + Clone + Send + Sync + 'static,
+        Fut: std::future::Future<Output = SourceResult<T>> + Send + 'static,
+    {
+        let timeout = self.timeout;
+        let mut set = tokio::task::JoinSet::new();
+        let mut all_ids: Vec<SourceId> = Vec::new();
+        for src in sources {
+            all_ids.push(src.id());
+            let call = call.clone();
+            set.spawn(async move {
+                let id = src.id();
+                let fut = call(src.clone());
+                match tokio::time::timeout(timeout, fut).await {
+                    Ok(Ok(v)) => Ok((src, v)),
+                    Ok(Err(e)) => Err((id, format!("{e:#}"))),
+                    Err(_) => Err((id, format!("timeout {}s", timeout.as_secs()))),
+                }
+            });
+        }
+        let mut out = Vec::new();
+        let until = tokio::time::Instant::now() + deadline;
+        while !set.is_empty() {
+            let left = until.saturating_duration_since(tokio::time::Instant::now());
+            if left.is_zero() {
+                break;
+            }
+            match tokio::time::timeout(left, set.join_next()).await {
+                Ok(Some(Ok(r))) => out.push(r),
+                Ok(Some(Err(e))) => {
+                    out.push(Err((SourceId::from("?"), format!("task gagal: {e}"))))
+                }
+                Ok(None) => break,
+                Err(_) => break, // deadline habis
+            }
+        }
+        // Sumber yang belum melapor = masih berjalan di `set`.
+        let mut pending: Vec<SourceId> = all_ids
+            .into_iter()
+            .filter(|id| !out.iter().any(|r| match r {
+                Ok((src, _)) => &src.id() == id,
+                Err((eid, _)) => eid == id,
+            }))
+            .collect();
+        pending.sort_by_key(|s| s.as_str().to_string());
+        pending.dedup();
+        (out, pending, set)
+    }
+
     /// Versi `join_sources` untuk item yang BUKAN `Arc<dyn Source>` — dipakai
     /// tahap 2 pengumpulan union, di mana tiap item sudah membawa
     /// `(sumber, native_id)`. Closure mengembalikan
@@ -1882,8 +2077,9 @@ fn match_tier(title_key: &str, tokens: &[String], query_key: &str) -> (MatchTier
 ///
 /// Urutan (frozen; semua pembanding di atas `title_key` lowercase):
 /// 1. `title_key == query` (setelah normalisasi token), 2. prefix,
-/// 3. semua token kueri ada di judul, 4. sebagian token — jumlah token cocok
-/// desc, 5. recency desc (`None` di bawah), 6. `SOURCE_PRIORITY`.
+///    3. semua token kueri ada di judul, 4. sebagian token — jumlah token cocok
+///    desc, 5. recency desc (`None` di bawah), 6. `SOURCE_PRIORITY`.
+///
 /// Setiap angka kunci berada di tuple terpisah, jadi `AllTokens` memang selalu
 /// mengalahkan `Partial` berapa pun jumlah kecocokannya.
 ///
@@ -1994,8 +2190,8 @@ fn neighbor_refs(detail: &SeriesDetail, pos: usize) -> (Option<ChapterRef>, Opti
     let next = pos
         .checked_sub(1)
         .and_then(|i| detail.chapters.get(i))
-        .map(|c| mk(c));
-    let prev = detail.chapters.get(pos + 1).map(|c| mk(c));
+        .map(mk);
+    let prev = detail.chapters.get(pos + 1).map(mk);
     (prev, next)
 }
 

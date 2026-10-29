@@ -590,7 +590,7 @@ fn normalize_image_url(p: &str, base: &str) -> Option<String> {
         // "mailto:..." tak punya "://" tapi tetap URI, bukan path — buang.
         let colon_at = p.find(':');
         let slash_at = p.find('/');
-        if colon_at.is_some() && slash_at.map_or(true, |s| colon_at < Some(s)) {
+        if colon_at.is_some() && slash_at.is_none_or(|s| colon_at < Some(s)) {
             return None;
         }
         return Some(format!("{}/{}", base, encode_path(p.trim_start_matches('/'))));
