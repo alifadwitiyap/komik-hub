@@ -24,6 +24,7 @@
 const ALLOWED_HOSTS: &[&str] = &[
     "img.komiku.org",
     "thumbnail.komiku.org",
+    "thumbnail.komiku.to",
     "image2.komiku.to",
     "image3.komiku.to",
     "image4.komiku.to",
@@ -77,6 +78,7 @@ mod tests {
         for h in [
             "img.komiku.org",
             "thumbnail.komiku.org",
+    "thumbnail.komiku.to",
             "image2.komiku.to",
             "image11.komiku.to",
         ] {

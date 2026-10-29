@@ -40,6 +40,7 @@ interface NetworkInformationLike {
 export const IMG_HOSTS = [
   'img.komiku.org',
   'thumbnail.komiku.org',
+  'thumbnail.komiku.to',
   'image2.komiku.to',
   'image3.komiku.to',
   'image4.komiku.to',
