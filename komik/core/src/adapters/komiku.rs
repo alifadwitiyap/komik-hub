@@ -531,11 +531,11 @@ impl Source for KomikuSource {
             .trim()
             .parse()
             .map_err(|_| anyhow::anyhow!("id komiku harus integer, dapat '{native_id}'"))?;
+        // Path kanonik langsung: bentuk `?content=manga&id=` membalas 308 ke
+        // sini, dan hop itu terukur 0.912 s -> 0.554 s (median 10 sampel,
+        // hemat 0.358 s per series). Isi JSON kedua URL identik.
         let raw = self
-            .content(&[
-                ("content", "manga".to_string()),
-                ("id", id.to_string()),
-            ])
+            .get(BASE_CONTENT, &format!("mangaid/{id}/"), &[])
             .await?;
         let s = raw
             .get("series")
