@@ -17,6 +17,7 @@ import { startReadMarksSync } from './readMarks'
 import { captureFromUrl } from './account'
 import { NotifCountsProvider, useNotifCounts } from './notifCounts'
 import { useTheme } from './hooks/useTheme'
+import { ErrorBoundary } from './ErrorBoundary'
 
 const NAV = [
   { to: '/', label: 'Beranda', icon: IconHouse },
@@ -48,22 +49,30 @@ export default function App() {
         )}
 
         <main className={immersive ? '' : 'pb-24 pt-14'}>
-          <Suspense fallback={<Spinner label="Memuat…" />}>
-            <Routes>
-              <Route path="/" element={<Home />} />
-              <Route path="/cari" element={<Search />} />
-              <Route path="/rak" element={<Rak />} />
-              <Route path="/akun" element={<Akun />} />
-              <Route path="/notifikasi" element={<Notifikasi />} />
-              {/* manga: id komiku lama (angka) ATAU handle unified 'sumber:id' */}
-              <Route path="/manga/:handle" element={<SeriesRoute />} />
-              <Route path="/baca/:chapterId" element={<Reader />} />
-              <Route path="/baca/:handle/:number" element={<Reader />} />
-              <Route path="/maraton/:chapterId" element={<ReaderMarathon />} />
-              <Route path="/maraton/:handle/:number" element={<ReaderMarathon />} />
-              <Route path="*" element={<NotFound />} />
-            </Routes>
-          </Suspense>
+          {/* Boundary DI LUAR Suspense: Suspense menangani pending, boundary
+              harus melihat error yang lolos darinya. Diletakkan di sini (bukan
+              membungkus seluruh App) supaya TopBar/BottomNav tetap hidup dan
+              user masih bisa pindah halaman saat satu route gagal.
+              `key={pathname}` me-reset boundary saat navigasi — tanpa itu,
+              sekali error membuat fallback menempel terus. */}
+          <ErrorBoundary key={pathname}>
+            <Suspense fallback={<Spinner label="Memuat…" />}>
+              <Routes>
+                <Route path="/" element={<Home />} />
+                <Route path="/cari" element={<Search />} />
+                <Route path="/rak" element={<Rak />} />
+                <Route path="/akun" element={<Akun />} />
+                <Route path="/notifikasi" element={<Notifikasi />} />
+                {/* manga: id komiku lama (angka) ATAU handle unified 'sumber:id' */}
+                <Route path="/manga/:handle" element={<SeriesRoute />} />
+                <Route path="/baca/:chapterId" element={<Reader />} />
+                <Route path="/baca/:handle/:number" element={<Reader />} />
+                <Route path="/maraton/:chapterId" element={<ReaderMarathon />} />
+                <Route path="/maraton/:handle/:number" element={<ReaderMarathon />} />
+                <Route path="*" element={<NotFound />} />
+              </Routes>
+            </Suspense>
+          </ErrorBoundary>
         </main>
 
         {!immersive && <BottomNav />}

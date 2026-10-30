@@ -21,7 +21,10 @@
 // - navigasi        : network-first, fallback index.html yang di-precache.
 // - request ber-header X-Komik-User : SELALU ke jaringan (state per-akun).
 
-const SHELL = 'komiku-shell-v2'
+// WAJIB di-bump setiap deploy yang mengubah daftar precache. Nama cache adalah
+// satu-satunya cara membersihkan aset ber-hash lama: `activate` menghapus semua
+// cache yang tidak ada di daftar, jadi naikkan versi = buang aset build lama.
+const SHELL = 'komiku-shell-v3'
 // v3: buang cache API lama yang mungkin masih menyimpan PDF /api/unified/downloads.
 const API = 'komiku-api-v4'
 // v4: strategi batas gambar berubah (byte + entri), cache v3 lama dibuang.
