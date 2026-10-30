@@ -309,6 +309,12 @@ fn list_out_filtered(
     status: Option<&str>,
     max: Option<usize>,
 ) -> ListOut {
+    // Jumlah item SEBELUM filter relevansi. Dipakai untuk `has_more`: setelah
+    // `rank_by_query` membuang NoMatch, `items.len()` menyusut dan halaman bisa
+    // terlihat "terakhir" padahal upstream masih punya halaman berikutnya
+    // (terukur: "one piece" hal.1 = 27 item mentah -> 15 relevan; tanpa ini
+    // tombol "Berikutnya" mati di halaman 1 dan hal.2 tak pernah terjangkau).
+    let pre_filter_len = merged.items.len();
     // rank_by_query dengan kueri kosong = no-op (urut recency dari core).
     let items: Vec<Manga> = match query {
         Some(q) => komik_core::aggregator::rank_by_query(merged.items, q),
@@ -323,7 +329,10 @@ fn list_out_filtered(
         // kemungkinan besar masih ada isi. Bukan kebenaran mutlak (server
         // over-fetch bisa membuat halaman terakhir tetap penuh), tapi jauh
         // lebih baik daripada membandingkan dengan konstanta ajaib di client.
-        out.has_more = out.items.len() >= max;
+        //
+        // Diukur dari jumlah SEBELUM filter relevansi, supaya pembuangan
+        // NoMatch tidak memalsukan "sudah habis".
+        out.has_more = pre_filter_len.max(out.items.len()) >= max;
         out.items.truncate(max);
     }
     out

@@ -2116,20 +2116,63 @@ fn apply_ceiling_last_chapter(items: &mut [Manga]) {
     }
 }
 
-pub fn rank_by_query<T: Rankable>(items: Vec<T>, query: &str) -> Vec<T> {
-    // Token kueri lowercase, tanpa duplikat ("solo  solo" -> 1 token).
+/// Token kueri: lowercase, tanpa duplikat, urutan dipertahankan.
+/// Diekstrak dari [`rank_by_query`] supaya filter dan sort memakai token identik.
+fn query_tokens(query: &str) -> Vec<String> {
     let mut seen = HashSet::new();
-    let tokens: Vec<String> = query
+    query
         .to_lowercase()
         .split_whitespace()
         .filter(|t| seen.insert(t.to_string()))
         .map(|t| t.to_string())
-        .collect();
+        .collect()
+}
+
+/// Buang item yang judulnya TIDAK berbagi satu token pun dengan kueri
+/// ([`MatchTier::NoMatch`]).
+///
+/// Kenapa: sumber seperti shinigami mencocokkan author/studio/sinopsis, bukan
+/// hanya judul, lalu mengembalikan item yang judulnya sama sekali asing.
+/// `rank_by_query` hanya MENGURUTKAN mereka ke bawah — tidak membuang — sehingga
+/// kueri "nano machine" menampilkan "Absolute Sword Sense" dan "Legend Of
+/// Heavenly Chaos Demon" di bawah hasil yang benar.
+///
+/// Degradasi anggun: kalau SEMUA item NoMatch (mis. kueri nama author/studio yang
+/// di upstream cocok lewat field lain), hasil filter = 0. Membalas "tidak ada
+/// hasil" untuk kueri yang jelas punya hasil adalah kebohongan baru, jadi
+/// kembalikan input apa adanya.
+fn retain_relevant<T: Rankable>(items: Vec<T>, query: &str) -> Vec<T> {
+    let tokens = query_tokens(query);
     if tokens.is_empty() {
-        return items;
+        return items; // kueri kosong = no-op (kontrak lama)
     }
     let query_key = tokens.join(" ");
-    let mut out: Vec<T> = items;
+    let keep: Vec<bool> = items
+        .iter()
+        .map(|it| {
+            match_tier(&it.rank_title_key().to_lowercase(), &tokens, &query_key).0
+                != MatchTier::NoMatch
+        })
+        .collect();
+
+    // Tidak ada satu pun sinyal judul -> jangan balas kosong.
+    if !keep.iter().any(|k| *k) {
+        return items;
+    }
+    items
+        .into_iter()
+        .zip(keep)
+        .filter_map(|(it, k)| k.then_some(it))
+        .collect()
+}
+
+pub fn rank_by_query<T: Rankable>(items: Vec<T>, query: &str) -> Vec<T> {
+    let mut out = retain_relevant(items, query);
+    let tokens = query_tokens(query);
+    if tokens.is_empty() {
+        return out;
+    }
+    let query_key = tokens.join(" ");
     out.sort_by(|a, b| {
         let (ta, ma) = match_tier(&a.rank_title_key().to_lowercase(), &tokens, &query_key);
         let (tb, mb) = match_tier(&b.rank_title_key().to_lowercase(), &tokens, &query_key);
@@ -2285,9 +2328,10 @@ mod tests {
         items.iter().map(|m| m.native_id.as_str()).collect()
     }
 
-    /// 1. Exact match mengalahkan non-match yang LEBIH BARU.
+    /// 1. Exact match mengalahkan Partial yang LEBIH BARU.
+    ///    (Dulu bernama `..._non_match_...` — fixture-nya Partial, bukan NoMatch.)
     #[test]
-    fn exact_mengalahkan_non_match_yang_lebih_baru() {
+    fn exact_mengalahkan_partial_yang_lebih_baru() {
         let exact = {
             let mut m = m("komiku", "exact", "Solo Leveling");
             m.updated_at = Some(100); // lebih tua
@@ -2380,9 +2424,9 @@ mod tests {
         assert_eq!(ids(&out2), ids(&input));
     }
 
-    /// 7. Set hasil tak berubah: tidak ada item hilang/terduplikasi.
+    /// 7. NoMatch dibuang; sisanya utuh tanpa duplikasi.
     #[test]
-    fn hasil_set_tidak_berubah() {
+    fn hasil_set_tidak_berubah_kecuali_nomatch() {
         let input = vec![
             m("komiku", "a", "Solo Leveling"),
             m("komiku", "b", "Solo Leveling Reawakening"),
@@ -2390,13 +2434,45 @@ mod tests {
             m("komiku", "d", "Unrelated Title"),
             m("komiku", "e", "solo max level newbie"),
         ];
-        let out = rank_by_query(input.clone(), "solo leveling");
-        assert_eq!(out.len(), input.len());
-        let mut a: Vec<&str> = input.iter().map(|m| m.native_id.as_str()).collect();
-        let mut b: Vec<&str> = out.iter().map(|m| m.native_id.as_str()).collect();
-        a.sort_unstable();
-        b.sort_unstable();
-        assert_eq!(a, b, "tidak boleh ada item hilang/terduplikasi");
+        let out = rank_by_query(input, "solo leveling");
+        assert_eq!(out.len(), 4, "NoMatch dibuang, sisanya utuh");
+        assert!(!ids(&out).contains(&"d"), "judul tanpa token kueri harus hilang");
+    }
+
+    /// 7b. Kasus nyata P1: hasil fuzzy shinigami untuk "nano machine".
+    #[test]
+    fn nomatch_dibuang_saat_ada_yang_cocok() {
+        let input = vec![
+            m("shinigami", "nano", "Nano Machine"),
+            m("shinigami", "sword", "Absolute Sword Sense"),
+            m("shinigami", "demon", "Legend Of Heavenly Chaos Demon"),
+        ];
+        let out = rank_by_query(input, "nano machine");
+        assert_eq!(ids(&out), vec!["nano"]);
+    }
+
+    /// 7c. Degradasi anggun: kueri yang cocok lewat field non-judul (author,
+    ///     studio) tidak boleh mendadak jadi "tidak ada hasil".
+    #[test]
+    fn semua_nomatch_dikembalikan_utuh() {
+        let input = vec![
+            m("shinigami", "a", "Nano Machine"),
+            m("shinigami", "b", "Pick Me Up"),
+        ];
+        let out = rank_by_query(input, "redice");
+        assert_eq!(out.len(), 2, "jangan balas 0 untuk kueri author/studio");
+    }
+
+    /// 7d. Partial TIDAK ikut terbuang — hanya NoMatch.
+    #[test]
+    fn nomatch_tidak_memotong_partial() {
+        let input = vec![
+            m("shinigami", "one", "One Piece"),
+            m("shinigami", "punch", "One Punch Man"),
+            m("shinigami", "unrelated", "Kingdom"),
+        ];
+        let out = rank_by_query(input, "one piece");
+        assert_eq!(ids(&out), vec!["one", "punch"]);
     }
 
     /// 8. Query dikenali case-insensitive (title_key sudah lowercase, tapi
