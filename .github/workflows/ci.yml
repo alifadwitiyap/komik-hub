@@ -22,6 +22,11 @@ jobs:
         uses: dtolnay/rust-toolchain@stable
         with:
           toolchain: 1.99
+          # WAJIB: mem-pin `toolchain` membuat rustup memakai toolchain itu
+          # apa adanya; komponen tambahan TIDAK ikut terpasang otomatis.
+          # Tanpa baris ini clippy gagal dengan "'cargo-clippy' is not installed
+          # for the toolchain '1.99-...'" — gate merah padahal kode bersih.
+          components: clippy
       - uses: Swatinem/rust-cache@v2
       - run: cargo check --message-format=short
       # Gate NYATA: tanpa `|| true`. Dulu kegagalan clippy diabaikan sehingga
