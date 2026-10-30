@@ -1,0 +1,101 @@
+[
+ [
+  300,
+  {
+   "vw": 300,
+   "sw": 340,
+   "innerW": 268,
+   "needed": 323.6,
+   "ctaW": 46.5,
+   "ctaLines": 3
+  }
+ ],
+ [
+  320,
+  {
+   "vw": 320,
+   "sw": 340,
+   "innerW": 288,
+   "needed": 323.6,
+   "ctaW": 46.5,
+   "ctaLines": 3
+  }
+ ],
+ [
+  340,
+  {
+   "vw": 340,
+   "sw": 340,
+   "innerW": 308,
+   "needed": 323.6,
+   "ctaW": 46.5,
+   "ctaLines": 3
+  }
+ ],
+ [
+  360,
+  {
+   "vw": 360,
+   "sw": 360,
+   "innerW": 328,
+   "needed": 328,
+   "ctaW": 50.9,
+   "ctaLines": 3
+  }
+ ],
+ [
+  375,
+  {
+   "vw": 375,
+   "sw": 375,
+   "innerW": 343,
+   "needed": 343,
+   "ctaW": 65.9,
+   "ctaLines": 3
+  }
+ ],
+ [
+  390,
+  {
+   "vw": 390,
+   "sw": 390,
+   "innerW": 358,
+   "needed": 358,
+   "ctaW": 80.9,
+   "ctaLines": 3
+  }
+ ],
+ [
+  412,
+  {
+   "vw": 412,
+   "sw": 412,
+   "innerW": 380,
+   "needed": 380,
+   "ctaW": 102.9,
+   "ctaLines": 2
+  }
+ ],
+ [
+  430,
+  {
+   "vw": 430,
+   "sw": 430,
+   "innerW": 398,
+   "needed": 398,
+   "ctaW": 120.9,
+   "ctaLines": 2
+  }
+ ],
+ [
+  480,
+  {
+   "vw": 480,
+   "sw": 480,
+   "innerW": 448,
+   "needed": 448,
+   "ctaW": 170.9,
+   "ctaLines": 1
+  }
+ ]
+]

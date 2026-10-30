@@ -1,0 +1,57 @@
+[
+ [
+  "xs-320",
+  {
+   "bgH": 224,
+   "bgBottom": 280,
+   "contentH": 221.3,
+   "contentBottom": 277.3,
+   "gap": -2.7,
+   "heroH": 221.3
+  }
+ ],
+ [
+  "sm-360",
+  {
+   "bgH": 224,
+   "bgBottom": 280,
+   "contentH": 221.3,
+   "contentBottom": 277.3,
+   "gap": -2.7,
+   "heroH": 221.3
+  }
+ ],
+ [
+  "sm-390",
+  {
+   "bgH": 224,
+   "bgBottom": 280,
+   "contentH": 221.3,
+   "contentBottom": 277.3,
+   "gap": -2.7,
+   "heroH": 221.3
+  }
+ ],
+ [
+  "md-768",
+  {
+   "bgH": 224,
+   "bgBottom": 280,
+   "contentH": 242.7,
+   "contentBottom": 298.7,
+   "gap": 18.7,
+   "heroH": 242.7
+  }
+ ],
+ [
+  "xl-1280",
+  {
+   "bgH": 224,
+   "bgBottom": 280,
+   "contentH": 242.7,
+   "contentBottom": 298.7,
+   "gap": 18.7,
+   "heroH": 242.7
+  }
+ ]
+]

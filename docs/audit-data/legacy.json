@@ -1,0 +1,1157 @@
+{
+ "xs-320": {
+  "audit": {
+   "viewport": {
+    "w": 320,
+    "h": 568,
+    "sw": 342,
+    "sh": 2811
+   },
+   "docOverflowX": 22,
+   "overflow": {
+    "count": 1,
+    "unclipped": [
+     {
+      "tag": "button",
+      "cls": "flex shrink-0 items-center gap-1.5 rounded-xl border px-3 py-2.5 text-[13px] fon",
+      "left": 253.8,
+      "right": 341.6,
+      "w": 87.8,
+      "clippedByAncestor": false,
+      "txt": "Favorit"
+     }
+    ],
+    "items": [
+     {
+      "tag": "button",
+      "cls": "flex shrink-0 items-center gap-1.5 rounded-xl border px-3 py-2.5 text-[13px] fon",
+      "left": 253.8,
+      "right": 341.6,
+      "w": 87.8,
+      "clippedByAncestor": false,
+      "txt": "Favorit"
+     }
+    ]
+   },
+   "smallTargets": {
+    "count": 2,
+    "items": [
+     {
+      "tag": "a",
+      "w": 104.9,
+      "h": 23,
+      "label": "Komik Hub",
+      "cls": "flex items-center"
+     },
+     {
+      "tag": "a",
+      "w": 60.2,
+      "h": 16,
+      "label": "\u2190 Beranda",
+      "cls": "text-[12px] font-medium text-ink-400 hover:text-ink-200"
+     }
+    ]
+   },
+   "clippedText": {
+    "count": 0,
+    "items": []
+   },
+   "bars": [
+    {
+     "tag": "header",
+     "pos": "fixed",
+     "top": 0,
+     "bottom": 57,
+     "h": 57,
+     "z": "40",
+     "cls": "fixed inset-x-0 top-0 z-40 border-b border-ink-800 bg-ink-950/95 backd"
+    },
+    {
+     "tag": "div",
+     "pos": "sticky",
+     "top": 325.8,
+     "bottom": 426.3,
+     "h": 100.5,
+     "z": "30",
+     "cls": "sticky top-14 z-30 border-y border-ink-800 bg-ink-950/95 px-4 py-2.5 b"
+    },
+    {
+     "tag": "nav",
+     "pos": "fixed",
+     "top": 516.3,
+     "bottom": 568,
+     "h": 51.8,
+     "z": "40",
+     "cls": "fixed inset-x-0 bottom-0 z-40 border-t border-ink-800 bg-ink-950/95 pb"
+    }
+   ],
+   "focusableCount": 54,
+   "headings": [
+    {
+     "lvl": 1,
+     "txt": "One Piece"
+    },
+    {
+     "lvl": 2,
+     "txt": "Sinopsis"
+    },
+    {
+     "lvl": 2,
+     "txt": "Chapter (1216)"
+    }
+   ],
+   "images": [
+    {
+     "src": "http://127.0.0.1:8788/logo-komik-hub.png",
+     "alt": "Komik Hub",
+     "natural": 375,
+     "w": 105,
+     "h": 23,
+     "complete": true
+    },
+    {
+     "src": "http://127.0.0.1:8788/logo-komik-hub-light.png",
+     "alt": "",
+     "natural": 375,
+     "w": 0,
+     "h": 0,
+     "complete": true
+    },
+    {
+     "src": "omik-one-piece-indo/manga_img_horizontal-Manga-One-Piece.jpg",
+     "alt": "",
+     "natural": 868,
+     "w": 320,
+     "h": 224,
+     "complete": true
+    },
+    {
+     "src": "nga/komik-one-piece-indo/manga_thumbnail-Komik-One-Piece.jpg",
+     "alt": "One Piece",
+     "natural": 764,
+     "w": 110,
+     "h": 147,
+     "complete": true
+    }
+   ],
+   "lowContrast": {
+    "count": 8,
+    "items": [
+     {
+      "txt": "4/4",
+      "ratio": 4.15,
+      "need": 4.5,
+      "px": 11.5,
+      "weight": "700",
+      "color": "rgb(111, 118, 129)",
+      "bg": "rgb(241,244,247)",
+      "cls": "tabular-nums"
+     },
+     {
+      "txt": "Komiku",
+      "ratio": 3.14,
+      "need": 4.5,
+      "px": 11.5,
+      "weight": "400",
+      "color": "rgb(138, 146, 157)",
+      "bg": "rgb(255,255,255)",
+      "cls": "text-ink-400"
+     },
+     {
+      "txt": "\u2190 Beranda",
+      "ratio": 2.85,
+      "need": 4.5,
+      "px": 12,
+      "weight": "500",
+      "color": "rgb(138, 146, 157)",
+      "bg": "rgb(241,244,247)",
+      "cls": "text-[12px] font-medium text-ink-400 hover:text-in"
+     },
+     {
+      "txt": "Penulis",
+      "ratio": 4.15,
+      "need": 4.5,
+      "px": 12,
+      "weight": "400",
+      "color": "rgb(111, 118, 129)",
+      "bg": "rgb(241,244,247)",
+      "cls": "w-16 shrink-0 text-ink-500"
+     },
+     {
+      "txt": "Action",
+      "ratio": 4.41,
+      "need": 4.5,
+      "px": 10.5,
+      "weight": "600",
+      "color": "rgb(0, 119, 182)",
+      "bg": "rgb(241,244,247)",
+      "cls": "rounded-full bg-brand-amber/10 px-2.5 py-0.5 text-"
+     },
+     {
+      "txt": "Baca Chapter 1",
+      "ratio": 4.41,
+      "need": 4.5,
+      "px": 13,
+      "weight": "700",
+      "color": "rgb(241, 244, 247)",
+      "bg": "rgb(0,119,182)",
+      "cls": "flex-1 rounded-xl bg-brand-amber py-2.5 text-cente"
+     },
+     {
+      "txt": "Maraton",
+      "ratio": 4.41,
+      "need": 4.5,
+      "px": 13,
+      "weight": "600",
+      "color": "rgb(0, 119, 182)",
+      "bg": "rgb(241,244,247)",
+      "cls": "rounded-xl border border-brand-amber-dim px-3.5 py"
+     },
+     {
+      "txt": "(1216)",
+      "ratio": 4.15,
+      "need": 4.5,
+      "px": 13,
+      "weight": "600",
+      "color": "rgb(111, 118, 129)",
+      "bg": "rgb(241,244,247)",
+      "cls": "text-ink-500"
+     }
+    ]
+   }
+  },
+  "cta": {
+   "h": 100.5,
+   "kids": [
+    {
+     "t": "Baca Chapter 1",
+     "w": 46.5,
+     "h": 78.5
+    },
+    {
+     "t": "Unduh",
+     "w": 89,
+     "h": 78.5
+    },
+    {
+     "t": "Maraton",
+     "w": 78.3,
+     "h": 78.5
+    },
+    {
+     "t": "Favorit",
+     "w": 87.8,
+     "h": 78.5
+    }
+   ]
+  }
+ },
+ "sm-360": {
+  "audit": {
+   "viewport": {
+    "w": 360,
+    "h": 640,
+    "sw": 360,
+    "sh": 2791
+   },
+   "docOverflowX": 0,
+   "overflow": {
+    "count": 0,
+    "unclipped": [],
+    "items": []
+   },
+   "smallTargets": {
+    "count": 2,
+    "items": [
+     {
+      "tag": "a",
+      "w": 125,
+      "h": 23,
+      "label": "Komik Hub",
+      "cls": "flex items-center"
+     },
+     {
+      "tag": "a",
+      "w": 60.2,
+      "h": 16,
+      "label": "\u2190 Beranda",
+      "cls": "text-[12px] font-medium text-ink-400 hover:text-ink-200"
+     }
+    ]
+   },
+   "clippedText": {
+    "count": 0,
+    "items": []
+   },
+   "bars": [
+    {
+     "tag": "header",
+     "pos": "fixed",
+     "top": 0,
+     "bottom": 57,
+     "h": 57,
+     "z": "40",
+     "cls": "fixed inset-x-0 top-0 z-40 border-b border-ink-800 bg-ink-950/95 backd"
+    },
+    {
+     "tag": "div",
+     "pos": "sticky",
+     "top": 325.8,
+     "bottom": 426.3,
+     "h": 100.5,
+     "z": "30",
+     "cls": "sticky top-14 z-30 border-y border-ink-800 bg-ink-950/95 px-4 py-2.5 b"
+    },
+    {
+     "tag": "nav",
+     "pos": "fixed",
+     "top": 588.3,
+     "bottom": 640,
+     "h": 51.8,
+     "z": "40",
+     "cls": "fixed inset-x-0 bottom-0 z-40 border-t border-ink-800 bg-ink-950/95 pb"
+    }
+   ],
+   "focusableCount": 54,
+   "headings": [
+    {
+     "lvl": 1,
+     "txt": "One Piece"
+    },
+    {
+     "lvl": 2,
+     "txt": "Sinopsis"
+    },
+    {
+     "lvl": 2,
+     "txt": "Chapter (1216)"
+    }
+   ],
+   "images": [
+    {
+     "src": "http://127.0.0.1:8788/logo-komik-hub.png",
+     "alt": "Komik Hub",
+     "natural": 375,
+     "w": 125,
+     "h": 23,
+     "complete": true
+    },
+    {
+     "src": "http://127.0.0.1:8788/logo-komik-hub-light.png",
+     "alt": "",
+     "natural": 375,
+     "w": 0,
+     "h": 0,
+     "complete": true
+    },
+    {
+     "src": "omik-one-piece-indo/manga_img_horizontal-Manga-One-Piece.jpg",
+     "alt": "",
+     "natural": 868,
+     "w": 360,
+     "h": 224,
+     "complete": true
+    },
+    {
+     "src": "nga/komik-one-piece-indo/manga_thumbnail-Komik-One-Piece.jpg",
+     "alt": "One Piece",
+     "natural": 764,
+     "w": 110,
+     "h": 147,
+     "complete": true
+    }
+   ],
+   "lowContrast": {
+    "count": 8,
+    "items": [
+     {
+      "txt": "4/4",
+      "ratio": 4.15,
+      "need": 4.5,
+      "px": 11.5,
+      "weight": "700",
+      "color": "rgb(111, 118, 129)",
+      "bg": "rgb(241,244,247)",
+      "cls": "tabular-nums"
+     },
+     {
+      "txt": "Komiku",
+      "ratio": 3.14,
+      "need": 4.5,
+      "px": 11.5,
+      "weight": "400",
+      "color": "rgb(138, 146, 157)",
+      "bg": "rgb(255,255,255)",
+      "cls": "text-ink-400"
+     },
+     {
+      "txt": "\u2190 Beranda",
+      "ratio": 2.85,
+      "need": 4.5,
+      "px": 12,
+      "weight": "500",
+      "color": "rgb(138, 146, 157)",
+      "bg": "rgb(241,244,247)",
+      "cls": "text-[12px] font-medium text-ink-400 hover:text-in"
+     },
+     {
+      "txt": "Penulis",
+      "ratio": 4.15,
+      "need": 4.5,
+      "px": 12,
+      "weight": "400",
+      "color": "rgb(111, 118, 129)",
+      "bg": "rgb(241,244,247)",
+      "cls": "w-16 shrink-0 text-ink-500"
+     },
+     {
+      "txt": "Action",
+      "ratio": 4.41,
+      "need": 4.5,
+      "px": 10.5,
+      "weight": "600",
+      "color": "rgb(0, 119, 182)",
+      "bg": "rgb(241,244,247)",
+      "cls": "rounded-full bg-brand-amber/10 px-2.5 py-0.5 text-"
+     },
+     {
+      "txt": "Baca Chapter 1",
+      "ratio": 4.41,
+      "need": 4.5,
+      "px": 13,
+      "weight": "700",
+      "color": "rgb(241, 244, 247)",
+      "bg": "rgb(0,119,182)",
+      "cls": "flex-1 rounded-xl bg-brand-amber py-2.5 text-cente"
+     },
+     {
+      "txt": "Maraton",
+      "ratio": 4.41,
+      "need": 4.5,
+      "px": 13,
+      "weight": "600",
+      "color": "rgb(0, 119, 182)",
+      "bg": "rgb(241,244,247)",
+      "cls": "rounded-xl border border-brand-amber-dim px-3.5 py"
+     },
+     {
+      "txt": "(1216)",
+      "ratio": 4.15,
+      "need": 4.5,
+      "px": 13,
+      "weight": "600",
+      "color": "rgb(111, 118, 129)",
+      "bg": "rgb(241,244,247)",
+      "cls": "text-ink-500"
+     }
+    ]
+   }
+  },
+  "cta": {
+   "h": 100.5,
+   "kids": [
+    {
+     "t": "Baca Chapter 1",
+     "w": 48.9,
+     "h": 78.5
+    },
+    {
+     "t": "Unduh",
+     "w": 89,
+     "h": 78.5
+    },
+    {
+     "t": "Maraton",
+     "w": 78.3,
+     "h": 78.5
+    },
+    {
+     "t": "Favorit",
+     "w": 87.8,
+     "h": 78.5
+    }
+   ]
+  }
+ },
+ "sm-390": {
+  "audit": {
+   "viewport": {
+    "w": 390,
+    "h": 844,
+    "sw": 390,
+    "sh": 2705
+   },
+   "docOverflowX": 0,
+   "overflow": {
+    "count": 0,
+    "unclipped": [],
+    "items": []
+   },
+   "smallTargets": {
+    "count": 2,
+    "items": [
+     {
+      "tag": "a",
+      "w": 125,
+      "h": 23,
+      "label": "Komik Hub",
+      "cls": "flex items-center"
+     },
+     {
+      "tag": "a",
+      "w": 60.2,
+      "h": 16,
+      "label": "\u2190 Beranda",
+      "cls": "text-[12px] font-medium text-ink-400 hover:text-ink-200"
+     }
+    ]
+   },
+   "clippedText": {
+    "count": 0,
+    "items": []
+   },
+   "bars": [
+    {
+     "tag": "header",
+     "pos": "fixed",
+     "top": 0,
+     "bottom": 57,
+     "h": 57,
+     "z": "40",
+     "cls": "fixed inset-x-0 top-0 z-40 border-b border-ink-800 bg-ink-950/95 backd"
+    },
+    {
+     "tag": "div",
+     "pos": "sticky",
+     "top": 300,
+     "bottom": 381,
+     "h": 81,
+     "z": "30",
+     "cls": "sticky top-14 z-30 border-y border-ink-800 bg-ink-950/95 px-4 py-2.5 b"
+    },
+    {
+     "tag": "nav",
+     "pos": "fixed",
+     "top": 792.3,
+     "bottom": 844,
+     "h": 51.8,
+     "z": "40",
+     "cls": "fixed inset-x-0 bottom-0 z-40 border-t border-ink-800 bg-ink-950/95 pb"
+    }
+   ],
+   "focusableCount": 54,
+   "headings": [
+    {
+     "lvl": 1,
+     "txt": "One Piece"
+    },
+    {
+     "lvl": 2,
+     "txt": "Sinopsis"
+    },
+    {
+     "lvl": 2,
+     "txt": "Chapter (1216)"
+    }
+   ],
+   "images": [
+    {
+     "src": "http://127.0.0.1:8788/logo-komik-hub.png",
+     "alt": "Komik Hub",
+     "natural": 375,
+     "w": 125,
+     "h": 23,
+     "complete": true
+    },
+    {
+     "src": "http://127.0.0.1:8788/logo-komik-hub-light.png",
+     "alt": "",
+     "natural": 375,
+     "w": 0,
+     "h": 0,
+     "complete": true
+    },
+    {
+     "src": "omik-one-piece-indo/manga_img_horizontal-Manga-One-Piece.jpg",
+     "alt": "",
+     "natural": 868,
+     "w": 390,
+     "h": 224,
+     "complete": true
+    },
+    {
+     "src": "nga/komik-one-piece-indo/manga_thumbnail-Komik-One-Piece.jpg",
+     "alt": "One Piece",
+     "natural": 764,
+     "w": 110,
+     "h": 147,
+     "complete": true
+    }
+   ],
+   "lowContrast": {
+    "count": 8,
+    "items": [
+     {
+      "txt": "4/4",
+      "ratio": 4.15,
+      "need": 4.5,
+      "px": 11.5,
+      "weight": "700",
+      "color": "rgb(111, 118, 129)",
+      "bg": "rgb(241,244,247)",
+      "cls": "tabular-nums"
+     },
+     {
+      "txt": "Komiku",
+      "ratio": 3.14,
+      "need": 4.5,
+      "px": 11.5,
+      "weight": "400",
+      "color": "rgb(138, 146, 157)",
+      "bg": "rgb(255,255,255)",
+      "cls": "text-ink-400"
+     },
+     {
+      "txt": "\u2190 Beranda",
+      "ratio": 2.85,
+      "need": 4.5,
+      "px": 12,
+      "weight": "500",
+      "color": "rgb(138, 146, 157)",
+      "bg": "rgb(241,244,247)",
+      "cls": "text-[12px] font-medium text-ink-400 hover:text-in"
+     },
+     {
+      "txt": "Penulis",
+      "ratio": 4.15,
+      "need": 4.5,
+      "px": 12,
+      "weight": "400",
+      "color": "rgb(111, 118, 129)",
+      "bg": "rgb(241,244,247)",
+      "cls": "w-16 shrink-0 text-ink-500"
+     },
+     {
+      "txt": "Action",
+      "ratio": 4.41,
+      "need": 4.5,
+      "px": 10.5,
+      "weight": "600",
+      "color": "rgb(0, 119, 182)",
+      "bg": "rgb(241,244,247)",
+      "cls": "rounded-full bg-brand-amber/10 px-2.5 py-0.5 text-"
+     },
+     {
+      "txt": "Baca Chapter 1",
+      "ratio": 4.41,
+      "need": 4.5,
+      "px": 13,
+      "weight": "700",
+      "color": "rgb(241, 244, 247)",
+      "bg": "rgb(0,119,182)",
+      "cls": "flex-1 rounded-xl bg-brand-amber py-2.5 text-cente"
+     },
+     {
+      "txt": "Maraton",
+      "ratio": 4.41,
+      "need": 4.5,
+      "px": 13,
+      "weight": "600",
+      "color": "rgb(0, 119, 182)",
+      "bg": "rgb(241,244,247)",
+      "cls": "rounded-xl border border-brand-amber-dim px-3.5 py"
+     },
+     {
+      "txt": "(1216)",
+      "ratio": 4.15,
+      "need": 4.5,
+      "px": 13,
+      "weight": "600",
+      "color": "rgb(111, 118, 129)",
+      "bg": "rgb(241,244,247)",
+      "cls": "text-ink-500"
+     }
+    ]
+   }
+  },
+  "cta": {
+   "h": 81,
+   "kids": [
+    {
+     "t": "Baca Chapter 1",
+     "w": 78.9,
+     "h": 59
+    },
+    {
+     "t": "Unduh",
+     "w": 89,
+     "h": 59
+    },
+    {
+     "t": "Maraton",
+     "w": 78.3,
+     "h": 59
+    },
+    {
+     "t": "Favorit",
+     "w": 87.8,
+     "h": 59
+    }
+   ]
+  }
+ },
+ "md-768": {
+  "audit": {
+   "viewport": {
+    "w": 768,
+    "h": 1024,
+    "sw": 768,
+    "sh": 2544
+   },
+   "docOverflowX": 0,
+   "overflow": {
+    "count": 0,
+    "unclipped": [],
+    "items": []
+   },
+   "smallTargets": {
+    "count": 2,
+    "items": [
+     {
+      "tag": "a",
+      "w": 125,
+      "h": 23,
+      "label": "Komik Hub",
+      "cls": "flex items-center"
+     },
+     {
+      "tag": "a",
+      "w": 60.2,
+      "h": 16,
+      "label": "\u2190 Beranda",
+      "cls": "text-[12px] font-medium text-ink-400 hover:text-ink-200"
+     }
+    ]
+   },
+   "clippedText": {
+    "count": 0,
+    "items": []
+   },
+   "bars": [
+    {
+     "tag": "header",
+     "pos": "fixed",
+     "top": 0,
+     "bottom": 57,
+     "h": 57,
+     "z": "40",
+     "cls": "fixed inset-x-0 top-0 z-40 border-b border-ink-800 bg-ink-950/95 backd"
+    },
+    {
+     "tag": "div",
+     "pos": "sticky",
+     "top": 298.7,
+     "bottom": 362.2,
+     "h": 63.5,
+     "z": "30",
+     "cls": "sticky top-14 z-30 border-y border-ink-800 bg-ink-950/95 px-4 py-2.5 b"
+    },
+    {
+     "tag": "nav",
+     "pos": "fixed",
+     "top": 972.3,
+     "bottom": 1024,
+     "h": 51.8,
+     "z": "40",
+     "cls": "fixed inset-x-0 bottom-0 z-40 border-t border-ink-800 bg-ink-950/95 pb"
+    }
+   ],
+   "focusableCount": 56,
+   "headings": [
+    {
+     "lvl": 1,
+     "txt": "One Piece"
+    },
+    {
+     "lvl": 2,
+     "txt": "Sinopsis"
+    },
+    {
+     "lvl": 2,
+     "txt": "Chapter (1216)"
+    }
+   ],
+   "images": [
+    {
+     "src": "http://127.0.0.1:8788/logo-komik-hub.png",
+     "alt": "Komik Hub",
+     "natural": 375,
+     "w": 125,
+     "h": 23,
+     "complete": true
+    },
+    {
+     "src": "http://127.0.0.1:8788/logo-komik-hub-light.png",
+     "alt": "",
+     "natural": 375,
+     "w": 0,
+     "h": 0,
+     "complete": true
+    },
+    {
+     "src": "omik-one-piece-indo/manga_img_horizontal-Manga-One-Piece.jpg",
+     "alt": "",
+     "natural": 868,
+     "w": 768,
+     "h": 224,
+     "complete": true
+    },
+    {
+     "src": "nga/komik-one-piece-indo/manga_thumbnail-Komik-One-Piece.jpg",
+     "alt": "One Piece",
+     "natural": 764,
+     "w": 126,
+     "h": 169,
+     "complete": true
+    }
+   ],
+   "lowContrast": {
+    "count": 8,
+    "items": [
+     {
+      "txt": "4/4",
+      "ratio": 4.15,
+      "need": 4.5,
+      "px": 11.5,
+      "weight": "700",
+      "color": "rgb(111, 118, 129)",
+      "bg": "rgb(241,244,247)",
+      "cls": "tabular-nums"
+     },
+     {
+      "txt": "Komiku",
+      "ratio": 3.14,
+      "need": 4.5,
+      "px": 11.5,
+      "weight": "400",
+      "color": "rgb(138, 146, 157)",
+      "bg": "rgb(255,255,255)",
+      "cls": "text-ink-400"
+     },
+     {
+      "txt": "\u2190 Beranda",
+      "ratio": 2.85,
+      "need": 4.5,
+      "px": 12,
+      "weight": "500",
+      "color": "rgb(138, 146, 157)",
+      "bg": "rgb(241,244,247)",
+      "cls": "text-[12px] font-medium text-ink-400 hover:text-in"
+     },
+     {
+      "txt": "Penulis",
+      "ratio": 4.15,
+      "need": 4.5,
+      "px": 12,
+      "weight": "400",
+      "color": "rgb(111, 118, 129)",
+      "bg": "rgb(241,244,247)",
+      "cls": "w-16 shrink-0 text-ink-500"
+     },
+     {
+      "txt": "Action",
+      "ratio": 4.41,
+      "need": 4.5,
+      "px": 10.5,
+      "weight": "600",
+      "color": "rgb(0, 119, 182)",
+      "bg": "rgb(241,244,247)",
+      "cls": "rounded-full bg-brand-amber/10 px-2.5 py-0.5 text-"
+     },
+     {
+      "txt": "Baca Chapter 1",
+      "ratio": 4.41,
+      "need": 4.5,
+      "px": 13,
+      "weight": "700",
+      "color": "rgb(241, 244, 247)",
+      "bg": "rgb(0,119,182)",
+      "cls": "flex-1 rounded-xl bg-brand-amber py-2.5 text-cente"
+     },
+     {
+      "txt": "Maraton",
+      "ratio": 4.41,
+      "need": 4.5,
+      "px": 13,
+      "weight": "600",
+      "color": "rgb(0, 119, 182)",
+      "bg": "rgb(241,244,247)",
+      "cls": "rounded-xl border border-brand-amber-dim px-3.5 py"
+     },
+     {
+      "txt": "(1216)",
+      "ratio": 4.15,
+      "need": 4.5,
+      "px": 13,
+      "weight": "600",
+      "color": "rgb(111, 118, 129)",
+      "bg": "rgb(241,244,247)",
+      "cls": "text-ink-500"
+     }
+    ]
+   }
+  },
+  "cta": {
+   "h": 63.5,
+   "kids": [
+    {
+     "t": "Baca Chapter 1",
+     "w": 456.9,
+     "h": 41.5
+    },
+    {
+     "t": "Unduh",
+     "w": 89,
+     "h": 41.5
+    },
+    {
+     "t": "Maraton",
+     "w": 78.3,
+     "h": 41.5
+    },
+    {
+     "t": "Favorit",
+     "w": 87.8,
+     "h": 41.5
+    }
+   ]
+  }
+ },
+ "xl-1280": {
+  "audit": {
+   "viewport": {
+    "w": 1280,
+    "h": 800,
+    "sw": 1280,
+    "sh": 2544
+   },
+   "docOverflowX": 0,
+   "overflow": {
+    "count": 0,
+    "unclipped": [],
+    "items": []
+   },
+   "smallTargets": {
+    "count": 2,
+    "items": [
+     {
+      "tag": "a",
+      "w": 125,
+      "h": 23,
+      "label": "Komik Hub",
+      "cls": "flex items-center"
+     },
+     {
+      "tag": "a",
+      "w": 60.2,
+      "h": 16,
+      "label": "\u2190 Beranda",
+      "cls": "text-[12px] font-medium text-ink-400 hover:text-ink-200"
+     }
+    ]
+   },
+   "clippedText": {
+    "count": 0,
+    "items": []
+   },
+   "bars": [
+    {
+     "tag": "header",
+     "pos": "fixed",
+     "top": 0,
+     "bottom": 57,
+     "h": 57,
+     "z": "40",
+     "cls": "fixed inset-x-0 top-0 z-40 border-b border-ink-800 bg-ink-950/95 backd"
+    },
+    {
+     "tag": "div",
+     "pos": "sticky",
+     "top": 298.7,
+     "bottom": 362.2,
+     "h": 63.5,
+     "z": "30",
+     "cls": "sticky top-14 z-30 border-y border-ink-800 bg-ink-950/95 px-4 py-2.5 b"
+    },
+    {
+     "tag": "nav",
+     "pos": "fixed",
+     "top": 748.3,
+     "bottom": 800,
+     "h": 51.8,
+     "z": "40",
+     "cls": "fixed inset-x-0 bottom-0 z-40 border-t border-ink-800 bg-ink-950/95 pb"
+    }
+   ],
+   "focusableCount": 56,
+   "headings": [
+    {
+     "lvl": 1,
+     "txt": "One Piece"
+    },
+    {
+     "lvl": 2,
+     "txt": "Sinopsis"
+    },
+    {
+     "lvl": 2,
+     "txt": "Chapter (1216)"
+    }
+   ],
+   "images": [
+    {
+     "src": "http://127.0.0.1:8788/logo-komik-hub.png",
+     "alt": "Komik Hub",
+     "natural": 375,
+     "w": 125,
+     "h": 23,
+     "complete": true
+    },
+    {
+     "src": "http://127.0.0.1:8788/logo-komik-hub-light.png",
+     "alt": "",
+     "natural": 375,
+     "w": 0,
+     "h": 0,
+     "complete": true
+    },
+    {
+     "src": "omik-one-piece-indo/manga_img_horizontal-Manga-One-Piece.jpg",
+     "alt": "",
+     "natural": 868,
+     "w": 768,
+     "h": 224,
+     "complete": true
+    },
+    {
+     "src": "nga/komik-one-piece-indo/manga_thumbnail-Komik-One-Piece.jpg",
+     "alt": "One Piece",
+     "natural": 764,
+     "w": 126,
+     "h": 169,
+     "complete": true
+    }
+   ],
+   "lowContrast": {
+    "count": 8,
+    "items": [
+     {
+      "txt": "4/4",
+      "ratio": 4.15,
+      "need": 4.5,
+      "px": 11.5,
+      "weight": "700",
+      "color": "rgb(111, 118, 129)",
+      "bg": "rgb(241,244,247)",
+      "cls": "tabular-nums"
+     },
+     {
+      "txt": "Komiku",
+      "ratio": 3.14,
+      "need": 4.5,
+      "px": 11.5,
+      "weight": "400",
+      "color": "rgb(138, 146, 157)",
+      "bg": "rgb(255,255,255)",
+      "cls": "text-ink-400"
+     },
+     {
+      "txt": "\u2190 Beranda",
+      "ratio": 2.85,
+      "need": 4.5,
+      "px": 12,
+      "weight": "500",
+      "color": "rgb(138, 146, 157)",
+      "bg": "rgb(241,244,247)",
+      "cls": "text-[12px] font-medium text-ink-400 hover:text-in"
+     },
+     {
+      "txt": "Penulis",
+      "ratio": 4.15,
+      "need": 4.5,
+      "px": 12,
+      "weight": "400",
+      "color": "rgb(111, 118, 129)",
+      "bg": "rgb(241,244,247)",
+      "cls": "w-16 shrink-0 text-ink-500"
+     },
+     {
+      "txt": "Action",
+      "ratio": 4.41,
+      "need": 4.5,
+      "px": 10.5,
+      "weight": "600",
+      "color": "rgb(0, 119, 182)",
+      "bg": "rgb(241,244,247)",
+      "cls": "rounded-full bg-brand-amber/10 px-2.5 py-0.5 text-"
+     },
+     {
+      "txt": "Baca Chapter 1",
+      "ratio": 4.41,
+      "need": 4.5,
+      "px": 13,
+      "weight": "700",
+      "color": "rgb(241, 244, 247)",
+      "bg": "rgb(0,119,182)",
+      "cls": "flex-1 rounded-xl bg-brand-amber py-2.5 text-cente"
+     },
+     {
+      "txt": "Maraton",
+      "ratio": 4.41,
+      "need": 4.5,
+      "px": 13,
+      "weight": "600",
+      "color": "rgb(0, 119, 182)",
+      "bg": "rgb(241,244,247)",
+      "cls": "rounded-xl border border-brand-amber-dim px-3.5 py"
+     },
+     {
+      "txt": "(1216)",
+      "ratio": 4.15,
+      "need": 4.5,
+      "px": 13,
+      "weight": "600",
+      "color": "rgb(111, 118, 129)",
+      "bg": "rgb(241,244,247)",
+      "cls": "text-ink-500"
+     }
+    ]
+   }
+  },
+  "cta": {
+   "h": 63.5,
+   "kids": [
+    {
+     "t": "Baca Chapter 1",
+     "w": 456.9,
+     "h": 41.5
+    },
+    {
+     "t": "Unduh",
+     "w": 89,
+     "h": 41.5
+    },
+    {
+     "t": "Maraton",
+     "w": 78.3,
+     "h": 41.5
+    },
+    {
+     "t": "Favorit",
+     "w": 87.8,
+     "h": 41.5
+    }
+   ]
+  }
+ }
+}

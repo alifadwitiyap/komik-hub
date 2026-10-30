@@ -1,0 +1,137 @@
+[
+ [
+  "xs-320",
+  {
+   "innerW": 288,
+   "kids": [
+    {
+     "t": "Baca Chapter 1",
+     "w": 46.5
+    },
+    {
+     "t": "Maraton",
+     "w": 78.3
+    },
+    {
+     "t": "Unduh",
+     "w": 87
+    },
+    {
+     "t": "Favorit",
+     "w": 87.8
+    }
+   ],
+   "gaps": 24,
+   "used": 323.6,
+   "overflowPx": 35.6
+  }
+ ],
+ [
+  "sm-360",
+  {
+   "innerW": 328,
+   "kids": [
+    {
+     "t": "Baca Chapter 1",
+     "w": 50.9
+    },
+    {
+     "t": "Maraton",
+     "w": 78.3
+    },
+    {
+     "t": "Unduh",
+     "w": 87
+    },
+    {
+     "t": "Favorit",
+     "w": 87.8
+    }
+   ],
+   "gaps": 24,
+   "used": 328,
+   "overflowPx": 0
+  }
+ ],
+ [
+  "sm-390",
+  {
+   "innerW": 358,
+   "kids": [
+    {
+     "t": "Baca Chapter 1",
+     "w": 80.9
+    },
+    {
+     "t": "Maraton",
+     "w": 78.3
+    },
+    {
+     "t": "Unduh",
+     "w": 87
+    },
+    {
+     "t": "Favorit",
+     "w": 87.8
+    }
+   ],
+   "gaps": 24,
+   "used": 358,
+   "overflowPx": 0
+  }
+ ],
+ [
+  "sm-412",
+  {
+   "innerW": 380,
+   "kids": [
+    {
+     "t": "Baca Chapter 1",
+     "w": 102.9
+    },
+    {
+     "t": "Maraton",
+     "w": 78.3
+    },
+    {
+     "t": "Unduh",
+     "w": 87
+    },
+    {
+     "t": "Favorit",
+     "w": 87.8
+    }
+   ],
+   "gaps": 24,
+   "used": 380,
+   "overflowPx": 0
+  }
+ ],
+ [
+  "md-768",
+  {
+   "innerW": 736,
+   "kids": [
+    {
+     "t": "Baca Chapter 1",
+     "w": 458.9
+    },
+    {
+     "t": "Maraton",
+     "w": 78.3
+    },
+    {
+     "t": "Unduh",
+     "w": 87
+    },
+    {
+     "t": "Favorit",
+     "w": 87.8
+    }
+   ],
+   "gaps": 24,
+   "used": 736,
+   "overflowPx": 0
+  }
+ ]
+]

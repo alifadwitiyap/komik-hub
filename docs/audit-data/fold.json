@@ -1,0 +1,18 @@
+{
+ "judul-pendek": {
+  "stickyBottom": 378,
+  "h2Top": 378,
+  "ulTop": 405,
+  "rowsVisibleAboveFold": 3,
+  "navTop": 516,
+  "viewportH": 568
+ },
+ "judul-panjang": {
+  "stickyBottom": 485,
+  "h2Top": 485,
+  "ulTop": 513,
+  "rowsVisibleAboveFold": 1,
+  "navTop": 516,
+  "viewportH": 568
+ }
+}
