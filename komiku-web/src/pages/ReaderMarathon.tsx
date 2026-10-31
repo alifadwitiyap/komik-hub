@@ -4,6 +4,7 @@ import ChapterPickerSheet from '../components/ChapterPickerSheet'
 import ComicImage from '../components/ComicImage'
 import ReaderFooter from '../components/ReaderFooter'
 import ReaderFullscreenButton from '../components/ReaderFullscreenButton'
+import ReaderMarathonActions from '../components/ReaderMarathonActions'
 import ReaderMarathonToggle from '../components/ReaderMarathonToggle'
 import ReaderMenu from '../components/ReaderMenu'
 import ReaderSettingsSheet from '../components/ReaderSettingsSheet'
@@ -664,31 +665,30 @@ export default function ReaderMarathon() {
         active={true}
         visible={chrome.visible}
         onToggle={() => {
-          const target = curBlock ?? head
-          if (target) {
-            // Posisi baca sebenarnya: ambil dari sesi maraton TERSIMPAN
-            // (effect save menulis pageId/offsetRatio saat scroll — posisi
-            // terakhir yang dilihat). JANGAN baca state readInBlock/scrollY
-            // saat klik: scroll ke atas untuk memunculkan chrome (tombol)
-            // sudah mengubah nilai itu.
-            const saved = marathon.forChapter(head?.chapterId ?? target.chapterId)
-            const pageId = saved?.pageId ?? target.images[readInBlock - 1] ?? target.images[0]
-            if (pageId) {
-              gotoReader({
-                seriesId: target.seriesId ?? target.chapterId,
-                seriesTitle: target.seriesTitle,
-                chapterId: target.chapterId,
-                chapterName: target.chapterName,
+          const saved = marathon.forChapter(head?.chapterId ?? chapterId)
+          // Blok aktif sebenarnya dari sesi tersimpan (saved.activeKey) — bukan
+          // curBlock yang bisa stale karena scroll ke atas untuk memunculkan
+          // chrome mereset readBlock ke 0.
+          const activeChapterId = saved?.activeKey ?? curBlock?.chapterId ?? head?.chapterId ?? chapterId
+          // Posisi baca: dari sesi tersimpan. `saved.pageId` sudah milik blok
+          // aktif; fallback ke halaman pertama blok aktif.
+          const pageId = saved?.pageId ?? (curBlock?.images[readInBlock - 1] ?? curBlock?.images[0])
+          if (pageId) {
+            gotoReader(
+              {
+                seriesId: curBlock?.seriesId ?? head?.seriesId ?? chapterId,
+                seriesTitle: curBlock?.seriesTitle ?? head?.seriesTitle ?? null,
+                chapterId: activeChapterId,
+                chapterName: curBlock?.chapterName ?? head?.chapterName ?? '',
                 page: Math.max(0, readInBlock - 1),
-                progress: readInBlock / Math.max(1, target.images.length),
+                progress: readInBlock / Math.max(1, curBlock?.images.length ?? 1),
                 pageId,
                 offsetRatio: saved?.offsetRatio ?? 0,
-                source: target.source ?? null,
-                handle: target.handle || null,
-              })
-            } else {
-              gotoReader()
-            }
+                source: curBlock?.source ?? head?.source ?? null,
+                handle: curBlock?.handle ?? head?.handle ?? null,
+              },
+              activeChapterId,
+            )
           } else {
             gotoReader()
           }
@@ -885,26 +885,30 @@ export default function ReaderMarathon() {
         onClose={() => setSheetOpen(false)}
         onChange={onChange}
         onReset={onReset}
-        onRestartMarathon={() => {
-          // "Mulai dari awal": buang posisi sesi ini + seluruh sesi series ini,
-          // lalu muat ulang rantai dari blok pertama (posisi tidak dipulihkan
-          // karena kuncinya sudah tidak ada).
-          setSheetOpen(false)
-          marathon.clearSeries(handleOf(chapterId) ?? null)
-          marathon.clear(chapterId)
-          pendingRef.current = null
-          setWantBlocks(0)
-          setRestoreKey(null)
-          window.scrollTo({ top: 0 })
-          setBlocks([])
-          setTailIdx(-1)
-          setSettled(new Set())
-          fetchedRef.current = new Set()
-          const ctrl = new AbortController()
-          loadChapter(chapterId, ctrl.signal)
-            .then((d) => pushBlock(toBlock(d, params.handle)))
-            .catch((e: Error) => e.name !== 'AbortError' && setError(e.message))
-        }}
+        marathonActions={
+          <ReaderMarathonActions
+            onRestartMarathon={() => {
+              // "Mulai dari awal": buang posisi sesi ini + seluruh sesi series ini,
+              // lalu muat ulang rantai dari blok pertama (posisi tidak dipulihkan
+              // karena kuncinya sudah tidak ada).
+              setSheetOpen(false)
+              marathon.clearSeries(handleOf(chapterId) ?? null)
+              marathon.clear(chapterId)
+              pendingRef.current = null
+              setWantBlocks(0)
+              setRestoreKey(null)
+              window.scrollTo({ top: 0 })
+              setBlocks([])
+              setTailIdx(-1)
+              setSettled(new Set())
+              fetchedRef.current = new Set()
+              const ctrl = new AbortController()
+              loadChapter(chapterId, ctrl.signal)
+                .then((d) => pushBlock(toBlock(d, params.handle)))
+                .catch((e: Error) => e.name !== 'AbortError' && setError(e.message))
+            }}
+          />
+        }
       />
     </div>
   )

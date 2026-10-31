@@ -49,9 +49,9 @@ export function useModeSwitch(
   )
 
   const gotoReader = useCallback(
-    (prog?: Omit<ProgressEntry, 'at'>) => {
+    (prog?: Omit<ProgressEntry, 'at'>, chapterIdOverride?: string) => {
       if (prog) save(prog)
-      navigate(readerHref(targetBlock?.chapterId ?? chapterId))
+      navigate(readerHref(chapterIdOverride ?? targetBlock?.chapterId ?? chapterId))
     },
     [chapterId, targetBlock, save, navigate],
   )

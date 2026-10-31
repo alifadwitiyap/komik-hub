@@ -17,20 +17,10 @@ interface ReaderSettingsSheetProps {
   onClose: () => void
   onChange: (patch: Partial<ReaderSettings>) => void
   onReset: () => void
-  /** Ekspor chapter saat ini sebagai PDF (server-side → tab Unduhan). */
-  onExportPdf?: () => void
-  /** Simpan chapter saat ini ke cache offline (service worker). */
-  onOfflineDownload?: () => void
-  /** true = aksi PDF sedang berjalan (disable tombol). */
-  exportingPdf?: boolean
-  /** true = aksi unduh offline sedang berjalan (disable tombol). */
-  downloading?: boolean
-  /**
-   * Mode maraton: buang posisi tersimpan sesi ini lalu mulai rantai dari
-   * blok pertama. Tanpa ini, membuka maraton selalu melanjutkan posisi
-   * terakhir dan pembaca tidak punya jalan kembali ke awal.
-   */
-  onRestartMarathon?: () => void
+  /** Slot: aksi unduhan (Ekspor PDF / Simpan offline). */
+  downloadActions?: React.ReactNode
+  /** Slot: seksi Maraton (Mulai maraton dari awal). */
+  marathonActions?: React.ReactNode
 }
 
 /**
@@ -45,11 +35,8 @@ export default function ReaderSettingsSheet({
   onClose,
   onChange,
   onReset,
-  onExportPdf,
-  onOfflineDownload,
-  exportingPdf,
-  downloading,
-  onRestartMarathon,
+  downloadActions,
+  marathonActions,
 }: ReaderSettingsSheetProps) {
   if (!open) return null
   return (
@@ -157,53 +144,9 @@ export default function ReaderSettingsSheet({
           ))}
         </div>
 
-        {(onExportPdf || onOfflineDownload) && (
-          <>
-            <div className="mt-3 flex items-center gap-2 px-4">
-              <span className="h-px flex-1 bg-ink-800" />
-              <span className="text-[10.5px] font-semibold uppercase tracking-wide text-ink-500">
-                Unduhan
-              </span>
-              <span className="h-px flex-1 bg-ink-800" />
-            </div>
-            {onExportPdf && (
-              <Row
-                icon={<IconBolt className="size-4" />}
-                label={exportingPdf ? 'Membuat PDF…' : 'Ekspor PDF'}
-                value={exportingPdf ? 'Mohon tunggu' : undefined}
-                disabled={exportingPdf}
-                onClick={onExportPdf}
-              />
-            )}
-            {onOfflineDownload && (
-              <Row
-                icon={<IconBolt className="size-4" />}
-                label={downloading ? 'Mengunduh offline…' : 'Simpan untuk dibaca offline'}
-                value={downloading ? 'Mohon tunggu' : undefined}
-                disabled={downloading}
-                onClick={onOfflineDownload}
-              />
-            )}
-          </>
-        )}
+        {downloadActions}
 
-        {onRestartMarathon && (
-          <>
-            <div className="mt-3 flex items-center gap-2 px-4">
-              <span className="h-px flex-1 bg-ink-800" />
-              <span className="text-[10.5px] font-semibold uppercase tracking-wide text-ink-500">
-                Maraton
-              </span>
-              <span className="h-px flex-1 bg-ink-800" />
-            </div>
-            <Row
-              icon={<IconPersonRunning className="size-4" />}
-              label="Mulai maraton dari awal"
-              value="Hapus posisi tersimpan"
-              onClick={onRestartMarathon}
-            />
-          </>
-        )}
+        {marathonActions}
 
         <div className="mt-2 px-4">
           <button
@@ -218,7 +161,7 @@ export default function ReaderSettingsSheet({
   )
 }
 
-function Row({
+export function Row({
   icon,
   label,
   value,

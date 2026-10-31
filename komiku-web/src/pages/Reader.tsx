@@ -4,6 +4,7 @@ import ChapterPickerSheet from '../components/ChapterPickerSheet'
 import ComicImage from '../components/ComicImage'
 import HeartButton from '../components/HeartButton'
 import ReaderFooter from '../components/ReaderFooter'
+import ReaderDownloadActions from '../components/ReaderDownloadActions'
 import ReaderFullscreenButton from '../components/ReaderFullscreenButton'
 import ReaderMarathonToggle from '../components/ReaderMarathonToggle'
 import ReaderMenu from '../components/ReaderMenu'
@@ -736,10 +737,14 @@ export default function Reader() {
         onClose={() => setSheetOpen(false)}
         onChange={onChange}
         onReset={onReset}
-        onExportPdf={parseUnifiedKey(chapterId) ? onExportPdf : undefined}
-        onOfflineDownload={onOfflineDownload}
-        exportingPdf={exportingPdf}
-        downloading={downloading}
+        downloadActions={
+          <ReaderDownloadActions
+            exportingPdf={exportingPdf}
+            downloading={downloading}
+            onExportPdf={parseUnifiedKey(chapterId) ? onExportPdf : undefined}
+            onOfflineDownload={onOfflineDownload}
+          />
+        }
       />
     </div>
   )
