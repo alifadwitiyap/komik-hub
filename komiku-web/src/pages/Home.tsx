@@ -8,7 +8,8 @@ import SourceBadge from '../components/SourceBadge'
 import HeartButton from '../components/HeartButton'
 import { IconBolt, IconMagnifyingGlass, IconRectangleHistory, IconRotateRight } from '../icons'
 import * as rakStore from '../rakStore'
-import { resumeHref } from '../readerSource'
+import { marathonHref, resumeHref } from '../readerSource'
+import { useMarathonMemory } from '../hooks/useMarathonMemory'
 import ContinueReading from '../components/ContinueReading'
 
 /**
@@ -34,6 +35,13 @@ export default function Home() {
   const [resume, setResume] = useState<rakStore.HistoryEntry | null>(() =>
     rakStore.listHistory()[0] ?? null,
   )
+  const marathon = useMarathonMemory()
+  // Tujuan FAB: kalau series terakhir dibaca punya sesi maraton tersimpan,
+  // lanjutkan RANTAI-nya (mode maraton) — bukan reader satu chapter.
+  const resumePos = resume ? marathon.forHandle(resume.handle) : null
+  const resumeTo = resumePos
+    ? marathonHref(resumePos.chapterKey)
+    : resumeHref(resume)
 
   useEffect(() => {
     const onRak = () => setResume(rakStore.listHistory()[0] ?? null)
@@ -198,9 +206,9 @@ export default function Home() {
       {/* ExtendedFAB replika fragment_home: kanan-bawah, di atas bottom nav.
           Titik masuk resume sekarang dari rak (sejarah[0]) — FAB disembunyikan
           kalau rak masih kosong. */}
-      {resume && resumeHref(resume) && (
+      {resume && resumeTo && (
         <Link
-          to={resumeHref(resume) as string}
+          to={resumeTo}
           aria-label="Lanjut baca"
           className="fixed bottom-24 right-4 z-30 flex items-center gap-2 rounded-2xl bg-brand-amber px-4 py-3.5 shadow-lg shadow-black/20 active:bg-brand-amber-soft"
         >
