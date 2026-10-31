@@ -15,7 +15,8 @@ import { useReaderSettings } from '../hooks/useReaderSettings'
 import { useChromeOnScroll } from '../hooks/useChromeOnScroll'
 import { useAutoFullscreen } from '../hooks/useAutoFullscreen'
 import { useMarathonMemory } from '../hooks/useMarathonMemory'
-import { anchorFrom, scrollYForAnchor } from '../pageMemory'
+import { anchorFrom } from '../pageMemory'
+import { measurePages, setScrollToAnchor } from '../readingPosition'
 import { handleOf } from '../marathonMemory'
 import type { ChapterResponse } from '../types'
 import { Empty } from '../App'
@@ -240,12 +241,8 @@ export default function ReaderMarathon() {
     }
     if (bi < 0) return false
     const el = root.querySelector<HTMLImageElement>(`img[data-b="${bi}"][data-page="${pi}"]`)
-    if (!el || el.offsetHeight === 0) return false
-    const top = el.getBoundingClientRect().top + window.scrollY
-    const target = scrollYForAnchor(offsetRatio, top, el.offsetHeight, window.innerHeight)
-    if (Math.abs(window.scrollY - target) > 1) window.scrollTo({ top: target })
-    // tinggi final hanya setelah halaman pemilik posisi selesai decode
-    return !!el.complete && el.naturalWidth > 0
+    if (!el) return false
+    return setScrollToAnchor(el, { offsetRatio })
   }, [blocks])
 
   useEffect(() => {
@@ -379,23 +376,19 @@ export default function ReaderMarathon() {
       if (pendingRef.current) return
       const root = flowRef.current
       if (!root) return
-      const imgs = Array.from(root.querySelectorAll<HTMLImageElement>('img[data-b]'))
       // Identitas halaman diambil dari DATA (blok+halaman → URL), bukan atribut
       // `src`: `ComicImage` belum memasang `src` untuk gambar yang jauh dari
       // layar, jadi membaca `src` akan kehilangan sebagian besar halaman dan
       // anchor jadi salah.
-      const pageIds: string[] = []
-      const pageTops: number[] = []
-      const pageHeights: number[] = []
-      for (const im of imgs) {
-        const bi = Number(im.dataset.b ?? '-1')
-        const pi = Number(im.dataset.page ?? '-1')
+      const geometry = measurePages(root, (el) => {
+        const bi = Number((el as HTMLElement).dataset.b ?? '-1')
+        const pi = Number((el as HTMLElement).dataset.page ?? '-1')
         const url = blocks[bi]?.images[pi]
-        if (!url || im.offsetHeight === 0) continue // belum terukur → lewati
-        pageIds.push(imgUrl(url))
-        pageTops.push(im.getBoundingClientRect().top + window.scrollY)
-        pageHeights.push(im.offsetHeight)
-      }
+        return url ? imgUrl(url) : null
+      })
+      const pageIds = geometry.map((g) => g.pageId)
+      const pageTops = geometry.map((g) => g.top)
+      const pageHeights = geometry.map((g) => g.height)
       if (pageIds.length === 0) return
       // anchor memakai kunci chapter blok PERTAMA sebagai identitas sesi;
       // anchorFrom hanya butuh nilai apa pun untuk chapterId.
@@ -668,26 +661,19 @@ export default function ReaderMarathon() {
             let pageId = target.images[readInBlock - 1] ?? target.images[0]
             const root = flowRef.current
             if (root) {
-              const imgs = Array.from(root.querySelectorAll<HTMLImageElement>('img[data-b]'))
-              const pageIds: string[] = []
-              const pageTops: number[] = []
-              const pageHeights: number[] = []
-              for (const im of imgs) {
-                const bi = Number(im.dataset.b ?? '-1')
-                const pi = Number(im.dataset.page ?? '-1')
+              const geometry = measurePages(root, (el) => {
+                const bi = Number((el as HTMLElement).dataset.b ?? '-1')
+                const pi = Number((el as HTMLElement).dataset.page ?? '-1')
                 const url = blocks[bi]?.images[pi]
-                if (!url || im.offsetHeight === 0) continue
-                pageIds.push(imgUrl(url))
-                pageTops.push(im.getBoundingClientRect().top + window.scrollY)
-                pageHeights.push(im.offsetHeight)
-              }
+                return url ? imgUrl(url) : null
+              })
               const anchor = anchorFrom(
                 target.chapterId,
-                pageIds,
+                geometry.map((g) => g.pageId),
                 window.scrollY,
                 window.innerHeight,
-                pageTops,
-                pageHeights,
+                geometry.map((g) => g.top),
+                geometry.map((g) => g.height),
               )
               if (anchor) {
                 offsetRatio = anchor.offsetRatio

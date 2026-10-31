@@ -22,8 +22,9 @@ import { Empty } from '../App'
 import { useProgress } from '../hooks/useProgress'
 import { useMarathonMemory } from '../hooks/useMarathonMemory'
 import { chapterNumberOf, markChapterRead } from '../readMarks'
-import { anchorFrom, scrollYForAnchor, usableAnchor } from '../pageMemory'
+import { anchorFrom, usableAnchor } from '../pageMemory'
 import type { ReadingAnchor } from '../pageMemory'
+import { measurePages, setScrollToAnchor } from '../readingPosition'
 import * as rakStore from '../rakStore'
 import {
   chapterKeyOf,
@@ -244,13 +245,8 @@ export default function Reader() {
   /** setel scroll ke anchor; return true kalau posisi sudah final */
   const apply = (idx: number, anchor: ReadingAnchor): boolean => {
     const el = flowRef.current?.querySelector<HTMLElement>(`[data-page="${idx}"]`)
-    if (!el || el.offsetHeight === 0) return false
-    const top = el.getBoundingClientRect().top + window.scrollY
-    const target = scrollYForAnchor(anchor.offsetRatio, top, el.offsetHeight, window.innerHeight)
-    if (Math.abs(window.scrollY - target) > 1) window.scrollTo({ top: target })
-    // tinggi baru pasti setelah halaman pemilik anchor selesai decode
-    const img = el instanceof HTMLImageElement ? el : el.querySelector('img')
-    return !!img?.complete && img.naturalWidth > 0
+    if (!el) return false
+    return setScrollToAnchor(el, anchor)
   }
 
   // ---- pulihkan posisi baca ------------------------------------------------
@@ -387,17 +383,10 @@ export default function Reader() {
       if (pending.current || !readyRef.current) return
       const flow = flowRef.current
       if (!flow) return
-      const els = flow.querySelectorAll<HTMLImageElement>('img[data-page]')
-      const pageIds: string[] = []
-      const pageTops: number[] = []
-      const pageHeights: number[] = []
-      for (const el of els) {
-        const src = el.getAttribute('src')
-        if (!src || el.offsetHeight === 0) continue // belum terukur → lewati
-        pageIds.push(src)
-        pageTops.push(el.getBoundingClientRect().top + window.scrollY)
-        pageHeights.push(el.offsetHeight)
-      }
+      const geometry = measurePages(flow, (el) => el.getAttribute('src'), 'img[data-page]')
+      const pageIds = geometry.map((g) => g.pageId)
+      const pageTops = geometry.map((g) => g.top)
+      const pageHeights = geometry.map((g) => g.height)
       const anchor = anchorFrom(
         chapterId,
         pageIds,
