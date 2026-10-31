@@ -15,19 +15,19 @@ import { useReaderSettings } from '../hooks/useReaderSettings'
 import { useChromeOnScroll } from '../hooks/useChromeOnScroll'
 import { useAutoFullscreen } from '../hooks/useAutoFullscreen'
 import { useMarathonMemory } from '../hooks/useMarathonMemory'
+import { useModeSwitch } from '../hooks/useModeSwitch'
 import { anchorFrom } from '../pageMemory'
 import { measurePages, setScrollToAnchor } from '../readingPosition'
 import { handleOf } from '../marathonMemory'
 import type { ChapterResponse } from '../types'
 import { Empty } from '../App'
 import { useProgress } from '../hooks/useProgress'
-import * as rakStore from '../rakStore'
-import { chapterNumberOf, markChapterRead } from '../readMarks'
+import { didOpenChapter } from '../readingEvents'
+import { chapterNumberOf } from '../readMarks'
 import {
   chapterKeyOf,
   loadChapter,
   marathonHref,
-  readerHref,
   seriesHref,
 } from '../readerSource'
 
@@ -322,18 +322,17 @@ export default function ReaderMarathon() {
     // tidak pernah — jadi sesi maraton tidak muncul di "Lanjut membaca"
     // maupun Rak. Ini yang membuat mode unggulan produk itu "tidak ada"
     // di riwayat.
-    if (owner.handle && owner.titleKey) {
-      rakStore.recordRead(
-        {
-          title: owner.title,
-          cover_url: owner.coverUrl,
-          handle: owner.handle,
-          source: owner.source ?? '',
-          title_key: owner.titleKey,
-        },
-        owner.number ?? String(owner.chapterId),
-      )
-    }
+    didOpenChapter(
+      {
+        titleKey: owner.titleKey,
+        number: owner.number ?? String(owner.chapterId),
+        title: owner.title,
+        coverUrl: owner.coverUrl,
+        source: owner.source ?? '',
+        handle: owner.handle,
+      },
+      { rakOnly: true },
+    )
     // pageId = gambar yang sedang aktif (indeks global `tailIdx`). Riwayat
     // (progress) tetap mencatat halaman itu; offsetRatio 0 sudah cukup untuk
     // riwayat. POSISI PRESISI maraton disimpan terpisah di bawah (marathon
@@ -370,6 +369,7 @@ export default function ReaderMarathon() {
     let raf = 0
     let lastPage = ''
     let lastAt = 0
+    let lastWriteY = -1
 
     const write = (force: boolean) => {
       // restore sedang berjalan → jangan tulis posisi hasil scroll programatik
@@ -395,10 +395,16 @@ export default function ReaderMarathon() {
       const anchor = anchorFrom(head.chapterId, pageIds, window.scrollY, window.innerHeight, pageTops, pageHeights)
       if (!anchor) return
       const now = Date.now()
+      // Scroll ke ATAS (mis. untuk memunculkan chrome/tombol) TIDAK boleh
+      // menimpa posisi baca maju terakhir — dipakai resume & "keluar" supaya
+      // posisi tetap di tempat yang benar-benar dibaca. Force (flush saat
+      // keluar) tetap menulis posisi saat ini.
+      if (!force && lastWriteY >= 0 && window.scrollY < lastWriteY - 120) return
       // tulis segera saat halaman aktif berubah; sisanya throttle 400 ms
       if (!force && anchor.pageId === lastPage && now - lastAt < 400) return
       lastPage = anchor.pageId
       lastAt = now
+      lastWriteY = window.scrollY
       // blok pemilik halaman ini → `activeKey` + indeksnya
       let owner = head
       let ownerIdx = 0
@@ -502,6 +508,7 @@ export default function ReaderMarathon() {
 
   const curBlock = blocks[readBlock] ?? blocks[0]
   const curLen = curBlock?.images.length ?? 0
+  const { gotoReader } = useModeSwitch(chapterId, curBlock)
 
   // Chapter yang SEDANG dibaca → tandai "sudah dibaca" (per akun).
   // Yang ditandai cuma blok yang jadi blok baca aktif — chapter berikutnya
@@ -510,7 +517,12 @@ export default function ReaderMarathon() {
   useEffect(() => {
     const b = blocks[readBlock]
     if (!b) return
-    markChapterRead(b.titleKey, b.number)
+    // Blok baca aktif terbuka → tandai "sudah dibaca" (per akun). Riwayat
+    // rak dicatat terpisah di efek progress bawah (mengikuti perilaku asli).
+    didOpenChapter(
+      { titleKey: b.titleKey, number: b.number, handle: b.handle },
+      { markOnly: true },
+    )
   }, [blocks, readBlock])
 
   // Chaining dipicu PROGRES chapter (>=80%), tapi HANYA setelah semua gambar
@@ -654,34 +666,15 @@ export default function ReaderMarathon() {
         onToggle={() => {
           const target = curBlock ?? head
           if (target) {
-            // tulis posisi maraton aktif → progress reader (biar reader restore
-            // di tempat yang sama). offsetRatio dihitung dari DOM jadi restore
-            // presisi, bukan ke atas halaman.
-            let offsetRatio = 0
-            let pageId = target.images[readInBlock - 1] ?? target.images[0]
-            const root = flowRef.current
-            if (root) {
-              const geometry = measurePages(root, (el) => {
-                const bi = Number((el as HTMLElement).dataset.b ?? '-1')
-                const pi = Number((el as HTMLElement).dataset.page ?? '-1')
-                const url = blocks[bi]?.images[pi]
-                return url ? imgUrl(url) : null
-              })
-              const anchor = anchorFrom(
-                target.chapterId,
-                geometry.map((g) => g.pageId),
-                window.scrollY,
-                window.innerHeight,
-                geometry.map((g) => g.top),
-                geometry.map((g) => g.height),
-              )
-              if (anchor) {
-                offsetRatio = anchor.offsetRatio
-                pageId = anchor.pageId
-              }
-            }
+            // Posisi baca sebenarnya: ambil dari sesi maraton TERSIMPAN
+            // (effect save menulis pageId/offsetRatio saat scroll — posisi
+            // terakhir yang dilihat). JANGAN baca state readInBlock/scrollY
+            // saat klik: scroll ke atas untuk memunculkan chrome (tombol)
+            // sudah mengubah nilai itu.
+            const saved = marathon.forChapter(head?.chapterId ?? target.chapterId)
+            const pageId = saved?.pageId ?? target.images[readInBlock - 1] ?? target.images[0]
             if (pageId) {
-              save({
+              gotoReader({
                 seriesId: target.seriesId ?? target.chapterId,
                 seriesTitle: target.seriesTitle,
                 chapterId: target.chapterId,
@@ -689,13 +682,16 @@ export default function ReaderMarathon() {
                 page: Math.max(0, readInBlock - 1),
                 progress: readInBlock / Math.max(1, target.images.length),
                 pageId,
-                offsetRatio,
+                offsetRatio: saved?.offsetRatio ?? 0,
                 source: target.source ?? null,
                 handle: target.handle || null,
               })
+            } else {
+              gotoReader()
             }
+          } else {
+            gotoReader()
           }
-          navigate(readerHref(target?.chapterId ?? chapterId ?? ''))
         }}
       />
 
@@ -872,7 +868,7 @@ export default function ReaderMarathon() {
           // matikan marathon dari sini -> balik ke reader biasa chapter ini
           if (patch.marathon === false) {
             setMenuOpen(false)
-            navigate(readerHref(head?.chapterId ?? chapterId ?? ''))
+            gotoReader()
             return
           }
           onChange(patch)

@@ -17,19 +17,18 @@ import { unifiedApi } from '../api'
 import { useReaderSettings } from '../hooks/useReaderSettings'
 import { useChromeOnScroll } from '../hooks/useChromeOnScroll'
 import { useAutoFullscreen } from '../hooks/useAutoFullscreen'
-import type { ChapterResponse, Manga } from '../types'
+import type { ChapterResponse } from '../types'
 import { Empty } from '../App'
 import { useProgress } from '../hooks/useProgress'
-import { useMarathonMemory } from '../hooks/useMarathonMemory'
-import { chapterNumberOf, markChapterRead } from '../readMarks'
+import { useModeSwitch } from '../hooks/useModeSwitch'
+import { didOpenChapter, rakMangaOf } from '../readingEvents'
+export { rakMangaOf }
 import { anchorFrom, usableAnchor } from '../pageMemory'
 import type { ReadingAnchor } from '../pageMemory'
 import { measurePages, setScrollToAnchor } from '../readingPosition'
-import * as rakStore from '../rakStore'
 import {
   chapterKeyOf,
   loadChapter,
-  marathonHref,
   parseUnifiedKey,
   readerHref,
   seriesHref,
@@ -54,26 +53,6 @@ import {
  * karena rasio aspek tiap halaman diingat (ComicImage), tinggi halaman sudah
  * terpesan sebelum gambar decode — posisi tidak bergeser oleh layout-shift.
  */
-/**
- * Snapshot series untuk rak dari respons chapter unified. `title_key` dari
- * server (MangaOut/UnifiedSeries) — JANGAN normalisasi judul di JS.
- *
- * Diekspor supaya wiring-check bisa memverifikasi bentuk snapshot yang benar-
- * benar ditulis reader ke rakStore (bukan hanya tipe TS-nya).
- */
-export function rakMangaOf(d: ChapterResponse, titleKey: string): rakStore.RakManga & {
-  title_key: string
-} {
-  const series: Manga | null = d.series ?? null
-  return {
-    title_key: titleKey,
-    title: series?.title ?? d.chapter.name,
-    cover_url: d.series_cover ?? series?.cover ?? null,
-    handle: d.series_handle ?? '',
-    source: d.source ?? series?.source ?? '',
-  }
-}
-
 export default function Reader() {
   const params = useParams<{
     chapterId?: string
@@ -100,7 +79,7 @@ export default function Reader() {
   /** awal gesture tap di area baca — dipakai membedakan tap dari scroll/drag */
   const tapStart = useRef<{ x: number; y: number; t: number } | null>(null)
   const { save, recent } = useProgress()
-  const marathon = useMarathonMemory()
+  const { gotoMarathon } = useModeSwitch(chapterId)
   const navigate = useNavigate()
 
   // URL sumber asli halaman ini (hanya flow unified) — dipakai badge toolbar.
@@ -143,19 +122,9 @@ export default function Reader() {
         // A1 — respons basi: abaikan total (gambar/badge/riwayat tidak disentuh)
         if (genRef.current !== gen) return
         setData(d)
-        // CHAPTER DIBUKA → tandai "sudah dibaca" (per akun). Kunci =
-        // title_key series + nomor chapter, sama dengan yang dipakai halaman
-        // series, jadi mark langsung nyambung dengan baris daftarnya.
-        // Nubuat: reader unified bisa fallback ke sumber lain, tapi title_key
-        // tetap milik series yang diminta — itu yang kita tandai.
-        markChapterRead(d.title_key, chapterNumberOf(d.chapter))
-        // RAK BUKU — chapter sukses dimuat → tulis sejarah (snapshot lokal,
-        // lintas-sumber via title_key). Flow Komiku lama (id angka) tak punya
-        // title_key dari server → riwayatnya tetap dijalankan useProgress.
-        if (d.title_key && d.series_handle) {
-          const num = d.chapter.number == null ? '' : String(d.chapter.number)
-          if (num) rakStore.recordRead(rakMangaOf(d, d.title_key), num)
-        }
+        // CHAPTER DIBUKA → tandai "sudah dibaca" + catat riwayat rak (satu
+        // definisi di readingEvents.ts). Reader: penuh (mark + rak).
+        didOpenChapter(d)
       })
       .catch((e: Error) => {
         if (genRef.current !== gen) return
@@ -602,18 +571,19 @@ export default function Reader() {
               String(r.chapterId) === chapterId &&
               String(r.seriesId) === seriesKey,
           )
-          if (prog?.pageId) {
-            marathon.save({
-              chapterKey: chapterId,
-              seriesKey,
-              activeKey: chapterId,
-              pageId: prog.pageId,
-              offsetRatio: prog.offsetRatio ?? 0,
-              blocks: 1,
-              chapterIdx: 0,
-            })
-          }
-          navigate(marathonHref(chapterId))
+          gotoMarathon(
+            prog?.pageId
+              ? {
+                  chapterKey: chapterId,
+                  seriesKey,
+                  activeKey: chapterId,
+                  pageId: prog.pageId,
+                  offsetRatio: prog.offsetRatio ?? 0,
+                  blocks: 1,
+                  chapterIdx: 0,
+                }
+              : undefined,
+          )
         }}
       />
       {/* Pengumuman untuk pembaca layar: status fullscreen adalah perilaku yang
@@ -749,7 +719,7 @@ export default function Reader() {
           // toggle Maraton dari reader: pindah mode marathon chapter ini
           if (patch.marathon === true && !settings.marathon) {
             setMenuOpen(false)
-            navigate(marathonHref(chapterId))
+            gotoMarathon()
             return
           }
           onChange(patch)
