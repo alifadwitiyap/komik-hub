@@ -9,16 +9,14 @@ import { Empty, Spinner } from '../App'
 import SourceBadge from '../components/SourceBadge'
 import HeartButton from '../components/HeartButton'
 import { useProgress } from '../hooks/useProgress'
-import { useMarathonMemory } from '../hooks/useMarathonMemory'
+import { useDownloadRun } from '../hooks/useDownloadRun'
+import { useSeriesResume } from '../hooks/useSeriesResume'
 import { useReadMarks } from '../hooks/useReadMarks'
-import { marathonHref, rememberSeriesLite, readerHref } from '../readerSource'
+import { rememberSeriesLite, readerHref } from '../readerSource'
 import {
   cancelRun,
-  getRuns,
-  runBusy,
   startRun,
   startRunCache,
-  subscribeRuns,
   type DlRun,
 } from '../downloadStore'
 import { RangeSelectBar, useRangeSelection } from '../components/DownloadRangePicker'
@@ -56,50 +54,16 @@ export default function SeriesUnified() {
    * halaman). `dlBusy` masih dipakai UI (mode seleksi, tombol Batal) walau
    * state jobs tidak lagi tinggal di komponen.
    */
-  const [dlRun, setDlRun] = useState<DlRun | null>(null)
-  const dlBusy = dlRun != null && runBusy(dlRun)
-  /**
-   * true selama komponen ter-pasang. Unduhan SENGAJA tidak di-abort saat
-   * unmount (navigasi ke reader): batch jalan di store-nya sendiri dan
-   * hasilnya tetap masuk store server + muncul di Rak. State setelah
-   * unmount adalah no-op di React 18, jadi aman.
-   */
-  const mountedRef = useRef(true)
-  useEffect(() => {
-    mountedRef.current = true
-    return () => {
-      mountedRef.current = false
-    }
-  }, [])
+  // Wiring unduhan batch (dari store module-level, hidup lintas halaman) —
+  // hook bersama. `dlRun`/`dlBusy` dipakai UI (mode seleksi, kartu progres,
+  // tombol Batal); saat batch yang disaksikan instance ini selesai, hasilnya
+  // diumumkan sekali lewat `onFinish`.
+  const { run: dlRun, busy: dlBusy } = useDownloadRun(handle, (finishedRun) => {
+    const summary = announceFinish(finishedRun, { current: true })
+    if (summary) setDlSummary(summary)
+  })
   const range = useRangeSelection()
   const navigate = useNavigate()
-  /** true selama instance ini melihat run busy → boleh umumkan hasilnya. */
-  const watchingRef = useRef(false)
-
-  // Subscribe run unduhan handle ini (store module-level → progres tetap
-  // hidup & terlihat walau user pindah halaman; Rak subscribe lewat lane
-  // D2). Sinkron awal penting: user kembali ke series saat run masih jalan
-  // langsung melihat kartu progresnya.
-  useEffect(() => {
-    const sync = (runs: DlRun[]) => {
-      const run = runs.find((r) => r.handle === handle) ?? null
-      setDlRun(run)
-      if (run && runBusy(run)) {
-        watchingRef.current = true
-        return
-      }
-      // transisi busy → selesai (atau batal) hanya diumumkan oleh instance
-      // yang benar-benar menyaksikan run berjalan — bukan oleh kunjungan
-      // baru ke halaman yang menemukan run sudah selesai.
-      if (!run || !watchingRef.current) return
-      watchingRef.current = false
-      const summary = announceFinish(run, mountedRef)
-      if (summary) setDlSummary(summary)
-    }
-    const unsub = subscribeRuns(sync)
-    sync(getRuns())
-    return unsub
-  }, [handle, navigate])
 
   // Sticky B+C — server coba sumber terakhir-dibaca untuk judul ini dulu
   // (kalau ada di riwayat), baru fallback primary. Ref supaya effect tidak
@@ -145,20 +109,11 @@ export default function SeriesUnified() {
   // Kunci = title_key series + nomor chapter (lihat readMarks.ts).
   const titleKey = data?.manga.title_key ?? null
   const { isRead, count: readTotal } = useReadMarks(titleKey)
-  // entry riwayat memakai seriesId = handle (ditetapkan Reader unified)
-  const resume = recent.find((r) => String(r.seriesId) === handle)
-  // Kunci chapter terakhir dibaca: `<handle>:<nomor>` (bentuk yang ditulis
-  // Reader unified). Hanya dipakai kalau entri benar-benar milik series ini —
-  // id numerik komiku lama tidak cocok route `/baca/<handle>/<number>`.
-  const resumeKey =
-    resume && String(resume.chapterId).startsWith(`${handle}:`)
-      ? String(resume.chapterId)
-      : null
-  // Sesi maraton tersimpan untuk series ini (kalau pembaca terakhir memakai
-  // mode maraton). Tombol "Maraton" memakainya supaya melanjutkan rantai,
-  // bukan mengulang dari chapter paling awal.
-  const marathonMemory = useMarathonMemory()
-  const marathonPos = handle ? marathonMemory.forHandle(handle) : null
+  // Resume baca + sesi maraton untuk series ini — hook bersama. Kunci resume
+  // sah hanya kalau milik handle ini (`handle:nomor`); kalau tidak, tombol
+  // baca jatuh ke fallback (chapter paling awal).
+  const { resume, resumeKey, marathonPos, resumeHref, marathonHref: marathonLink } =
+    useSeriesResume(handle, (key) => key.startsWith(`${handle}:`))
 
   // Range mengikuti URUTAN TAMPIL, dan `visible` selalu potongan awal `chapters`
   // → index baris aman dipakai walau daftar dipotong 40.
@@ -338,7 +293,7 @@ export default function SeriesUnified() {
           {oldest && (
             <>
               <Link
-                to={resumeKey ? readerHref(resumeKey) : `/baca/${handle}/${oldest.number}`}
+                to={resumeHref ?? `/baca/${handle}/${oldest.number}`}
                 className="flex-1 rounded-xl bg-brand-amber py-2.5 text-center text-[13px] font-bold text-ink-950 transition-colors hover:bg-brand-amber-soft"
               >
                 {resumeKey ? `Lanjut · ${resume?.chapterName}` : `Baca ${chapterLabel(oldest)}`}
@@ -348,7 +303,7 @@ export default function SeriesUnified() {
                   // Sesi maraton tersimpan menang: tombol "Maraton" harus
                   // MELANJUTKAN rantai, bukan mengulang dari chapter paling awal
                   // (itu keluhan aslinya: klik maraton → balik ke awal).
-                  marathonPos ? marathonHref(marathonPos.chapterKey) : `/maraton/${handle}/${oldest.number}`
+                  marathonLink ?? `/maraton/${handle}/${oldest.number}`
                 }
                 title={
                   marathonPos

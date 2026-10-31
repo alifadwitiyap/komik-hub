@@ -1,6 +1,7 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
-import { getUser, onAccountChange, type AccountEvent } from '../account'
+import { useCallback, useEffect, useRef } from 'react'
+import { getUser } from '../account'
 import { progressApi } from '../api'
+import { usePerAccountLocalStorage } from './usePerAccountLocalStorage'
 
 export interface ProgressEntry {
   seriesId: number | string
@@ -41,10 +42,10 @@ function progressKey(): string {
   return u ? `${KEY}:${u}` : KEY
 }
 
-function read(): ProgressEntry[] {
+/** Parse blob localStorage menuju daftar entri (toleran terhadap rusak). */
+function parse(raw: string | null): ProgressEntry[] {
+  if (!raw) return []
   try {
-    const raw = localStorage.getItem(progressKey())
-    if (!raw) return []
     const parsed: unknown = JSON.parse(raw)
     if (!Array.isArray(parsed)) return []
     // kompatibilitas: buang entri legacy berkunci judul ("t:<judul>") yang
@@ -52,14 +53,6 @@ function read(): ProgressEntry[] {
     return (parsed as ProgressEntry[]).filter((e) => !String(e.seriesId).startsWith('t:'))
   } catch {
     return []
-  }
-}
-
-function write(entries: ProgressEntry[]) {
-  try {
-    localStorage.setItem(progressKey(), JSON.stringify(entries))
-  } catch {
-    /* storage penuh / mode privat — progres tidak ganggu membaca */
   }
 }
 
@@ -96,11 +89,23 @@ function asEntries(raw: unknown[]): ProgressEntry[] {
  * lama (murni localStorage) tidak berubah.
  */
 export function useProgress() {
-  const [entries, setEntries] = useState<ProgressEntry[]>(read)
-  // Cermin sinkron dari `entries` untuk dipakai di jalur async (syncFromServer)
-  // tanpa membaca state basi. Diperbarui HANYA lewat apply()/save() — bukan saat
-  // render — supaya tidak melanggar aturan React soal akses ref di render.
-  const entriesRef = useRef<ProgressEntry[]>(entries)
+  const { entries, apply, entriesRef } = usePerAccountLocalStorage<ProgressEntry[]>({
+    readKey: progressKey,
+    parse,
+    serialize: (list) => JSON.stringify(list),
+    onAccountChange: (e) => {
+      // akun berganti → cache lokal akun lama tidak relevan; kosongkan dulu
+      // supaya merge dengan server akun baru tidak mencampur.
+      if (e.username === null) return
+      apply([])
+      if (e.created === true) {
+        push([])
+        return
+      }
+      void syncFromServer()
+    },
+  })
+
   const pushTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const push = useCallback((list: ProgressEntry[]) => {
@@ -112,12 +117,6 @@ export function useProgress() {
         .put(list as unknown as Record<string, unknown>[])
         .catch((err) => console.warn('useProgress: gagal push progres', err))
     }, PUSH_DEBOUNCE_MS)
-  }, [])
-
-  const apply = useCallback((next: ProgressEntry[]) => {
-    entriesRef.current = next
-    setEntries(next)
-    write(next)
   }, [])
 
   // pull → merge → push. Dipakai saat boot dan saat PULL (akun lama/ganti akun).
@@ -133,54 +132,29 @@ export function useProgress() {
       // endpoint belum ada / jaringan mati: pertahankan progres lokal apa adanya.
       console.warn('useProgress: gagal pull progres', err)
     }
-  }, [apply, push])
+  }, [apply, push, entriesRef])
 
-  // Arah sinkronisasi mengikuti aturan yang sama dengan favorit (spec §5):
-  //   created === true → PUSH (akun baru: server kosong, adopsi progres device)
-  //   selain itu       → PULL + merge + push (akun lama / boot / ganti akun)
-  const onAccount = useCallback(
-    (e: AccountEvent) => {
-      if (e.username === null) return
-      // akun berganti → cache lokal akun lama tidak relevan; kosongkan dulu
-      // supaya merge dengan server akun baru tidak mencampur.
-      entriesRef.current = []
-      setEntries([])
-      if (e.created === true) {
-        push(entriesRef.current)
-        return
-      }
-      void syncFromServer()
-    },
-    [push, syncFromServer],
-  )
+  // boot: akun yang sedang aktif → PULL.
+  useEffect(() => {
+    void syncFromServer()
+  }, [syncFromServer])
 
   useEffect(() => {
-    const onStorage = (e: StorageEvent) => e.key === progressKey() && apply(read())
-    window.addEventListener('storage', onStorage)
-    // boot: akun yang sedang aktif → PULL.
-    void syncFromServer()
-    const off = onAccountChange(onAccount)
     return () => {
-      window.removeEventListener('storage', onStorage)
-      off()
       if (pushTimer.current) clearTimeout(pushTimer.current)
     }
-  }, [apply, onAccount, syncFromServer])
+  }, [])
 
   const save = useCallback(
     (entry: Omit<ProgressEntry, 'at'>) => {
-      setEntries((prev) => {
-        const next = [
-          { ...entry, at: Date.now() },
-          ...prev.filter((p) => String(p.seriesId) !== String(entry.seriesId)),
-        ].slice(0, MAX)
-        write(next)
-        entriesRef.current = next
-        push(next)
-        return next
-      })
+      const next = [
+        { ...entry, at: Date.now() },
+        ...entriesRef.current.filter((p) => String(p.seriesId) !== String(entry.seriesId)),
+      ].slice(0, MAX)
+      apply(next)
+      push(next)
     },
-    [push],
+    [apply, push, entriesRef],
   )
 
   const clear = useCallback(() => {

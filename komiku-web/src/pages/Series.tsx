@@ -1,22 +1,18 @@
 import { imgUrl } from '../imgUrl'
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { api } from '../api'
 import { getUser } from '../account'
 import {
   cancelRun,
-  getRuns,
-  runBusy,
   startRun,
   startRunCache,
-  subscribeRuns,
 } from '../downloadStore'
-import type { DlRun } from '../downloadStore'
 import type { Chapter, SeriesDetail } from '../types'
 import { Empty, Spinner } from '../App'
 import HeartButton from '../components/HeartButton'
-import { useProgress } from '../hooks/useProgress'
-import { useMarathonMemory } from '../hooks/useMarathonMemory'
+import { useDownloadRun } from '../hooks/useDownloadRun'
+import { useSeriesResume } from '../hooks/useSeriesResume'
 import { chapterNumberOf } from '../readMarks'
 import { useReadMarks } from '../hooks/useReadMarks'
 import { marathonHref, readerHref } from '../readerSource'
@@ -43,7 +39,6 @@ export default function Series() {
   const [data, setData] = useState<SeriesData | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [showAll, setShowAll] = useState(false)
-  const { recent } = useProgress()
   // Mark "sudah dibaca" per akun: chapter yang pernah dibuka user jadi abu.
   // Kunci = title_key series + nomor chapter. title_key legacy di-suntik
   // server (routes.rs) dan nilainya sama dengan title_key unified untuk
@@ -63,28 +58,6 @@ export default function Series() {
   // Cover yang gagal dimuat (host mati / 403 / DNS hilang) → tampilkan judul,
   // bukan ikon gambar rusak.
   const [coverFailed, setCoverFailed] = useState(false)
-  // Progres unduhan tinggal di downloadStore (module-level): batch tetap
-  // jalan + terlihat walau user pindah halaman. Halaman ini cuma subscribe.
-  const [runs, setRuns] = useState<DlRun[]>([])
-  useEffect(() => {
-    const sync = (r: DlRun[]) => setRuns(r)
-    const unsub = subscribeRuns(sync)
-    sync(getRuns())
-    return unsub
-  }, [])
-  /**
-   * true selama komponen ter-pasang. Unduhan SENGAJA tidak di-abort saat
-   * unmount (navigasi ke reader): batch jalan di closure-nya sendiri dan
-   * hasilnya tetap masuk store server + muncul di Rak. State setelah
-   * unmount adalah no-op di React 18, jadi aman.
-   */
-  const mountedRef = useRef(true)
-  useEffect(() => {
-    mountedRef.current = true
-    return () => {
-      mountedRef.current = false
-    }
-  }, [])
 
   useEffect(() => {
     if (!id) return
@@ -123,33 +96,23 @@ export default function Series() {
     for (let i = anchor; i !== rangeEnd + step; i += step) out.push(i)
     return out
   }, [anchor, rangeEnd])
-  // Run unduhan milik series ini (store module-level; hidup lintas halaman).
-  const run = runs.find((r) => r.handle === dlHandle) ?? null
-  const dlBusy = run ? runBusy(run) : false
-  /** guard sekali per run: pesan 'selesai' + deep-link tak diulang. */
-  const handledRunAtRef = useRef<number | null>(null)
-  const wasBusyRef = useRef(false)
-  // Transisi run aktif -> selesai saat halaman ini masih terbuka: kabari
-  // sekali + deep-link ke Rak. Kalau user sudah pergi, Rak (yang subscribe
-  // store yang sama) yang menunjukkan progres — gak ada yang ditarik balik.
-  useEffect(() => {
-    if (wasBusyRef.current && !dlBusy && run && handledRunAtRef.current !== run.startedAt) {
-      handledRunAtRef.current = run.startedAt
-      if (mountedRef.current) {
-        const ok = run.jobs.filter((j) => j.state === 'ok').length
-        const failed = run.jobs.filter((j) => j.state === 'fail').length
-        const cancels = run.jobs.filter((j) => j.error === 'Dibatalkan').length
-        const msg =
-          cancels > 0 && cancels === failed
-            ? 'Unduhan dibatalkan.'
-            : failed > 0
-              ? `${ok} tersimpan, ${failed} gagal`
-              : `${ok} chapter tersimpan offline`
-        setDlMsg(msg)
-      }
-    }
-    wasBusyRef.current = dlBusy
-  }, [dlBusy, run])
+  // Wiring unduhan batch + resume/maraton — hook bersama (useDownloadRun,
+  // useSeriesResume) yang mengabstraksi subscribe downloadStore + transisi
+  // run aktif → selesai, dan pemilihan target link reader/maraton.
+  const { run, busy: dlBusy } = useDownloadRun(dlHandle, (finishedRun) => {
+    const ok = finishedRun.jobs.filter((j) => j.state === 'ok').length
+    const failed = finishedRun.jobs.filter((j) => j.state === 'fail').length
+    const cancels = finishedRun.jobs.filter((j) => j.error === 'Dibatalkan').length
+    const msg =
+      cancels > 0 && cancels === failed
+        ? 'Unduhan dibatalkan.'
+        : failed > 0
+          ? `${ok} tersimpan, ${failed} gagal`
+          : `${ok} chapter tersimpan offline`
+    setDlMsg(msg)
+  })
+  const { resume, marathonPos, resumeHref, marathonHref: marathonLink } =
+    useSeriesResume(id)
 
   if (error) return <Empty title="Gagal memuat manga" body={error} />
   if (!data) return <Spinner label="Memuat manga…" />
@@ -163,10 +126,6 @@ export default function Series() {
   // selama unduhan berjalan walau mode pilih sudah keluar.
   const expanded = showAll || (anchor != null && rangeEnd != null) || dlBusy
   const visible = expanded ? chapters : chapters.slice(0, 40)
-  const resume = recent.find((r) => String(r.seriesId) === String(id))
-  // sesi maraton tersimpan untuk series ini (flow komiku lama: id numerik)
-  const marathonMemory = useMarathonMemory()
-  const marathonPos = id == null ? null : marathonMemory.forHandle(String(id))
 
   const pickedChapters = rangeList.map((i) => chapters[i]).filter(Boolean)
   const downloadable = pickedChapters.filter((c) => chapterNumber(c) != null)
@@ -356,7 +315,7 @@ export default function Series() {
                   to={
                     // lanjutkan sesi maraton tersimpan kalau ada (id numerik =
                     // identitas series di flow komiku lama)
-                    marathonPos ? marathonHref(marathonPos.chapterKey) : marathonHref(String(oldest.id))
+                    marathonLink ?? marathonHref(String(oldest.id))
                   }
                   title={
                     marathonPos
@@ -386,7 +345,7 @@ export default function Series() {
         </div>
         {resume && (
           <Link
-            to={readerHref(String(resume.chapterId))}
+            to={resumeHref as string}
             className="mt-2 block text-center text-[12px] font-medium text-ink-300 hover:text-brand-amber"
           >
             Lanjut dari {resume.chapterName} · halaman {resume.page + 1}
