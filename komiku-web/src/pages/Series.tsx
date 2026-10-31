@@ -16,6 +16,7 @@ import type { Chapter, SeriesDetail } from '../types'
 import { Empty, Spinner } from '../App'
 import HeartButton from '../components/HeartButton'
 import { useProgress } from '../hooks/useProgress'
+import { useMarathonMemory } from '../hooks/useMarathonMemory'
 import { chapterNumberOf } from '../readMarks'
 import { useReadMarks } from '../hooks/useReadMarks'
 import { marathonHref, readerHref } from '../readerSource'
@@ -163,6 +164,9 @@ export default function Series() {
   const expanded = showAll || (anchor != null && rangeEnd != null) || dlBusy
   const visible = expanded ? chapters : chapters.slice(0, 40)
   const resume = recent.find((r) => String(r.seriesId) === String(id))
+  // sesi maraton tersimpan untuk series ini (flow komiku lama: id numerik)
+  const marathonMemory = useMarathonMemory()
+  const marathonPos = id == null ? null : marathonMemory.forHandle(String(id))
 
   const pickedChapters = rangeList.map((i) => chapters[i]).filter(Boolean)
   const downloadable = pickedChapters.filter((c) => chapterNumber(c) != null)
@@ -349,8 +353,16 @@ export default function Series() {
               )}
               {oldest && (
                 <Link
-                  to={marathonHref(String(oldest.id))}
-                  title={`Mulai maraton dari ${oldest.name}`}
+                  to={
+                    // lanjutkan sesi maraton tersimpan kalau ada (id numerik =
+                    // identitas series di flow komiku lama)
+                    marathonPos ? marathonHref(marathonPos.chapterKey) : marathonHref(String(oldest.id))
+                  }
+                  title={
+                    marathonPos
+                      ? 'Lanjutkan maraton dari posisi terakhir'
+                      : `Mulai maraton dari ${oldest.name}`
+                  }
                   className="rounded-xl border border-brand-amber-dim px-3.5 py-2.5 text-center text-[13px] font-semibold text-brand-amber transition-colors hover:bg-brand-amber-dim/20"
                 >
                   Maraton

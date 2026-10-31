@@ -96,12 +96,32 @@ export function seriesHref(seriesId: string | number | null | undefined): string
  * URL untuk FAB "Lanjut baca" dari entri sejarah rak. Null kalau rak kosong
  * (atau entri tak lengkap) → FAB disembunyikan. Dipisah dari komponen supaya
  * aturan "kosong → sembunyi" bisa diuji tanpa render.
+ *
+ * `mode` menentukan tujuan: `reader` (default) membuka reader satu chapter,
+ * `marathon` membuka mode maraton di chapter yang sama. Maraton dipakai kalau
+ * sesi terakhir pembaca untuk series itu memang maraton — kalau tidak, orang
+ * yang sedang maraton dilempar ke reader biasa dan rantainya putus.
  */
 export function resumeHref(
   entry: { handle: string; last_chapter: string } | null | undefined,
+  mode: 'reader' | 'marathon' = 'reader',
 ): string | null {
   if (!entry || !entry.handle || !entry.last_chapter) return null
-  return readerHref(`${entry.handle}:${entry.last_chapter}`)
+  const key = `${entry.handle}:${entry.last_chapter}`
+  return mode === 'marathon' ? marathonHref(key) : readerHref(key)
+}
+
+/**
+ * URL "lanjut" untuk sebuah kunci chapter yang sudah diketahui (dipakai halaman
+ * series, yang punya kunci chapter persis dari progress). Sama seperti
+ * `resumeHref`, `mode` menentukan reader atau maraton.
+ */
+export function chapterResumeHref(
+  key: string | null | undefined,
+  mode: 'reader' | 'marathon' = 'reader',
+): string | null {
+  if (!key) return null
+  return mode === 'marathon' ? marathonHref(key) : readerHref(key)
 }
 
 function chapterEntry(handle: string, number: string): Chapter {

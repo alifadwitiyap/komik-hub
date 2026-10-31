@@ -4,15 +4,19 @@ import ChapterPickerSheet from '../components/ChapterPickerSheet'
 import ComicImage from '../components/ComicImage'
 import ReaderFooter from '../components/ReaderFooter'
 import ReaderFullscreenButton from '../components/ReaderFullscreenButton'
+import ReaderMarathonToggle from '../components/ReaderMarathonToggle'
 import ReaderMenu from '../components/ReaderMenu'
 import ReaderSettingsSheet from '../components/ReaderSettingsSheet'
 import ReaderToolbar from '../components/ReaderToolbar'
 import SourceBadge from '../components/SourceBadge'
-import { mountAheadPx } from '../imgUrl'
+import { imgUrl, mountAheadPx } from '../imgUrl'
 import { tapHitsReaderControl } from '../readerControls'
 import { useReaderSettings } from '../hooks/useReaderSettings'
 import { useChromeOnScroll } from '../hooks/useChromeOnScroll'
 import { useAutoFullscreen } from '../hooks/useAutoFullscreen'
+import { useMarathonMemory } from '../hooks/useMarathonMemory'
+import { anchorFrom, scrollYForAnchor } from '../pageMemory'
+import { handleOf } from '../marathonMemory'
 import type { ChapterResponse } from '../types'
 import { Empty } from '../App'
 import { useProgress } from '../hooks/useProgress'
@@ -81,9 +85,25 @@ export default function ReaderMarathon() {
   const [blocks, setBlocks] = useState<Block[]>([])
   const [error, setError] = useState<string | null>(null)
   const [tailIdx, setTailIdx] = useState(-1) // index gambar terakhir yang ter-render
-  // maraton selalu mulai dari puncak channel → tak ada restore posisi,
-  // jadi chrome cukup mengikuti arah scroll langsung
-  const chrome = useChromeOnScroll()
+  /**
+   * PEMULIHAN POSISI — dulu maraton SELALU mulai dari puncak channel (tidak ada
+   * restore), jadi meninggalkan halaman = kehilangan seluruh sesi. Sekarang:
+   *
+   *   `pendingRef` = posisi tersimpan yang sedang dipulihkan (null = selesai).
+   *   `wantBlocks` = berapa blok yang harus dibangun ulang sebelum restore
+   *                  dijalankan (0 = tidak ada restore, rantai jalan normal).
+   *   `restoreKey` = kunci chapter blok aktif yang dituju.
+   *
+   * Selama `pendingRef` belum null, penulisan posisi DILEWATI supaya scroll
+   * programatik tidak menimpa posisi yang sedang dipulihkan (pola sama dengan
+   * Reader.tsx).
+   */
+  const pendingRef = useRef<{ pageId: string; offsetRatio: number } | null>(null)
+  const flowRef = useRef<HTMLDivElement | null>(null)
+  const [wantBlocks, setWantBlocks] = useState(0)
+  const [restoreKey, setRestoreKey] = useState<string | null>(null)
+  // chrome tidak boleh bereaksi pada scroll programatik saat restore
+  const chrome = useChromeOnScroll(() => pendingRef.current !== null)
   const [menuOpen, setMenuOpen] = useState(false)
   const [sheetOpen, setSheetOpen] = useState(false)
   const [chapterPickerOpen, setChapterPickerOpen] = useState(false)
@@ -97,6 +117,10 @@ export default function ReaderMarathon() {
   /** chapterId yang sudah/sedang di-fetch — cegah fetch ganda & loop abort */
   const fetchedRef = useRef<Set<string>>(new Set())
   const { save } = useProgress()
+  const marathon = useMarathonMemory()
+  // posisi maraton dibaca SEKALI saat mount (bukan tiap kali store menulis),
+  // lalu disimpan di ref supaya efek lain tidak perlu bergantung padanya
+  const savedPosRef = useRef<ReturnType<typeof marathon.forChapter>>(null)
   const navigate = useNavigate()
   const { settings, onChange, onReset, filterStyle } = useReaderSettings()
   /**
@@ -120,7 +144,13 @@ export default function ReaderMarathon() {
     setBlocks((prev) => (prev.some((x) => x.chapterId === b.chapterId) ? prev : [...prev, b]))
   }, [])
 
-  // chapter pertama
+  // chapter pertama — sekaligus MERENCANAKAN pemulihan posisi.
+  //
+  // Rencana dibuat di sini (bukan di efek terpisah) karena hanya di titik ini
+  // `chapterId` sudah pasti dan rantai masih kosong. `wantBlocks` = jumlah blok
+  // yang harus dibangun ulang; `restoreKey` = blok yang dituju. Rantai dibangun
+  // ulang penuh (0..target) supaya pembaca bisa menggulir ke ATAS seperti sesi
+  // aslinya — bukan hanya satu blok yang menggantung.
   useEffect(() => {
     if (!chapterId) return
     setBlocks([])
@@ -132,12 +162,121 @@ export default function ReaderMarathon() {
     setSettled(new Set())
     // channel baru: chrome tampil lagi (jangan warisi keadaan tersembunyi)
     chrome.show()
+
+    // ---- rencana restore ------------------------------------------------
+    // Sesi dikenali dari blok PERTAMA rantai. Kalau route ini memang blok
+    // pertama sebuah sesi tersimpan, bangun ulang sampai blok aktifnya.
+    const saved = marathon.forChapter(chapterId)
+    savedPosRef.current = saved
+    if (saved) {
+      setWantBlocks(Math.max(1, Math.min(saved.chapterIdx + 1, saved.blocks || 1)))
+      setRestoreKey(saved.activeKey)
+      pendingRef.current = { pageId: saved.pageId, offsetRatio: saved.offsetRatio }
+    } else {
+      setWantBlocks(0)
+      setRestoreKey(null)
+      pendingRef.current = null
+    }
+
     const ctrl = new AbortController()
     loadChapter(chapterId, ctrl.signal)
       .then((d) => pushBlock(toBlock(d, params.handle)))
       .catch((e: Error) => e.name !== 'AbortError' && setError(e.message))
     return () => ctrl.abort()
+    // `marathon` sengaja tidak jadi dependensi: posisi dibaca sekali saat
+    // rute dibuka, bukan tiap kali store menulis (lihat savedPosRef).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [chapterId, pushBlock])
+
+  // ---- BANGUN ULANG RANTAI untuk pemulihan -------------------------------
+  // Dijalankan berurutan (satu per render) sampai jumlah blok mencapai
+  // `wantBlocks`. Berurutan, bukan paralel: urutan blok menentukan posisi
+  // piksel, dan chaining normal juga menambah satu per satu.
+  useEffect(() => {
+    if (wantBlocks <= 0) return
+    if (blocks.length === 0) return
+    if (blocks.length >= wantBlocks) return
+    const nextId = blocks[blocks.length - 1]?.nextId
+    if (!nextId || fetchedRef.current.has(nextId)) return
+    fetchedRef.current.add(nextId)
+    const ctrl = new AbortController()
+    loadChapter(nextId, ctrl.signal)
+      .then((d) => pushBlock(toBlock(d)))
+      .catch(() => {
+        // gagal: hentikan pembangunan rantai, jangan loop. Restore tetap
+        // dicoba pada blok yang berhasil dimuat.
+        fetchedRef.current.delete(nextId)
+        setWantBlocks(blocks.length)
+      })
+    return () => ctrl.abort()
+  }, [blocks, wantBlocks, pushBlock])
+
+  /**
+   * ---- PULIHKAN POSISI ---------------------------------------------------
+   * Berjalan setelah blok tujuan benar-benar ada di DOM. Tinggi halaman
+   * dipesan lewat rasio aspek (ComicImage + pageMemory), jadi posisi bisa
+   * dihitung sebelum gambar decode — tapi retry di bawah tetap mengejar
+   * sampai posisinya final, karena gambar di ATAS anchor bisa menyusul dan
+   * menggeser layout.
+   *
+   * PENTING: halaman dicari lewat INDEKS (blok + halaman), BUKAN atribut
+   * `src`. `ComicImage` sengaja TIDAK memasang `src` sampai gambar dekat
+   * layar (hemat byte), jadi halaman tujuan belum punya `src` saat restore
+   * berjalan — mencari lewat `src` tak pernah ketemu dan posisi selalu
+   * kembali ke atas.
+   */
+  const applyRestore = useCallback((pageId: string, offsetRatio: number): boolean => {
+    const root = flowRef.current
+    if (!root) return false
+    // cari (blok, halaman) pemilik `pageId` dari DATA, bukan dari DOM
+    let bi = -1
+    let pi = -1
+    for (let i = 0; i < blocks.length && bi < 0; i++) {
+      const idx = blocks[i].images.findIndex((s) => imgUrl(s) === pageId)
+      if (idx >= 0) {
+        bi = i
+        pi = idx
+      }
+    }
+    if (bi < 0) return false
+    const el = root.querySelector<HTMLImageElement>(`img[data-b="${bi}"][data-page="${pi}"]`)
+    if (!el || el.offsetHeight === 0) return false
+    const top = el.getBoundingClientRect().top + window.scrollY
+    const target = scrollYForAnchor(offsetRatio, top, el.offsetHeight, window.innerHeight)
+    if (Math.abs(window.scrollY - target) > 1) window.scrollTo({ top: target })
+    // tinggi final hanya setelah halaman pemilik posisi selesai decode
+    return !!el.complete && el.naturalWidth > 0
+  }, [blocks])
+
+  useEffect(() => {
+    const p = pendingRef.current
+    if (!p) return
+    if (blocks.length === 0) return
+    // blok tujuan harus sudah ada; kalau belum, tunggu (efek jalan lagi
+    // setiap `blocks` bertambah)
+    if (restoreKey && !blocks.some((b) => b.chapterId === restoreKey)) return
+    let raf = 0
+    let tries = 0
+    const attempt = () => {
+      raf = 0
+      const cur = pendingRef.current
+      if (!cur) return
+      if (applyRestore(cur.pageId, cur.offsetRatio)) {
+        pendingRef.current = null
+        return
+      }
+      // ~3 detik: berhenti memaksa, jangan rebut kendali scroll dari pembaca
+      if (++tries > 180) {
+        pendingRef.current = null
+        return
+      }
+      raf = requestAnimationFrame(attempt)
+    }
+    raf = requestAnimationFrame(attempt)
+    return () => {
+      if (raf) cancelAnimationFrame(raf)
+    }
+  }, [blocks, restoreKey, applyRestore])
 
   const totalPages = blocks.reduce((n, b) => n + b.images.length, 0)
   const head = blocks[0]
@@ -198,11 +337,11 @@ export default function ReaderMarathon() {
         owner.number ?? String(owner.chapterId),
       )
     }
-    // pageId = gambar yang sedang aktif (indeks global `tailIdx`). Marathon
-    // tidak punya "posisi mata" sepresisi Reader (offsetRatio dihitung dari
-    // viewport tengah), jadi offsetRatio 0 — pulihkan ke atas halaman, yang
-    // jauh lebih baik daripada tidak pulih sama sekali (usableAnchor menolak
-    // entry tanpa pageId).
+    // pageId = gambar yang sedang aktif (indeks global `tailIdx`). Riwayat
+    // (progress) tetap mencatat halaman itu; offsetRatio 0 sudah cukup untuk
+    // riwayat. POSISI PRESISI maraton disimpan terpisah di bawah (marathon
+    // store), karena di sana yang penting adalah halaman + kedalaman posisi
+    // mata + blok aktif, bukan "halaman ke-N di chapter ini".
     save({
       seriesId: owner.seriesId ?? owner.chapterId,
       seriesTitle: owner.seriesTitle,
@@ -217,16 +356,123 @@ export default function ReaderMarathon() {
     })
   }, [tailIdx, blocks, totalPages, save])
 
+  /**
+   * ---- SIMPAN POSISI MARATON (presisi) -----------------------------------
+   * Ditulis saat scroll (throttle rAF), saat halaman berganti, dan saat
+   * halaman ditinggalkan. Dilewati selama restore berjalan (`pending`) supaya
+   * scroll programatik tidak menimpa posisi yang sedang dipulihkan.
+   *
+   * Yang disimpan: halaman yang sedang ditatap (`pageId`) + kedalaman posisi
+   * mata di halaman itu (`offsetRatio`), blok aktif, dan jumlah blok yang
+   * sudah termuat. Itu yang membuat "Buka Maraton" bisa kembali TEPAT ke
+   * tempat pembaca berhenti, bukan ke awal rantai.
+   */
+  useEffect(() => {
+    if (blocks.length === 0) return
+    if (!head) return
+    let raf = 0
+    let lastPage = ''
+    let lastAt = 0
+
+    const write = (force: boolean) => {
+      // restore sedang berjalan → jangan tulis posisi hasil scroll programatik
+      if (pendingRef.current) return
+      const root = flowRef.current
+      if (!root) return
+      const imgs = Array.from(root.querySelectorAll<HTMLImageElement>('img[data-b]'))
+      // Identitas halaman diambil dari DATA (blok+halaman → URL), bukan atribut
+      // `src`: `ComicImage` belum memasang `src` untuk gambar yang jauh dari
+      // layar, jadi membaca `src` akan kehilangan sebagian besar halaman dan
+      // anchor jadi salah.
+      const pageIds: string[] = []
+      const pageTops: number[] = []
+      const pageHeights: number[] = []
+      for (const im of imgs) {
+        const bi = Number(im.dataset.b ?? '-1')
+        const pi = Number(im.dataset.page ?? '-1')
+        const url = blocks[bi]?.images[pi]
+        if (!url || im.offsetHeight === 0) continue // belum terukur → lewati
+        pageIds.push(imgUrl(url))
+        pageTops.push(im.getBoundingClientRect().top + window.scrollY)
+        pageHeights.push(im.offsetHeight)
+      }
+      if (pageIds.length === 0) return
+      // anchor memakai kunci chapter blok PERTAMA sebagai identitas sesi;
+      // anchorFrom hanya butuh nilai apa pun untuk chapterId.
+      const anchor = anchorFrom(head.chapterId, pageIds, window.scrollY, window.innerHeight, pageTops, pageHeights)
+      if (!anchor) return
+      const now = Date.now()
+      // tulis segera saat halaman aktif berubah; sisanya throttle 400 ms
+      if (!force && anchor.pageId === lastPage && now - lastAt < 400) return
+      lastPage = anchor.pageId
+      lastAt = now
+      // blok pemilik halaman ini → `activeKey` + indeksnya
+      let owner = head
+      let ownerIdx = 0
+      for (let i = 0; i < blocks.length; i++) {
+        if (blocks[i].images.some((s) => imgUrl(s) === anchor.pageId)) {
+          owner = blocks[i]
+          ownerIdx = i
+          break
+        }
+      }
+      marathon.save({
+        chapterKey: head.chapterId,
+        // identitas series: handle unified, atau id manga numerik flow lama
+        seriesKey:
+          head.handle && head.handle !== ''
+            ? head.handle
+            : String(head.seriesId ?? head.chapterId),
+        activeKey: owner.chapterId,
+        pageId: anchor.pageId,
+        offsetRatio: anchor.offsetRatio,
+        blocks: blocks.length,
+        chapterIdx: ownerIdx,
+      })
+    }
+
+    const onScroll = () => {
+      if (!raf) raf = requestAnimationFrame(() => {
+        raf = 0
+        write(false)
+      })
+    }
+    const onHide = () => {
+      if (document.visibilityState === 'hidden') write(true)
+    }
+    window.addEventListener('scroll', onScroll, { passive: true })
+    window.addEventListener('resize', onScroll)
+    window.addEventListener('pagehide', onHide)
+    document.addEventListener('visibilitychange', onHide)
+    return () => {
+      window.removeEventListener('scroll', onScroll)
+      window.removeEventListener('resize', onScroll)
+      window.removeEventListener('pagehide', onHide)
+      document.removeEventListener('visibilitychange', onHide)
+      if (raf) cancelAnimationFrame(raf)
+      // keluar dari maraton → simpan posisi terakhir
+      write(true)
+    }
+    // `blocks` di dependensi: blok baru mengubah pemilik halaman/indeks blok.
+    // `marathon` sengaja tidak (save stabil per render store).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [blocks, head?.chapterId, marathon.save])
+
   // maraton = chaining selalu aktif (tanpa hambatan).
   const chainExhausted = blocks.length >= MAX_BLOCKS || (tail && !tail.nextId)
+  /**
+   * Selama rantai pemulihan masih dibangun (`wantBlocks` belum tercapai),
+   * chaining otomatis DIJEDA: kalau tidak, preload akan berlomba dengan
+   * pembangunan rantai dan urutan blok bisa kacau — padahal urutan itulah yang
+   * menentukan posisi piksel yang sedang dipulihkan.
+   */
+  const restoringChain = wantBlocks > 0 && blocks.length < wantBlocks
   const NEXT_CHAPTER_AT = 0.7 // muat chapter berikutnya saat 70% chapter terbaca
 
   // Progres baca SEBENARNYA (= posisi scroll), bukan posisi muat: chaining
   // sudah memuat chapter berikutnya lebih dulu, jadi progres harus mengikuti
   // chapter yang sedang dilihat pembaca. Dihitung dari DOM (midpoint setiap
   // gambar vs tengah viewport), di-throttle rAF agar halus.
-  const flowRef = useRef<HTMLDivElement | null>(null)
-
   useEffect(() => {
     let raf = 0
     const compute = () => {
@@ -299,6 +545,7 @@ export default function ReaderMarathon() {
 
   useEffect(() => {
     if (chainExhausted) return
+    if (restoringChain) return
     // hanya chapter TERAKHIR yang bisa memicu muat berikutnya
     if (readBlock !== blocks.length - 1) return
     if (curLen === 0) return
@@ -307,6 +554,7 @@ export default function ReaderMarathon() {
     if (readInBlock / curLen >= NEXT_CHAPTER_AT) loadNext()
   }, [
     chainExhausted,
+    restoringChain,
     readBlock,
     blocks.length,
     readInBlock,
@@ -317,6 +565,7 @@ export default function ReaderMarathon() {
 
   useEffect(() => {
     if (chainExhausted) return
+    if (restoringChain) return
     // GERBANG juga di sini: jaring pengaman baru dipasang setelah chapter
     // terakhir selesai dimuat (termasuk gambar yang GAGAL — gagal ikut
     // dihitung "beres" via onSettled), jadi scroll cepat tak memicu preload
@@ -400,6 +649,67 @@ export default function ReaderMarathon() {
             autoFS.reset()
             chrome.show()
           } else autoFS.requestEnter()
+        }}
+      />
+      {/* Keluar dari mode maraton → balik ke reader biasa di chapter yang
+          SEDANG dibaca (blok aktif, bukan blok pertama rantai). Posisi baca
+          maraton ditulis ke progress reader supaya reader restore di tempat
+          yang sama. Kiri-atas, berlawanan dengan tombol layar penuh. */}
+      <ReaderMarathonToggle
+        active={true}
+        visible={chrome.visible}
+        onToggle={() => {
+          const target = curBlock ?? head
+          if (target) {
+            // tulis posisi maraton aktif → progress reader (biar reader restore
+            // di tempat yang sama). offsetRatio dihitung dari DOM jadi restore
+            // presisi, bukan ke atas halaman.
+            let offsetRatio = 0
+            let pageId = target.images[readInBlock - 1] ?? target.images[0]
+            const root = flowRef.current
+            if (root) {
+              const imgs = Array.from(root.querySelectorAll<HTMLImageElement>('img[data-b]'))
+              const pageIds: string[] = []
+              const pageTops: number[] = []
+              const pageHeights: number[] = []
+              for (const im of imgs) {
+                const bi = Number(im.dataset.b ?? '-1')
+                const pi = Number(im.dataset.page ?? '-1')
+                const url = blocks[bi]?.images[pi]
+                if (!url || im.offsetHeight === 0) continue
+                pageIds.push(imgUrl(url))
+                pageTops.push(im.getBoundingClientRect().top + window.scrollY)
+                pageHeights.push(im.offsetHeight)
+              }
+              const anchor = anchorFrom(
+                target.chapterId,
+                pageIds,
+                window.scrollY,
+                window.innerHeight,
+                pageTops,
+                pageHeights,
+              )
+              if (anchor) {
+                offsetRatio = anchor.offsetRatio
+                pageId = anchor.pageId
+              }
+            }
+            if (pageId) {
+              save({
+                seriesId: target.seriesId ?? target.chapterId,
+                seriesTitle: target.seriesTitle,
+                chapterId: target.chapterId,
+                chapterName: target.chapterName,
+                page: Math.max(0, readInBlock - 1),
+                progress: readInBlock / Math.max(1, target.images.length),
+                pageId,
+                offsetRatio,
+                source: target.source ?? null,
+                handle: target.handle || null,
+              })
+            }
+          }
+          navigate(readerHref(target?.chapterId ?? chapterId ?? ''))
         }}
       />
 
@@ -493,6 +803,10 @@ export default function ReaderMarathon() {
                   src={src}
                   alt={`${b.chapterName} halaman ${i + 1}`}
                   blockIndex={bi}
+                  // index halaman dalam blok → atribut `data-page`, dipakai
+                  // pengukuran posisi baca (sama seperti Reader). Tanpa ini
+                  // restore maraton tak bisa menemukan halamannya.
+                  pageIndex={i}
                   // hanya halaman pertama blok PERTAMA yang langsung diminta;
                   // sisanya menunggu dekat layar (lihat ComicImage.mountAhead)
                   eager={bi === 0 && i === 0}
@@ -589,6 +903,26 @@ export default function ReaderMarathon() {
         onClose={() => setSheetOpen(false)}
         onChange={onChange}
         onReset={onReset}
+        onRestartMarathon={() => {
+          // "Mulai dari awal": buang posisi sesi ini + seluruh sesi series ini,
+          // lalu muat ulang rantai dari blok pertama (posisi tidak dipulihkan
+          // karena kuncinya sudah tidak ada).
+          setSheetOpen(false)
+          marathon.clearSeries(handleOf(chapterId) ?? null)
+          marathon.clear(chapterId)
+          pendingRef.current = null
+          setWantBlocks(0)
+          setRestoreKey(null)
+          window.scrollTo({ top: 0 })
+          setBlocks([])
+          setTailIdx(-1)
+          setSettled(new Set())
+          fetchedRef.current = new Set()
+          const ctrl = new AbortController()
+          loadChapter(chapterId, ctrl.signal)
+            .then((d) => pushBlock(toBlock(d, params.handle)))
+            .catch((e: Error) => e.name !== 'AbortError' && setError(e.message))
+        }}
       />
     </div>
   )

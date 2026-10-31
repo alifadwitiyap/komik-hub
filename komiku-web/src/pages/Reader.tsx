@@ -5,6 +5,7 @@ import ComicImage from '../components/ComicImage'
 import HeartButton from '../components/HeartButton'
 import ReaderFooter from '../components/ReaderFooter'
 import ReaderFullscreenButton from '../components/ReaderFullscreenButton'
+import ReaderMarathonToggle from '../components/ReaderMarathonToggle'
 import ReaderMenu from '../components/ReaderMenu'
 import ReaderSettingsSheet from '../components/ReaderSettingsSheet'
 import ReaderToolbar from '../components/ReaderToolbar'
@@ -19,6 +20,7 @@ import { useAutoFullscreen } from '../hooks/useAutoFullscreen'
 import type { ChapterResponse, Manga } from '../types'
 import { Empty } from '../App'
 import { useProgress } from '../hooks/useProgress'
+import { useMarathonMemory } from '../hooks/useMarathonMemory'
 import { chapterNumberOf, markChapterRead } from '../readMarks'
 import { anchorFrom, scrollYForAnchor, usableAnchor } from '../pageMemory'
 import type { ReadingAnchor } from '../pageMemory'
@@ -97,6 +99,7 @@ export default function Reader() {
   /** awal gesture tap di area baca — dipakai membedakan tap dari scroll/drag */
   const tapStart = useRef<{ x: number; y: number; t: number } | null>(null)
   const { save, recent } = useProgress()
+  const marathon = useMarathonMemory()
   const navigate = useNavigate()
 
   // URL sumber asli halaman ini (hanya flow unified) — dipakai badge toolbar.
@@ -591,6 +594,37 @@ export default function Reader() {
             autoFS.reset()
             chrome.show()
           } else autoFS.requestEnter()
+        }}
+      />
+      {/* Tombol masuk mode maraton — kiri-atas, berlawanan dengan tombol
+          layar penuh supaya tidak salah pencet. Klik = masuk maraton dari
+          chapter saat ini, MEWARISI posisi baca reader (halaman + offset)
+          supaya tidak balik ke awal rantai. */}
+      <ReaderMarathonToggle
+        active={false}
+        visible={chrome.visible}
+        onToggle={() => {
+          // calon identitas series untuk sesi maraton
+          const seriesKey =
+            activeHandle ?? String(data?.series?.id ?? chapterId)
+          // posisi baca reader saat ini (kalau sudah ada) → wariskan
+          const prog = recent.find(
+            (r) =>
+              String(r.chapterId) === chapterId &&
+              String(r.seriesId) === seriesKey,
+          )
+          if (prog?.pageId) {
+            marathon.save({
+              chapterKey: chapterId,
+              seriesKey,
+              activeKey: chapterId,
+              pageId: prog.pageId,
+              offsetRatio: prog.offsetRatio ?? 0,
+              blocks: 1,
+              chapterIdx: 0,
+            })
+          }
+          navigate(marathonHref(chapterId))
         }}
       />
       {/* Pengumuman untuk pembaca layar: status fullscreen adalah perilaku yang

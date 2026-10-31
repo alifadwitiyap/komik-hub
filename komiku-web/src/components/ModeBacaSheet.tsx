@@ -1,6 +1,8 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { api } from '../api'
+import { marathonHref } from '../readerSource'
+import { useMarathonMemory } from '../hooks/useMarathonMemory'
 import { SPEED_KEDUA, SPEED_PERTAMA } from '../hooks/useAutoScroll'
 
 export interface ModeBacaSheetProps {
@@ -37,9 +39,26 @@ export default function ModeBacaSheet({
 }: ModeBacaSheetProps) {
   const navigate = useNavigate()
   const [preparing, setPreparing] = useState(false)
+  const marathon = useMarathonMemory()
 
+  /**
+   * "Baca Marathon" — MELANJUTKAN sesi maraton tersimpan kalau ada.
+   *
+   * Dulu selalu lompat ke chapter PALING AWAL series, jadi setiap kali tombol
+   * ini ditekan pembaca kehilangan posisinya dan mulai dari nol. Sekarang:
+   * sesi tersimpan menang; chapter paling awal hanya dipakai kalau belum
+   * pernah maraton di series ini.
+   */
   const startMarathon = async () => {
     onClose()
+    // 1. sesi tersimpan untuk series ini (kalau ada). Identitas series di
+    //    reader = handle unified ATAU id manga numerik (flow komiku lama).
+    const seriesKey = seriesId == null ? null : String(seriesId)
+    const saved = seriesKey ? marathon.forHandle(seriesKey) : null
+    if (saved) {
+      navigate(marathonHref(saved.chapterKey))
+      return
+    }
     if (!seriesId) {
       navigate(`/maraton/${chapterId}`)
       return

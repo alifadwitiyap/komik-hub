@@ -2,8 +2,9 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { imgUrl } from '../imgUrl'
 import * as rakStore from '../rakStore'
-import { resumeHref } from '../readerSource'
+import { marathonHref, resumeHref } from '../readerSource'
 import { useProgress } from '../hooks/useProgress'
+import { useMarathonMemory } from '../hooks/useMarathonMemory'
 import type { ProgressEntry } from '../hooks/useProgress'
 
 /**
@@ -19,6 +20,7 @@ const MAX_CARDS = 6
 export default function ContinueReading() {
   const [history, setHistory] = useState(() => rakStore.listHistory())
   const { recent } = useProgress()
+  const marathon = useMarathonMemory()
 
   // re-render saat rak berubah — pola sama seperti FAB "Lanjut baca" di Home
   useEffect(() => {
@@ -29,7 +31,11 @@ export default function ContinueReading() {
 
   const items = history
     .flatMap((e) => {
-      const href = resumeHref(e)
+      // Sesi maraton terakhir untuk series ini (kalau ada) menang: kartu harus
+      // mengembalikan pembaca ke RANTAI yang sedang dia baca, bukan melemparnya
+      // ke reader satu chapter yang membuat maraton terasa "hilang".
+      const pos = marathon.forHandle(e.handle)
+      const href = pos ? marathonHref(pos.chapterKey) : resumeHref(e)
       return href ? [{ entry: e, href }] : []
     })
     .slice(0, MAX_CARDS)

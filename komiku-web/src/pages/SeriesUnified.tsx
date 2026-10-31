@@ -9,8 +9,9 @@ import { Empty, Spinner } from '../App'
 import SourceBadge from '../components/SourceBadge'
 import HeartButton from '../components/HeartButton'
 import { useProgress } from '../hooks/useProgress'
+import { useMarathonMemory } from '../hooks/useMarathonMemory'
 import { useReadMarks } from '../hooks/useReadMarks'
-import { rememberSeriesLite, readerHref } from '../readerSource'
+import { marathonHref, rememberSeriesLite, readerHref } from '../readerSource'
 import {
   cancelRun,
   getRuns,
@@ -153,6 +154,11 @@ export default function SeriesUnified() {
     resume && String(resume.chapterId).startsWith(`${handle}:`)
       ? String(resume.chapterId)
       : null
+  // Sesi maraton tersimpan untuk series ini (kalau pembaca terakhir memakai
+  // mode maraton). Tombol "Maraton" memakainya supaya melanjutkan rantai,
+  // bukan mengulang dari chapter paling awal.
+  const marathonMemory = useMarathonMemory()
+  const marathonPos = handle ? marathonMemory.forHandle(handle) : null
 
   // Range mengikuti URUTAN TAMPIL, dan `visible` selalu potongan awal `chapters`
   // → index baris aman dipakai walau daftar dipotong 40.
@@ -338,8 +344,17 @@ export default function SeriesUnified() {
                 {resumeKey ? `Lanjut · ${resume?.chapterName}` : `Baca ${chapterLabel(oldest)}`}
               </Link>
               <Link
-                to={`/maraton/${handle}/${oldest.number}`}
-                title={`Mulai maraton dari ${chapterLabel(oldest)}`}
+                to={
+                  // Sesi maraton tersimpan menang: tombol "Maraton" harus
+                  // MELANJUTKAN rantai, bukan mengulang dari chapter paling awal
+                  // (itu keluhan aslinya: klik maraton → balik ke awal).
+                  marathonPos ? marathonHref(marathonPos.chapterKey) : `/maraton/${handle}/${oldest.number}`
+                }
+                title={
+                  marathonPos
+                    ? 'Lanjutkan maraton dari posisi terakhir'
+                    : `Mulai maraton dari ${chapterLabel(oldest)}`
+                }
                 className="rounded-xl border border-brand-amber-dim px-3.5 py-2.5 text-center text-[13px] font-semibold text-brand-amber transition-colors hover:bg-brand-amber-dim/20"
               >
                 Maraton
