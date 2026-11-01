@@ -136,8 +136,8 @@ export function startRun(handle: string, seriesTitle: string, numbers: string[])
     // perangkat user (anchor `download` → Content-Disposition attachment).
     // `saveGeneratedPdf` mengembalikan false tanpa DOM (uji node) → `saved`
     // tetap 0 di lingkungan tanpa browser, jadi tidak ada klaim palsu.
-    (id, filename) => {
-      if (saveGeneratedPdf(id, filename)) {
+    async (id, filename) => {
+      if (await saveGeneratedPdf(id, filename)) {
         rec.saved += 1
         emit()
       }

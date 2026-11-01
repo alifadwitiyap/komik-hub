@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { imgDirect, imgUrl, READER_SIZES } from '../imgUrl'
+import { imgSrc, imgSrcSet, imgUrl, pickWidth, READER_SIZES, READER_WIDTHS } from '../imgUrl'
 import { acquireImageSlot, recordImageSettle } from '../imgQueue'
 import { aspectOf, rememberAspect } from '../pageMemory'
 
@@ -248,11 +248,14 @@ export default function ComicImage({
   // rasio w/h: hasil decode terbaru → memori kunjungan lalu → cadangan.
   const ratio =
     (measured?.url === url ? measured.ratio : null) ?? aspectOf(url) ?? fallbackRatio
-  // Reader ambil gambar LANGSUNG dari CDN: server tidak decode/encode, jadi
-  // RAM & CPU VPS tidak dipakai untuk menampilkan halaman. Tradeoff yang
-  // dipilih: kuota data user ~3-4x lebih besar. Unduh-offline tetap via proxy
-  // (`imgSrc` di chapterOffline.ts) karena byte-nya harus same-origin.
-  const srcSet = undefined
+  // Reader ambil gambar lewat proxy `/img` (same-origin). Ini membuat r
+  // display = URL cache offline (`downloadChapterImages` juga menyimpan via
+  // `imgSrc`), jadi byte yang di-unduh offline benar-benar dipakai saat baca
+  // offline. Tradeoff vs CDN-langsung: server decode/encode gambar (beban CPU
+  // VPS naik, kuota data user naik ~3-4×) — pilihan desain Q21 sekarang
+  // dibalik demi fitur offline berfungsi.
+  const useProxy = true
+  const srcSet = started && useProxy ? imgSrcSet(src, READER_WIDTHS, buster || undefined) : undefined
   // LQIP: thumbnail kecil tetap dari CDN apa adanya — tidak ada proxy, jadi
   // placeholder = URL asli (browser yang menskalakan). Server nol biaya.
   const lqip = ''
@@ -427,7 +430,7 @@ export default function ComicImage({
       key={attempt}
       ref={ref}
       // Tanpa `started`: TIDAK ada src sama sekali = 0 byte terunduh.
-      src={started ? imgDirect(src, buster || undefined) : undefined}
+      src={started ? imgSrc(src, pickWidth(window.innerWidth), buster || undefined) : undefined}
       srcSet={started ? srcSet : undefined}
       sizes={started && srcSet ? sizes : undefined}
       alt={alt}

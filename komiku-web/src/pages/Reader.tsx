@@ -11,7 +11,7 @@ import ReaderMenu from '../components/ReaderMenu'
 import ReaderSettingsSheet from '../components/ReaderSettingsSheet'
 import ReaderToolbar from '../components/ReaderToolbar'
 import SourceBadge from '../components/SourceBadge'
-import { imgDirect, imgUrl, mountAheadPx } from '../imgUrl'
+import { imgSrc, imgUrl, mountAheadPx } from '../imgUrl'
 import { tapHitsReaderControl } from '../readerControls'
 import { downloadChapterImages } from '../chapterOffline'
 import { unifiedApi } from '../api'
@@ -328,7 +328,7 @@ export default function Reader() {
               // tetap dingin (terukur 4,3 s). Byte asli di-cache server, jadi satu
               // fetch upstream cukup untuk semua lebar.
               const im = new window.Image()
-              im.src = imgDirect(firstImg)
+              im.src = imgSrc(firstImg)
             }
           })
           .catch(() => {

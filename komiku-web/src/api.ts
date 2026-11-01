@@ -25,7 +25,7 @@ const BASE = '/api'
  */
 import { getUser } from './account'
 
-function accountHeaders(base?: Record<string, string>): Record<string, string> | undefined {
+export function accountHeaders(base?: Record<string, string>): Record<string, string> | undefined {
   const u = getUser()
   if (!u) return base
   return { ...(base ?? {}), 'X-Komik-User': u }
