@@ -106,11 +106,17 @@ def main() -> int:
           const b = document.querySelector('button[data-testid="reader-marathon-toggle"]');
           if (b) b.click();
         }""")
-        page.wait_for_timeout(4000)
+        page.wait_for_timeout(1500)
         check("keluar ke reader biasa", "/baca/" in page.url, page.url)
 
-        # 4. reader harus restore ke chapter aktif + posisi (bukan awal)
+        # 4. reader harus restore ke chapter aktif + posisi (bukan awal).
+        #    Poll (bukan fixed sleep) karena restore bisa butuh waktu: gambar
+        #    chapter aktif perlu decode sebelum posisi final tercapai.
+        deadline = time.time() + 25
         y_after = page.evaluate("() => window.scrollY")
+        while time.time() < deadline and y_after <= 1000:
+            page.wait_for_timeout(500)
+            y_after = page.evaluate("() => window.scrollY")
         check(
             "posisi baca dipertahankan (bukan balik awal)",
             y_after > 1000,

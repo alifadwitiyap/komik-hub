@@ -1,4 +1,5 @@
 import { unifiedApi } from './api'
+import { accountHeaders } from './api'
 import { downloadChapterImages } from './chapterOffline'
 
 /**
@@ -40,7 +41,7 @@ export interface JobProgress {
 }
 
 /** Dipanggil tiap PDF selesai di-generate (lihat `saveGeneratedPdf`). */
-export type GeneratedHandler = (id: string, filename: string) => void
+export type GeneratedHandler = (id: string, filename: string) => void | Promise<void>
 
 /**
  * Simpan PDF yang baru di-generate ke perangkat user (keputusan Q22.A:
@@ -66,22 +67,35 @@ export type GeneratedHandler = (id: string, filename: string) => void
  * boleh menampilkan prompt "izinkan unduh banyak file" — itu perilaku browser,
  * bukan bug (server tetap menyimpan tiap entri, bisa diambil ulang dari Rak).
  */
-export function saveGeneratedPdf(id: string, filename: string): boolean {
-  if (typeof document === 'undefined' || !document.body) return false
-  const a = document.createElement('a')
-  // `filename` ikut di URL (`?fn=`) supaya SW bisa menulis header RFC 5987;
-  // atribut `download` tetap jadi penentu nama di browser yang menghormatinya.
-  a.href = unifiedApi.downloadFileUrl(id, filename)
-  a.download = filename || 'chapter.pdf'
-  a.rel = 'noopener'
-  a.style.display = 'none'
-  document.body.appendChild(a)
-  a.click()
-  // Jangan hapus sinkron: beri unduhan waktu memulai sebelum anchor dilepas.
-  // Tanpa jeda, beberapa browser membatalkan transfer yang baru di-trigger.
-  // Tidak ada URL.revokeObjectURL di sini — tidak ada blob yang dibuat.
-  window.setTimeout(() => a.remove(), 1000)
-  return true
+export async function saveGeneratedPdf(id: string, filename: string): Promise<boolean> {
+  if (typeof window === 'undefined' || !document?.body) return false
+  try {
+    // Auto-unduh lewat fetch + blob (bukan anchor <a download>) supaya header
+    // `X-Komik-User` ikut terkirim. Server `GET /api/unified/downloads/{id}`
+    // mewajibkan header itu (401 tanpa) — anchor top-level tidak bisa membawa
+    // header, jadi sebelumnya auto-unduh PUT gagal padahal PDF sudah jadi.
+    const res = await fetch(unifiedApi.downloadFileUrl(id, filename), {
+      headers: accountHeaders(),
+    })
+    if (!res.ok) return false
+    const blob = await res.blob()
+    const objectUrl = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = objectUrl
+    a.download = filename || 'chapter.pdf'
+    a.rel = 'noopener'
+    a.style.display = 'none'
+    document.body.appendChild(a)
+    a.click()
+    // Jangan hapus sinkron: beri unduhan waktu memulai sebelum anchor dilepas.
+    window.setTimeout(() => {
+      a.remove()
+      URL.revokeObjectURL(objectUrl)
+    }, 1000)
+    return true
+  } catch {
+    return false
+  }
 }
 
 /** Pool sederhana: jalankan promise maksimal `limit` sekaligus. */
@@ -141,7 +155,10 @@ export async function downloadChapters(
         // Dijalankan SEBELUM menandai 'ok' supaya kegagalan penyimpanan
         // tidak menyamar sebagai sukses; `onGenerated` sendiri tidak
         // melempar (saveGeneratedPdf no-op tanpa DOM).
-        onGenerated?.(res.id, res.filename)
+        // onGenerated bisa async (saveGeneratedPdf fetch+blob). Tunggu selesai
+        // sebelum menandai 'ok', supaya kegagalan penyimpanan tidak menyamar
+        // sebagai sukses.
+        await onGenerated?.(res.id, res.filename)
         onUpdate(index, { state: 'ok' })
       } catch (e) {
         // abort bawaan user: fetch gagal dengan AbortError — jangan beri
