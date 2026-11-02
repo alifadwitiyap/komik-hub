@@ -5,6 +5,8 @@ interface ReaderMarathonToggleProps {
   active: boolean
   /** false = sembunyikan (chrome ikut arah scroll) */
   visible: boolean
+  /** true = selalu menerima hit-test, bahkan saat opacity 0 (fade-out) */
+  interactive: boolean
   onToggle: () => void
 }
 
@@ -23,6 +25,7 @@ interface ReaderMarathonToggleProps {
 export default function ReaderMarathonToggle({
   active,
   visible,
+  interactive,
   onToggle,
 }: ReaderMarathonToggleProps) {
   const label = active ? 'Keluar maraton' : 'Masuk maraton'
@@ -40,9 +43,11 @@ export default function ReaderMarathonToggle({
         active
           ? 'border-white/40 bg-black/75 text-white'
           : 'border-brand-amber-soft bg-brand-amber text-white'
-      } ${visible ? 'opacity-100' : 'pointer-events-none opacity-0'}`}
+      } ${visible ? 'opacity-100' : 'opacity-0'} ${
+        interactive ? '' : 'pointer-events-none'
+      }`}
       aria-hidden={!visible}
-      inert={!visible}
+      inert={!interactive}
     >
       {active ? (
         <IconXmark className="size-4 shrink-0" aria-hidden="true" />

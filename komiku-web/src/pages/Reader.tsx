@@ -548,6 +548,7 @@ export default function Reader() {
       <ReaderFullscreenButton
         active={fsActive}
         visible={showFsButton}
+        interactive
         onToggle={() => {
           if (fsActive) {
             autoFS.reset()
@@ -562,6 +563,7 @@ export default function Reader() {
       <ReaderMarathonToggle
         active={false}
         visible={chrome.visible}
+        interactive
         onToggle={() => {
           // calon identitas series untuk sesi maraton
           const seriesKey =

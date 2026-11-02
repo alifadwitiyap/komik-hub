@@ -650,6 +650,7 @@ export default function ReaderMarathon() {
       <ReaderFullscreenButton
         active={fsActive}
         visible={chrome.visible}
+        interactive
         onToggle={() => {
           if (fsActive) {
             autoFS.reset()
@@ -664,6 +665,7 @@ export default function ReaderMarathon() {
       <ReaderMarathonToggle
         active={true}
         visible={chrome.visible}
+        interactive
         onToggle={() => {
           const saved = marathon.forChapter(head?.chapterId ?? chapterId)
           // Blok aktif sebenarnya dari sesi tersimpan (saved.activeKey) — bukan
