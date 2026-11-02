@@ -1,5 +1,6 @@
 //! Adapter per sumber. Setiap adapter = satu file; lane implementasi hanya
 //! menyentuh file-nya sendiri.
+pub mod common;
 pub mod komiku;
 pub mod mangaku;
 pub mod kiryuu;

@@ -23,6 +23,7 @@ mod unified;
 mod user;
 
 use routes::AppState;
+use std::sync::Arc;
 // Diperlukan untuk memanggil `.call(req)` pada Service/ServeDir di bawah.
 
 #[tokio::main]
@@ -46,7 +47,8 @@ async fn main() -> anyhow::Result<()> {
     // sebagai file akan 404, padahal itu route React Router. Karena itu fallback ini
     // membaca file langsung dari disk — aset dari path-nya, selain itu index.html.
     let dist = std::path::Path::new("../komiku-web/dist");
-    let app = routes::router(AppState::default());
+    let state = Arc::new(AppState::new());
+    let app = routes::router(state.clone());
     // Route notif favorit lintas sumber (mirror unified::unified_routes()).
     // Handler stateless -> Router<()>, langsung di-merge sebelum fallback SPA.
     let app = app.merge(notif::notif_routes());
@@ -84,7 +86,7 @@ async fn main() -> anyhow::Result<()> {
     // tidak boleh mati karena disk unduhan), tapi log ini harus langsung
     // menunjuk penyebabnya; endpoint unduhan lalu membalas 500 yang jelas —
     // BUKAN 502 "sumber lambat" yang menyesatkan.
-    if let Err(e) = unified::init_download_store() {
+    if let Err(e) = unified::init_download_store(&state.unified) {
         tracing::error!("direktori unduhan TIDAK siap - unduhan PDF akan gagal 500: {e:#}");
     }
 
@@ -98,7 +100,7 @@ async fn main() -> anyhow::Result<()> {
     // `spawn` sudah menjalankan future-nya; `let _` membuang JoinHandle
     // dengan sengaja (warm-up tidak perlu ditunggu atau diperiksa).
     #[allow(clippy::let_underscore_future)]
-    let _ = tokio::spawn(async { unified::warm_up_latest().await });
+    let _ = tokio::spawn(async move { unified::warm_up_latest(&state.unified).await });
     axum::serve(listener, app).await?;
     Ok(())
 }

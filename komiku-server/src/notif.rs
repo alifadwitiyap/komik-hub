@@ -580,18 +580,21 @@ async fn fill_baselines(store: &NotifStore, username: &str, key: &str) {
 
 // ------------------------------------------------------------------ check cycle
 
-/// Satu siklus pemeriksaan untuk SEMUA akun. Guard `checking` mencegah cycle
-/// bertumpuk (dipicu GET /list saat TTL lewat). Fetch sumber tetap DIBAGI lewat
-/// cache global `snapshot()`. Chapter baru -> 1 notifikasi per title_key per akun.
-async fn run_check_cycle(store: Arc<NotifStore>) {
-    // try_lock: kalau ada cycle berjalan, langsung keluar. Guard mutex
-    // dipegang sampai fungsi selesai, termasuk saat return/panic -> tak
-    // mungkin "nyangkut true" seperti AtomicBool manual.
-    let Ok(_guard) = store.checking.try_lock() else {
-        return; // sudah ada cycle berjalan
-    };
-    let now = now_millis();
+/// Rencana siklus SATU akun: favorit yang perlu di-fetch (jaringan) dan yang
+/// perlu baseline-fill. Murni: tanpa IO jaringan, hanya membaca state + menandai
+/// `last_check_at`.
+struct UserPlan {
+    username: String,
+    /// favorit dengan baselines terisi -> butuh snapshot jaringan.
+    fetch: Vec<(String, Favorite)>,
+    /// favorit dengan baselines kosong -> butuh baseline-fill.
+    fill: Vec<String>,
+}
 
+/// Hitung rencana siklus per akun (murni, dapat diuji TANPA jaringan): baca
+/// state semua akun (memory + disk), bagi favorit jadi `fetch` vs `fill`,
+/// tandai `last_check_at`, simpan penandaan. Tidak ada pemanggilan JARINGAN.
+async fn cycle_plan(store: &NotifStore, now: i64) -> Vec<UserPlan> {
     // Akun yang diproses: yang sudah dimuat di memory + yang punya file di disk
     // (penting lintas restart: map in-memory masih kosong saat cycle pertama).
     let mut usernames: Vec<String> = {
@@ -604,31 +607,96 @@ async fn run_check_cycle(store: Arc<NotifStore>) {
         }
     }
     if usernames.is_empty() {
-        return; // tak ada akun -> tak ada yang perlu diperiksa
+        return Vec::new(); // tak ada akun -> tak ada yang perlu diperiksa
     }
 
-    // Fase 1: tandai last_check_at + snapshot favorit per akun (di luar fetch).
-    let mut per_user: Vec<(String, Vec<(String, Favorite)>)> = Vec::new();
+    let mut plans = Vec::with_capacity(usernames.len());
     {
         let mut map = store.state.lock().await;
         for u in &usernames {
             let st = NotifStore::ensure_user(&store.dir, &mut map, u);
             st.last_check_at = Some(now);
-            let favs = st
-                .favorites
-                .iter()
-                .map(|(k, v)| (k.clone(), v.clone()))
-                .collect();
-            per_user.push((u.clone(), favs));
+            let mut fetch = Vec::new();
+            let mut fill = Vec::new();
+            for (k, v) in &st.favorites {
+                if v.baselines.is_empty() {
+                    fill.push(k.clone());
+                } else {
+                    fetch.push((k.clone(), v.clone()));
+                }
+            }
+            plans.push(UserPlan {
+                username: u.clone(),
+                fetch,
+                fill,
+            });
         }
-        for (u, _) in &per_user {
-            if let Some(st) = map.get_mut(u) {
-                store.save_locked(u, st);
+        for p in &plans {
+            if let Some(st) = map.get_mut(&p.username) {
+                store.save_locked(&p.username, st);
             }
         }
     }
+    plans
+}
 
-    // Fase 2+3: fetch (di luar lock) lalu deteksi+mutasi per akun di bawah lock.
+/// Terapkan snapshot ke SATU favorit (murni): deteksi sumber baru + tembus
+/// ceiling, lalu naikkan/adopsi baseline ke snapshot terkini (tak pernah
+/// turun). Kembalikan notifikasi kalau ceiling tembus; `None` kalau tidak.
+fn apply_snapshot(
+    key: &str,
+    fav: &mut Favorite,
+    snap: &[(String, String)],
+    now: i64,
+) -> Option<NotifEntry> {
+    if fav.baselines.is_empty() {
+        return None;
+    }
+    let srcs = detect_new_sources(&fav.baselines, snap);
+    // Tie-break ceiling: notifikasi HANYA kalau ada chapter yang menembus
+    // ceiling (max lintas sumber). Update lebih rendah dari ceiling dari sumber
+    // lain → tidak masuk notif.
+    let detection = ceiling_advance(&fav.baselines, snap).map(|sc| (String::new(), sc));
+    // Naikkan/adopsi baseline ke snapshot terkini (tak pernah turun).
+    for (src, num) in snap {
+        let e = fav
+            .baselines
+            .entry(src.clone())
+            .or_insert_with(|| num.clone());
+        if cmp_num_or_str(num, e) == Ordering::Greater {
+            *e = num.clone();
+        }
+    }
+    detection.map(|(_, max_num)| NotifEntry {
+        id: notif_id(key, &max_num),
+        title_key: key.to_string(),
+        title: fav.title.clone(),
+        handle: fav.handle.clone(),
+        chapter: max_num,
+        sources: srcs,
+        at: now,
+        read: false,
+    })
+}
+
+/// Satu siklus pemeriksaan untuk SEMUA akun: `cycle_plan` menghitung rencana
+/// (murni), fungsi ini mengeksekusinya — fetch jaringan (semaphore + JoinSet +
+/// `snapshot().await`) dan tulis disk `save_locked`. Guard `checking` mencegah
+/// cycle bertumpuk (dipicu GET /list saat TTL lewat). Chapter baru -> 1
+/// notifikasi per title_key per akun.
+async fn cycle_execute(store: Arc<NotifStore>) {
+    // try_lock: kalau ada cycle berjalan, langsung keluar. Guard mutex
+    // dipegang sampai fungsi selesai, termasuk saat return/panic -> tak
+    // mungkin "nyangkut true" seperti AtomicBool manual.
+    let Ok(_guard) = store.checking.try_lock() else {
+        return; // sudah ada cycle berjalan
+    };
+    let now = now_millis();
+
+    // Fase 1 (murni): hitung rencana fetch/fill per akun + tandai last_check_at.
+    let plan = cycle_plan(&store, now).await;
+
+    // Fase 2 (IO): eksekusi rencana di luar lock state.
     //
     // Paralel ANTAR-FAVORIT dengan batas konkurensi: dulu loop ini serial
     // (`for (key, fav) ... snapshot().await`), jadi N favorit = N giliran
@@ -636,22 +704,25 @@ async fn run_check_cycle(store: Arc<NotifStore>) {
     // membuat cycle notif menahan CPU/koneksi berjam-jam dan berebut dengan
     // request baca user. Batas 3 supaya tidak membanjiri host.
     const SNAPSHOT_CONCURRENCY: usize = 3;
-    for (username, favorites) in &per_user {
+    for up in plan {
+        // Baseline kosong: coba isi sekarang (favorit lama yg fill-nya gagal
+        // dulu, mis. karena handle dobel -> notifikasi mati permanen). Cycle ini
+        // tetap melompatinya, jadi yang baru terisi akan ternotifikasi pada
+        // cycle BERIKUTNYA.
+        for k in &up.fill {
+            let s = store.clone();
+            let u = up.username.clone();
+            let k = k.clone();
+            tokio::spawn(async move { fill_baselines(&s, &u, &k).await });
+        }
+
+        if up.fetch.is_empty() {
+            continue;
+        }
         let sem = std::sync::Arc::new(tokio::sync::Semaphore::new(SNAPSHOT_CONCURRENCY));
         let mut set: tokio::task::JoinSet<(String, Vec<(String, String)>)> =
             tokio::task::JoinSet::new();
-        for (key, fav) in favorites {
-            if fav.baselines.is_empty() {
-                // Baseline kosong: coba isi sekarang (favorit lama yg fill-nya
-                // gagal dulu, mis. karena handle dobel -> notifikasi mati
-                // permanen). Cycle ini tetap melompatinya, jadi yang baru
-                // terisi akan ternotifikasi pada cycle BERIKUTNYA.
-                let s = store.clone();
-                let u = username.clone();
-                let k = key.clone();
-                tokio::spawn(async move { fill_baselines(&s, &u, &k).await });
-                continue;
-            }
+        for (key, fav) in &up.fetch {
             let store2 = store.clone();
             let k = key.clone();
             let f = fav.clone();
@@ -676,48 +747,19 @@ async fn run_check_cycle(store: Arc<NotifStore>) {
             continue;
         }
         let mut map = store.state.lock().await;
-        let st = NotifStore::ensure_user(&store.dir, &mut map, username);
+        let st = NotifStore::ensure_user(&store.dir, &mut map, &up.username);
         for (key, snap) in &snaps {
-            let notif: Option<NotifEntry> = {
-                let Some(f) = st.favorites.get_mut(key) else {
-                    continue;
-                };
-                if f.baselines.is_empty() {
-                    continue;
-                }
-                let srcs = detect_new_sources(&f.baselines, snap);
-                // Tie-break ceiling: notifikasi HANYA kalau ada chapter yang
-                // menembus ceiling (max lintas sumber). Update lebih rendah dari
-                // ceiling dari sumber lain → tidak masuk notif.
-                let detection = ceiling_advance(&f.baselines, snap).map(|sc| (String::new(), sc));
-                // Naikkan/adopsi baseline ke snapshot terkini (tak pernah turun).
-                for (src, num) in snap {
-                    let e = f
-                        .baselines
-                        .entry(src.clone())
-                        .or_insert_with(|| num.clone());
-                    if cmp_num_or_str(num, e) == Ordering::Greater {
-                        *e = num.clone();
-                    }
-                }
-                detection.map(|(_, max_num)| NotifEntry {
-                    id: notif_id(key, &max_num),
-                    title_key: key.clone(),
-                    title: f.title.clone(),
-                    handle: f.handle.clone(),
-                    chapter: max_num,
-                    sources: srcs,
-                    at: now,
-                    read: false,
-                })
+            let Some(f) = st.favorites.get_mut(key) else {
+                continue;
             };
+            let notif = apply_snapshot(key, f, snap, now);
             if let Some(n) = notif {
                 if !st.notifications.iter().any(|e| e.id == n.id) {
                     st.notifications.push(n);
                 }
             }
         }
-        store.save_locked(username, st);
+        store.save_locked(&up.username, st);
     }
     // guard `checking` dilepas di sini (akhir scope) — otomatis walau panic.
 }
@@ -798,7 +840,7 @@ async fn get_list(headers: HeaderMap) -> Res<Value> {
     };
     if should_check {
         let s = store.clone();
-        tokio::spawn(async move { run_check_cycle(s).await });
+        tokio::spawn(async move { cycle_execute(s).await });
     }
     Ok(Json(json!({
         "items": items,
@@ -955,13 +997,13 @@ mod tests {
 
     #[tokio::test]
     async fn checking_guard_releases_after_cycle() {
-        // Guard check cycle harus bebas lagi setelah run_check_cycle selesai
+        // Guard check cycle harus bebas lagi setelah cycle_execute selesai
         // (bukan "nyangkut true" seperti AtomicBool saat task gagal).
         let dir = temp_dir("checking-guard");
         let store = NotifStore::open(&dir).unwrap();
         assert!(store.checking.try_lock().is_ok(), "guard bebas saat idle");
         drop(store.checking.try_lock().unwrap());
-        run_check_cycle(store.clone()).await; // tanpa akun: no-op
+        cycle_execute(store.clone()).await; // tanpa akun: no-op
         assert!(
             store.checking.try_lock().is_ok(),
             "guard harus dilepas setelah cycle selesai"
@@ -1359,5 +1401,84 @@ mod tests {
         }];
         let new_keys = apply_favorites(&mut state, incoming);
         assert!(new_keys.is_empty(), "favorit yang sudah ada bukan 'baru'");
+    }
+
+    // ---- cycle_plan (murni, tanpa jaringan) ----------------------------
+
+    #[tokio::test]
+    async fn cycle_plan_mengelompokkan_fetch_vs_fill() {
+        let dir = temp_dir("plan-grup");
+        let store = NotifStore::open(&dir).unwrap();
+        let now = now_millis();
+        {
+            let mut map = store.state.lock().await;
+            let st = NotifStore::ensure_user(&store.dir, &mut map, "alif");
+            // k1: baseline terisi -> fetch.
+            let mut f1 = fav("3215", "komiku");
+            f1.baselines.insert("komiku".to_string(), "10".to_string());
+            st.favorites.insert("k1".to_string(), f1);
+            // k2: baseline kosong -> fill.
+            st.favorites.insert("k2".to_string(), fav("42", "komiku"));
+        }
+        let plans = cycle_plan(&store, now).await;
+        assert_eq!(plans.len(), 1);
+        let p = &plans[0];
+        assert_eq!(p.username, "alif");
+        assert_eq!(p.fetch.len(), 1);
+        assert_eq!(p.fetch[0].0, "k1");
+        assert_eq!(p.fill, vec!["k2".to_string()]);
+        // last_check_at ditandai.
+        let mut map = store.state.lock().await;
+        let st = NotifStore::ensure_user(&store.dir, &mut map, "alif");
+        assert_eq!(st.last_check_at, Some(now));
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[tokio::test]
+    async fn cycle_plan_tanpa_akun_kosong() {
+        let dir = temp_dir("plan-kosong");
+        let store = NotifStore::open(&dir).unwrap();
+        let plans = cycle_plan(&store, now_millis()).await;
+        assert!(plans.is_empty(), "tak ada akun -> tak ada rencana");
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    // ---- apply_snapshot (deteksi + baseline, murni) -------------------
+
+    #[test]
+    fn apply_snapshot_tembus_ceiling_membuat_notifikasi() {
+        let mut f = fav("3215", "komiku");
+        f.baselines.insert("komiku".to_string(), "10".to_string());
+        f.baselines.insert("kiryuu".to_string(), "5".to_string());
+        let snap = vec![
+            ("komiku".to_string(), "11".to_string()),
+            ("kiryuu".to_string(), "6".to_string()),
+        ];
+        let n = apply_snapshot("k1", &mut f, &snap, 123_456).unwrap();
+        assert_eq!(n.chapter, "11");
+        assert_eq!(n.title_key, "k1");
+        // sources: hanya yang naik di atas baseline-nya.
+        assert_eq!(n.sources, vec!["komiku".to_string(), "kiryuu".to_string()]);
+        // baseline diadopsi (tak pernah turun).
+        assert_eq!(f.baselines.get("komiku"), Some(&"11".to_string()));
+        assert_eq!(f.baselines.get("kiryuu"), Some(&"6".to_string()));
+    }
+
+    #[test]
+    fn apply_snapshot_ditekan_saat_tidak_tembus_ceiling() {
+        let mut f = fav("3215", "komiku");
+        f.baselines.insert("shinigami".to_string(), "105".to_string());
+        f.baselines.insert("komiku".to_string(), "100".to_string());
+        let snap = vec![("komiku".to_string(), "101".to_string())];
+        assert!(apply_snapshot("k1", &mut f, &snap, 0).is_none());
+        // baseline tetap naik ke 101 walaupun tidak ternotifikasi.
+        assert_eq!(f.baselines.get("komiku"), Some(&"101".to_string()));
+    }
+
+    #[test]
+    fn apply_snapshot_baseline_kosong_tidak_menghasilkan_apa_pun() {
+        let mut f = fav("3215", "komiku"); // baselines kosong
+        let snap = vec![("komiku".to_string(), "11".to_string())];
+        assert!(apply_snapshot("k1", &mut f, &snap, 0).is_none());
     }
 }

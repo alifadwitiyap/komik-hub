@@ -19,6 +19,7 @@ use crate::model::*;
 use crate::source::{classified, Source, SourceError, SourceResult};
 use serde_json::Value;
 use std::time::Duration;
+use super::common::{num_field, str_field, iso8601_to_millis_utc};
 
 const UA: &str = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 \
                   (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36";
@@ -158,18 +159,18 @@ impl MangakuSource {
     /// Satu item hasil katalog -> Manga (id = slug).
     fn manga_from(&self, v: &Value) -> Option<Manga> {
         let obj = v.as_object()?;
-        let slug = str_of(obj.get("slug"))?;
-        let title = str_of(obj.get("title")).unwrap_or_else(|| slug.clone());
+        let slug = str_field(obj.get("slug"))?;
+        let title = str_field(obj.get("title")).unwrap_or_else(|| slug.clone());
         let mut m = Manga::new(SourceId::from("mangaku"), slug.clone(), &title);
-        m.cover_url = str_of(obj.get("poster"));
-        m.author = str_of(obj.get("author"));
-        m.status = str_of(obj.get("status"));
-        m.manga_type = str_of(obj.get("type"));
-        m.rating = str_of(obj.get("rating"));
+        m.cover_url = str_field(obj.get("poster"));
+        m.author = str_field(obj.get("author"));
+        m.status = str_field(obj.get("status"));
+        m.manga_type = str_field(obj.get("type"));
+        m.rating = str_field(obj.get("rating"));
         // last_chapter bisa objek chapter (katalog) atau angka/teks
         m.last_chapter = match obj.get("last_chapter") {
-            Some(Value::Object(o)) => num_of(o.get("chapter_number")),
-            other => num_of(other),
+            Some(Value::Object(o)) => num_field(o.get("chapter_number")),
+            other => num_field(other),
         };
         m.url = Some(self.url(&format!("manga/{slug}")));
         Some(m)
@@ -222,8 +223,8 @@ impl Source for MangakuSource {
             .iter()
             .filter_map(|g| {
                 let o = g.as_object()?;
-                let slug = str_of(o.get("slug"))?;
-                let name = str_of(o.get("name"))?;
+                let slug = str_field(o.get("slug"))?;
+                let name = str_field(o.get("name"))?;
                 if !super::is_genre(&slug, &name) {
                     return None;
                 }
@@ -260,8 +261,8 @@ impl Source for MangakuSource {
                 list.iter()
                     .filter_map(|c| {
                         let o = c.as_object()?;
-                        let number = num_of(o.get("chapter_number"))?;
-                        let title = str_of(o.get("title"))
+                        let number = num_field(o.get("chapter_number"))?;
+                        let title = str_field(o.get("title"))
                             .unwrap_or_else(|| format!("Chapter {number}"));
                         let url = self.url(&format!(
                             "manga/{slug}/chapter/{}",
@@ -276,9 +277,9 @@ impl Source for MangakuSource {
                             // `updated_at` upstream sengaja TIDAK dipakai: nilainya
                             // timestamp re-scrape (tiap chapter terlihat "hari ini",
                             // terverifikasi live) jadi tak berguna buat recency.
-                            updated_at: str_of(o.get("created_at"))
+                            updated_at: str_field(o.get("created_at"))
                                 .as_deref()
-                                .and_then(iso8601_to_millis),
+                                .and_then(iso8601_to_millis_utc),
                             url: Some(url),
                         })
                     })
@@ -319,7 +320,7 @@ impl Source for MangakuSource {
                 format!("chapter {slug} #{} tidak ditemukan", c.native_id),
             ))?;
         // verifikasi nomor balasan cocok — server bisa balas chapter lain
-        let got = num_of(ch.get("chapter_number"))
+        let got = num_field(ch.get("chapter_number"))
             .and_then(|s| s.trim().parse::<f64>().ok())
             .ok_or_else(|| classified(
                 SourceError::Missing,
@@ -357,7 +358,7 @@ fn image_urls(ch: &Value, base: &str) -> Vec<String> {
         .and_then(|i| i.as_array())
         .map(|list| {
             list.iter()
-                .filter_map(|im| str_of(im.get("image_path")))
+                .filter_map(|im| str_field(im.get("image_path")))
                 .filter(|p| !p.to_ascii_lowercase().contains("promo"))
                 .filter_map(|p| normalize_image_url(&p, base))
                 .collect()
@@ -365,75 +366,6 @@ fn image_urls(ch: &Value, base: &str) -> Vec<String> {
         .unwrap_or_default()
 }
 
-/// ISO8601 -> epoch millis. Bentuk sumber (Laravel): `2026-09-26T01:00:22.000000Z`
-/// — selalu UTC ("Z"), jadi offset lain ditolak supaya tak salah-tafsir jadi
-/// UTC. Fraksi detik dibulatkan ke mili (3 digit pertama). Gagal parse -> None
-/// (field `updated_at` memang best-effort).
-/// ponytail: duplikat ringkas dari `shinigami::iso8601_to_millis` (fn privat di
-/// adapter lain, luar scope lane ini) — pindah ke `model.rs` kalau nanti boleh
-/// menyentuh adapter shinigami.
-fn iso8601_to_millis(s: &str) -> Option<i64> {
-    let s = s.trim();
-    let b = s.as_bytes();
-    // minimal "YYYY-MM-DDTHH:MM:SS"
-    if b.len() < 19 || b[4] != b'-' || b[7] != b'-' || b[10] != b'T' || b[13] != b':' || b[16] != b':' {
-        return None;
-    }
-    let num = |i: usize, j: usize| -> Option<i64> {
-        let t = s.get(i..j)?;
-        if !t.bytes().all(|c| c.is_ascii_digit()) {
-            return None;
-        }
-        t.parse().ok()
-    };
-    let (y, mo, dy, hh, mm, ss) = (
-        num(0, 4)?,
-        num(5, 7)?,
-        num(8, 10)?,
-        num(11, 13)?,
-        num(14, 16)?,
-        num(17, 19)?,
-    );
-    if !(1..=12).contains(&mo) || !(1..=31).contains(&dy) || hh > 23 || mm > 59 || ss > 60 {
-        return None;
-    }
-    // hari sejak 1970-01-01 (days_from_civil, Howard Hinnant) + jam/menit/detik
-    let yy = if mo <= 2 { y - 1 } else { y };
-    let era = (if yy >= 0 { yy } else { yy - 399 }) / 400;
-    let yoe = yy - era * 400;
-    let mp = (mo + 9) % 12;
-    let doy = (153 * mp + 2) / 5 + dy - 1;
-    let doe = yoe * 365 + yoe / 4 - yoe / 100 + doy;
-    let mut millis = (era * 146_097 + doe - 719_468) * 86_400_000
-        + hh * 3_600_000
-        + mm * 60_000
-        + ss * 1000;
-    // fraksi detik opsional; ambil 3 digit pertama sebagai mili
-    let mut i = 19;
-    if b.get(i) == Some(&b'.') {
-        i += 1;
-        let start = i;
-        let mut frac: i64 = 0;
-        let mut seen = 0;
-        while i < b.len() && b[i].is_ascii_digit() {
-            if seen < 3 {
-                frac = frac * 10 + i64::from(b[i] - b'0');
-                seen += 1;
-            }
-            i += 1;
-        }
-        if seen == 0 && i > start {
-            return None;
-        }
-        millis += frac;
-    }
-    // sisanya harus "Z" (atau kosong) — offset lain tak didukung
-    let tail = s.get(i..)?;
-    if !(tail.is_empty() || tail.eq_ignore_ascii_case("z")) {
-        return None;
-    }
-    Some(millis)
-}
 
 /// Ambil nilai `data-page="..."` dan decode jadi JSON Inertia (component +
 /// props). Nilai atribut adalah JSON yang di-escape jadi HTML entity.
@@ -499,42 +431,6 @@ fn entity_at(s: &str) -> Option<(String, usize)> {
         }
     };
     Some((ch.to_string(), end + 1))
-}
-
-/// String field: trim; kosong dan "-" (placeholder situs) jadi None.
-fn str_of(v: Option<&Value>) -> Option<String> {
-    match v? {
-        Value::String(s) => Some(s.trim().to_string()),
-        Value::Number(n) => Some(n.to_string()),
-        Value::Bool(b) => Some(b.to_string()),
-        _ => None,
-    }
-    .filter(|s| !s.is_empty() && s != "-")
-}
-
-/// Field angka (boleh datang sebagai JSON number atau teks desimal).
-/// 210.0 -> "210" (bukan "210.0"), 1.1 -> "1.1".
-fn num_of(v: Option<&Value>) -> Option<String> {
-    match v? {
-        Value::Number(n) => fmt_num(n.as_f64()?),
-        Value::String(s) => {
-            let t = s.trim();
-            if t.is_empty() || t == "-" {
-                None
-            } else {
-                Some(t.to_string())
-            }
-        }
-        _ => None,
-    }
-}
-
-fn fmt_num(f: f64) -> Option<String> {
-    if f.fract() == 0.0 && f.abs() < 1e15 {
-        Some(format!("{}", f as i64))
-    } else {
-        Some(format!("{f}"))
-    }
 }
 
 fn f64_of(s: &str) -> f64 {
@@ -680,27 +576,27 @@ mod tests {
     fn iso8601_chapter_created_at() {
         // bentuk live: "2026-09-26T01:00:22.000000Z"
         assert_eq!(
-            iso8601_to_millis("2026-09-26T01:00:22.000000Z"),
+            iso8601_to_millis_utc("2026-09-26T01:00:22.000000Z"),
             Some(1_790_384_422_000)
         );
         assert_eq!(
-            iso8601_to_millis("2026-03-30T05:31:47.000000Z"),
+            iso8601_to_millis_utc("2026-03-30T05:31:47.000000Z"),
             Some(1_774_848_707_000)
         );
         // tanpa fraksi & tanpa Z
         assert_eq!(
-            iso8601_to_millis("2026-09-26T01:00:22"),
+            iso8601_to_millis_utc("2026-09-26T01:00:22"),
             Some(1_790_384_422_000)
         );
         // fraksi lebih dari 3 digit -> potong ke mili
         assert_eq!(
-            iso8601_to_millis("2026-09-26T01:00:22.123456Z"),
+            iso8601_to_millis_utc("2026-09-26T01:00:22.123456Z"),
             Some(1_790_384_422_123)
         );
         // sampah / offset non-UTC -> None
-        assert_eq!(iso8601_to_millis(""), None);
-        assert_eq!(iso8601_to_millis("26 September 2026"), None);
-        assert_eq!(iso8601_to_millis("2026-09-26T01:00:22+07:00"), None);
+        assert_eq!(iso8601_to_millis_utc(""), None);
+        assert_eq!(iso8601_to_millis_utc("26 September 2026"), None);
+        assert_eq!(iso8601_to_millis_utc("2026-09-26T01:00:22+07:00"), None);
     }
 
     #[test]
@@ -735,16 +631,16 @@ mod tests {
     }
 
     #[test]
-    fn num_of_treats_float_and_string() {
+    fn num_field_treats_float_and_string() {
         // 210.0 -> "210"; 1.1 -> "1.1" (JSON number maupun string desimal)
         let n: serde_json::Value = serde_json::json!({"a": 210.0, "b": 1.1,
                                                      "c": "1.1", "d": "-", "e": ""});
         let o = n.as_object().unwrap();
-        assert_eq!(num_of(o.get("a")).as_deref(), Some("210"));
-        assert_eq!(num_of(o.get("b")).as_deref(), Some("1.1"));
-        assert_eq!(num_of(o.get("c")).as_deref(), Some("1.1"));
-        assert!(num_of(o.get("d")).is_none(), "placeholder \"-\" harus None");
-        assert!(num_of(o.get("e")).is_none(), "string kosong harus None");
+        assert_eq!(num_field(o.get("a")).as_deref(), Some("210"));
+        assert_eq!(num_field(o.get("b")).as_deref(), Some("1.1"));
+        assert_eq!(num_field(o.get("c")).as_deref(), Some("1.1"));
+        assert!(num_field(o.get("d")).is_none(), "placeholder \"-\" harus None");
+        assert!(num_field(o.get("e")).is_none(), "string kosong harus None");
     }
 
     #[test]

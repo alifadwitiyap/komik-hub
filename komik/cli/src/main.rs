@@ -387,7 +387,7 @@ fn sort_items(items: &mut [Manga], sort: Option<&str>) -> anyhow::Result<()> {
     match sort.map(|s| s.to_ascii_lowercase()).as_deref() {
         None | Some("updated") => Ok(()), // sudah recency desc dari aggregator
         Some("title") => {
-            items.sort_by(|a, b| a.title.to_lowercase().cmp(&b.title.to_lowercase()));
+            items.sort_by_key(|a| a.title.to_lowercase());
             Ok(())
         }
         Some(s) => anyhow::bail!("sort '{s}' tidak dikenal; pakai updated|title"),

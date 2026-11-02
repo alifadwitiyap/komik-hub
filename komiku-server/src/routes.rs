@@ -20,9 +20,28 @@ use crate::{api, crypto, unified};
 use komik_core::model::title_key;
 
 /// Cache katalog A-Z: 5.6 MB, satu-satunya panggilan yang mahal.
-#[derive(Clone, Default)]
+/// `unified` = state terpusat untuk semua handler `/api/unified/*` (aggregator,
+/// caches, gerbang single-flight, semaphore fan-out, store unduhan) — dipakai
+/// via axum `State` extractor, bukan OnceLock statis lagi.
+#[derive(Clone)]
 pub struct AppState {
     catalogue: Arc<RwLock<Option<(Value, std::time::Instant)>>>,
+    pub unified: Arc<unified::UnifiedState>,
+}
+
+impl AppState {
+    pub fn new() -> Self {
+        AppState {
+            catalogue: Arc::new(RwLock::new(None)),
+            unified: Arc::new(unified::UnifiedState::new()),
+        }
+    }
+}
+
+impl Default for AppState {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 const CATALOGUE_TTL: Duration = Duration::from_secs(30 * 60);
@@ -280,7 +299,7 @@ async fn categories() -> Res<Value> {
     Ok(Json(json!({ "groups": groups })))
 }
 
-async fn catalogue(State(st): State<AppState>) -> Res<Value> {
+async fn catalogue(State(st): State<Arc<AppState>>) -> Res<Value> {
     {
         let guard = st.catalogue.read().await;
         if let Some((val, at)) = guard.as_ref() {
@@ -392,7 +411,7 @@ async fn health() -> Res<Value> {
     Ok(Json(json!({ "ok": true, "service": "komiku-server" })))
 }
 
-pub fn router(state: AppState) -> Router {
+pub fn router(state: Arc<AppState>) -> Router {
     Router::new()
         .route("/api/health", get(health))
         .route("/api/stats", get(stats))

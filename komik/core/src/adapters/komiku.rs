@@ -41,6 +41,7 @@
 //! di model.
 use crate::model::*;
 use crate::source::{Source, SourceResult};
+use super::common::{days_from_civil, str_field_key};
 use aes::cipher::{
     block_padding::Pkcs7, BlockDecryptMut, BlockEncryptMut, KeyIvInit,
 };
@@ -234,17 +235,6 @@ fn month_from_name(s: &str) -> Option<u32> {
     }
 }
 
-/// Hari sejak 1970-01-01 (algoritma days_from_civil, Howard Hinnant).
-fn days_from_civil(y: i64, m: u32, d: u32) -> i64 {
-    let y = if m <= 2 { y - 1 } else { y };
-    let era = if y >= 0 { y } else { y - 399 } / 400;
-    let yoe = y - era * 400;
-    let mp = if m > 2 { m - 3 } else { m + 9 } as i64;
-    let doy = (153 * mp + 2) / 5 + d as i64 - 1;
-    let doe = yoe * 365 + yoe / 4 - yoe / 100 + doy;
-    era * 146_097 + doe - 719_468
-}
-
 /// Tanggal KomikId -> epoch millis. Bentuk yang muncul live:
 /// `"11 menit lalu"`, `"4 hari lalu"`, `"1 tahun lalu"`, `"baru saja"`,
 /// `" 9 October 2026"`, `"19 Juli 1997"`. Yang tak dikenali -> None (field
@@ -288,22 +278,14 @@ fn parse_komik_date(s: &str) -> Option<i64> {
 // ---------------------------------------------------------------------------
 
 fn str_field(v: &Value, key: &str) -> Option<String> {
-    match v.get(key) {
-        Some(Value::String(s)) if !s.trim().is_empty() && s != "-" => Some(s.trim().to_string()),
-        Some(Value::Number(n)) => Some(n.to_string()),
-        _ => None,
-    }
+    str_field_key(v, key)
 }
 
 /// Field yang datang sebagai list `[{"name": "...", "id": ...}]` -> "A, B".
 fn names_joined(v: &Value, key: &str) -> Option<String> {
-    let arr = v.get(key).and_then(|x| x.as_array())?;
-    let joined = arr
-        .iter()
-        .filter_map(|it| it.get("name").and_then(|n| n.as_str()))
-        .collect::<Vec<_>>()
-        .join(", ");
-    (!joined.is_empty()).then_some(joined)
+    v.get(key)
+        .and_then(|x| x.as_array())
+        .and_then(|arr| super::common::names_joined(arr))
 }
 
 /// id API selalu integer; string numerik diterima sebagai toleransi.

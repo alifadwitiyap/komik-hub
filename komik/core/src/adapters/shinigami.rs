@@ -7,6 +7,7 @@
 //! retcode != 0 pada 200 -> error; retry 429/500/502/503 + network (max 2).
 use crate::model::*;
 use crate::source::{classified, Source, SourceError, SourceResult};
+use super::common::{iso8601_to_millis_offset, names_joined};
 
 const API: &str = "https://api.shngm.io/v1";
 const WEB: &str = "https://app.shinigami.asia";
@@ -151,16 +152,7 @@ fn num_str(v: Option<&serde_json::Value>) -> Option<String> {
 /// Nama-nama taxonomy ("Author", "Format", "Genre", ...) jadi satu string.
 fn tax_names(v: &serde_json::Value, key: &str) -> Option<String> {
     let arr = v.get("taxonomy")?.get(key)?.as_array()?;
-    let names: Vec<&str> = arr
-        .iter()
-        .filter_map(|x| x.get("name").and_then(|n| n.as_str()))
-        .filter(|s| !s.is_empty())
-        .collect();
-    if names.is_empty() {
-        None
-    } else {
-        Some(names.join(", "))
-    }
+    names_joined(arr)
 }
 
 fn fmt_status(code: Option<i64>) -> Option<String> {
@@ -171,84 +163,10 @@ fn fmt_status(code: Option<i64>) -> Option<String> {
     }
 }
 
-/// ISO8601 -> epoch millis. Kalau tak bisa diparse, None (best-effort seperti
-/// keinginan model `updated_at`). Terima "Z"/naif/offset "+HH:MM"/fraksi detik.
+/// ISO8601 -> epoch millis (dengan offset, ala shinigami). Implementasi inti
+/// ada di `super::common::iso8601_to_millis_offset`.
 fn iso8601_to_millis(s: &str) -> Option<i64> {
-    let b = s.as_bytes();
-    // minimal "YYYY-MM-DDTHH:MM:SS"
-    if b.len() < 19 || b[4] != b'-' || b[7] != b'-' || b[10] != b'T' || b[13] != b':' || b[16] != b':'
-    {
-        return None;
-    }
-    let digits = |i: usize, j: usize| -> Option<i64> {
-        let sub = s.get(i..j)?;
-        if !sub.bytes().all(|c| c.is_ascii_digit()) {
-            return None;
-        }
-        sub.parse().ok()
-    };
-    let (y, mo, dy, hh, mm, ss) = (
-        digits(0, 4)?,
-        digits(5, 7)?,
-        digits(8, 10)?,
-        digits(11, 13)?,
-        digits(14, 16)?,
-        digits(17, 19)?,
-    );
-    if !(1..=12).contains(&mo) || !(1..=31).contains(&dy) || hh > 23 || mm > 59 || ss > 60 {
-        return None;
-    }
-    // days_from_civil (Howard Hinnant): tanggal -> hari sejak 1970-01-01.
-    let yy = if mo <= 2 { y - 1 } else { y };
-    let era = (if yy >= 0 { yy } else { yy - 399 }) / 400;
-    let yoe = yy - era * 400;
-    let mp = (mo + 9) % 12;
-    let doy = (153 * mp + 2) / 5 + dy - 1;
-    let doe = yoe * 365 + yoe / 4 - yoe / 100 + doy;
-    let mut millis = (era * 146097 + doe - 719468) * 86_400_000
-        + hh * 3_600_000
-        + mm * 60_000
-        + ss * 1000;
-
-    let mut i = 19;
-    if b.get(i) == Some(&b'.') {
-        i += 1;
-        let start = i;
-        let mut frac: i64 = 0;
-        let mut digits_seen = 0;
-        while i < b.len() && b[i].is_ascii_digit() && digits_seen < 3 {
-            frac = frac * 10 + i64::from(b[i] - b'0');
-            digits_seen += 1;
-            i += 1;
-        }
-        while i < b.len() && b[i].is_ascii_digit() {
-            i += 1;
-        }
-        if i == start {
-            return None;
-        }
-        for _ in digits_seen..3 {
-            frac *= 10;
-        }
-        millis += frac;
-    }
-    match s.get(i..).unwrap_or_default() {
-        "" | "Z" | "z" => Some(millis),
-        rest => {
-            let sign = match rest.as_bytes().first()? {
-                b'+' => 1,
-                b'-' => -1,
-                _ => return None,
-            };
-            let off = rest.get(1..)?.replace(':', "");
-            if off.len() != 4 {
-                return None;
-            }
-            let oh: i64 = off.get(0..2)?.parse().ok()?;
-            let om: i64 = off.get(2..4)?.parse().ok()?;
-            Some(millis - sign * (oh * 3_600_000 + om * 60_000))
-        }
-    }
+    iso8601_to_millis_offset(s)
 }
 
 /// Item `/manga/list` maupun `/manga/detail` -> Manga (field relevan sama).

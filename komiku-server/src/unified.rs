@@ -47,7 +47,7 @@
 
 use axum::{
     body::Body,
-    extract::{Path, Query},
+    extract::{Path, Query, State},
     http::{header, HeaderMap},
     response::Response,
     routing::{get, post},
@@ -55,6 +55,7 @@ use axum::{
 };
 use serde::Deserialize;
 use serde_json::{json, Value};
+use std::sync::Arc;
 
 use komik_core::adapters::all_sources;
 use komik_core::aggregator::Aggregator;
@@ -82,39 +83,105 @@ const SERIES_CHAPTER_LIMIT: u32 = 2000;
 /// angka ini mencegah fallback 4 sumber × 6 s menahan koneksi user ~24 s.
 const UNIFIED_REQUEST_BUDGET: std::time::Duration = std::time::Duration::from_secs(15);
 
-/// Satu instance Aggregator untuk seluruh proses (pola OnceCell seperti
-/// `api::CLIENT` — client & cache dipakai bersama semua request).
+/// Bangun satu instance Aggregator (pola OnceCell seperti `api::CLIENT` —
+/// client & cache dipakai bersama semua request).
 ///
 /// Sumber dibungkus [`crate::resilience::ResilientSource`] supaya sumber yang
 /// timeout tidak ditembak ulang setiap request (cache core sengaja tidak
 /// menyimpan hasil yang sebagian gagal). Timeout per sumber 6 s, bukan 10 s
 /// default core: satu sumber mati tidak boleh menahan request user lama.
-fn aggregator() -> &'static Aggregator {
-    static AGG: std::sync::OnceLock<Aggregator> = std::sync::OnceLock::new();
-    AGG.get_or_init(|| {
-        let client = reqwest::Client::builder()
-            .user_agent(UA_MOBILE)
-            .timeout(std::time::Duration::from_secs(
-                2 * crate::resilience::SOURCE_TIMEOUT_SECS,
-            ))
-            .build()
-            .unwrap_or_default();
-        let sources = crate::resilience::ResilientSource::wrap_all(
-            all_sources(client),
-            crate::resilience::SOURCE_COOLDOWN,
-            crate::resilience::SOURCE_INNER_TIMEOUT,
-        );
-        Aggregator::new(sources).with_timeout(std::time::Duration::from_secs(
-            crate::resilience::SOURCE_TIMEOUT_SECS,
+fn build_aggregator() -> Aggregator {
+    let client = reqwest::Client::builder()
+        .user_agent(UA_MOBILE)
+        .timeout(std::time::Duration::from_secs(
+            2 * crate::resilience::SOURCE_TIMEOUT_SECS,
         ))
-    })
+        .build()
+        .unwrap_or_default();
+    let sources = crate::resilience::ResilientSource::wrap_all(
+        all_sources(client),
+        crate::resilience::SOURCE_COOLDOWN,
+        crate::resilience::SOURCE_INNER_TIMEOUT,
+    );
+    Aggregator::new(sources).with_timeout(std::time::Duration::from_secs(
+        crate::resilience::SOURCE_TIMEOUT_SECS,
+    ))
+}
+
+/// State terpusat untuk semua handler `/api/unified/*`. Dulu tiap resource
+/// (aggregator, cache, gerbang, semaphore, store) hidup sebagai OnceLock
+/// statis — state bocor lintas test dan handler sulit diuji. Sekarang semua
+/// dipegang di sini dan di-inject via axum `State` extractor.
+pub struct UnifiedState {
+    pub aggregator: Aggregator,
+    pub search_cache: SearchCache,
+    pub search_gate: tokio::sync::Mutex<()>,
+    pub health_cache: tokio::sync::Mutex<Option<(std::time::Instant, HealthOut)>>,
+    pub health_refresh_gate: tokio::sync::Mutex<()>,
+    pub series_cache: std::sync::Mutex<SeriesCache>,
+    pub series_gates: std::sync::Mutex<std::collections::HashMap<String, Arc<tokio::sync::Mutex<()>>>>,
+    pub series_fanout_permits: tokio::sync::Semaphore,
+    pub image_client: reqwest::Client,
+    pub download_store: anyhow::Result<Arc<DownloadStore>, String>,
+}
+
+impl UnifiedState {
+    pub fn new() -> Self {
+        // Anti-pola: sekali init, tiap request baca dari state (bukan static).
+        let download_store = DownloadStore::open(download_dir()).map_err(|e| {
+            tracing::error!("store unduhan gagal dibuka: {e:#}");
+            e.to_string()
+        });
+        let st = UnifiedState {
+            aggregator: build_aggregator(),
+            search_cache: std::sync::Mutex::new(std::collections::HashMap::new()),
+            search_gate: tokio::sync::Mutex::new(()),
+            health_cache: tokio::sync::Mutex::new(None),
+            health_refresh_gate: tokio::sync::Mutex::new(()),
+            series_cache: std::sync::Mutex::new(std::collections::HashMap::new()),
+            series_gates: std::sync::Mutex::new(std::collections::HashMap::new()),
+            series_fanout_permits: tokio::sync::Semaphore::new(3),
+            image_client: reqwest::Client::builder()
+                .user_agent(UA_MOBILE)
+                .pool_idle_timeout(std::time::Duration::from_secs(90))
+                .build()
+                .unwrap_or_default(),
+            download_store,
+        };
+        // Sapu TTL store: spawn sekali (setiap proses bikin state sekali).
+        // Hanya bila runtime tokio aktif (di luar runtime, mis. test sinkron,
+        // tak perlu sapu — biar tidak panic).
+        if let Ok(store) = st.download_store.as_ref() {
+            if tokio::runtime::Handle::try_current().is_ok() {
+                let store = store.clone();
+                tokio::spawn(async move {
+                    let mut ticker = tokio::time::interval(SWEEP_INTERVAL);
+                    ticker.tick().await;
+                    loop {
+                        let n = store.sweep_expired().await;
+                        if n > 0 {
+                            tracing::info!("sweep unduhan: {n} entri kedaluwarsa dibuang");
+                        }
+                        ticker.tick().await;
+                    }
+                });
+            }
+        }
+        st
+    }
+}
+
+impl Default for UnifiedState {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 /// Pre-fetch feed latest saat startup. Cache cold 2-5s (fan-out 4 sumber);
 /// memanaskan sekali supaya user pertama dapat cache hit (~warm).
-pub async fn warm_up_latest() {
+pub async fn warm_up_latest(state: &UnifiedState) {
     let t0 = std::time::Instant::now();
-    let m = aggregator().latest(1, 48, None).await;
+    let m = state.aggregator.latest(1, 48, None).await;
     tracing::info!(
         "warm-up latest: {} item dalam {:?}",
         m.items.len(),
@@ -356,26 +423,13 @@ const SEARCH_CACHE_MAX: usize = 128;
 
 type SearchCache = std::sync::Mutex<std::collections::HashMap<String, (std::time::Instant, ListOut)>>;
 
-fn search_cache() -> &'static SearchCache {
-    static C: std::sync::OnceLock<SearchCache> = std::sync::OnceLock::new();
-    C.get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
-}
-
-/// Gerbang single-flight global: N request pada query sama saat cache kosong
-/// hanya menembak upstream SEKALI (stampede = beban upstream persis yang
-/// ingin dihindari).
-fn search_gate() -> &'static tokio::sync::Mutex<()> {
-    static G: std::sync::OnceLock<tokio::sync::Mutex<()>> = std::sync::OnceLock::new();
-    G.get_or_init(|| tokio::sync::Mutex::new(()))
-}
-
 fn search_key(query: &str, genre: Option<&str>, page: u32, limit: u32) -> String {
     format!("{query}\u{1}{}\u{1}{page}\u{1}{limit}", genre.unwrap_or(""))
 }
 
 /// Ambil hasil dari cache kalau masih segar. `None` = harus fetch upstream.
-fn search_cache_get(key: &str) -> Option<ListOut> {
-    let guard = search_cache().lock().ok()?;
+fn search_cache_get(cache: &SearchCache, key: &str) -> Option<ListOut> {
+    let guard = cache.lock().ok()?;
     let (at, out) = guard.get(key)?;
     if at.elapsed() < SEARCH_CACHE_TTL {
         Some(out.clone())
@@ -384,8 +438,8 @@ fn search_cache_get(key: &str) -> Option<ListOut> {
     }
 }
 
-fn search_cache_put(key: String, out: ListOut) {
-    if let Ok(mut guard) = search_cache().lock() {
+fn search_cache_put(cache: &SearchCache, key: String, out: ListOut) {
+    if let Ok(mut guard) = cache.lock() {
         // Cap kasar: buang satu entri paling tua kalau sudah penuh. HashMap
         // tak berurutan, jadi cari min-by-instant (N kecil = 128, murah).
         if guard.len() >= SEARCH_CACHE_MAX && !guard.contains_key(&key) {
@@ -401,7 +455,8 @@ fn search_cache_put(key: String, out: ListOut) {
     }
 }
 
-async fn u_search(Query(q): Query<SearchQuery>) -> Res<ListOut> {
+async fn u_search(State(state): State<Arc<crate::routes::AppState>>, Query(q): Query<SearchQuery>) -> Res<ListOut> {
+    let state = &state.unified;
     let query = q.q.unwrap_or_default();
     if query.trim().is_empty() {
         return Err(AppError::bad_request("parameter q wajib diisi"));
@@ -416,13 +471,13 @@ async fn u_search(Query(q): Query<SearchQuery>) -> Res<ListOut> {
     let page = q.page.unwrap_or(1).max(1);
     let limit = q.limit.unwrap_or(48);
     let key = search_key(&query, genre.as_deref(), page, limit);
-    if let Some(hit) = search_cache_get(&key) {
+    if let Some(hit) = search_cache_get(&state.search_cache, &key) {
         return Ok(Json(hit));
     }
     // Cache kosong: satu request per key yang menembak upstream, sisanya
     // menunggu gerbang lalu membaca cache.
-    let _gate = search_gate().lock().await;
-    if let Some(hit) = search_cache_get(&key) {
+    let _gate = state.search_gate.lock().await;
+    if let Some(hit) = search_cache_get(&state.search_cache, &key) {
         return Ok(Json(hit));
     }
     // Over-fetch: rank relevansi + filter tipe/status bekerja pada set yang
@@ -436,13 +491,15 @@ async fn u_search(Query(q): Query<SearchQuery>) -> Res<ListOut> {
         // Filter genre aktif: satu panggilan per adapter yang menerima
         // genre + judul bersamaan (bukan menyaring sisa halaman di client).
         Some(g) => (
-            aggregator()
+            state
+                .aggregator
                 .search_in_genre(&query, g, page, FILTER_FANOUT_CAP, None)
                 .await,
             Vec::new(),
         ),
         None => {
-            aggregator()
+            state
+                .aggregator
                 .search_dua_fase(
                     &query,
                     page,
@@ -465,7 +522,7 @@ async fn u_search(Query(q): Query<SearchQuery>) -> Res<ListOut> {
     // cache dengan hasil lengkap. Menyimpan hasil separuh di sini membuat
     // panggilan berikutnya menyajikan daftar tidak lengkap selama TTL.
     if out.pending.is_empty() {
-        search_cache_put(key, out.clone());
+        search_cache_put(&state.search_cache, key, out.clone());
     }
     Ok(Json(out))
 }
@@ -475,9 +532,11 @@ async fn u_search(Query(q): Query<SearchQuery>) -> Res<ListOut> {
 ///
 /// `genre` (kalau ada) diteruskan ke `list()` — SAMA dengan mode search,
 /// jadi filternya menyaring sungguhan, bukan cuma menyediakan daftar.
-async fn u_catalogue(Query(q): Query<CatalogueQuery>) -> Res<ListOut> {
+async fn u_catalogue(State(state): State<Arc<crate::routes::AppState>>, Query(q): Query<CatalogueQuery>) -> Res<ListOut> {
+    let state = &state.unified;
     let genre = q.genre.as_deref().map(str::trim).filter(|s| !s.is_empty());
-    let merged = aggregator()
+    let merged = state
+        .aggregator
         .list(genre, q.page.unwrap_or(1).max(1), FILTER_FANOUT_CAP, None)
         .await;
     let limit = q.limit.unwrap_or(48);
@@ -490,23 +549,28 @@ async fn u_catalogue(Query(q): Query<CatalogueQuery>) -> Res<ListOut> {
     )))
 }
 
-async fn u_popular(Query(q): Query<ListQuery>) -> Res<ListOut> {
-    let merged = aggregator()
+async fn u_popular(State(state): State<Arc<crate::routes::AppState>>, Query(q): Query<ListQuery>) -> Res<ListOut> {
+    let state = &state.unified;
+    let merged = state
+        .aggregator
         .popular(q.page.unwrap_or(1).max(1), q.limit.unwrap_or(48), None)
         .await;
     Ok(Json(merged.into()))
 }
 
-async fn u_latest(Query(q): Query<ListQuery>) -> Res<ListOut> {
-    let merged = aggregator()
+async fn u_latest(State(state): State<Arc<crate::routes::AppState>>, Query(q): Query<ListQuery>) -> Res<ListOut> {
+    let state = &state.unified;
+    let merged = state
+        .aggregator
         .latest(q.page.unwrap_or(1).max(1), q.limit.unwrap_or(48), None)
         .await;
     Ok(Json(merged.into()))
 }
 
 /// Union genre semua sumber: {items:[{slug,name,sources}]}.
-async fn u_genres() -> Res<Value> {
-    let merged = aggregator().genres(None).await;
+async fn u_genres(State(state): State<Arc<crate::routes::AppState>>) -> Res<Value> {
+    let state = &state.unified;
+    let merged = state.aggregator.genres(None).await;
     Ok(Json(json!({
         "items": merged.items,
         "failed_sources": merged.failures.iter().map(|(s, _)| s.as_str().to_string()).collect::<Vec<_>>(),
@@ -646,23 +710,6 @@ fn classify_age(age: std::time::Duration) -> CacheAge {
     }
 }
 
-/// Slot cache health: `(waktu probe, payload)`. `None` = belum pernah probe.
-/// Satu slot global (bukan per-sumber) karena payload = satu snapshot gabungan.
-fn health_cache() -> &'static tokio::sync::Mutex<Option<(std::time::Instant, HealthOut)>> {
-    static CACHE: std::sync::OnceLock<tokio::sync::Mutex<Option<(std::time::Instant, HealthOut)>>> =
-        std::sync::OnceLock::new();
-    CACHE.get_or_init(|| tokio::sync::Mutex::new(None))
-}
-
-/// Gerbang single-flight: saat cache basi, HANYA satu request boleh menjalankan
-/// probe; sisanya menunggu lalu memakai hasil segar (double-check cache setelah
-/// ambil gerbang). Tanpa ini, N request bersamaan pada cache kosong = N probe
-/// penuh (stampede) — persis beban yang mau dihindari cache ini.
-fn health_refresh_gate() -> &'static tokio::sync::Mutex<()> {
-    static GATE: std::sync::OnceLock<tokio::sync::Mutex<()>> = std::sync::OnceLock::new();
-    GATE.get_or_init(|| tokio::sync::Mutex::new(()))
-}
-
 /// Query `GET /api/unified/health`. `force=1` = lewati cache, probe inline
 /// (dipakai tombol "periksa ulang" di badge supaya user dapat hasil segar
 /// sekarang, bukan stale-while-revalidate).
@@ -675,8 +722,8 @@ pub struct HealthQuery {
 /// Probe SEMUA sumber sekarang (JoinSet paralel) dan bentuk payload-nya.
 /// Dipakai baik oleh jalur inline maupun refresh latar SWR — satu sumber
 /// kebenaran, tak ada duplikasi logika probe.
-async fn probe_health_now() -> anyhow::Result<HealthOut> {
-    let sources = aggregator().sources.clone();
+async fn probe_health_now(state: &UnifiedState) -> anyhow::Result<HealthOut> {
+    let sources = state.aggregator.sources.clone();
     let mut set = tokio::task::JoinSet::new();
     for src in sources {
         set.spawn(probe_one(src));
@@ -692,7 +739,8 @@ async fn probe_health_now() -> anyhow::Result<HealthOut> {
         }
     }
     // Kembalikan ke urutan `all_sources()` supaya payload stabil antar request.
-    let rows: Vec<HealthRow> = aggregator()
+    let rows: Vec<HealthRow> = state
+        .aggregator
         .sources
         .iter()
         .filter_map(|s| by_source.remove(s.id().as_str()))
@@ -705,9 +753,9 @@ async fn probe_health_now() -> anyhow::Result<HealthOut> {
 }
 
 /// Probe lalu simpan ke cache (waktu probe ASLI). Dipakai jalur inline.
-async fn probe_health_and_store() -> anyhow::Result<HealthOut> {
-    let out = probe_health_now().await?;
-    *health_cache().lock().await = Some((std::time::Instant::now(), out.clone()));
+async fn probe_health_and_store(state: &UnifiedState) -> anyhow::Result<HealthOut> {
+    let out = probe_health_now(state).await?;
+    *state.health_cache.lock().await = Some((std::time::Instant::now(), out.clone()));
     Ok(out)
 }
 
@@ -715,18 +763,18 @@ async fn probe_health_and_store() -> anyhow::Result<HealthOut> {
 /// cache (request lain mungkin sudah me-refresh), lalu probe + simpan.
 /// Kegagalan probe hanya di-log — pemanggil sudah melayani stale, jadi
 /// endpoint tetap responsif; permintaan berikutnya akan mencoba lagi.
-fn spawn_health_refresh() {
+fn spawn_health_refresh(state: Arc<UnifiedState>) {
     tokio::spawn(async move {
-        let _gate = health_refresh_gate().lock().await;
+        let _gate = state.health_refresh_gate.lock().await;
         {
-            let cache = health_cache().lock().await;
+            let cache = state.health_cache.lock().await;
             if let Some((at, _)) = cache.as_ref() {
                 if classify_age(at.elapsed()) == CacheAge::Fresh {
                     return; // sudah di-refresh request lain saat menunggu gerbang
                 }
             }
         }
-        match probe_health_and_store().await {
+        match probe_health_and_store(&state).await {
             Ok(_) => {}
             Err(e) => tracing::warn!("refresh health latar gagal: {e:#}"),
         }
@@ -752,12 +800,13 @@ fn spawn_health_refresh() {
 /// Status: SELALU 200 selama ada baris — partial health (sebagian sumber
 /// mati) tetap 200 dengan `healthy < total`. Sumber mati BUKAN 502. Hanya
 /// nol baris yang error.
-async fn u_health(Query(q): Query<HealthQuery>) -> Res<HealthOut> {
+async fn u_health(State(state): State<Arc<crate::routes::AppState>>, Query(q): Query<HealthQuery>) -> Res<HealthOut> {
+    let state = state.unified.clone();
     let force = q.force.is_some_and(|v| v != 0);
     if !force {
         // Jalur cepat: baca cache sekali.
         let snapshot = {
-            let cache = health_cache().lock().await;
+            let cache = state.health_cache.lock().await;
             cache
                 .as_ref()
                 .map(|(at, out)| (classify_age(at.elapsed()), out.clone()))
@@ -767,7 +816,7 @@ async fn u_health(Query(q): Query<HealthQuery>) -> Res<HealthOut> {
             Some((CacheAge::Stale, out)) => {
                 // Serve-stale: balas SEGERA, refresh di latar. Gerbang
                 // single-flight mencegah N request basi = N probe.
-                spawn_health_refresh();
+                spawn_health_refresh(state);
                 return Ok(Json(out));
             }
             // Expired atau belum ada: jatuh ke probe inline di bawah.
@@ -776,16 +825,16 @@ async fn u_health(Query(q): Query<HealthQuery>) -> Res<HealthOut> {
     }
     // Probe inline (blokir): cache kosong / sangat basi / `?force=1`.
     // Gerbang tetap dipakai supaya burst bersamaan tidak menumpuk probe.
-    let _gate = health_refresh_gate().lock().await;
+    let _gate = state.health_refresh_gate.lock().await;
     if !force {
-        let cache = health_cache().lock().await;
+        let cache = state.health_cache.lock().await;
         if let Some((at, out)) = cache.as_ref() {
             if classify_age(at.elapsed()) != CacheAge::Expired {
                 return Ok(Json(out.clone()));
             }
         }
     }
-    match probe_health_and_store().await {
+    match probe_health_and_store(&state).await {
         Ok(out) => Ok(Json(out)),
         Err(e) => Err(AppError::new(e)),
     }
@@ -849,11 +898,6 @@ const SERIES_CACHE_MAX: usize = 256;
 
 type SeriesCache = std::collections::HashMap<String, (std::time::Instant, serde_json::Value)>;
 
-fn series_cache() -> &'static std::sync::Mutex<SeriesCache> {
-    static C: std::sync::OnceLock<std::sync::Mutex<SeriesCache>> = std::sync::OnceLock::new();
-    C.get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
-}
-
 /// Kunci cache: handle + last_source (sticky source mengubah hasil union
 /// primary, jadi tidak boleh berbagi entri).
 fn series_key(handle: &str, last_source: Option<&str>) -> String {
@@ -862,29 +906,19 @@ fn series_key(handle: &str, last_source: Option<&str>) -> String {
 
 /// Gerbang single-flight PER HANDLE: N request bersamaan pada handle sama
 /// hanya menembak fan-out SEKALI; sisanya menunggu lalu membaca cache.
-fn series_gate(key: &str) -> std::sync::Arc<tokio::sync::Mutex<()>> {
-    use std::collections::HashMap;
-    use std::sync::{Mutex, OnceLock};
-    static G: OnceLock<Mutex<HashMap<String, std::sync::Arc<tokio::sync::Mutex<()>>>>> =
-        OnceLock::new();
-    let map = G.get_or_init(|| Mutex::new(HashMap::new()));
-    let mut guard = map.lock().unwrap_or_else(|e| e.into_inner());
+fn series_gate(
+    gates: &std::sync::Mutex<std::collections::HashMap<String, Arc<tokio::sync::Mutex<()>>>>,
+    key: &str,
+) -> Arc<tokio::sync::Mutex<()>> {
+    let mut guard = gates.lock().unwrap_or_else(|e| e.into_inner());
     guard
         .entry(key.to_string())
         .or_insert_with(|| std::sync::Arc::new(tokio::sync::Mutex::new(())))
         .clone()
 }
 
-/// Batas fan-out serentak lintas handle berbeda. Handle BERBEDA memang perlu
-/// fan-out sendiri (ceiling masing-masing), tapi PC jadul tumbang kalau 12
-/// handle dihitung serentak — jadi antrekan, jangan tolak.
-fn series_fanout_permits() -> &'static tokio::sync::Semaphore {
-    static S: std::sync::OnceLock<tokio::sync::Semaphore> = std::sync::OnceLock::new();
-    S.get_or_init(|| tokio::sync::Semaphore::new(3))
-}
-
-fn series_cache_get(key: &str) -> Option<serde_json::Value> {
-    let guard = series_cache().lock().ok()?;
+fn series_cache_get(cache: &std::sync::Mutex<SeriesCache>, key: &str) -> Option<serde_json::Value> {
+    let guard = cache.lock().ok()?;
     let (at, out) = guard.get(key)?;
     if at.elapsed() < SERIES_CACHE_TTL {
         Some(out.clone())
@@ -893,8 +927,8 @@ fn series_cache_get(key: &str) -> Option<serde_json::Value> {
     }
 }
 
-fn series_cache_put(key: String, out: serde_json::Value) {
-    if let Ok(mut guard) = series_cache().lock() {
+fn series_cache_put(cache: &std::sync::Mutex<SeriesCache>, key: String, out: serde_json::Value) {
+    if let Ok(mut guard) = cache.lock() {
         if guard.len() >= SERIES_CACHE_MAX && !guard.contains_key(&key) {
             if let Some(old) = guard
                 .iter()
@@ -908,27 +942,29 @@ fn series_cache_put(key: String, out: serde_json::Value) {
     }
 }
 
-async fn u_series(Path(handle): Path<String>, Query(q): Query<SeriesQuery>) -> Res<Value> {
+async fn u_series(State(state): State<Arc<crate::routes::AppState>>, Path(handle): Path<String>, Query(q): Query<SeriesQuery>) -> Res<Value> {
+    let state = &state.unified;
     validate_handle(&handle)?;
     let key = series_key(&handle, q.last_source.as_deref());
 
     // 1. Cache segar -> seketika (tidak menyentuh upstream sama sekali).
-    if let Some(hit) = series_cache_get(&key) {
+    if let Some(hit) = series_cache_get(&state.series_cache, &key) {
         return Ok(Json(hit));
     }
 
     // 2. Single-flight per handle: yang menang gerbang menghitung, sisanya
     //    menunggu lalu membaca cache yang baru diisi (bukan fan-out sendiri).
-    let gate = series_gate(&key);
+    let gate = series_gate(&state.series_gates, &key);
     let _guard = gate.lock().await;
 
     // Double-check: bisa jadi request lain mengisi cache saat kita menunggu.
-    if let Some(hit) = series_cache_get(&key) {
+    if let Some(hit) = series_cache_get(&state.series_cache, &key) {
         return Ok(Json(hit));
     }
 
     // 3. Batasi fan-out serentak lintas handle (antre, bukan tolak).
-    let _permit = series_fanout_permits()
+    let _permit = state
+        .series_fanout_permits
         .acquire()
         .await
         .map_err(|_| AppError::new(anyhow::anyhow!("gerbang fan-out series ditutup")))?;
@@ -937,7 +973,7 @@ async fn u_series(Path(handle): Path<String>, Query(q): Query<SeriesQuery>) -> R
     // ini 4 sumber × 6 s bisa menahan koneksi user ~24 s.
     let merged = match tokio::time::timeout(
         UNIFIED_REQUEST_BUDGET,
-        aggregator().series_merged(
+        state.aggregator.series_merged(
             &handle,
             SERIES_CHAPTER_LIMIT,
             None,
@@ -969,7 +1005,7 @@ async fn u_series(Path(handle): Path<String>, Query(q): Query<SeriesQuery>) -> R
             .collect::<Vec<_>>(),
         "from_cache": merged.from_cache,
     });
-    series_cache_put(key, out.clone());
+    series_cache_put(&state.series_cache, key, out.clone());
     Ok(Json(out))
 }
 
@@ -999,19 +1035,21 @@ fn budget_err(op: &str) -> AppError {
 /// tidak ada di sumber handle (atau gambarnya kosong), core ambil dari sumber
 /// lain yang punya judul sama; `prev`/`next` objek {number,source,handle}
 /// selalu dari sumber yang MELAYANI.
-async fn u_chapter(Path((handle, number)): Path<(String, String)>) -> Res<Value> {
+async fn u_chapter(State(state): State<Arc<crate::routes::AppState>>, Path((handle, number)): Path<(String, String)>) -> Res<Value> {
     validate_handle(&handle)?;
+    let state = state.unified.clone();
     // Budget total: series_resolve + read_chapter_any berurutan, masing-masing
     // bisa fallback antar sumber. Tanpa batas, dua jalur ini bisa menumpuk
     // timeout jauh melewati 6 s per sumber.
-    match tokio::time::timeout(UNIFIED_REQUEST_BUDGET, u_chapter_inner(handle, number)).await {
+    match tokio::time::timeout(UNIFIED_REQUEST_BUDGET, u_chapter_inner(state, handle, number)).await {
         Ok(r) => r,
         Err(_) => Err(budget_err("chapter")),
     }
 }
 
-async fn u_chapter_inner(handle: String, number: String) -> Res<Value> {
-    let out = aggregator()
+async fn u_chapter_inner(state: Arc<UnifiedState>, handle: String, number: String) -> Res<Value> {
+    let out = state
+        .aggregator
         .read_chapter_any(&handle, &number, None, SERIES_CHAPTER_LIMIT)
         .await
         .map_err(classify_core_err)?;
@@ -1057,48 +1095,13 @@ const SWEEP_INTERVAL: std::time::Duration = std::time::Duration::from_secs(60 * 
 
 /// Satu instance store untuk seluruh proses (pola sama seperti `aggregator()`).
 ///
-/// Saat OnceLock pertama diinisialisasi, spawn SATU task ringan yang tiap
-/// `SWEEP_INTERVAL` memanggil `sweep_expired` (TTL 24 jam). Spawn di sini
-/// (bukan di `main.rs`) karena store hidup di modul ini: semua jalur yang
-/// memakai store lewat fungsi ini, jadi tidak ada yang bisa memakai store
-/// tanpa ikut menyalakan sapu. Task hanya tidur lalu bangun — tidak
-/// menghalangi shutdown (tokio mematikannya saat runtime berhenti).
-fn store() -> anyhow::Result<&'static std::sync::Arc<DownloadStore>> {
-    static STORE: std::sync::OnceLock<anyhow::Result<std::sync::Arc<DownloadStore>, String>> =
-        std::sync::OnceLock::new();
-    let opened = STORE.get_or_init(|| {
-        DownloadStore::open(download_dir()).map_err(|e| {
-            tracing::error!("store unduhan gagal dibuka: {e:#}");
-            e.to_string()
-        })
-    });
-    if let Ok(store) = opened.as_ref() {
-        // spawn sekali saja (OnceLock init hanya jalan sekali); hanya bila
-        // runtime tokio sudah aktif (di luar runtime, mis. test sinkron ->
-        // tak perlu sapu, biar tidak panic).
-        if tokio::runtime::Handle::try_current().is_ok() {
-            static SPAWNED: std::sync::OnceLock<()> = std::sync::OnceLock::new();
-            SPAWNED.get_or_init(|| {
-                let store = store.clone();
-                tokio::spawn(async move {
-                    let mut ticker = tokio::time::interval(SWEEP_INTERVAL);
-                    // Tick pertama `interval` selesai seketika; sapu SEKARANG
-                    // supaya entri kedaluwarsa dari proses sebelumnya dibuang
-                    // saat boot (bukan menunggu 1 jam penuh).
-                    ticker.tick().await;
-                    loop {
-                        let n = store.sweep_expired().await;
-                        if n > 0 {
-                            tracing::info!("sweep unduhan: {n} entri kedaluwarsa dibuang");
-                        }
-                        ticker.tick().await;
-                    }
-                });
-            });
-        }
-    }
-    opened
+/// Tidak lagi OnceLock statis — store dipegang di [`UnifiedState`]. Sapu TTL
+/// (TTL 24 jam) di-spawn sekali saat state dibuat (lihat [`UnifiedState::new`]).
+fn store(state: &UnifiedState) -> anyhow::Result<Arc<DownloadStore>> {
+    state
+        .download_store
         .as_ref()
+        .cloned()
         .map_err(|e| anyhow::anyhow!("store unduhan tidak tersedia: {e}"))
 }
 
@@ -1107,8 +1110,8 @@ fn store() -> anyhow::Result<&'static std::sync::Arc<DownloadStore>> {
 /// Galat dikembalikan apa adanya (tidak ditelan) agar log boot menunjuk path
 /// penyebabnya. Sengaja TIDAK mematikan proses: gangguan disk unduhan tidak
 /// boleh ikut mematikan fitur baca; endpoint unduhan akan membalas 500 jelas.
-pub fn init_download_store() -> anyhow::Result<()> {
-    store().map(|_| ())
+pub fn init_download_store(state: &UnifiedState) -> anyhow::Result<()> {
+    store(state).map(|_| ())
 }
 
 /// Konkurensi pengambilan gambar per chapter (chapter biasanya 10-60 halaman).
@@ -1145,24 +1148,13 @@ fn referer_for(url: &str) -> String {
 /// (10-60 halaman = 10-60 handshake + connection pool baru) — penyebab utama
 /// PDF lambat (P1-4a). Satu client = keep-alive & pool dipakai ulang; timeout
 /// tetap PER REQUEST supaya satu host macet tidak menahan seluruh batch.
-fn image_client() -> &'static reqwest::Client {
-    static C: std::sync::OnceLock<reqwest::Client> = std::sync::OnceLock::new();
-    C.get_or_init(|| {
-        reqwest::Client::builder()
-            .user_agent(UA_MOBILE)
-            .pool_idle_timeout(std::time::Duration::from_secs(90))
-            .build()
-            // jangan panic di jalur request: client default tetap fungsional
-            .unwrap_or_default()
-    })
-}
-
+/// Klien ini dipegang di [`UnifiedState::image_client`] (bukan OnceLock).
 /// Batas satu gambar (termasuk baca body).
 const IMAGE_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(30);
 
 /// Ambil satu gambar chapter server-side. Host WAJIB di allowlist `hosts.rs`
 /// (guard SSRF) + UA mobile + Referer host.
-async fn fetch_image(url: &str) -> anyhow::Result<Vec<u8>> {
+async fn fetch_image(client: &reqwest::Client, url: &str) -> anyhow::Result<Vec<u8>> {
     if !crate::hosts::host_allowed(url) {
         anyhow::bail!("host gambar tidak diizinkan ({url})");
     }
@@ -1176,7 +1168,7 @@ async fn fetch_image(url: &str) -> anyhow::Result<Vec<u8>> {
     }
     // Referer di header REQUEST (bukan client): ClientBuilder tanpa fitur
     // default tidak punya `header`.
-    let resp = image_client()
+    let resp = client
         .get(url)
         .timeout(IMAGE_TIMEOUT)
         .header(reqwest::header::REFERER, referer_for(url))
@@ -1194,14 +1186,15 @@ async fn fetch_image(url: &str) -> anyhow::Result<Vec<u8>> {
 /// karena `write_pdf_bytes` butuh seluruh set sekaligus. Yang bisa ditekan
 /// adalah puncak sementara: `PAGE_CONCURRENCY` kecil membatasi berapa byte
 /// in-flight pada satu waktu (terukur: 6 → +27 MB puncak di chapter 18 halaman).
-async fn fetch_pages(urls: &[String]) -> anyhow::Result<Vec<pdf::Page>> {
+async fn fetch_pages(client: &reqwest::Client, urls: &[String]) -> anyhow::Result<Vec<pdf::Page>> {
     let mut slots: Vec<Option<Vec<u8>>> = vec![None; urls.len()];
     for (batch, chunk) in urls.chunks(PAGE_CONCURRENCY).enumerate() {
         let mut set = tokio::task::JoinSet::new();
         for (i, url) in chunk.iter().enumerate() {
             let url = url.clone();
+            let client = client.clone();
             let idx = batch * PAGE_CONCURRENCY + i;
-            set.spawn(async move { (idx, fetch_image(&url).await) });
+            set.spawn(async move { (idx, fetch_image(&client, &url).await) });
         }
         while let Some(joined) = set.join_next().await {
             let (idx, res) = joined.map_err(|e| anyhow::anyhow!("task gambar gagal: {e}"))?;
@@ -1224,18 +1217,21 @@ async fn fetch_pages(urls: &[String]) -> anyhow::Result<Vec<pdf::Page>> {
 /// `read_chapter_any` (gambar = `outcome.pages.images`), judul series dari
 /// `series_resolve` (untuk `series_title` + `title_key`), tulis PDF ke store.
 async fn generate_pdf(
+    state: &UnifiedState,
     username: &str,
     handle: &str,
     number: &str,
 ) -> Result<DownloadEntry, AppError> {
-    let series = aggregator()
+    let series = state
+        .aggregator
         .series_resolve(handle, SERIES_CHAPTER_LIMIT, None)
         .await
         .map_err(classify_core_err)?;
     let series_title = series.detail.manga.title.clone();
     let series_key = series.detail.manga.title_key.clone();
 
-    let out = aggregator()
+    let out = state
+        .aggregator
         .read_chapter_any(handle, number, None, SERIES_CHAPTER_LIMIT)
         .await
         .map_err(classify_core_err)?;
@@ -1251,7 +1247,7 @@ async fn generate_pdf(
             downloads::MAX_PAGES
         )));
     }
-    let pages = fetch_pages(&out.pages.images)
+    let pages = fetch_pages(&state.image_client, &out.pages.images)
         .await
         .map_err(AppError::new)?;
     // Encode PDF itu CPU-bound: jalankan di blocking pool supaya pagar waktu
@@ -1261,7 +1257,7 @@ async fn generate_pdf(
         .await
         .map_err(|e| AppError::internal(format!("task PDF gagal: {e}")))?
         .map_err(|e| AppError::internal(format!("gagal membentuk PDF: {e:#}")))?;
-    let store = store().map_err(|e| AppError::internal(format!("{e:#}")))?;
+    let store = store(state).map_err(|e| AppError::internal(format!("{e:#}")))?;
     let entry = store
         .store_pdf(
             PdfMeta { username, handle, number, title: &out.pages.title, series_title: &series_title, title_key: &series_key, },
@@ -1285,7 +1281,8 @@ async fn generate_pdf(
 /// -> {id, filename, title, series_title, size_bytes} (+title_key)
 ///
 /// Butuh akun: file PDF dibagi, tapi entri index masuk ke akun pemanggil.
-async fn u_download_pdf(headers: HeaderMap, Json(req): Json<DownloadPdfReq>) -> Res<Value> {
+async fn u_download_pdf(State(state): State<Arc<crate::routes::AppState>>, headers: HeaderMap, Json(req): Json<DownloadPdfReq>) -> Res<Value> {
+    let state = &state.unified;
     let username = require_user(&headers)?;
     validate_handle(&req.handle)?;
     let number = req.number.trim();
@@ -1295,13 +1292,13 @@ async fn u_download_pdf(headers: HeaderMap, Json(req): Json<DownloadPdfReq>) -> 
     // Fail-fast sebelum kerja berat: kalau store tidak siap (disk tidak
     // writable), balas 500 yang jelas SEKARANG - bukan setelah fetch + encode
     // puluhan detik, dan bukan 502 "sumber lambat".
-    store().map_err(|e| AppError::internal(format!("{e:#}")))?;
+    store(state).map_err(|e| AppError::internal(format!("{e:#}")))?;
     // Pagar TOTAL (P1-4b): timeout per gambar saja tidak cukup — chapter
     // panjang bisa menumpuk puluhan batch. Batas ini mencakup resolve series,
     // semua gambar, dan encode.
     let entry = tokio::time::timeout(
         DOWNLOAD_PDF_BUDGET,
-        generate_pdf(&username, &req.handle, number),
+        generate_pdf(state, &username, &req.handle, number),
     )
     .await
     .map_err(|_| {
@@ -1329,9 +1326,10 @@ async fn u_download_pdf(headers: HeaderMap, Json(req): Json<DownloadPdfReq>) -> 
 /// Tidak ada `limit_bytes` lagi (limit byte dihapus, diganti TTL 24 jam).
 /// `expires_at` (aditif) = epoch millis `downloaded_at + TTL`, biar web bisa
 /// menampilkan sisa waktu tanpa menghitung sendiri.
-async fn u_downloads(headers: HeaderMap) -> Res<Value> {
+async fn u_downloads(State(state): State<Arc<crate::routes::AppState>>, headers: HeaderMap) -> Res<Value> {
+    let state = &state.unified;
     let username = require_user(&headers)?;
-    let store = store().map_err(|e| AppError::internal(format!("{e:#}")))?;
+    let store = store(state).map_err(|e| AppError::internal(format!("{e:#}")))?;
     let (items, total) = store.list(&username).await;
     let ttl_ms = downloads::TTL_SECS * 1000;
     let items: Vec<Value> = items
@@ -1362,9 +1360,10 @@ async fn u_downloads(headers: HeaderMap) -> Res<Value> {
 ///
 /// Tidak ada lagi update LRU (`last_opened_at` dihapus; satu-satunya cap
 /// waktu = `downloaded_at`, dasar TTL).
-async fn u_download_file(headers: HeaderMap, Path(id): Path<String>) -> Result<Response, AppError> {
+async fn u_download_file(State(state): State<Arc<crate::routes::AppState>>, headers: HeaderMap, Path(id): Path<String>) -> Result<Response, AppError> {
+    let state = &state.unified;
     let username = require_user(&headers)?;
-    let store = store().map_err(|e| AppError::internal(format!("{e:#}")))?;
+    let store = store(state).map_err(|e| AppError::internal(format!("{e:#}")))?;
     let not_found = || AppError::not_found(format!("unduhan {id} tidak ditemukan"));
     // Isolasi akun: id akun lain -> 404 (bukan 403) supaya tidak membocorkan
     // bahwa file itu ada.
@@ -1395,9 +1394,10 @@ async fn u_download_file(headers: HeaderMap, Path(id): Path<String>) -> Result<R
 /// DELETE /api/unified/downloads/{id} -> {deleted:true}
 /// Menghapus entri MILIK akun; file fisik hilang hanya saat tak ada akun lain
 /// yang menunjuknya.
-async fn u_download_delete(headers: HeaderMap, Path(id): Path<String>) -> Res<Value> {
+async fn u_download_delete(State(state): State<Arc<crate::routes::AppState>>, headers: HeaderMap, Path(id): Path<String>) -> Res<Value> {
+    let state = &state.unified;
     let username = require_user(&headers)?;
-    let store = store().map_err(|e| AppError::internal(format!("{e:#}")))?;
+    let store = store(state).map_err(|e| AppError::internal(format!("{e:#}")))?;
     if store.delete(&username, &id).await {
         Ok(Json(json!({ "deleted": true })))
     } else {
@@ -1406,9 +1406,10 @@ async fn u_download_delete(headers: HeaderMap, Path(id): Path<String>) -> Res<Va
 }
 
 /// DELETE /api/unified/downloads -> hapus SEMUA MILIK akun (modal "hapus semua").
-async fn u_download_delete_all(headers: HeaderMap) -> Res<Value> {
+async fn u_download_delete_all(State(state): State<Arc<crate::routes::AppState>>, headers: HeaderMap) -> Res<Value> {
+    let state = &state.unified;
     let username = require_user(&headers)?;
-    let store = store().map_err(|e| AppError::internal(format!("{e:#}")))?;
+    let store = store(state).map_err(|e| AppError::internal(format!("{e:#}")))?;
     let before = store.list(&username).await.0.len();
     let changed = store.clear_all(&username).await;
     Ok(Json(json!({ "deleted": if changed { before } else { 0 } })))
@@ -1416,10 +1417,10 @@ async fn u_download_delete_all(headers: HeaderMap) -> Res<Value> {
 
 // ------------------------------------------------------------------ router
 
-/// Sub-router /api/unified. Handler tidak butuh state (aggregator & store
-/// statis), jadi bisa langsung di-`.route()` di router utama tanpa mengubah
-/// AppState.
-pub fn unified_routes() -> Router<crate::routes::AppState> {
+/// Sub-router /api/unified. Handler memakai `State<Arc<AppState>>` dan membaca
+/// `state.unified` (bukan static global) — router utama menyuntikkan state
+/// via `.with_state()`.
+pub fn unified_routes() -> Router<Arc<crate::routes::AppState>> {
     Router::new()
         .route("/api/unified/health", get(u_health))
         .route("/api/unified/search", get(u_search))
@@ -1834,7 +1835,8 @@ mod tests {
     /// supaya tes tidak butuh jaringan.
     #[tokio::test]
     async fn download_file_tanpa_header_401() {
-        let res = u_download_file(HeaderMap::new(), Path("0123456789abcdef".into())).await;
+        let state = State(Arc::new(crate::routes::AppState::new()));
+        let res = u_download_file(state, HeaderMap::new(), Path("0123456789abcdef".into())).await;
         let err = res.expect_err("tanpa header harus galat, bukan 200");
         assert_eq!(status(err), 401);
     }
@@ -1842,9 +1844,10 @@ mod tests {
     /// Header ada tapi tidak valid / akun belum terdaftar tetap 401.
     #[tokio::test]
     async fn download_file_header_tidak_valid_401() {
+        let state = State(Arc::new(crate::routes::AppState::new()));
         let mut h = HeaderMap::new();
         h.insert("x-komik-user", "Bukan Valid!".parse().unwrap());
-        let res = u_download_file(h, Path("0123456789abcdef".into())).await;
+        let res = u_download_file(state, h, Path("0123456789abcdef".into())).await;
         let err = res.expect_err("header invalid harus galat, bukan 200");
         assert_eq!(status(err), 401);
     }
