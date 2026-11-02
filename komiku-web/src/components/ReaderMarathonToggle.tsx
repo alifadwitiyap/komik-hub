@@ -46,7 +46,7 @@ export default function ReaderMarathonToggle({
       } ${visible ? 'opacity-100' : 'opacity-0'} ${
         interactive ? '' : 'pointer-events-none'
       }`}
-      aria-hidden={!visible}
+      aria-hidden={!interactive}
       inert={!interactive}
     >
       {active ? (
