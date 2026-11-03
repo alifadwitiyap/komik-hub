@@ -1,6 +1,10 @@
 import { defineConfig } from 'vite'
+import type { ResolvedConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
+import { readdirSync, readFileSync, writeFileSync } from 'node:fs'
+import { createHash } from 'node:crypto'
+import { join } from 'node:path'
 
 // Dev: Vite (5173) mem-proxy /api ke server Rust (8788).
 // Prod: build di sini, lalu server Rust menyajikan folder `dist/`.
@@ -9,8 +13,54 @@ import tailwindcss from '@tailwindcss/vite'
 // tanpa env var tetap 127.0.0.1:8788.
 const apiTarget = process.env.VITE_API_TARGET ?? 'http://127.0.0.1:8788'
 
+/**
+ * Inject daftar aset build ke `dist/sw.js` (salinan dari `public/sw.js`).
+ *
+ * `public/` disalin verbatim tanpa transformasi, jadi placeholder di sw.js
+ * (`__SHELL_VERSION__`, `__PRECACHE_LIST__`) tidak akan terisi sendiri. Plugin
+ * ini membaca manifest aset yang baru dihasilkan dan menimpanya di `dist/sw.js`.
+ * Hasil: precache selalu sinkron dengan bundle kali ini, dan SHELL version
+ * naik otomatis per build → cache lama dibuang (skill: stale chunk 404).
+ */
+function precacheInjectPlugin() {
+  let outDir = 'dist'
+  return {
+    name: 'komiku-precache-inject',
+    apply: 'build',
+    configResolved(cfg: ResolvedConfig) {
+      outDir = cfg.build.outDir
+    },
+    closeBundle() {
+      const swPath = join(outDir, 'sw.js')
+      let sw
+      try {
+        sw = readFileSync(swPath, 'utf8')
+      } catch {
+        // sw.js tidak ada di outDir (mungkin build non-web) — lewati.
+        return
+      }
+      // Aset kritis: entry js/css + react-vendor + runtime.
+      const files = []
+      for (const f of readdirSync(join(outDir, 'assets'))) {
+        if (/\.(js|css)$/.test(f) && !/_\.(mjs|js)$/.test(f)) files.push(f)
+      }
+      const precache = files
+        .sort()
+        .map((f) => `/assets/${f}`)
+        .sort((a, b) => (a.includes('react-vendor') ? -1 : b.includes('react-vendor') ? 1 : 0))
+      const version = 'v' + createHash('sha1').update(files.join('|')).digest('hex').slice(0, 8)
+      writeFileSync(
+        swPath,
+        sw
+          .replace('__SHELL_VERSION__', JSON.stringify(`komiku-shell-${version}`))
+          .replace('__PRECACHE_LIST__', JSON.stringify(precache, null, 2)),
+      )
+    },
+  }
+}
+
 export default defineConfig({
-  plugins: [react(), tailwindcss()],
+  plugins: [react(), tailwindcss(), precacheInjectPlugin()],
   server: {
     port: 5173,
     // HMR lintas bind-mount Windows (Docker Desktop) butuh polling.

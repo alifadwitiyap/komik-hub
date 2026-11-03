@@ -6,6 +6,7 @@ import { Empty, Spinner } from '../App'
 import { MangaCard } from './Home'
 import { clearRecent, listRecent, rememberSearch } from '../recentSearches'
 import { useUnifiedSearch } from '../hooks/useUnifiedSearch'
+import { SourceSortBar, useSortFilter, useSourceFilter } from '../components/SourceSortBar'
 import { IconMagnifyingGlass } from '../icons'
 
 /**
@@ -69,6 +70,13 @@ export default function Search() {
   const status = params.get('status')
   const searching = query.trim().length > 0
 
+  // sumber & urutan aktif (dari URL); nilai default dipetakan ke null supaya
+  // tidak dikirim server (server memakai default yang sama).
+  const srcRaw = useSourceFilter()
+  const srtRaw = useSortFilter()
+  const src = srcRaw === 'semua' ? null : srcRaw
+  const srt = srtRaw === 'terbaru' ? null : srtRaw
+
   const [input, setInput] = useState(query)
   const [page, setPage] = useState(1)
   const [recent, setRecent] = useState<string[]>(() => listRecent())
@@ -85,7 +93,7 @@ export default function Search() {
    * server per satu aksi filter. React me-render ulang sebelum commit, jadi
    * effect pencarian hanya pernah melihat page 1.
    */
-  const searchSig = `${query}\u0000${tipe ?? ''}\u0000${status ?? ''}\u0000${genreSlug ?? ''}`
+  const searchSig = `${query}\u0000${tipe ?? ''}\u0000${status ?? ''}\u0000${genreSlug ?? ''}\u0000${src ?? ''}\u0000${srt ?? ''}`
   const searchSigRef = useRef(searchSig)
   if (searchSigRef.current !== searchSig) {
     searchSigRef.current = searchSig
@@ -118,12 +126,12 @@ export default function Search() {
   const search = useUnifiedSearch(
     query,
     page,
-    { tipe, status, genre: genreSlug },
+    { tipe, status, genre: genreSlug, source: src, sort: srt },
     searching,
     // Fallback hanya saat TIDAK ada filter: /api/search lama tidak menerima
-    // tipe/status/genre, jadi memakainya dengan filter aktif akan memalsukan
-    // jumlah hasil.
-    tipe || status || genreSlug
+    // tipe/status/genre/sumber/urutan, jadi memakainya dengan filter aktif
+    // akan memalsukan jumlah hasil.
+    tipe || status || genreSlug || src || srt
       ? undefined
       : (signal) => api.search(query, page, signal).then((r) => r.manga),
   )
@@ -150,7 +158,7 @@ export default function Search() {
   const seen = useRef<Set<string>>(new Set())
   /** filter aktif → feed pindah ke katalog (bukan populer). */
   const filtered = Boolean(tipe || status || genreSlug)
-  const filterArg = { tipe, status, genre: genreSlug }
+  const filterArg = { tipe, status, genre: genreSlug, source: src, sort: srt }
 
   // Union genre semua sumber. Gagal → dropdown genre kosong, halaman tetap
   // jalan (mode "Semua").
@@ -201,9 +209,9 @@ export default function Search() {
       })
     return () => ctrl.abort()
     // filterArg sengaja tidak jadi dependensi: nilainya sudah terwakili oleh
-    // tipe/status/genreSlug di bawah (objek baru tiap render akan loop).
+    // tipe/status/genreSlug/src/srt di bawah (objek baru tiap render akan loop).
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searching, filtered, tipe, status, genreSlug])
+  }, [searching, filtered, tipe, status, genreSlug, src, srt])
 
   // "Muat lebih" menambah halaman berikutnya (append + dedup).
   const loadMore = () => {
@@ -300,6 +308,11 @@ export default function Search() {
           Cari
         </button>
       </form>
+
+      {/* filter sumber + urutan (state di URL ?source=&sort=) */}
+      <div className="mt-3">
+        <SourceSortBar />
+      </div>
 
       {/* Tiga dropdown filter — menggantikan baris chip yang memakan 3 baris. */}
       <div className="mt-3 flex flex-wrap gap-2">

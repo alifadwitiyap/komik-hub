@@ -121,6 +121,8 @@ export interface UnifiedChapter {
   number: string
   source: string
   images: string[]
+  /** Dimensi asli (width,height) tiap gambar, sejajar dengan `images`; null = tidak diketahui. */
+  image_sizes?: [number, number][] | null
   prev: ChapterNav | null
   next: ChapterNav | null
   switched_from?: string
@@ -247,6 +249,8 @@ export interface ChapterResponse {
     handle?: string
   }
   images: string[]
+  /** Dimensi asli (width,height) tiap gambar, sejajar dengan `images`; undefined = tidak diketahui. */
+  image_sizes?: [number, number][] | null
   series: Manga | null
   /** unified: sumber yang benar-benar melayani halaman ini */
   source?: string

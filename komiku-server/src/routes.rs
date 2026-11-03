@@ -76,6 +76,7 @@ async fn stats() -> Res<Value> {
 /// tidak ada, 401 = belum terautentikasi. Hint "sumber lambat" hanya utk 502
 /// (QA batch a1a095e3: BUG-3 — 500/502 untuk galat klien menyesatkan; QA
 /// P0-1: galat disk tidak boleh jadi 502 "sumber lambat").
+#[derive(Debug)]
 enum ErrKind {
     Upstream,
     Internal,
@@ -87,6 +88,21 @@ enum ErrKind {
 pub struct AppError {
     err: anyhow::Error,
     kind: ErrKind,
+}
+
+impl std::fmt::Display for AppError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{:#}", self.err)
+    }
+}
+
+impl std::fmt::Debug for AppError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("AppError")
+            .field("kind", &self.kind)
+            .field("err", &self.err)
+            .finish()
+    }
 }
 
 impl AppError {

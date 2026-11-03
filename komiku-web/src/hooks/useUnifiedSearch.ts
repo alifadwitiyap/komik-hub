@@ -48,6 +48,8 @@ export interface UnifiedSearchFilter {
   tipe?: string | null
   status?: string | null
   genre?: string | null
+  source?: string | null
+  sort?: string | null
 }
 
 export function useUnifiedSearch(
@@ -99,6 +101,8 @@ export function useUnifiedSearch(
           tipe: f.tipe,
           status: f.status,
           genre: f.genre,
+          source: f.source,
+          sort: f.sort,
         })
         .then((r) => {
           if (cancelled) return

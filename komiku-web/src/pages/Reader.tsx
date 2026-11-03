@@ -136,6 +136,17 @@ export default function Reader() {
 
   const images = data?.images ?? []
 
+  // Dimensi asli dari server (baca header, belum decode) → rasio w/h tiap
+  // halaman. Dipakai ComicImage untuk reserve tinggi SEBELUM gambar selesai
+  // di-decode — ini sumber utama perbaikan CLS.
+  const knownRatios = useMemo(
+    () =>
+      (data?.image_sizes ?? []).map((s) =>
+        s && s[1] > 0 ? s[0] / s[1] : undefined,
+      ),
+    [data],
+  )
+
   // "Unduh offline": simpan byte chapter ini ke cache (via service worker)
   // agar kebaca saat internet/server mati. Terpisah dari ekspor PDF (Series).
   const [downloading, setDownloading] = useState(false)
@@ -690,6 +701,7 @@ export default function Reader() {
               src={src}
               alt={`${chapter.name} halaman ${i + 1}`}
               pageIndex={i}
+              knownRatio={knownRatios[i]}
               // HANYA halaman pertama yang langsung diminta (LCP + prioritas
               // tinggi). Sisanya menunggu sampai dekat layar — dulu 3 halaman
               // eager + margin lazy bawaan Chrome membuat 9 gambar / 1,7 MB

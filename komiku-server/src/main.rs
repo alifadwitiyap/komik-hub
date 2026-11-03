@@ -48,6 +48,13 @@ async fn main() -> anyhow::Result<()> {
     // membaca file langsung dari disk — aset dari path-nya, selain itu index.html.
     let dist = std::path::Path::new("../komiku-web/dist");
     let state = Arc::new(AppState::new());
+    // Warm-up feed latest/popular + health saat startup. Cache cold 2-5s,
+    // panaskan sekali supaya request pertama user adalah cache hit. Di-spawn
+    // di SINI (sebelum bind/serve) supaya probe health mulai sedini mungkin
+    // dan selesai sebelum request pertama tiba; `spawn` tidak memblokir.
+    let state_warm = state.unified.clone();
+    #[allow(clippy::let_underscore_future)]
+    let _ = tokio::spawn(async move { unified::warm_up(state_warm).await });
     let app = routes::router(state.clone());
     // Route notif favorit lintas sumber (mirror unified::unified_routes()).
     // Handler stateless -> Router<()>, langsung di-merge sebelum fallback SPA.
@@ -95,12 +102,6 @@ async fn main() -> anyhow::Result<()> {
     if dist.is_dir() {
         tracing::info!("juga menyajikan frontend dari {}", dist.display());
     }
-    // Warm-up feed latest: cache cold 2-5s, panaskan sekali supaya request
-    // pertama user adalah cache hit.
-    // `spawn` sudah menjalankan future-nya; `let _` membuang JoinHandle
-    // dengan sengaja (warm-up tidak perlu ditunggu atau diperiksa).
-    #[allow(clippy::let_underscore_future)]
-    let _ = tokio::spawn(async move { unified::warm_up_latest(&state.unified).await });
     axum::serve(listener, app).await?;
     Ok(())
 }

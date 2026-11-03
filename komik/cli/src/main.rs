@@ -14,7 +14,7 @@ mod pdf;
 
 use clap::{Parser, Subcommand};
 use komik_core::adapters::all_sources;
-use komik_core::aggregator::{http_client, Aggregator, HttpClient, Merged};
+use komik_core::aggregator::{http_client, Aggregator, HttpClient, Merged, SortMode};
 use komik_core::cache::{Cache, DEFAULT_TTL};
 use komik_core::model::{title_key, Manga, SOURCE_PRIORITY};
 use komik_core::source::Source;
@@ -125,13 +125,13 @@ async fn main() -> anyhow::Result<()> {
 
     match cli.cmd {
         Cmd::Popular { limit, page } => {
-            print_list(&agg.popular(page, limit, src).await, limit);
+            print_list(&agg.popular(page, limit, src, SortMode::Latest).await, limit);
         }
         Cmd::Latest { limit, page } => {
-            print_list(&agg.latest(page, limit, src).await, limit);
+            print_list(&agg.latest(page, limit, src, SortMode::Latest).await, limit);
         }
         Cmd::Search { query, page, limit } => {
-            print_list(&agg.search(&query, page, limit, src).await, limit);
+            print_list(&agg.search(&query, page, limit, src, SortMode::Latest).await, limit);
         }
         Cmd::Genres => {
             let merged = agg.genres(src).await;
@@ -158,8 +158,8 @@ async fn main() -> anyhow::Result<()> {
         } => {
             // judul saja -> search; ada --genre -> katalog per sumber.
             let mut merged = match (&query, &genre) {
-                (Some(q), None) => agg.search(q, page, limit, src).await,
-                _ => agg.list(genre.as_deref(), page, limit, src).await,
+                (Some(q), None) => agg.search(q, page, limit, src, SortMode::Latest).await,
+                _ => agg.list(genre.as_deref(), page, limit, src, SortMode::Latest).await,
             };
             if let Some(q) = &query {
                 let key = title_key(q);

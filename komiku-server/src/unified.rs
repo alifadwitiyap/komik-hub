@@ -58,7 +58,8 @@ use serde_json::{json, Value};
 use std::sync::Arc;
 
 use komik_core::adapters::all_sources;
-use komik_core::aggregator::Aggregator;
+use komik_core::aggregator::{Aggregator, SortMode};
+use komik_core::cache::Cache;
 use komik_core::model::{title_key, Manga};
 use komik_core::source::Source;
 
@@ -103,7 +104,14 @@ fn build_aggregator() -> Aggregator {
         crate::resilience::SOURCE_COOLDOWN,
         crate::resilience::SOURCE_INNER_TIMEOUT,
     );
-    Aggregator::new(sources).with_timeout(std::time::Duration::from_secs(
+    Aggregator::with_cache(
+        sources,
+        Cache::with_disk(
+            komik_core::cache::DEFAULT_TTL,
+            users_dir().join("cache"),
+        ),
+    )
+    .with_timeout(std::time::Duration::from_secs(
         crate::resilience::SOURCE_TIMEOUT_SECS,
     ))
 }
@@ -177,15 +185,40 @@ impl Default for UnifiedState {
     }
 }
 
-/// Pre-fetch feed latest saat startup. Cache cold 2-5s (fan-out 4 sumber);
-/// memanaskan sekali supaya user pertama dapat cache hit (~warm).
-pub async fn warm_up_latest(state: &UnifiedState) {
+/// Pre-fetch health + feed latest/popular saat startup. Urutan sengaja:
+/// health DULU dan sendirian — probe health adalah pintu pertama (poll
+/// container/bench), jadi jangan berebut sumber dengan warm-up feed yang bisa
+/// memperlambat request /health pertama. Setelah health, feed latest/popular
+/// dipanaskan untuk user pertama (cache hit alih-alih fan-out dingin 2-5s).
+/// Semua async & non-blocking — dipanggil via `tokio::spawn` dari main
+/// supaya TIDAK menunda bind/`serve`.
+pub async fn warm_up(state: std::sync::Arc<UnifiedState>) {
     let t0 = std::time::Instant::now();
-    let m = state.aggregator.latest(1, 48, None).await;
+    match probe_health_and_store(&state).await {
+        Ok(out) => tracing::info!(
+            "warm-up health: {}/{} sehat dalam {:?}",
+            out.healthy, out.total, t0.elapsed()
+        ),
+        Err(e) => tracing::warn!("warm-up health gagal: {e:#}"),
+    }
+
+    let t1 = std::time::Instant::now();
+    let m = state.aggregator.latest(1, 48, None, SortMode::Latest).await;
     tracing::info!(
         "warm-up latest: {} item dalam {:?}",
         m.items.len(),
-        t0.elapsed()
+        t1.elapsed()
+    );
+    // Popular juga dipanaskan: endpoint ini tidak di-warm sebelumnya sehingga
+    // user pertama popular membayar fan-out dingin penuh (~5s) sama seperti
+    // latest sebelum warm-up ada. Cache disk menahan hasil lintas restart,
+    // tapi warm-up ini menutup kasus disk kosong pertama kali.
+    let t2 = std::time::Instant::now();
+    let p = state.aggregator.popular(1, 48, None, SortMode::Latest).await;
+    tracing::info!(
+        "warm-up popular: {} item dalam {:?}",
+        p.items.len(),
+        t2.elapsed()
     );
 }
 
@@ -313,6 +346,10 @@ pub struct ListQuery {
     page: Option<u32>,
     /// batas jumlah item (default 48; 0 = tanpa batas)
     limit: Option<u32>,
+    /// filter sumber tunggal (komiku|mangaku|shinigami|kiryuu); kosong = semua
+    source: Option<String>,
+    /// mode urutan: latest|rating|trending (default latest)
+    sort: Option<String>,
 }
 
 /// Query `GET /api/unified/catalogue` — katalog (bukan search) + filter
@@ -326,6 +363,10 @@ pub struct CatalogueQuery {
     /// slug/nama genre dari union `/genres`. SUMBER HANYA MENYARING SEBAGIAN:
     /// lihat `genre_coverage` — setiap respons membawa laporan jujur.
     genre: Option<String>,
+    /// filter sumber tunggal; kosong = semua
+    source: Option<String>,
+    /// mode urutan: latest|rating|trending (default latest)
+    sort: Option<String>,
 }
 
 #[derive(Deserialize)]
@@ -341,6 +382,15 @@ pub struct SearchQuery {
     /// filter genre server-side — slug/nama dari union `/genres`. Aktif:
     /// diteruskan ke tiap adapter lewat `search_in_genre`.
     genre: Option<String>,
+    /// filter sumber tunggal; kosong = semua
+    source: Option<String>,
+    /// mode urutan: latest|rating|trending (default latest)
+    sort: Option<String>,
+}
+
+/// Normalisasi param `?source=`: trim, kosong / tak dikenal -> None (semua).
+fn norm_source(s: Option<&str>) -> Option<&str> {
+    s.map(str::trim).filter(|s| !s.is_empty())
 }
 
 /// Filter tipe/status SERVER-SIDE (setelah merge 4 sumber). Fungsi murni
@@ -374,6 +424,7 @@ fn list_out_filtered(
     query: Option<&str>,
     tipe: Option<&str>,
     status: Option<&str>,
+    sort: SortMode,
     max: Option<usize>,
 ) -> ListOut {
     // Jumlah item SEBELUM filter relevansi. Dipakai untuk `has_more`: setelah
@@ -383,6 +434,8 @@ fn list_out_filtered(
     // tombol "Berikutnya" mati di halaman 1 dan hal.2 tak pernah terjangkau).
     let pre_filter_len = merged.items.len();
     // rank_by_query dengan kueri kosong = no-op (urut recency dari core).
+    // Sort diterapkan SETELAH rank relevansi supaya `?sort=rating` tidak
+    // ditimpa urutan tier relevansi.
     let items: Vec<Manga> = match query {
         Some(q) => komik_core::aggregator::rank_by_query(merged.items, q),
         None => merged.items,
@@ -390,6 +443,7 @@ fn list_out_filtered(
     .into_iter()
     .filter(|m| match_filters(m, tipe, status))
     .collect();
+    let items = komik_core::aggregator::apply_sort(items, sort);
     let mut out = ListOut::from(komik_core::aggregator::Merged { items, ..merged });
     if let Some(max) = max {
         // Heuristik standar infinite-scroll: halaman penuh (=limit) berarti
@@ -412,9 +466,10 @@ fn list_out_filtered(
 /// menembak upstream 3-4 detik lagi. Diukur: cold 3.6 s, cache-hit 0.005 s.
 /// Deadline fase 1 pencarian dua fase. Sumber yang belum selesai dalam
 /// waktu ini dilaporkan lewat `pending` dan diselesaikan di background.
-/// 3 s: di atas latensi shinigami (~60 ms) dan mangaku (~1,3 s), di bawah
-/// TTFB komiku (5-9 s) yang justru ingin ditunda.
-const SEARCH_PHASE1_SECS: u64 = 3;
+/// 1.5 s: di atas latensi shinigami (~1 s) dan komiku (~1.6 s) yang
+/// memberi mayoritas item; mangaku (~3.2 s) & kiryuu (~2.8 s) menunggu
+/// fase 2. Diukur: sumber cepat selesai <1.6 s (lihat [perf] log).
+const SEARCH_PHASE1_MILLIS: u64 = 1500;
 
 const SEARCH_CACHE_TTL: std::time::Duration = std::time::Duration::from_secs(120);
 /// Batas jumlah query yang disimpan (LRU kasar: buang yang paling lama dipakai
@@ -423,8 +478,20 @@ const SEARCH_CACHE_MAX: usize = 128;
 
 type SearchCache = std::sync::Mutex<std::collections::HashMap<String, (std::time::Instant, ListOut)>>;
 
-fn search_key(query: &str, genre: Option<&str>, page: u32, limit: u32) -> String {
-    format!("{query}\u{1}{}\u{1}{page}\u{1}{limit}", genre.unwrap_or(""))
+fn search_key(
+    query: &str,
+    genre: Option<&str>,
+    page: u32,
+    limit: u32,
+    source: Option<&str>,
+    sort: SortMode,
+) -> String {
+    format!(
+        "{query}\u{1}{}\u{1}{page}\u{1}{limit}\u{1}{}\u{1}{}",
+        genre.unwrap_or(""),
+        source.unwrap_or("*"),
+        sort.as_str()
+    )
 }
 
 /// Ambil hasil dari cache kalau masih segar. `None` = harus fetch upstream.
@@ -468,9 +535,11 @@ async fn u_search(State(state): State<Arc<crate::routes::AppState>>, Query(q): Q
         .map(str::trim)
         .filter(|s| !s.is_empty())
         .map(|s| s.to_string());
+    let source = norm_source(q.source.as_deref());
+    let sort = SortMode::parse(q.sort.as_deref());
     let page = q.page.unwrap_or(1).max(1);
     let limit = q.limit.unwrap_or(48);
-    let key = search_key(&query, genre.as_deref(), page, limit);
+    let key = search_key(&query, genre.as_deref(), page, limit, source, sort);
     if let Some(hit) = search_cache_get(&state.search_cache, &key) {
         return Ok(Json(hit));
     }
@@ -493,7 +562,7 @@ async fn u_search(State(state): State<Arc<crate::routes::AppState>>, Query(q): Q
         Some(g) => (
             state
                 .aggregator
-                .search_in_genre(&query, g, page, FILTER_FANOUT_CAP, None)
+                .search_in_genre(&query, g, page, FILTER_FANOUT_CAP, source, sort)
                 .await,
             Vec::new(),
         ),
@@ -504,8 +573,9 @@ async fn u_search(State(state): State<Arc<crate::routes::AppState>>, Query(q): Q
                     &query,
                     page,
                     FILTER_FANOUT_CAP,
-                    None,
-                    std::time::Duration::from_secs(SEARCH_PHASE1_SECS),
+                    source,
+                    std::time::Duration::from_millis(SEARCH_PHASE1_MILLIS),
+                    sort,
                 )
                 .await
         }
@@ -515,6 +585,7 @@ async fn u_search(State(state): State<Arc<crate::routes::AppState>>, Query(q): Q
         Some(&query),
         q.tipe.as_deref(),
         q.status.as_deref(),
+        sort,
         Some(limit as usize),
     );
     out.pending = pending.iter().map(|s| s.as_str().to_string()).collect();
@@ -535,9 +606,11 @@ async fn u_search(State(state): State<Arc<crate::routes::AppState>>, Query(q): Q
 async fn u_catalogue(State(state): State<Arc<crate::routes::AppState>>, Query(q): Query<CatalogueQuery>) -> Res<ListOut> {
     let state = &state.unified;
     let genre = q.genre.as_deref().map(str::trim).filter(|s| !s.is_empty());
+    let source = norm_source(q.source.as_deref());
+    let sort = SortMode::parse(q.sort.as_deref());
     let merged = state
         .aggregator
-        .list(genre, q.page.unwrap_or(1).max(1), FILTER_FANOUT_CAP, None)
+        .list(genre, q.page.unwrap_or(1).max(1), FILTER_FANOUT_CAP, source, sort)
         .await;
     let limit = q.limit.unwrap_or(48);
     Ok(Json(list_out_filtered(
@@ -545,26 +618,36 @@ async fn u_catalogue(State(state): State<Arc<crate::routes::AppState>>, Query(q)
         None,
         q.tipe.as_deref(),
         q.status.as_deref(),
+        sort,
         Some(limit as usize),
     )))
 }
 
 async fn u_popular(State(state): State<Arc<crate::routes::AppState>>, Query(q): Query<ListQuery>) -> Res<ListOut> {
     let state = &state.unified;
+    let source = norm_source(q.source.as_deref());
+    let sort = SortMode::parse(q.sort.as_deref());
     let merged = state
         .aggregator
-        .popular(q.page.unwrap_or(1).max(1), q.limit.unwrap_or(48), None)
+        .popular(q.page.unwrap_or(1).max(1), q.limit.unwrap_or(48), source, sort)
         .await;
     Ok(Json(merged.into()))
 }
 
 async fn u_latest(State(state): State<Arc<crate::routes::AppState>>, Query(q): Query<ListQuery>) -> Res<ListOut> {
     let state = &state.unified;
+    let source = norm_source(q.source.as_deref());
+    let sort = SortMode::parse(q.sort.as_deref());
     let merged = state
         .aggregator
-        .latest(q.page.unwrap_or(1).max(1), q.limit.unwrap_or(48), None)
+        .latest(q.page.unwrap_or(1).max(1), q.limit.unwrap_or(48), source, sort)
         .await;
-    Ok(Json(merged.into()))
+    let mut out: ListOut = merged.into();
+    // has_more jujur: kalau hasil penuh = limit, kemungkinan masih ada halaman
+    // berikutnya (infinite-scroll butuh ini; `From<Merged>` hardcode false).
+    let limit = q.limit.unwrap_or(48) as usize;
+    out.has_more = limit > 0 && out.items.len() >= limit;
+    Ok(Json(out))
 }
 
 /// Union genre semua sumber: {items:[{slug,name,sources}]}.
@@ -698,16 +781,25 @@ enum CacheAge {
     Expired,
 }
 
-/// Umur snapshot → [`CacheAge`]. Murni (durasi masuk) supaya batas bisa
-/// diuji tanpa jam/jaringan.
-fn classify_age(age: std::time::Duration) -> CacheAge {
-    if age < HEALTH_CACHE_TTL {
+/// Umur snapshot → [`CacheAge`] untuk batas TTL/MAX_STALE eksplisit. Murni
+/// (durasi masuk) supaya batas bisa diuji tanpa jam/jaringan.
+fn classify_age_with(
+    age: std::time::Duration,
+    ttl: std::time::Duration,
+    max_stale: std::time::Duration,
+) -> CacheAge {
+    if age < ttl {
         CacheAge::Fresh
-    } else if age < HEALTH_CACHE_MAX_STALE {
+    } else if age < max_stale {
         CacheAge::Stale
     } else {
         CacheAge::Expired
     }
+}
+
+/// Umur snapshot → [`CacheAge`] memakai batas SEM health (SWR).
+fn classify_age(age: std::time::Duration) -> CacheAge {
+    classify_age_with(age, HEALTH_CACHE_TTL, HEALTH_CACHE_MAX_STALE)
 }
 
 /// Query `GET /api/unified/health`. `force=1` = lewati cache, probe inline
@@ -894,6 +986,11 @@ pub struct SeriesQuery {
 /// = 12 fan-out identik → semua saling rebut CPU → melewati budget 15 s → 502.
 /// Dengan cache + single-flight, burst itu jadi SATU fan-out.
 const SERIES_CACHE_TTL: std::time::Duration = std::time::Duration::from_secs(300);
+/// Batas keras staleness: kalau snapshot lebih tua dari ini (mis. server baru
+/// bangun lalu tak ada request selama lama), JANGAN sajikan stale — hitung
+/// inline (blokir) supaya klien tak pernah melihat data sangat basi.
+/// 10 menit ≫ TTL, jadi hanya terpicu pada kasus tepi (idle panjang).
+const SERIES_CACHE_MAX_STALE: std::time::Duration = std::time::Duration::from_secs(600);
 const SERIES_CACHE_MAX: usize = 256;
 
 type SeriesCache = std::collections::HashMap<String, (std::time::Instant, serde_json::Value)>;
@@ -917,13 +1014,82 @@ fn series_gate(
         .clone()
 }
 
-fn series_cache_get(cache: &std::sync::Mutex<SeriesCache>, key: &str) -> Option<serde_json::Value> {
-    let guard = cache.lock().ok()?;
-    let (at, out) = guard.get(key)?;
-    if at.elapsed() < SERIES_CACHE_TTL {
-        Some(out.clone())
-    } else {
-        None
+/// Baca cache + klasifikasi umur (SWR). `None` = belum ada entri.
+/// Miss memory → fallback disk (`epp-series/`): hit disk dipromosikan ke
+/// memory (biaya berikutnya ~0) dan langsung dilayani (Fresh/Stale) — hanya
+/// radioired/absen yang dipaksa hitung inline. Urutan: memory dulu (50x lebih
+/// cepat dari fs), lalu disk.
+fn series_cache_read(cache: &std::sync::Mutex<SeriesCache>, key: &str) -> Option<(CacheAge, serde_json::Value)> {
+    {
+        let guard = cache.lock().ok()?;
+        if let Some((at, out)) = guard.get(key) {
+            let age = classify_age_with(at.elapsed(), SERIES_CACHE_TTL, SERIES_CACHE_MAX_STALE);
+            return Some((age, out.clone()));
+        }
+    }
+    let (age, out) = series_disk_read(key)?;
+    if let Ok(mut guard) = cache.lock() {
+        guard.insert(key.to_string(), (std::time::Instant::now(), out.clone()));
+    }
+    Some((age, out))
+}
+
+/// Direktori persistensi disk respons series FINAL. Subdir sendiri (`epp-series/`)
+/// supaya tidak bercampur file cache core (`series___...json`) yang dikelola
+/// aggregator dengan format/umur berbeda. Tujuan: setelah restart server (cache
+/// memory kosong), hit pertama sebuah handle dibalas dari disk (~ms) alih-alih
+/// mengulang union 4-sumber penuh (2-5s).
+fn series_disk_dir() -> std::path::PathBuf {
+    users_dir().join("cache").join("epp-series")
+}
+
+fn series_disk_path(key: &str) -> std::path::PathBuf {
+    let safe: String = key
+        .chars()
+        .map(|c| {
+            if c.is_ascii_alphanumeric() || c == '-' || c == '_' || c == '.' {
+                c
+            } else {
+                '_'
+            }
+        })
+        .collect();
+    series_disk_dir().join(safe)
+}
+
+fn now_ms() -> u64 {
+    std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.as_millis() as u64)
+        .unwrap_or(0)
+}
+
+/// Tulis respons series final ke disk (atomic tmp+rename). Best-effort:
+/// kegagalan disk dibuang — cache memory tetap berfungsi tanpa itu.
+fn series_disk_write(key: &str, out: &serde_json::Value) {
+    let dir = series_disk_dir();
+    if std::fs::create_dir_all(&dir).is_err() {
+        return;
+    }
+    let path = series_disk_path(key);
+    let tmp = dir.join(format!(".tmp-{}-{}", std::process::id(), now_ms()));
+    let payload = (now_ms(), out);
+    let r = std::fs::write(&tmp, serde_json::to_vec(&payload).unwrap_or_default())
+        .and_then(|_| std::fs::rename(&tmp, &path));
+    if r.is_err() {
+        let _ = std::fs::remove_file(&tmp);
+    }
+}
+
+/// Baca respons series dari disk. `None` = tidak ada / korup / terlalu basi
+/// (Expired → biarkan hitung inline). Fresh/Stale dipromosikan ke memory.
+fn series_disk_read(key: &str) -> Option<(CacheAge, serde_json::Value)> {
+    let raw = std::fs::read_to_string(series_disk_path(key)).ok()?;
+    let (at_ms, out): (u64, serde_json::Value) = serde_json::from_str(&raw).ok()?;
+    let age = std::time::Duration::from_millis(now_ms().saturating_sub(at_ms));
+    match classify_age_with(age, SERIES_CACHE_TTL, SERIES_CACHE_MAX_STALE) {
+        CacheAge::Expired => None,
+        a => Some((a, out)),
     }
 }
 
@@ -938,56 +1104,17 @@ fn series_cache_put(cache: &std::sync::Mutex<SeriesCache>, key: String, out: ser
                 guard.remove(&old);
             }
         }
-        guard.insert(key, (std::time::Instant::now(), out));
+        guard.insert(key.clone(), (std::time::Instant::now(), out.clone()));
     }
+    series_disk_write(&key, &out);
 }
 
-async fn u_series(State(state): State<Arc<crate::routes::AppState>>, Path(handle): Path<String>, Query(q): Query<SeriesQuery>) -> Res<Value> {
-    let state = &state.unified;
-    validate_handle(&handle)?;
-    let key = series_key(&handle, q.last_source.as_deref());
-
-    // 1. Cache segar -> seketika (tidak menyentuh upstream sama sekali).
-    if let Some(hit) = series_cache_get(&state.series_cache, &key) {
-        return Ok(Json(hit));
-    }
-
-    // 2. Single-flight per handle: yang menang gerbang menghitung, sisanya
-    //    menunggu lalu membaca cache yang baru diisi (bukan fan-out sendiri).
-    let gate = series_gate(&state.series_gates, &key);
-    let _guard = gate.lock().await;
-
-    // Double-check: bisa jadi request lain mengisi cache saat kita menunggu.
-    if let Some(hit) = series_cache_get(&state.series_cache, &key) {
-        return Ok(Json(hit));
-    }
-
-    // 3. Batasi fan-out serentak lintas handle (antre, bukan tolak).
-    let _permit = state
-        .series_fanout_permits
-        .acquire()
-        .await
-        .map_err(|_| AppError::new(anyhow::anyhow!("gerbang fan-out series ditutup")))?;
-
-    // Budget total: core boleh fallback berurutan antar sumber; tanpa batas
-    // ini 4 sumber × 6 s bisa menahan koneksi user ~24 s.
-    let merged = match tokio::time::timeout(
-        UNIFIED_REQUEST_BUDGET,
-        state.aggregator.series_merged(
-            &handle,
-            SERIES_CHAPTER_LIMIT,
-            None,
-            q.last_source.as_deref(),
-        ),
-    )
-    .await
-    {
-        Ok(r) => r.map_err(classify_core_err)?,
-        Err(_) => return Err(budget_err("series")),
-    };
+/// Bentuk JSON final respons series dari hasil union (dipakai jalur inline
+/// dan refresh latar SWR — satu sumber kebenaran, tak ada duplikasi logika).
+fn build_series_json(merged: &komik_core::aggregator::MergedSeries) -> serde_json::Value {
     let manga = MangaOut::from(&merged.manga);
     let chapters: Vec<ChapterRow> = merged.chapters.iter().map(ChapterRow::from).collect();
-    let out = json!({
+    json!({
         "manga": manga,
         "chapters": chapters,
         // Sumber manga PRIMARY (metadata tidak berubah oleh union).
@@ -996,6 +1123,7 @@ async fn u_series(State(state): State<Arc<crate::routes::AppState>>, Path(handle
         // SOURCE_PRIORITY); null kalau tak ada chapter numerik.
         "representative_source": merged
             .representative_source
+            .as_ref()
             .map(|s| s.as_str().to_string()),
         // Sumber yang gagal saat pengumpulan union (partial failure).
         "failed_sources": merged
@@ -1004,8 +1132,101 @@ async fn u_series(State(state): State<Arc<crate::routes::AppState>>, Path(handle
             .map(|(s, _)| s.as_str().to_string())
             .collect::<Vec<_>>(),
         "from_cache": merged.from_cache,
+    })
+}
+
+/// Hitung union 4 sumber dengan pagar budget total. Dipakai jalur inline
+/// (Expired/kosong) dan refresh latar SWR.
+async fn compute_series(
+    state: &UnifiedState,
+    handle: &str,
+    last_source: Option<&str>,
+) -> Result<serde_json::Value, AppError> {
+    let merged = match tokio::time::timeout(
+        UNIFIED_REQUEST_BUDGET,
+        state.aggregator.series_merged(
+            handle,
+            SERIES_CHAPTER_LIMIT,
+            None,
+            last_source,
+        ),
+    )
+    .await
+    {
+        Ok(r) => r.map_err(classify_core_err)?,
+        Err(_) => return Err(budget_err("series")),
+    };
+    Ok(build_series_json(&merged))
+}
+
+/// Jalankan SATU refresh latar per handle (single-flight): ambil gerbang,
+/// double-check (request lain mungkin sudah me-refresh), lalu hitung ulang
+/// union + simpan ke cache. Kegagalan hanya di-log — pemanggil sudah
+/// melayani stale, jadi endpoint tetap responsif.
+fn spawn_series_refresh(state: Arc<UnifiedState>, handle: String, last_source: Option<String>, key: String) {
+    tokio::spawn(async move {
+        let gate = series_gate(&state.series_gates, &key);
+        let _guard = gate.lock().await;
+        {
+            if let Some((CacheAge::Fresh, _)) = series_cache_read(&state.series_cache, &key) {
+                return; // sudah di-refresh request lain saat menunggu gerbang
+            }
+        }
+        let _permit = match state.series_fanout_permits.acquire().await {
+            Ok(p) => p,
+            Err(_) => return,
+        };
+        match compute_series(&state, &handle, last_source.as_deref()).await {
+            Ok(out) => series_cache_put(&state.series_cache, key, out),
+            Err(_) => tracing::warn!("refresh series latar gagal (dibiarkan, stale tetap dilayani)"),
+        }
     });
-    series_cache_put(&state.series_cache, key, out.clone());
+}
+
+/// GET /api/unified/series/{handle} — detail + daftar chapter UNION lintas
+/// sumber. Respons di-cache (memory) dengan **stale-while-revalidate**:
+/// umur < TTL → sajikan cache seketika; ≥ TTL dan < MAX_STALE → sajikan
+/// stale seketika + refresh latar (single-flight); ≥ MAX_STALE / kosong →
+/// hitung inline. Ini yang membuat kunjungan ulang series ~milidetik,
+/// bukan 8-12 s (union 4 sumber, ~86% biaya untuk <1% chapter ekstra).
+async fn u_series(State(state): State<Arc<crate::routes::AppState>>, Path(handle): Path<String>, Query(q): Query<SeriesQuery>) -> Res<Value> {
+    validate_handle(&handle)?;
+    let unified = state.unified.clone();
+    let key = series_key(&handle, q.last_source.as_deref());
+
+    // 1. SWR: segar -> seketika; basi -> sajikan stale + refresh latar;
+    //    sangat basi / belum ada -> hitung inline di bawah.
+    if let Some((age, hit)) = series_cache_read(&unified.series_cache, &key) {
+        match age {
+            CacheAge::Fresh => return Ok(Json(hit)),
+            CacheAge::Stale => {
+                spawn_series_refresh(unified, handle, q.last_source, key);
+                return Ok(Json(hit));
+            }
+            CacheAge::Expired => {}
+        }
+    }
+
+    // 2. Single-flight per handle: yang menang gerbang menghitung, sisanya
+    //    menunggu lalu membaca cache yang baru diisi (bukan fan-out sendiri).
+    let gate = series_gate(&unified.series_gates, &key);
+    let _guard = gate.lock().await;
+
+    // Double-check: bisa jadi request lain mengisi cache saat kita menunggu.
+    if let Some((CacheAge::Fresh, hit)) = series_cache_read(&unified.series_cache, &key) {
+        return Ok(Json(hit));
+    }
+
+    // 3. Batasi fan-out serentak lintas handle (antre, bukan tolak).
+    let _permit = unified
+        .series_fanout_permits
+        .acquire()
+        .await
+        .map_err(|_| AppError::new(anyhow::anyhow!("gerbang fan-out series ditutup")))?;
+
+    // 4. Hitung union penuh (budget total di dalam `compute_series`).
+    let out = compute_series(&unified, &handle, q.last_source.as_deref()).await?;
+    series_cache_put(&unified.series_cache, key, out.clone());
     Ok(Json(out))
 }
 
@@ -1063,6 +1284,13 @@ async fn u_chapter_inner(state: Arc<UnifiedState>, handle: String, number: Strin
         _ => title_key(&out.pages.title),
     };
     let series_title = out.series_title.as_deref().filter(|t| !t.is_empty());
+    // Probe dimensi asli tiap halaman (range GET kecil) supaya reader bisa
+    // reserve tinggi SEBELUM decode — perbaikan CLS. `None` = tidak diketahui.
+    let image_sizes = probe_dims(&state.image_client, &out.pages.images)
+        .await
+        .into_iter()
+        .map(|d| d.map(|(w, h)| [w, h]))
+        .collect::<Vec<_>>();
     Ok(Json(json!({
         "title": out.pages.title,
         "number": out.pages.number,
@@ -1070,6 +1298,7 @@ async fn u_chapter_inner(state: Arc<UnifiedState>, handle: String, number: Strin
         "title_key": key,
         "series_title": series_title,
         "images": out.pages.images,
+        "image_sizes": image_sizes,
         "prev": out.prev,
         "next": out.next,
         "switched_from": out.switched_from.as_ref().map(|s| s.as_str()),
@@ -1180,6 +1409,104 @@ async fn fetch_image(client: &reqwest::Client, url: &str) -> anyhow::Result<Vec<
     Ok(resp.bytes().await?.to_vec())
 }
 
+/// Ukuran asli (width×height) satu gambar chapter. Dibaca dari byte pertama
+/// (range GET), tanpa decode penuh — murah untuk semua CDN. Dipakai reader
+/// untuk reserve tinggi halaman SEBELUM decode (perbaikan CLS). `None` kalau
+/// gagal dibaca (mis. host tidak diizinkan / bukan gambar).
+async fn probe_image_dim(client: &reqwest::Client, url: &str) -> Option<(u32, u32)> {
+    // Reuse byte mentah cache /img kalau halaman ini pernah diminta reader —
+    // nol round-trip ke CDN. Kalau belum, range GET kecil.
+    if let Some(bytes) = crate::img::cached_raw(url) {
+        return parse_img_dims(&bytes);
+    }
+    if !crate::hosts::host_allowed(url) {
+        return None;
+    }
+    let resp = client
+        .get(url)
+        .timeout(IMAGE_TIMEOUT)
+        .header(reqwest::header::REFERER, referer_for(url))
+        .header(reqwest::header::RANGE, "bytes=0-255")
+        .send()
+        .await
+        .ok()?;
+    if !resp.status().is_success() {
+        return None;
+    }
+    parse_img_dims(&resp.bytes().await.ok()?)
+}
+
+/// Parse dimensi dari header gambar (tanpa decode penuh). Mendukung JPEG
+/// (SOF0/1/2), PNG (IHDR), WebP (VP8X), dan GIF.
+fn parse_img_dims(b: &[u8]) -> Option<(u32, u32)> {
+    if b.starts_with(b"\xff\xd8") {
+        // JPEG: scan marker sampai SOF; skip panjang segmen lain.
+        let mut i = 2usize;
+        while i + 9 <= b.len() {
+            if b[i] != 0xff {
+                i += 1;
+                continue;
+            }
+            let m = b[i + 1];
+            if (0xc0..=0xcf).contains(&m) && m != 0xc4 && m != 0xc8 && m != 0xcc {
+                let h = u16::from_be_bytes([b[i + 5], b[i + 6]]) as u32;
+                let w = u16::from_be_bytes([b[i + 7], b[i + 8]]) as u32;
+                return Some((w, h));
+            }
+            if m == 0xda {
+                break; // SOS: header selesai
+            }
+            let seg = u16::from_be_bytes([b[i + 2], b[i + 3]]) as usize;
+            if seg < 2 {
+                break;
+            }
+            i += 2 + seg;
+        }
+        None
+    } else if b.starts_with(b"\x89PNG\r\n\x1a\n") && b.len() >= 24 {
+        let w = u32::from_be_bytes([b[16], b[17], b[18], b[19]]);
+        let h = u32::from_be_bytes([b[20], b[21], b[22], b[23]]);
+        Some((w, h))
+    } else if b.starts_with(b"RIFF")
+        && b.get(8..12) == Some(b"WEBP")
+        && b.len() >= 30
+        && b.get(12..16) == Some(b"VP8X")
+    {
+        let w = 1 + u32::from_le_bytes([b[24], b[25], b[26], 0]);
+        let h = 1 + u32::from_le_bytes([b[27], b[28], b[29], 0]);
+        Some((w, h))
+    } else if b.starts_with(b"GIF8") && b.len() >= 10 {
+        let w = u16::from_le_bytes([b[6], b[7]]) as u32;
+        let h = u16::from_le_bytes([b[8], b[9]]) as u32;
+        Some((w, h))
+    } else {
+        None
+    }
+}
+
+/// Probe dimensi untuk SEMUA halaman chapter, konkuren per batch, urutan
+/// dipertahankan. `None` per-halaman = tidak diketahui.
+async fn probe_dims(client: &reqwest::Client, urls: &[String]) -> Vec<Option<(u32, u32)>> {
+    const PROBE_CONCURRENCY: usize = 8;
+    let mut slots: Vec<Option<Option<(u32, u32)>>> = vec![None; urls.len()];
+    for (bi, chunk) in urls.chunks(PROBE_CONCURRENCY).enumerate() {
+        let mut set = tokio::task::JoinSet::new();
+        for (i, url) in chunk.iter().enumerate() {
+            let url = url.clone();
+            let client = client.clone();
+            set.spawn(async move {
+                (bi * PROBE_CONCURRENCY + i, probe_image_dim(&client, &url).await)
+            });
+        }
+        while let Some(j) = set.join_next().await {
+            if let Ok((idx, dim)) = j {
+                slots[idx] = Some(dim);
+            }
+        }
+    }
+    slots.into_iter().map(|s| s.unwrap_or(None)).collect()
+}
+
 /// Ambil semua gambar chapter (konkuren per batch, urutan dipertahankan).
 ///
 /// Memori: SEMUA byte halaman ditahan sampai PDF dirakit — itu tak terhindarkan
@@ -1247,12 +1574,15 @@ async fn generate_pdf(
             downloads::MAX_PAGES
         )));
     }
+    let t_fetch0 = std::time::Instant::now();
     let pages = fetch_pages(&state.image_client, &out.pages.images)
         .await
         .map_err(AppError::new)?;
+    let t_fetch = t_fetch0.elapsed();
     // Encode PDF itu CPU-bound: jalankan di blocking pool supaya pagar waktu
     // DOWNLOAD_PDF_BUDGET di u_download_pdf tetap bisa memutus request,
     // bukan tertahan worker async.
+    let t_enc0 = std::time::Instant::now();
     let (bytes, report) = tokio::task::spawn_blocking(move || pdf::write_pdf_bytes(&pages))
         .await
         .map_err(|e| AppError::internal(format!("task PDF gagal: {e}")))?
@@ -1265,14 +1595,17 @@ async fn generate_pdf(
         )
         .await
         .map_err(|e| AppError::internal(format!("gagal menyimpan PDF: {e:#}")))?;
+    let t_enc = t_enc0.elapsed();
     tracing::info!(
-        "unduhan {} {} selesai: {} halaman ({} lossless, {} re-encode), {} byte",
+        "unduhan {} {} selesai: {} halaman ({} lossless, {} re-encode), {} byte, fetch={:?} encode={:?}",
         series_title,
         number,
         report.pages,
         report.passthrough,
         report.reencoded,
-        entry.size_bytes
+        entry.size_bytes,
+        t_fetch,
+        t_enc
     );
     Ok(entry)
 }
@@ -1446,6 +1779,32 @@ pub fn unified_routes() -> Router<Arc<crate::routes::AppState>> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// Dimensi JPEG dibaca dari SOF header tanpa decode penuh.
+    #[test]
+    fn parse_dims_jpeg_sof() {
+        // SOF2 (progressive) 720x997
+        let mut b = vec![0xff, 0xd8, 0xff, 0xe0, 0x00, 0x10, 0x4a, 0x46];
+        b.extend_from_slice(b"IF\x00\x01\x01\x00\x00\x01\x00\x01\x00\x00");
+        b.extend_from_slice(&[0xff, 0xc2, 0x00, 0x11, 0x08, 0x03, 0xe5, 0x02, 0xd0]);
+        assert_eq!(parse_img_dims(&b), Some((720, 997)));
+    }
+
+    /// Dimensi PNG dibaca dari IHDR.
+    #[test]
+    fn parse_dims_png() {
+        let mut b = b"\x89PNG\r\n\x1a\n".to_vec();
+        b.extend_from_slice(&[0, 0, 0, 13, 0x49, 0x48, 0x44, 0x52]);
+        b.extend_from_slice(&[0, 0, 2, 0, 0, 0, 3, 0, 8, 6, 0, 0, 0]);
+        assert_eq!(parse_img_dims(&b), Some((512, 768)));
+    }
+
+    /// Bukan gambar → None.
+    #[test]
+    fn parse_dims_bukan_gambar() {
+        assert_eq!(parse_img_dims(b"<html>"), None);
+        assert_eq!(parse_img_dims(&[]), None);
+    }
 
     /// ChapterRef harus keluar sebagai objek {number,source,handle} — kontrak
     /// prev/next cross-source (plan keputusan 7).
@@ -1687,6 +2046,18 @@ mod tests {
         );
     }
 
+    /// Kontrak SWR series: MAX_STALE HARUS > TTL (jalur Stale tak pernah
+    /// tercapai kalau tidak), dan TTL 300 s ≪ MAX_STALE 600 s supaya stale
+    /// hanya disajikan pada jeda re-visit normal, bukan data sangat basi.
+    #[test]
+    fn series_cache_ttl_mendukung_swr() {
+        use std::time::Duration;
+        assert!(SERIES_CACHE_MAX_STALE > SERIES_CACHE_TTL);
+        assert_eq!(classify_age_with(Duration::ZERO, SERIES_CACHE_TTL, SERIES_CACHE_MAX_STALE), CacheAge::Fresh);
+        assert_eq!(classify_age_with(SERIES_CACHE_TTL, SERIES_CACHE_TTL, SERIES_CACHE_MAX_STALE), CacheAge::Stale);
+        assert_eq!(classify_age_with(SERIES_CACHE_MAX_STALE, SERIES_CACHE_TTL, SERIES_CACHE_MAX_STALE), CacheAge::Expired);
+    }
+
     // ------------------------------------------------- filter tipe/status
 
     /// Manga sintetis untuk filter (manga_type/status diatur eksplisit).
@@ -1768,7 +2139,7 @@ mod tests {
             from_cache: false,
         };
         // Filter tipe=Manga -> 2 item (a, c), status Ongoing -> ya.
-        let out = list_out_filtered(merged.clone(), None, Some("Manga"), None, None);
+        let out = list_out_filtered(merged.clone(), None, Some("Manga"), None, SortMode::Latest, None);
         assert_eq!(out.items.len(), 2, "count harus jujur terhadap filter");
         assert!(out
             .items
@@ -1778,16 +2149,16 @@ mod tests {
         assert_eq!(out.failed_sources, vec!["kiryuu".to_string()]);
 
         // Tanpa filter = semua item (recency core apa adanya, tidak di-rank).
-        let all = list_out_filtered(merged.clone(), None, None, None, None);
+        let all = list_out_filtered(merged.clone(), None, None, None, SortMode::Latest, None);
         assert_eq!(all.items.len(), 4);
 
         // AND: tipe=Manga + status=Ongoing -> 1 item.
-        let both = list_out_filtered(merged.clone(), None, Some("manga"), Some("ongoing"), None);
+        let both = list_out_filtered(merged.clone(), None, Some("manga"), Some("ongoing"), SortMode::Latest, None);
         assert_eq!(both.items.len(), 1);
         assert_eq!(both.items[0].native_id, "a");
 
         // `max` memotong HASIL terfilter, bukan input.
-        let capped = list_out_filtered(merged.clone(), None, None, None, Some(2));
+        let capped = list_out_filtered(merged.clone(), None, None, None, SortMode::Latest, Some(2));
         assert_eq!(capped.items.len(), 2);
     }
 
@@ -1802,7 +2173,7 @@ mod tests {
             sources_ok: 4,
             from_cache: true,
         };
-        let out = list_out_filtered(merged, None, Some("Manga"), None, None);
+        let out = list_out_filtered(merged, None, Some("Manga"), None, SortMode::Latest, None);
         assert!(out.from_cache);
         assert_eq!(out.items.len(), 1);
 
@@ -1818,6 +2189,7 @@ mod tests {
             None,
             Some("Manga"),
             None,
+            SortMode::Latest,
             None,
         );
         assert_eq!(out0.items.len(), 0);
