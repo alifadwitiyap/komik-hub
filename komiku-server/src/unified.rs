@@ -631,7 +631,12 @@ async fn u_popular(State(state): State<Arc<crate::routes::AppState>>, Query(q): 
         .aggregator
         .popular(q.page.unwrap_or(1).max(1), q.limit.unwrap_or(48), source, sort)
         .await;
-    Ok(Json(merged.into()))
+    let mut out: ListOut = merged.into();
+    // has_more jujur (sama seperti u_latest): hasil penuh = limit → masih ada
+    // halaman berikutnya. `From<Merged>` hardcode false.
+    let limit = q.limit.unwrap_or(48) as usize;
+    out.has_more = limit > 0 && out.items.len() >= limit;
+    Ok(Json(out))
 }
 
 async fn u_latest(State(state): State<Arc<crate::routes::AppState>>, Query(q): Query<ListQuery>) -> Res<ListOut> {
