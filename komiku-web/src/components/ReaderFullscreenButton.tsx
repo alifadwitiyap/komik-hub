@@ -5,6 +5,8 @@ interface ReaderFullscreenButtonProps {
   active: boolean
   /** false = sembunyikan (chrome ikut arah scroll) */
   visible: boolean
+  /** true = selalu menerima hit-test, bahkan saat opacity 0 (fade-out) */
+  interactive: boolean
   onToggle: () => void
 }
 
@@ -28,6 +30,7 @@ interface ReaderFullscreenButtonProps {
 export default function ReaderFullscreenButton({
   active,
   visible,
+  interactive,
   onToggle,
 }: ReaderFullscreenButtonProps) {
   const expanded = active
@@ -47,9 +50,11 @@ export default function ReaderFullscreenButton({
         active
           ? 'border-white/40 bg-black/75 text-white'
           : 'border-brand-amber-soft bg-brand-amber text-white'
-      } ${visible ? 'opacity-100' : 'pointer-events-none opacity-0'}`}
-      aria-hidden={!visible}
-      inert={!visible}
+      } ${visible ? 'opacity-100' : 'opacity-0'} ${
+        interactive ? '' : 'pointer-events-none'
+      }`}
+      aria-hidden={!interactive}
+      inert={!interactive}
     >
       {active ? (
         <IconXmark className="size-4 shrink-0" aria-hidden="true" />
