@@ -175,7 +175,19 @@ export function useUnifiedSearch(
       timers.forEach(clearTimeout)
       ctrls.forEach((c) => c.abort())
     }
-  }, [query, page, enabled, nonce])
+  }, [
+    query,
+    page,
+    enabled,
+    nonce,
+    // Ganti filter harus memicu pencarian ulang (bug P1). Nilai primitif
+    // dibaca langsung supaya objek `filter` baru tiap render tidak loop.
+    filter.tipe,
+    filter.status,
+    filter.genre,
+    filter.source,
+    filter.sort,
+  ])
 
   return {
     items,

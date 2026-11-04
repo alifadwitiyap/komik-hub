@@ -70,7 +70,7 @@ export function SourceSortBar() {
             type="button"
             aria-pressed={source === s.id}
             onClick={() => setField('source', s.id)}
-            className={`rounded-full px-3 py-1.5 text-[12px] font-semibold transition-colors ${
+            className={`rounded-full px-3 py-1.5 text-[12px] font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber focus-visible:ring-offset-2 ${
               source === s.id
                 ? 'bg-brand-amber text-ink-950'
                 : 'border border-ink-800 bg-ink-900 text-ink-300 hover:border-ink-700'

@@ -28,6 +28,12 @@ komiku-server/data/
 komiku-server/downloads/
 *.stackdump
 
+# --- runtime cache / state (bukan bagian repo) ---
+data/
+.impeccable/config.local.json
+.impeccable/hook.cache.json
+.impeccable/hook.pending.json
+
 # --- heavy sibling projects (bukan bagian repo ini) ---
 3d-html-site/
 akata/

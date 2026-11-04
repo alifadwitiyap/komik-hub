@@ -38,11 +38,9 @@ export default function HeartButton({ manga, className = '', labeled = false }: 
   const heart = (
     <svg
       viewBox="0 0 512 512"
-      fill={loved ? '#f59e0b' : 'none'}
-      stroke={loved ? '#f59e0b' : 'currentColor'}
       strokeWidth="36"
       aria-hidden="true"
-      className={labeled ? 'size-4' : 'size-6'}
+      className={`${loved ? 'fill-brand-amber stroke-brand-amber' : 'fill-none stroke-current'} ${labeled ? 'size-4' : 'size-6'}`}
     >
       <path d={HEART_D} />
     </svg>

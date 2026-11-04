@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { api } from '../api'
 import { marathonHref } from '../readerSource'
@@ -40,6 +40,20 @@ export default function ModeBacaSheet({
   const navigate = useNavigate()
   const [preparing, setPreparing] = useState(false)
   const marathon = useMarathonMemory()
+  const panelRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    const prev = document.activeElement as HTMLElement | null
+    panelRef.current?.focus()
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose()
+    }
+    document.addEventListener('keydown', onKey)
+    return () => {
+      document.removeEventListener('keydown', onKey)
+      prev?.focus()
+    }
+  }, [onClose])
 
   /**
    * "Baca Marathon" — MELANJUTKAN sesi maraton tersimpan kalau ada.
@@ -78,7 +92,12 @@ export default function ModeBacaSheet({
   return (
     <div className="fixed inset-0 z-30 flex items-end justify-center bg-black/60" onClick={onClose}>
       <div
-        className="w-full max-w-md rounded-t-2xl border-t border-ink-700 bg-ink-900 pb-6"
+        ref={panelRef}
+        role="dialog"
+        aria-modal="true"
+        tabIndex={-1}
+        onKeyDown={trapFocus}
+        className="w-full max-w-md rounded-t-2xl border-t border-ink-700 bg-ink-900 pb-6 outline-none"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between px-4 py-3">
@@ -172,6 +191,29 @@ export default function ModeBacaSheet({
       </div>
     </div>
   )
+}
+
+function trapFocus(e: React.KeyboardEvent<HTMLElement>) {
+  if (e.key !== 'Tab') return
+  const root = e.currentTarget
+  const focusables = Array.from(
+    root.querySelectorAll<HTMLElement>(
+      'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+    )
+  ).filter((el) => !el.hasAttribute('disabled') && el.offsetParent !== null)
+  if (focusables.length === 0) {
+    e.preventDefault()
+    return
+  }
+  const first = focusables[0]
+  const last = focusables[focusables.length - 1]
+  if (e.shiftKey && (document.activeElement === first || document.activeElement === root)) {
+    e.preventDefault()
+    last.focus()
+  } else if (!e.shiftKey && document.activeElement === last) {
+    e.preventDefault()
+    first.focus()
+  }
 }
 
 function Check() {

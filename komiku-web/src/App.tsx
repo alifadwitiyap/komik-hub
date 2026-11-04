@@ -27,8 +27,15 @@ const NAV = [
 
 export default function App() {
   const { pathname } = useLocation()
+  const mainRef = useRef<HTMLElement>(null)
   // Reader adalah halaman layar penuh: nav bawah disembunyikan
   const immersive = /^\/(baca|maraton)/.test(pathname)
+
+  // Pindahkan fokus ke konten utama setiap navigasi route supaya keyboard /
+  // screen-reader tidak tertinggal di top bar. preventScroll: jangan geser.
+  useEffect(() => {
+    mainRef.current?.focus({ preventScroll: true })
+  }, [pathname])
 
   // Link akun (?u=<username>) bisa mendarat di route mana pun (default '/').
   // Tangkap identitasnya SEKALI, sebelum sync favorit mulai, supaya hydrate
@@ -44,11 +51,17 @@ export default function App() {
   return (
     <NotifCountsProvider>
       <div className="min-h-full bg-ink-950">
+        <a
+          href="#konten"
+          className="sr-only focus:not-sr-only focus:fixed focus:left-3 focus:top-3 focus:z-50 focus:rounded-full focus:bg-brand-amber focus:px-4 focus:py-2 focus:text-sm focus:font-bold focus:text-ink-950"
+        >
+          Lewati ke konten
+        </a>
         {!immersive && (
           <TopBar bellOpen={bellOpen} onToggleBell={() => setBellOpen((o) => !o)} onClosePanel={() => setBellOpen(false)} />
         )}
 
-        <main className={immersive ? '' : 'pb-24 pt-14'}>
+        <main id="konten" ref={mainRef} tabIndex={-1} className={immersive ? '' : 'pb-24 pt-14 outline-none'}>
           {/* Boundary DI LUAR Suspense: Suspense menangani pending, boundary
               harus melihat error yang lolos darinya. Diletakkan di sini (bukan
               membungkus seluruh App) supaya TopBar/BottomNav tetap hidup dan
@@ -158,7 +171,7 @@ function TopBar({
             </CircleButton>
             {notif.unread > 0 && (
               <span
-                aria-hidden="true"
+                role="status"
                 className="pointer-events-none absolute -right-1 -top-1 grid min-w-4 place-items-center rounded-full bg-brand-amber px-1 text-[9px] font-bold leading-4 text-ink-950"
               >
                 {notif.unread > 99 ? '99+' : notif.unread}
@@ -232,7 +245,7 @@ function CircleButton({
   className?: string
 } & React.AriaAttributes) {
   const cls =
-    `grid size-[40px] place-items-center rounded-full bg-ink-850 text-ink-300 transition-colors active:bg-ink-800 ${className ?? ''}`
+    `grid size-11 place-items-center rounded-full bg-ink-850 text-ink-300 transition-colors active:bg-ink-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber focus-visible:ring-offset-2 focus-visible:ring-offset-ink-950 ${className ?? ''}`
   if (to) {
     return (
       <Link to={to} aria-label={label} className={cls} {...rest}>
@@ -258,7 +271,7 @@ function BottomNav() {
               to={to}
               end={to === '/'}
               className={({ isActive }) =>
-                `relative flex flex-col items-center gap-[3px] py-2 text-[10.5px] font-medium transition-colors ${
+                `relative flex flex-col items-center gap-[3px] py-2 text-[10.5px] font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber focus-visible:ring-inset ${
                   isActive ? 'text-brand-amber' : 'text-ink-500 hover:text-ink-200'
                 }`
               }

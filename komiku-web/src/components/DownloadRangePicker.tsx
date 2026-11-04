@@ -142,7 +142,12 @@ export function RangeSelectBar({
   const [showType, setShowType] = useState(false)
   const disabled = busy || needEnd || count === 0
   return (
-    <div className="rounded-xl border border-ink-800 bg-ink-900 p-3">
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-label="Pilih range unduhan"
+      className="rounded-xl border border-ink-800 bg-ink-900 p-3"
+    >
       <div className="flex items-center justify-between gap-2">
         <p className="text-[12px] font-semibold text-ink-200">
           {count} dipilih <span className="text-ink-500">· maks {max}</span>

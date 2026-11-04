@@ -1,0 +1,137 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-11-04T04:30:00+07:00",
+  "title": "Design System: Komik Hub",
+  "extensions": {
+    "colorMeta": {
+      "primary": { "role": "primary", "displayName": "Komiku Blue", "canonical": "#0077b6", "tonalRamp": ["#00263a", "#003a57", "#004b70", "#005c87", "#0077b6", "#4d9fd6", "#8fc3e5", "#b3d9ef", "#d9ecf7"] },
+      "primary-soft": { "role": "primary", "displayName": "Blueprint Soft", "canonical": "#4d9fd6" },
+      "primary-dim": { "role": "primary", "displayName": "Blueprint Dim", "canonical": "#b3d9ef" },
+      "accent": { "role": "secondary", "displayName": "Painted Violet", "canonical": "#935bab", "tonalRamp": ["#2a1633", "#3f214d", "#552c66", "#6b3a7e", "#935bab", "#b084c0", "#ccafd8", "#eedcff", "#f6ecff"] },
+      "accent-dark": { "role": "secondary", "displayName": "Violet Deep", "canonical": "#784290" },
+      "accent-soft": { "role": "secondary", "displayName": "Violet Mist", "canonical": "#eedcff" },
+      "surface-page": { "role": "neutral", "displayName": "Page Mist", "canonical": "#f1f4f7" },
+      "surface-card": { "role": "neutral", "displayName": "Card White", "canonical": "#ffffff" },
+      "surface-elevated": { "role": "neutral", "displayName": "Card Mist", "canonical": "#eef1f5" },
+      "border": { "role": "neutral", "displayName": "Edge", "canonical": "#e3e7ec" },
+      "ink-hint": { "role": "neutral", "displayName": "Ink Hint", "canonical": "#c6ccd4" },
+      "ink-muted": { "role": "neutral", "displayName": "Ink Muted", "canonical": "#9aa2ac" },
+      "ink-secondary": { "role": "neutral", "displayName": "Ink Secondary", "canonical": "#6f7681" },
+      "ink-body": { "role": "neutral", "displayName": "Ink Body", "canonical": "#2b3340" },
+      "ink-strong": { "role": "neutral", "displayName": "Ink Strong", "canonical": "#161c26" },
+      "healthy": { "role": "neutral", "displayName": "Healthy Green", "canonical": "#15803d" },
+      "warn": { "role": "neutral", "displayName": "Warn Amber", "canonical": "#b45309" },
+      "danger": { "role": "neutral", "displayName": "Danger Red", "canonical": "#b91c1c" },
+      "night": { "role": "neutral", "displayName": "Reader Night", "canonical": "#282828" },
+      "night-dark": { "role": "neutral", "displayName": "Reader Night Deep", "canonical": "#131313" }
+    },
+    "typographyMeta": {
+      "display": { "displayName": "Display (BR Hendrix)", "purpose": "Judul kartu komik dan headline halaman." },
+      "body": { "displayName": "Body (Nunito Sans)", "purpose": "Teks konten, deskripsi, metadata." },
+      "label": { "displayName": "Label (Nunito Sans Bold)", "purpose": "Badge, tombol, pill, metadata kecil." }
+    },
+    "shadows": [
+      { "name": "fab-lift", "value": "0 10px 15px -3px rgb(0 0 0 / 0.1)", "purpose": "FAB dan elemen terapung." },
+      { "name": "card-lift", "value": "0 20px 25px -5px rgb(0 0 0 / 0.1)", "purpose": "Kartu utama/hero dan modal." }
+    ],
+    "motion": [
+      { "name": "color-transition", "value": "background-color 200ms ease, color 200ms ease", "purpose": "Transisi warna halus saat tukar tema (body)." },
+      { "name": "state-transition", "value": "color 150ms ease-in-out", "purpose": "Transisi state tombol/kartu (transition-colors)." }
+    ],
+    "breakpoints": [
+      { "name": "sm", "value": "640px" },
+      { "name": "md", "value": "768px" },
+      { "name": "lg", "value": "1024px" }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "Aksi utama; teks gelap di atas biru.",
+      "html": "<button class=\"ds-btn-primary\">Lanjut Baca</button>",
+      "css": ".ds-btn-primary { background: #0077b6; color: #161c26; font-family: 'Nunito Sans', ui-sans-serif, sans-serif; font-weight: 700; font-size: 13px; padding: 10px 16px; border: none; border-radius: 12px; transition: background-color 150ms ease-in-out; } .ds-btn-primary:hover { background: #4d9fd6; } .ds-btn-primary:focus-visible { outline: 2px solid #0077b6; outline-offset: 2px; }"
+    },
+    {
+      "name": "Outline Button",
+      "kind": "button",
+      "refersTo": "button-outline",
+      "description": "Aksi alternatif.",
+      "html": "<button class=\"ds-btn-outline\">Favorit</button>",
+      "css": ".ds-btn-outline { background: transparent; color: #0077b6; font-family: 'Nunito Sans', ui-sans-serif, sans-serif; font-weight: 600; font-size: 13px; padding: 10px 14px; border: 1px solid #b3d9ef; border-radius: 12px; transition: background-color 150ms ease-in-out; } .ds-btn-outline:hover { background: rgba(179, 217, 239, 0.2); } .ds-btn-outline:focus-visible { outline: 2px solid #0077b6; outline-offset: 2px; }"
+    },
+    {
+      "name": "Source Badge (chip)",
+      "kind": "chip",
+      "refersTo": "chip-source",
+      "description": "Label sumber di atas gambar.",
+      "html": "<span class=\"ds-chip-source\">Kiryuu</span>",
+      "css": ".ds-chip-source { display: inline-flex; align-items: center; background: rgba(0,0,0,0.55); color: rgba(255,255,255,0.85); font-family: 'Nunito Sans', ui-sans-serif, sans-serif; font-size: 9.5px; font-weight: 600; padding: 2px 6px; border-radius: 9999px; backdrop-filter: blur(4px); box-shadow: 0 0 0 1px rgba(0,119,182,0.6); }"
+    },
+    {
+      "name": "Manga Card (cover)",
+      "kind": "card",
+      "refersTo": "card-manga",
+      "description": "Kartu sampul komik.",
+      "html": "<div class=\"ds-card-manga\"><div class=\"ds-card-cover\"></div><p class=\"ds-card-title\">Judul Komik</p></div>",
+      "css": ".ds-card-manga { background: #ffffff; border: 1px solid #e3e7ec; border-radius: 6px; padding: 10px; } .ds-card-cover { aspect-ratio: 62/82; background: #eef1f5; border-radius: 6px; } .ds-card-title { font-family: 'BR Hendrix', 'Nunito Sans', sans-serif; font-size: 15px; font-weight: 600; color: #161c26; margin: 8px 0 0; line-height: 1.2; }"
+    },
+    {
+      "name": "Manga Row",
+      "kind": "card",
+      "refersTo": "card-row",
+      "description": "Baris manga horizontal.",
+      "html": "<div class=\"ds-card-row\"><div class=\"ds-row-thumb\"></div><p class=\"ds-row-title\">Judul Komik</p></div>",
+      "css": ".ds-card-row { display: flex; align-items: center; gap: 12px; background: #ffffff; border: 1px solid #e3e7ec; border-radius: 12px; padding: 10px; transition: border-color 150ms ease-in-out; } .ds-card-row:hover { border-color: #c6ccd4; } .ds-row-thumb { width: 48px; height: 48px; background: #eef1f5; border-radius: 8px; flex-shrink: 0; } .ds-row-title { font-family: 'Nunito Sans', ui-sans-serif, sans-serif; font-size: 13px; font-weight: 600; color: #2b3340; }"
+    },
+    {
+      "name": "Select / Dropdown",
+      "kind": "input",
+      "refersTo": "select",
+      "description": "Select filter.",
+      "html": "<select class=\"ds-select\"><option>Manga</option></select>",
+      "css": ".ds-select { background: #ffffff; color: #161c26; font-family: 'Nunito Sans', ui-sans-serif, sans-serif; font-size: 12.5px; font-weight: 500; border: 1px solid #4b5563; border-radius: 9999px; padding: 8px 32px 8px 14px; -webkit-appearance: none; appearance: none; } .ds-select:focus { border-color: #0077b6; outline: none; }"
+    },
+    {
+      "name": "Bottom Navigation Item",
+      "kind": "nav",
+      "refersTo": "nav-item",
+      "description": "Item nav bawah dengan indikator aktif.",
+      "html": "<nav class=\"ds-nav\"><a class=\"ds-nav-item\">Beranda</a><a class=\"ds-nav-item is-active\">Cari</a></nav>",
+      "css": ".ds-nav { display: flex; background: rgba(241,244,247,0.95); border-top: 1px solid #e3e7ec; backdrop-filter: blur(8px); padding: 4px 0 calc(4px + env(safe-area-inset-bottom)); } .ds-nav-item { position: relative; flex: 1; text-align: center; font-family: 'Nunito Sans', ui-sans-serif, sans-serif; font-size: 11px; color: #6f7681; text-decoration: none; padding: 6px 0; } .ds-nav-item.is-active { color: #2b3340; } .ds-nav-item.is-active::before { content: ''; position: absolute; top: 0; left: 50%; transform: translateX(-50%); width: 32px; height: 2px; border-radius: 0 0 9999px 9999px; background: #0077b6; }"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Blue Archive",
+    "overview": "Komik Hub adalah rak komik pribadi yang menyatukan empat sumber. Sistem visualnya berangkat dari biru Komiku+ (#0077b6) sebagai jangkar, dengan ungu Komiku+ (#935bab) sebagai aksen. Suasananya fungsional dan tenang: antarmuka mundur ke belakang, dan yang menonjol adalah konten komik itu sendiri. Kartu berisi, typografi rapat, aksen digunakan hemat untuk memandu aksi dan status. Sistem bergantung pada tonal layering sebagai bahasa kedalaman dasarnya, dengan shadow halus di kartu utama dan elemen terapung.",
+    "keyCharacteristics": [
+      "Biru jangkar untuk aksi utama dan elemen aktif; ungu untuk aksen/status premium.",
+      "Kartu putih di atas latar abu-abu-biru sangat terang, dipisahkan border halus.",
+      "Typografi dua keluarga: BR Hendrix untuk judul/display, Nunito Sans untuk body.",
+      "Radius konsisten: kartu halus (md), tombol & bar (xl), pill untuk chip/status.",
+      "Fungsional, tenang, konten-first."
+    ],
+    "rules": [
+      { "name": "The Two-Color Rule", "body": "Biru memimpin; ungu hadir hanya sebagai aksen sekunder. Keduanya tidak pernah bersaing pada elemen yang sama.", "section": "colors" },
+      { "name": "The Ink VLAN Rule", "body": "Warna teks sekunder di atas kartu putih mempertahankan rasio kontras ≥4.5:1. Teks di atas biru primer selalu memakai ink-strong gelap, bukan putih.", "section": "colors" },
+      { "name": "The Flat-By-Default Rule", "body": "Permukaan datar saat istirahat; bayangan muncul hanya sebagai respons terhadap status atau pada elemen terapung khusus.", "section": "elevation" },
+      { "name": "The Dense Data Rule", "body": "UI memakai skala type kecil dan rapat (9.5–15px). Ini disengaja — layar penuh konten, dan tiap piksel ekstra dihemat.", "section": "typography" }
+    ],
+    "dos": [
+      "Do gunakan biru Komiku (#0077b6) untuk semua aksi utama dan state aktif — itu jangkar brand.",
+      "Do pakai teks gelap (ink-strong) di atas tombol biru primer untuk kontras maksimal.",
+      "Do gunakan ungu (#935bab) hanya sebagai aksen sekunder kecil (badge, label premium), tidak pernah bersaing dengan biru.",
+      "Do hormati kontras teks sekunder (ink-secondary ≥4.5:1 di atas putih).",
+      "Do gunakan radius konsisten: md untuk kartu sampul, xl untuk tombol/bar, pill untuk chip/status.",
+      "Do gunakan border halus #e3e7ec sebagai pemisah; simpan shadow untuk FAB dan elemen terapung."
+    ],
+    "donts": [
+      "Don't pakai shadow pada kartu sehari-hari — sistem flat-by-default; shadow hanya untuk FAB/hero.",
+      "Don't gabungkan biru dan ungu pada elemen yang sama.",
+      "Don't manfaatkan teks putih di atas biru primer (kontras jatuh); selalu ink-strong gelap.",
+      "Don't tambah font pihak ketiga di luar BR Hendrix + Nunito Sans — kedua keluarga sudah disubset dan dioptimalkan.",
+      "Don't buat UI memakai teks berukuran >15px untuk judul kartu — density konten adalah fitur."
+    ]
+  }
+}

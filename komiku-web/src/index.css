@@ -43,14 +43,14 @@
   --color-ink-800: #e3e7ec; /* border / divider  */
   --color-ink-700: #c6ccd4;
   --color-ink-600: #9aa2ac;
-  --color-ink-500: #6f7681; /* secondary text    */
+  --color-ink-500: #5f6670; /* secondary text (AA 5.25:1 on ink-950) */
   --color-ink-400: #8a929d;
   --color-ink-300: #4b5563;
   --color-ink-200: #2b3340;
   --color-ink-100: #161c26;
 
   /* brand: biru Komiku+ (colorPrimary) */
-  --color-brand-amber: #0077b6;
+  --color-brand-amber: #006ca6; /* text AA 5.15:1 on ink-950; fill masih on-brand */
   --color-brand-amber-soft: #4d9fd6;
   --color-brand-amber-dim: #b3d9ef;
 
@@ -60,7 +60,7 @@
   --color-brand-red-soft: #eedcff;
 
   /* status kesehatan sumber (pill TopBar) — kontras cukup di surface terang */
-  --color-healthy: #15803d; /* sumber sehat   */
+  --color-healthy: #116a30; /* sumber sehat (AA 5.2:1 on #d7e6e1) */
   --color-warn: #b45309;    /* sebagian mati  */
   --color-danger: #b91c1c;  /* semua/nol mati */
 

@@ -1,3 +1,4 @@
+import { useEffect, useRef } from 'react'
 import {
   IconBars,
   IconPersonRunning,
@@ -38,12 +39,32 @@ export default function ReaderSettingsSheet({
   downloadActions,
   marathonActions,
 }: ReaderSettingsSheetProps) {
+  const panelRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    const prev = document.activeElement as HTMLElement | null
+    panelRef.current?.focus()
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose()
+    }
+    document.addEventListener('keydown', onKey)
+    return () => {
+      document.removeEventListener('keydown', onKey)
+      prev?.focus()
+    }
+  }, [onClose])
+
   if (!open) return null
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/50" onClick={onClose}>
       <div
-        className="w-full max-w-md rounded-t-2xl bg-ink-900 pb-6"
+        ref={panelRef}
+        role="dialog"
+        aria-modal="true"
+        tabIndex={-1}
+        className="w-full max-w-md rounded-t-2xl bg-ink-900 pb-6 outline-none"
         onClick={(e) => e.stopPropagation()}
+        onKeyDown={trapFocus}
       >
         <div className="flex items-center justify-between px-4 py-3">
           <h2 className="font-display text-[15px] font-bold text-ink-100">Preferensi</h2>
@@ -62,6 +83,7 @@ export default function ReaderSettingsSheet({
         <Row
           icon={<IconPersonRunning className="size-4" />}
           label="Maraton"
+          labelId="reader-marathon-label"
           toggle={settings.marathon}
           onToggle={(v) => onChange({ marathon: v })}
         />
@@ -99,6 +121,8 @@ export default function ReaderSettingsSheet({
             min={20}
             max={100}
             value={settings.brightness}
+            aria-label="Kecerahan Layar"
+            aria-valuetext={`${settings.brightness}%`}
             onChange={(e) => onChange({ brightness: Number(e.target.value) })}
             className="w-full accent-brand-amber"
           />
@@ -161,9 +185,33 @@ export default function ReaderSettingsSheet({
   )
 }
 
+function trapFocus(e: React.KeyboardEvent<HTMLElement>) {
+  if (e.key !== 'Tab') return
+  const root = e.currentTarget
+  const focusables = Array.from(
+    root.querySelectorAll<HTMLElement>(
+      'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+    )
+  ).filter((el) => !el.hasAttribute('disabled') && el.offsetParent !== null)
+  if (focusables.length === 0) {
+    e.preventDefault()
+    return
+  }
+  const first = focusables[0]
+  const last = focusables[focusables.length - 1]
+  if (e.shiftKey && (document.activeElement === first || document.activeElement === root)) {
+    e.preventDefault()
+    last.focus()
+  } else if (!e.shiftKey && document.activeElement === last) {
+    e.preventDefault()
+    first.focus()
+  }
+}
+
 export function Row({
   icon,
   label,
+  labelId,
   value,
   toggle,
   onToggle,
@@ -172,6 +220,7 @@ export function Row({
 }: {
   icon: React.ReactNode
   label: string
+  labelId?: string
   value?: string
   toggle?: boolean
   onToggle?: (v: boolean) => void
@@ -189,12 +238,13 @@ export function Row({
       className={`flex items-center gap-3 px-4 py-3 ${clickable ? `${disabled ? 'cursor-not-allowed opacity-50' : 'cursor-pointer select-none active:bg-ink-850'}` : ''}`}
     >
       <span className="grid size-8 place-items-center rounded-full bg-ink-850 text-ink-300">{icon}</span>
-      <span className="min-w-0 flex-1 text-[13px] font-medium text-ink-100">{label}</span>
+      <span id={labelId} className="min-w-0 flex-1 text-[13px] font-medium text-ink-100">{label}</span>
       {value && <span className="text-[12px] text-ink-500">{value}</span>}
       {toggle !== undefined && (
         <button
           role="switch"
           aria-checked={toggle}
+          aria-labelledby={labelId}
           onClick={() => onToggle?.(!toggle)}
           className={`relative h-6 w-11 shrink-0 rounded-full transition-colors ${
             toggle ? 'bg-brand-amber' : 'bg-ink-700'

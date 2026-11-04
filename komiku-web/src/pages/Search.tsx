@@ -303,7 +303,7 @@ export default function Search() {
         </div>
         <button
           type="submit"
-          className="shrink-0 rounded-full bg-brand-amber px-5 py-2.5 text-sm font-bold text-white transition-colors hover:bg-brand-amber-soft"
+          className="shrink-0 rounded-full bg-brand-amber px-5 py-2.5 text-sm font-bold text-ink-100 transition-colors hover:bg-brand-amber-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber focus-visible:ring-offset-2"
         >
           Cari
         </button>
@@ -457,7 +457,7 @@ export default function Search() {
                   <button
                     disabled={page <= 1}
                     onClick={() => setPage((p) => Math.max(1, p - 1))}
-                    className="rounded-lg border border-ink-700 px-3.5 py-2 text-[13px] font-medium text-ink-300 disabled:opacity-40"
+                    className="rounded-lg border border-ink-700 px-3.5 py-2 text-[13px] font-medium text-ink-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber disabled:opacity-40"
                   >
                     Sebelumnya
                   </button>
@@ -465,7 +465,7 @@ export default function Search() {
                   <button
                     disabled={!search.hasMore}
                     onClick={() => setPage((p) => p + 1)}
-                    className="rounded-lg border border-ink-700 px-3.5 py-2 text-[13px] font-medium text-ink-300 disabled:opacity-40"
+                    className="rounded-lg border border-ink-700 px-3.5 py-2 text-[13px] font-medium text-ink-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber disabled:opacity-40"
                   >
                     Berikutnya
                   </button>
