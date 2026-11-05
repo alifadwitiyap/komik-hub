@@ -3,7 +3,8 @@
 Kontrak yang dibuktikan:
   1. Baris komentar ("Tambahkan komentar…") dan baris reaksi (ikon sosial)
      TIDAK ADA lagi di footer reader — digantikan tombol "Pilih Chapter".
-  2. Tombol "Sebelumnya" / "Berikutnya" TETAP ada (tidak ikut dihapus).
+  2. Tombol "Sebelumnya" JUGA tidak ada lagi (diganti tombol "Pilih Chapter"
+     di atasnya); hanya "Berikutnya" yang tersisa di baris navigasi.
   3. Klik "Pilih Chapter" → sheet terbuka, daftar chapter series termuat.
   4. Chapter yang sedang dibaca ditandai "Dip baca".
   5. Kotak pencarian menyaring daftar (nomor ATAU judul).
@@ -109,10 +110,10 @@ with sync_playwright() as p:
         f"{zero_btns.count()} tombol angka 0",
     )
 
-    # ---- 2. navigasi sebelumnya/berikutnya TETAP ----
+    # ---- 2. tombol "Sebelumnya" HILANG, "Berikutnya" tetap ----
     prev_link = page.locator('[data-reader-chrome=footer] a[aria-label^="Chapter Sebelumnya"]')
     next_link = page.locator('[data-reader-chrome=footer] a[aria-label^="Baca Chapter Berikutnya"]')
-    check("nav: tombol 'Sebelumnya' tetap ada", prev_link.count() == 1, f"{prev_link.count()}")
+    check("nav: tombol 'Sebelumnya' sudah DIHAPUS", prev_link.count() == 0, f"{prev_link.count()}")
     check("nav: tombol 'Berikutnya' tetap ada", next_link.count() == 1, f"{next_link.count()}")
 
     # ---- 3. tombol Pilih Chapter + sheet terbuka ----

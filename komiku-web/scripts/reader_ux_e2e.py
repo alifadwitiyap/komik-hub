@@ -1,16 +1,14 @@
-"""E2E reader UX: chrome auto-hide saat scroll + tombol mundur chapter.
+"""E2E reader UX: chrome auto-hide saat scroll + navigasi chapter.
 
-Kontrak (hasil grilling Q1-Q7):
+Kontrak:
   1. Scroll TURUN  → toolbar (`[data-reader-chrome=toolbar]`) dan footer
      (`[data-reader-chrome=footer]`) tersembunyi (translate keluar layar).
   2. Scroll NAIK   → keduanya tampil kembali.
   3. Tap tengah    → toggle manual (override), tidak dihapus.
-  4. Footer punya DUA tombol navigasi berdampingan:
-     "Sebelumnya" (link ke chapter prev) + "Berikutnya" (link ke chapter next).
-  5. Chapter pertama (prev null) → hanya tombol Berikutnya, lebar penuh.
-     Chapter terbaru (next null) → "Chapter terbaru" + tombol Sebelumnya.
-  6. Maraton: chrome ikut aturan yang sama; tombol Sebelumnya = chapter head,
-     Berikutnya = chapter tail.
+  4. Footer HANYA punya "Berikutnya" (tombol "Sebelumnya" dihapus — chapter
+     mundur dilayani sheet "Pilih Chapter" di baris atasnya).
+  5. Chapter terbaru (next null) → label "Chapter terbaru", bukan tombol.
+  6. Maraton: chrome ikut aturan yang sama; "Berikutnya" = chapter tail.
   7. Chrome TAMPIL saat chapter baru dibuka (tidak warisi keadaan tersembunyi).
 
 Data uji = konten LIVE (komiku:1284 Reincarnator, chapter 121 punya prev+next).
@@ -206,41 +204,32 @@ with sync_playwright() as p:
         # ================= 2. Tombol navigasi chapter =================
         prev_link = page.locator('[data-reader-chrome=footer] a[aria-label^="Chapter Sebelumnya"]')
         next_link = page.locator('[data-reader-chrome=footer] a[aria-label^="Baca Chapter Berikutnya"]')
-        check("navigasi: tombol 'Sebelumnya' ada (ch 121 punya prev)", prev_link.count() == 1,
+        check("navigasi: tombol 'Sebelumnya' sudah DIHAPUS", prev_link.count() == 0,
               f"{prev_link.count()} tombol")
         check("navigasi: tombol 'Berikutnya' ada", next_link.count() == 1, f"{next_link.count()} tombol")
-        if prev_link.count() == 1:
-            href = prev_link.first.get_attribute("href") or ""
-            check("navigasi: 'Sebelumnya' menuju ch 120", href == "/baca/komiku:1284/120", href)
         if next_link.count() == 1:
             href = next_link.first.get_attribute("href") or ""
             check("navigasi: 'Berikutnya' menuju ch 122", href == "/baca/komiku:1284/122", href)
-
-        # KEDUA tombol berdampingan (grid 2 kolom) — cek geometri: prev di kiri
-        if prev_link.count() == 1 and next_link.count() == 1:
-            pb = prev_link.first.bounding_box() or {}
             nb = next_link.first.bounding_box() or {}
-            check("navigasi: tombol berdampingan (prev di kiri next)",
-                  pb.get("x", 0) < nb.get("x", 0) and abs(pb.get("y", 0) - nb.get("y", 0)) < 4,
-                  f"prev.x={pb.get('x'):.0f} next.x={nb.get('x'):.0f}")
+            # tombol tunggal = selebar kontainer (viewport 1280, max-w-3xl=768 minus padding)
+            check("navigasi: tombol tunggal melebar penuh", nb.get("width", 0) > 600,
+                  f"width={nb.get('width', 0):.0f}")
 
-        # Klik 'Sebelumnya' → navigasi ke chapter 120 (URL berubah).
-        # Pastikan chrome TAMPIL dulu (tombol fixed; kalau sedang tersembunyi
-        # bounding box-nya di luar viewport dan Playwright hanya retry).
+        # Klik 'Berikutnya' → navigasi ke chapter 122 (URL berubah).
         page.evaluate("() => window.scrollTo(0, 0)")
         page.wait_for_timeout(500)
         st = chrome_state(page)
-        check("navigasi: chrome tampil sebelum klik Sebelumnya", st["footer"] is True, str(st))
-        if prev_link.count() == 1:
-            prev_link.first.click()
+        check("navigasi: chrome tampil sebelum klik Berikutnya", st["footer"] is True, str(st))
+        if next_link.count() == 1:
+            next_link.first.click()
             deadline = time.time() + 20
             ok = False
             while time.time() < deadline:
-                if "/baca/komiku:1284/120" in page.url:
+                if "/baca/komiku:1284/122" in page.url:
                     ok = True
                     break
                 page.wait_for_timeout(250)
-            check("navigasi: klik 'Sebelumnya' → /baca/komiku:1284/120", ok, page.url)
+            check("navigasi: klik 'Berikutnya' → /baca/komiku:1284/122", ok, page.url)
             # tunggu chapter baru selesai render (chrome + gambar), bukan sleep
             check("chapter baru: termuat ulang", wait_ready(page), page.url)
             st = chrome_state(page)
@@ -253,12 +242,11 @@ with sync_playwright() as p:
     if ready:
         prev_link = page.locator('[data-reader-chrome=footer] a[aria-label^="Chapter Sebelumnya"]')
         next_link = page.locator('[data-reader-chrome=footer] a[aria-label^="Baca Chapter Berikutnya"]')
-        check("tepi: ch pertama → TIDAK ada tombol Sebelumnya", prev_link.count() == 0,
+        check("tepi: ch pertama → tetap TIDAK ada tombol Sebelumnya", prev_link.count() == 0,
               f"{prev_link.count()} tombol")
         check("tepi: ch pertama → tombol Berikutnya ada (lebar penuh)", next_link.count() == 1)
         if next_link.count() == 1:
             nb = next_link.first.bounding_box() or {}
-            # lebar penuh ≈ lebar container (viewport 1280, max-w-3xl=768, minus mx-4)
             check("tepi: tombol tunggal melebar penuh", nb.get("width", 0) > 600,
                   f"width={nb.get('width', 0):.0f}")
         page.screenshot(path=SHOTS + "/3-first-chapter.png")
@@ -268,7 +256,7 @@ with sync_playwright() as p:
     check("tepi: chapter terbaru termuat", ready)
     if ready:
         prev_link = page.locator('[data-reader-chrome=footer] a[aria-label^="Chapter Sebelumnya"]')
-        check("tepi: ch terbaru → tombol Sebelumnya ada", prev_link.count() == 1)
+        check("tepi: ch terbaru → tombol Sebelumnya juga tidak ada", prev_link.count() == 0)
         latest_note = page.locator('[data-reader-chrome=footer] p', has_text="Chapter terbaru")
         check("tepi: ch terbaru → teks 'Chapter terbaru' tetap ada", latest_note.count() == 1)
         page.screenshot(path=SHOTS + "/4-latest-chapter.png")
@@ -289,12 +277,15 @@ with sync_playwright() as p:
         check("maraton: scroll naik → chrome tampil", st["toolbar"] is True, str(st))
 
         prev_link = page.locator('[data-reader-chrome=footer] a[aria-label^="Chapter Sebelumnya"]')
-        check("maraton: tombol Sebelumnya ada (head ch 121 punya prev 120)",
-              prev_link.count() == 1)
-        if prev_link.count() == 1:
-            href = prev_link.first.get_attribute("href") or ""
-            check("maraton: Sebelumnya menuju /maraton/komiku:1284/120",
-                  href == "/maraton/komiku:1284/120", href)
+        next_link = page.locator('[data-reader-chrome=footer] a[aria-label^="Baca Chapter Berikutnya"]')
+        check("maraton: tombol Sebelumnya juga tidak ada",
+              prev_link.count() == 0)
+        check("maraton: tombol Berikutnya ada (tail punya next)",
+              next_link.count() == 1, f"{next_link.count()}")
+        if next_link.count() == 1:
+            href = next_link.first.get_attribute("href") or ""
+            check("maraton: Berikutnya menuju /maraton/... (bukan /baca/...)",
+                  href.startswith("/maraton/"), href)
         page.screenshot(path=SHOTS + "/5-marathon.png")
 
     all_errors = errors + errors2 + errors3 + errors4

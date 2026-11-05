@@ -1,13 +1,10 @@
 import { Link } from 'react-router-dom'
-import { IconArrowRight, IconArrowLeft } from '../icons'
+import { IconArrowRight } from '../icons'
 
 interface ReaderFooterProps {
   /** chapter berikutnya (null = terbaru) */
   nextName?: string | null
   nextHref?: string | null
-  /** chapter sebelumnya (null = chapter pertama) */
-  prevName?: string | null
-  prevHref?: string | null
   /** buka sheet pemilih chapter */
   onPickChapter: () => void
   /** false = sembunyi saat pembaca scroll turun (geser keluar layar) */
@@ -15,17 +12,17 @@ interface ReaderFooterProps {
 }
 
 /**
- * Footer reader — navigasi chapter + pemilih chapter.
+ * Footer reader — pemilih chapter + navigasi maju saja.
  *
- * Baris "Tambahkan komentar…" dan baris reaksi (ikon sosial) DIHAPUS:
- * keduanya fitur mati di versi web. Penggantinya satu tombol "Pilih
- * Chapter" yang membuka sheet daftar chapter series yang sedang dibaca.
+ * Baris "Tambahkan komentar…" dan baris reaksi (ikon sosial) DIHAPUS: keduanya
+ * fitur mati di versi web. Tombol "Sebelumnya" juga DIHAPUS — menggantikan
+ * chapter mundur adalah tombol "Pilih Chapter" di atasnya, yang membuka sheet
+ * daftar chapter series yang sedang dibaca (lompat ke mana pun, bukan cuma
+ * satu langkah mundur).
  *
- * Navigasi tetap DUA tombol berdampingan (grid 2 kolom): "Sebelumnya"
- * sekunder (outline + scrim gelap) dan "Berikutnya" solid brand. Sisi yang tidak tersedia
- * (chapter pertama / terbaru) diisi label tepi senada, BUKAN tombol yang
- * melebar — supaya tinggi footer sama di semua chapter dan tidak ada baris
- * ketiga yang menutupi halaman di layar 390×844.
+ * Jadi isi footer = DUA baris:
+ *   1. "Pilih Chapter"  → sheet daftar chapter series ini
+ *   2. "Berikutnya"     → chapter berikutnya (atau label "Chapter terbaru")
  *
  * ERGONOMI MOBILE (390×844):
  * - tiap target sentuh >= 44 px (min-h-11) dan berjarak 8 px satu sama lain;
@@ -34,8 +31,7 @@ interface ReaderFooterProps {
  *   pb-[env(safe-area-inset-bottom)] di bawah, jadi tombol tidak menempel ke
  *   tepi layar maupun ke home-indicator iPhone;
  * - scrim gelap di footer ini WAJIB: halaman manga bisa putih total, dan teks
- *   putih di atas putih = tak terbaca. Karena itu tombol "Sebelumnya" punya
- *   bg-black/55 (bukan hanya border), bukan cuma "outline";
+ *   putih di atas putih = tak terbaca;
  * - seluruh footer `pointer-events-none` + tiap baris `pointer-events-auto`:
  *   area transparan di gradient tidak lagi "menelan" tap yang seharusnya
  *   men-toggle chrome.
@@ -46,8 +42,6 @@ interface ReaderFooterProps {
 export default function ReaderFooter({
   nextName,
   nextHref,
-  prevName,
-  prevHref,
   onPickChapter,
   visible = true,
 }: ReaderFooterProps) {
@@ -62,12 +56,9 @@ export default function ReaderFooter({
     >
       {/**
        * Satu kolom flex untuk KEDUA baris: jarak antar baris jadi 8 px di mana-
-       * mana (dulu baris 1 pakai mt-2 = 8 px, baris 2 pakai my-2.5 = 10 px,
-       * jadi ritmenya tidak konsisten dan baris atas terasa "nempel").
-       *
-       * Padding kiri/kanan = max(16 px, safe-area): di layar 390 px hasilnya
-       * tetap 16 px (sama seperti mx-4 sebelumnya), tapi di perangkat berponi
-       * (landscape / iPhone mini notch) tombol tidak lagi masuk ke area tirai.
+       * mana. Padding kiri/kanan = max(16 px, safe-area): di layar 390 px
+       * hasilnya tetap 16 px, tapi di perangkat berponi (landscape / iPhone
+       * mini notch) tombol tidak lagi masuk ke area tirai.
        */}
       <div className="flex flex-col gap-2 pb-2.5 pt-2.5 [padding-left:max(1rem,env(safe-area-inset-left))] [padding-right:max(1rem,env(safe-area-inset-right))]">
         <button
@@ -79,33 +70,7 @@ export default function ReaderFooter({
           <IconChapterList className="size-4 shrink-0" />
           Pilih Chapter
         </button>
-        {/**
-         * SELALU dua kolom. Dulu `grid-cols-1` dipakai saat salah satu sisi
-         * tidak ada — tapi placeholder ("Chapter terbaru") tetap dirender,
-         * jadi di chapter terbaru tombol "Sebelumnya" dan placeholder itu
-         * BERTUMPUK jadi dua baris penuh (footer ±170 px di layar 844 px).
-         * Sekarang kedua sel selalu terisi (tombol atau label tepi), jadi
-         * tingginya tetap dua baris di semua chapter.
-         */}
-        <nav aria-label="Navigasi chapter" className="pointer-events-auto grid grid-cols-2 gap-2">
-          {prevHref ? (
-            <Link
-              to={prevHref}
-              replace
-              aria-label={prevName ? `Chapter Sebelumnya ${prevName}` : 'Chapter Sebelumnya'}
-              className="flex min-h-11 touch-manipulation items-center justify-center gap-1.5 rounded-xl border border-white/35 bg-black/55 py-3 text-[14px] font-bold text-white backdrop-blur-sm active:bg-black/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/80"
-            >
-              <IconArrowLeft className="size-3.5 shrink-0" aria-hidden="true" />
-              <span className="truncate">Sebelumnya</span>
-              {prevName ? (
-                <span className="hidden truncate font-medium opacity-70 sm:inline">· {prevName}</span>
-              ) : null}
-            </Link>
-          ) : (
-            <p className="flex min-h-11 items-center justify-center rounded-xl border border-white/25 py-3 text-center text-[13px] font-medium text-white/85">
-              Chapter pertama
-            </p>
-          )}
+        <nav aria-label="Navigasi chapter" className="pointer-events-auto grid grid-cols-1">
           {nextHref ? (
             <Link
               to={nextHref}

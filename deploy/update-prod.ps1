@@ -18,10 +18,10 @@
 #   5. Recreate container, tunggu health, verifikasi versi SW yang disajikan.
 #
 # Rollback kalau ada apa-apa:
-#     $env:IMAGE_TAG="<sha-lama>"; docker compose -f docker-compose.prod.yml up -d
+#     $env:IMAGE_TAG="<sha-lama>"; docker compose -f infra/docker-compose.prod.yml up -d
 
 $ErrorActionPreference = 'Stop'
-$Compose = 'docker-compose.prod.yml'
+$Compose = 'infra/docker-compose.prod.yml'
 $Image   = 'ghcr.io/alifadwitiyap/komik-hub:latest'
 $Health  = 'http://localhost:8080/api/health'
 

@@ -31,8 +31,13 @@ export function rakMangaOf(
 }
 
 export interface ChapterOpen {
-  /** title_key seri — syarat mark & rak */
-  titleKey?: string | null
+  /**
+   * title_key seri — syarat mark & rak. WAJIB (bukan optional): pemanggil
+   * yang meneruskan objek mentah (mis. `ChapterResponse` ber-snake_case)
+   * harus ketahuan saat compile, bukan diam-diam jadi `undefined` lalu
+   * mark "sudah dibaca" tak pernah dibuat.
+   */
+  titleKey: string | null | undefined
   /** nomor chapter untuk mark "sudah dibaca" */
   number?: string | null
   /**

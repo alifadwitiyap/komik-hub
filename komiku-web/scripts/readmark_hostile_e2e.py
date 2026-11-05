@@ -135,6 +135,23 @@ def rand_user(tag: str) -> str:
     )
 
 
+# Halaman series merender 40 chapter TERATAS saja (`SeriesUnified.tsx`
+# `chapters.slice(0, 40)`); sisanya butuh "tampilkan semua". Skrip ini dulu
+# hardcode nomor (117/118) — sekarang basi karena series tumbuh melewati 40
+# chapter, jadi chapter itu tak ada di DOM dan kliknya timeout 30 s.
+VISIBLE_LIMIT = 40
+
+
+def pick_visible_chapter(base: str, handle: str, offset: int = 0) -> str:
+    """Nomor chapter yang PASTI terender di halaman series (40 teratas)."""
+    js = api(base, f"/api/unified/series/{handle}")[1] or {}
+    nums = [c.get("number") for c in (js.get("chapters") or []) if c.get("number")]
+    if not nums:
+        raise SystemExit("FATAL: series tak punya chapter")
+    idx = min(offset, len(nums) - 1, VISIBLE_LIMIT - 1)
+    return nums[idx]
+
+
 def api(base, path, user=None, body=None, method=None, raw=None, timeout=30):
     """Return (status, json|None). Body mentah pakai `raw`.
 
@@ -432,7 +449,7 @@ def main() -> int:
         gp = guest_ctx.new_page()
         gp.goto(f"{base}/manga/{HANDLE}", wait_until="networkidle")
         gp.wait_for_timeout(2000)
-        guest_target = "118"
+        guest_target = pick_visible_chapter(base, HANDLE, offset=5)
         gp.locator(f'a[aria-label^="Chapter {guest_target}"]').first.click()
         gp.wait_for_url("**/baca/**", timeout=20000)
         gp.wait_for_timeout(3500)
@@ -491,7 +508,11 @@ def main() -> int:
         sq.reload(wait_until="networkidle")
         sq.goto(f"{base}/manga/{HANDLE}", wait_until="networkidle")
         sq.wait_for_timeout(2000)
-        sq.locator('a[aria-label^="Chapter 117"]').first.click()
+        # Nomor chapter dari API (40 teratas) — jangan hardcode: series tumbuh,
+        # nomor lama jatuh ke luar daftar yang dirender -> klik timeout.
+        seq_first = pick_visible_chapter(base, HANDLE, offset=2)
+        seq_second = str(int(float(seq_first)) + 1) if seq_first.replace(".", "").isdigit() else None
+        sq.locator(f'a[aria-label^="Chapter {seq_first}"]').first.click()
         sq.wait_for_url("**/baca/**", timeout=20000)
         # tunggu footer reader siap (tombol Berikutnya muncul setelah data chapter)
         for _ in range(80):
@@ -505,8 +526,9 @@ def main() -> int:
             nxt2.first.click()
             sq.wait_for_timeout(6000)
             seq_marks = chapters_of(marks_of(base, seq_user))
+            expected = {seq_first} | ({seq_second} if seq_second else set())
             check("A15 dua chapter beruntun keduanya sampai ke server",
-                  {"117", "118"} <= seq_marks, "marks=%s" % sorted(seq_marks))
+                  expected <= seq_marks, "harap=%s marks=%s" % (sorted(expected), sorted(seq_marks)))
         seq_ctx.close()
 
         check("A1-A15 tidak ada pageerror JS", not errs, "; ".join(errs[:2]))

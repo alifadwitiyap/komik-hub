@@ -709,8 +709,6 @@ export default function ReaderMarathon() {
       <ReaderFooter
         nextName={tail?.nextName ?? null}
         nextHref={tail?.nextId ? marathonHref(tail.nextId) : null}
-        prevName={head?.prevName ?? null}
-        prevHref={head?.prevId ? marathonHref(head.prevId) : null}
         onPickChapter={() => setChapterPickerOpen(true)}
         visible={chrome.visible}
       />

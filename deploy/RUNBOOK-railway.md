@@ -11,7 +11,7 @@ Runbook ini ditulis 2026-10-16. Semua artefak sudah terverifikasi lokal
 | `deploy/Caddyfile` | listener `$PORT`, basic auth, `/healthz` tanpa auth → `/api/health` |
 | `deploy/entrypoint.sh` | seed `/data` sekali, start axum, Caddy di depan, watchdog |
 | `deploy/seed/` | state.json + downloads/*.json (baseline notif & metadata, ~19 KB) |
-| `railway.json` | builder DOCKERFILE + `dockerfilePath: deploy/Dockerfile` + healthcheck `/healthz` |
+| `infra/railway.json` | builder DOCKERFILE + `dockerfilePath: ../deploy/Dockerfile` + healthcheck `/healthz` |
 | `.github/workflows/build-image.yml` | FALLBACK: build di Actions → GHCR (kalau build Railway timeout 10 menit) |
 
 Layout penting: image menyimpan frontend di `/app/komiku-web/dist` dan CWD
@@ -31,11 +31,15 @@ dari riset (halaman resmi: "No credit card required"). Fallback: `hax.co.id`.
 
 ```bash
 cd D:/project            # root repo = build context (butuh komiku-server/, komik/, komiku-web/, deploy/)
-railway init             # pilih "Empty Project", beri nama: komik-hub
+railway init --config infra/railway.json  # pilih "Empty Project", beri nama: komik-hub
 ```
 
 Catatan: `D:/project` bukan git repo. Untuk deploy dari CLI (`railway up`)
 tidak perlu git. Untuk GitHub auto-deploy, push dulu (lihat §6).
+
+⚠️ Config Railway kini di `infra/railway.json` (bukan root). `railway` CLI hanya
+auto-detect config di root; karena dipindah, **wajib** sertakan `--config infra/railway.json`
+di semua perintah (`init`, `up`, `domain`, dll).
 
 ## 3. Volume persisten
 
@@ -68,7 +72,8 @@ quote supaya tidak di-expand.
 ## 5. Deploy
 
 ```bash
-railway up               # dari D:/project
+cd D:/project
+railway up --config infra/railway.json  # dari D:/project
 ```
 
 Tunggu build. **Free plan: build timeout 10 menit.** Build lokal kita dengan
@@ -115,7 +120,7 @@ lalu:
 ```bash
 cd D:/project
 git init
-git add .gitignore railway.json deploy/ komiku-server/ komik/ komiku-web/ .github/
+git add .gitignore infra/railway.json deploy/ komiku-server/ komik/ komiku-web/ .github/
 git commit -m "deploy: single-image Railway Free (caddy + axum + spa, basic auth)"
 git remote add origin https://github.com/alifadwitiyap/komik-hub.git
 git push -u origin main

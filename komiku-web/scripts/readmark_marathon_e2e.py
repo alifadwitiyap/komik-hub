@@ -152,13 +152,36 @@ def main() -> int:
               f"marks={sorted(ch_read)}")
 
         # Gulir ke bawah → chaining chapter berikutnya + blok baca aktif maju.
-        for _ in range(16):
-            page.evaluate("() => window.scrollTo(0, document.documentElement.scrollHeight)")
-            page.wait_for_timeout(1500)
-        page.wait_for_timeout(3000)
-        marks2 = api(base, "/api/read", user=user).get("marks", {})
-        ch2 = {c for s in marks2.values() for c in s}
-        check("maraton: chapter lanjutan ter-mark setelah digulir", second in ch2, f"marks={sorted(ch2)}")
+        #
+        # HARUS bertahap (bukan `scrollTo(bottom)` yang melompat): setiap
+        # halaman di-mount lewat IntersectionObserver, dan tinggi halaman
+        # TUMBUH saat gambar termuat. Lompat langsung ke dasar membuat
+        # observer tak pernah melihat halaman di antaranya → `lastBlockSettled`
+        # (gerbang chaining) tak pernah terbuka, padahal produknya sehat.
+        #
+        # Terukur: chapter 157 (91 gambar, ~124k px) butuh ~147 langkah
+        # scroll 1000px sebelum blok kedua muncul. Batas waktu harus longgar —
+        # ini mengukur KESABARAN harness, bukan kecepatan produk.
+        def blocks_count() -> int:
+            return page.evaluate(
+                "() => new Set([...document.querySelectorAll('img[data-page]')]"
+                ".map(i => i.dataset.b)).size"
+            )
+
+        def marks_now() -> set[str]:
+            m = api(base, "/api/read", user=user).get("marks", {})
+            return {c for s in m.values() for c in s}
+
+        deadline = time.time() + 180
+        while time.time() < deadline:
+            page.evaluate("() => window.scrollBy(0, 1000)")
+            page.wait_for_timeout(400)
+            if second in marks_now():
+                break
+        page.wait_for_timeout(4000)
+        ch2 = marks_now()
+        check("maraton: chapter lanjutan ter-mark setelah digulir", second in ch2,
+              f"blok={blocks_count()} marks={sorted(ch2)}")
         page.screenshot(path=SHOTS + "/4-maraton.png")
 
         check("tidak ada error JS", not errors, "; ".join(errors[:2]))

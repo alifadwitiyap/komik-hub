@@ -125,7 +125,22 @@ export default function Reader() {
         setData(d)
         // CHAPTER DIBUKA → tandai "sudah dibaca" + catat riwayat rak (satu
         // definisi di readingEvents.ts). Reader: penuh (mark + rak).
-        didOpenChapter(d)
+        //
+        // Field WAJIB dipetakan eksplisit: `ChapterResponse` memakai
+        // snake_case (`title_key`, `series_handle`), sedangkan `ChapterOpen`
+        // memakai camelCase (`titleKey`, `handle`). Meneruskan `d` mentah
+        // membuat `d.titleKey` undefined -> `markChapterRead` early-return
+        // -> mark "sudah dibaca" tak pernah dibuat (bug senyap: semua field
+        // ChapterOpen opsional, jadi TS tak menangkapnya).
+        didOpenChapter({
+          titleKey: d.title_key ?? null,
+          number: d.chapter.number == null ? null : String(d.chapter.number),
+          historyNumber: d.chapter.number == null ? null : String(d.chapter.number),
+          title: d.series?.title ?? d.chapter.name,
+          coverUrl: d.series_cover ?? d.series?.cover ?? null,
+          source: d.source ?? d.series?.source ?? '',
+          handle: d.series_handle ?? '',
+        })
       })
       .catch((e: Error) => {
         if (genRef.current !== gen) return
@@ -476,7 +491,6 @@ export default function Reader() {
     ? Math.min(100, Math.round((loadedCount / images.length) * 100))
     : 0
   const nextKey = chapter.next ? String(chapter.next.id) : null
-  const prevKey = chapter.previous ? String(chapter.previous.id) : null
   // id manga legacy (angka) — cuma ada di flow komiku lama. Flow unified
   // menyimpan handle 'sumber:native_id' di `series.id` (string), jadi angka
   // di sini selalu null untuk unified.
@@ -612,8 +626,6 @@ export default function Reader() {
       <ReaderFooter
         nextName={chapter.next?.name ?? null}
         nextHref={nextKey ? readerHref(nextKey) : null}
-        prevName={chapter.previous?.name ?? null}
-        prevHref={prevKey ? readerHref(prevKey) : null}
         onPickChapter={() => setChapterPickerOpen(true)}
         visible={!chromeHidden}
       />

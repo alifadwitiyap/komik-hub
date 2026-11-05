@@ -21,7 +21,8 @@ Repo: https://github.com/alifadwitiyap/komik-hub (private)
 
 - `deploy/Dockerfile` + `deploy/Caddyfile` + `deploy/entrypoint.sh` — satu image same-origin (Caddy basic-auth → axum → SPA)
 - `deploy/seed/` — state.json + downloads/*.json (baseline notif)
-- `render.yaml` — Blueprint: dockerfilePath ./deploy/Dockerfile, context root, healthcheck /healthz, region singapore
+- `infra/render.yaml` — Blueprint referensi: dockerfilePath ../deploy/Dockerfile, context root, healthcheck /healthz, region singapore
+  - **Catatan:** Render Blueprint hanya auto-detect `render.yaml` di **root repo**. Karena file dipindah ke `infra/`, Blueprint tidak akan menemukannya otomatis — pakai jalur Web Service manual (lihat §2 alternatif). `infra/render.yaml` tetap dipertahankan sebagai referensi konfigurasi.
 - Repo private `komik-hub` sudah di-push (branch main)
 - **Password basic auth (SIMPAN DI PASSWORD MANAGER):**
   - user: `alif`
@@ -33,8 +34,8 @@ Repo: https://github.com/alifadwitiyap/komik-hub (private)
 
 1. **Daftar Render**: https://dashboard.render.com/register → pilih **"Sign up with GitHub"** → authorize `alifadwitiyap`.
    - Jika diminta kartu → STOP, lapor (harusnya tidak; docs resmi: "No credit card is required").
-2. **Apply Blueprint**: Dashboard → **New +** → **Blueprint** → pilih repo **komik-hub** → **Apply**.
-   - Render membaca `render.yaml`, membuat service `komik-hub` (region singapore, plan free).
+2. **Create Service (manual — karena `render.yaml` di `infra/`, bukan root):** Dashboard → **New +** → **Web Service** → pilih repo **komik-hub** → Runtime **Docker** → Dockerfile path `deploy/Dockerfile` (relatif root) → region Singapore → plan Free → env yang sama.
+   - Blueprint auto-detect TIDAK akan membaca `infra/render.yaml` (hanya scan root). Jadi setup via Web Service manual.
 3. **Set BASIC_AUTH_HASH**: setelah service dibuat → service → **Environment** → Edit → tambah:
    - Key: `BASIC_AUTH_HASH`
    - Value: (hash di bagian 1 — copy persis termasuk `$2a$14$...`)

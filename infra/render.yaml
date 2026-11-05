@@ -12,8 +12,8 @@ services:
     plan: free
     region: singapore
     # Build context = root repo (butuh komiku-server/ + komik/core + komiku-web/).
-    dockerfilePath: ./deploy/Dockerfile
-    dockerContext: .
+    dockerfilePath: ../deploy/Dockerfile
+    dockerContext: ..
     healthCheckPath: /healthz
     envVars:
       - key: BASIC_AUTH_USER

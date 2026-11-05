@@ -15,8 +15,8 @@ services:
     build:
       # Context WAJIB root D:/project (bukan komiku-server): Cargo.toml server
       # punya path dep komik-core = { path = "../komik/core" }.
-      context: .
-      dockerfile: komiku-server/Dockerfile
+      context: ../
+      dockerfile: ../komiku-server/Dockerfile
     image: komiku-server:latest
     environment:
       PORT: 8788
@@ -24,14 +24,14 @@ services:
       KOMIKU_DOWNLOADS_DIR: /data/downloads
       KOMIKU_NOTIF_DIR: /data
     volumes:
-      - ./komiku-server/downloads:/data/downloads
-      - ./komiku-server/data:/data
+      - ../komiku-server/downloads:/data/downloads
+      - ../komiku-server/data:/data
     restart: unless-stopped
     networks: [komiknet]
 
   web:
     build:
-      context: ./komiku-web
+      context: ../komiku-web
     image: komiku-web:latest
     ports:
       - "8780:80"
@@ -51,7 +51,7 @@ services:
       VITE_API_TARGET: http://server:8788
       CHOKIDAR_USEPOLLING: "true"
     volumes:
-      - ./komiku-web:/app
+      - ../komiku-web:/app
       - web-dev-nm:/app/node_modules
     ports:
       - "5173:5173"

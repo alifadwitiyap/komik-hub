@@ -30,8 +30,8 @@ services:
     volumes:
       # Data unduhan + state notifikasi tetap di host supaya PDF lama kebaca
       # setelah image diganti.
-      - ./komiku-server/downloads:/data/downloads
-      - ./komiku-server/data:/data
+      - ../komiku-server/downloads:/data/downloads
+      - ../komiku-server/data:/data
     ports:
       # Caddy di dalam image listen :8080 (lihat deploy/Caddyfile). Kalau di
       # depan ada Caddy host/Cloudflare, cukup expose ke loopback.
