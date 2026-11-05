@@ -62,17 +62,28 @@ with sync_playwright() as p:
     errors = []
     page.on("pageerror", lambda e: errors.append(str(e)))
 
-    # 1 & 2. buka chapter, pastikan tombol unduh offline ada
+    # 1 & 2. buka chapter, buka sheet Preferensi lewat Menu, pastikan aksi unduh
+    # offline ada. Sejak `c951fd2` aksi ini BUKAN tombol ikon toolbar lagi: ia
+    # baris `Row` (role="button", bukan <button aria-label>) di dalam sheet
+    # Preferensi yang dibuka lewat Menu → Preferensi. Skrip ini dulu mencari
+    # `button[aria-label="Simpan untuk dibaca offline"]` di toolbar sehingga
+    # selalu FAIL padahal fiturnya hidup.
     page.goto(BASE + CHAPTER_URL, wait_until="networkidle")
     page.wait_for_timeout(4000)  # settle reader (gambar pertama)
-    dl_btn = page.locator('button[aria-label="Simpan untuk dibaca offline"]')
-    check("toolbar: tombol 'Simpan chapter untuk dibaca offline' ada", dl_btn.count() > 0)
+    page.locator('button[aria-label="Menu"]').first.click()
+    page.wait_for_timeout(400)
+    pref = page.get_by_text("Preferensi", exact=True)
+    check("menu: item 'Preferensi' ada", pref.count() > 0)
+    pref.first.click()
+    page.wait_for_timeout(600)
+    dl_btn = page.get_by_text("Simpan untuk dibaca offline", exact=True)
+    check("preferensi: aksi 'Simpan untuk dibaca offline' ada", dl_btn.count() > 0)
 
     # 3. klik unduh offline -> tunggu toast selesai
     if dl_btn.count() > 0:
         dl_btn.first.click()
         page.wait_for_timeout(500)
-        # toast bisa berupa progress ("… 3/40") lalu "Chapter tersimpan offline"
+        # toast bisa berupa progress (\"… 3/40\") lalu \"Chapter tersimpan offline\"
         done = page.locator("text=Chapter tersimpan offline")
         try:
             done.wait_for(timeout=120000)
@@ -82,7 +93,7 @@ with sync_playwright() as p:
         check("unduh offline: toast 'Chapter tersimpan offline' muncul", offline_ok)
         page.screenshot(path=SHOTS + "/1-downloaded.png")
     else:
-        check("unduh offline: toast muncul", False, "tombol tidak ada")
+        check("unduh offline: toast muncul", False, "aksi tidak ada")
 
     # 4. matikan jaringan, reload chapter yang sama
     page.wait_for_timeout(1500)
