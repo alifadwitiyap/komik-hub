@@ -129,6 +129,12 @@ pub struct UnifiedState {
     pub series_cache: std::sync::Mutex<SeriesCache>,
     pub series_gates: std::sync::Mutex<std::collections::HashMap<String, Arc<tokio::sync::Mutex<()>>>>,
     pub series_fanout_permits: tokio::sync::Semaphore,
+    /// Single-flight PER CHAPTER (`handle` + nomor ternormalisasi) untuk
+    /// `/api/unified/chapter/*`. Terpisah dari `series_gates`: request chapter
+    /// TIDAK boleh ikut mengantre di gerbang series (fan-out series jauh lebih
+    /// mahal dan sudah punya semaphore sendiri).
+    pub chapter_gates: ChapterGates,
+    pub chapter_cache: std::sync::Mutex<ChapterCache>,
     pub image_client: reqwest::Client,
     pub download_store: anyhow::Result<Arc<DownloadStore>, String>,
 }
@@ -149,6 +155,8 @@ impl UnifiedState {
             series_cache: std::sync::Mutex::new(std::collections::HashMap::new()),
             series_gates: std::sync::Mutex::new(std::collections::HashMap::new()),
             series_fanout_permits: tokio::sync::Semaphore::new(3),
+            chapter_gates: ChapterGates::default(),
+            chapter_cache: std::sync::Mutex::new(std::collections::HashMap::new()),
             image_client: reqwest::Client::builder()
                 .user_agent(UA_MOBILE)
                 .pool_idle_timeout(std::time::Duration::from_secs(90))
@@ -1114,6 +1122,109 @@ fn series_cache_put(cache: &std::sync::Mutex<SeriesCache>, key: String, out: ser
     series_disk_write(&key, &out);
 }
 
+// ------------------------------------------- single-flight PER CHAPTER (baca)
+
+/// Gerbang single-flight per CHAPTER: `handle` + nomor ternormalisasi.
+type ChapterGates =
+    std::sync::Mutex<std::collections::HashMap<String, Arc<tokio::sync::Mutex<()>>>>;
+
+/// Cache respons chapter FINAL per key. Tanpa ini single-flight hanya
+/// mendedupe request yang TUMPANG WAKTU: request ke-17 yang datang 1 ms
+/// setelah fan-out pertama selesai akan menghitung ulang. Cache pendek ini
+/// yang membuat burst beruntun tetap satu fan-out, dan juga yang membuat
+/// double-check setelah gerbang bermakna.
+type ChapterCache =
+    std::collections::HashMap<String, (std::time::Instant, serde_json::Value)>;
+
+/// TTL respons chapter. Pendek dengan sengaja: halaman chapter nyaris statis
+/// (gambar + prev/next), tapi chapter yang baru terbit bisa berubah susunan
+/// halamannya dalam hitungan menit — 120 s cukup untuk meredam burst tanpa
+/// membuat user melihat daftar gambar basi.
+const CHAPTER_CACHE_TTL: std::time::Duration = std::time::Duration::from_secs(120);
+const CHAPTER_CACHE_MAX: usize = 128;
+
+/// Kunci gerbang/cache: handle series + nomor yang sudah dinormalkan
+/// (`chapter_number_key`), supaya "04" dan "4" = SATU chapter. Handle ikut
+/// jadi bagian kunci: series berbeda boleh punya nomor sama.
+fn chapter_gate_key(handle: &str, number: &str) -> String {
+    format!("{handle}\u{1}{}", komik_core::model::chapter_number_key(number))
+}
+
+/// Ambil gerbang untuk satu chapter — cermin `series_gate`.
+fn chapter_gate(gates: &ChapterGates, handle: &str, number: &str) -> Arc<tokio::sync::Mutex<()>> {
+    let key = chapter_gate_key(handle, number);
+    let mut guard = gates.lock().unwrap_or_else(|e| e.into_inner());
+    guard
+        .entry(key)
+        .or_insert_with(|| Arc::new(tokio::sync::Mutex::new(())))
+        .clone()
+}
+
+fn chapter_cache_get(
+    cache: &std::sync::Mutex<ChapterCache>,
+    key: &str,
+) -> Option<(CacheAge, serde_json::Value)> {
+    let guard = cache.lock().ok()?;
+    let (at, out) = guard.get(key)?;
+    let age = classify_age_with(at.elapsed(), CHAPTER_CACHE_TTL, CHAPTER_CACHE_TTL);
+    Some((age, out.clone()))
+}
+
+fn chapter_cache_put(
+    cache: &std::sync::Mutex<ChapterCache>,
+    key: String,
+    out: serde_json::Value,
+) {
+    if let Ok(mut guard) = cache.lock() {
+        if guard.len() >= CHAPTER_CACHE_MAX && !guard.contains_key(&key) {
+            if let Some(old) = guard
+                .iter()
+                .min_by_key(|(_, (at, _))| *at)
+                .map(|(k, _)| k.clone())
+            {
+                guard.remove(&old);
+            }
+        }
+        guard.insert(key, (std::time::Instant::now(), out));
+    }
+}
+
+/// Jalankan `fanout` SEKALI untuk N request paralel pada chapter yang sama.
+///
+/// Pola sama dengan `series_gate`: ambil gerbang per key, lock, lalu
+/// double-check cache (request yang menunggu mungkin mendapat hasil dari
+/// pemenang gerbang). Kegagalan tidak di-cache — gerbang dilepas oleh drop
+/// guard sehingga request berikutnya boleh mencoba lagi.
+///
+/// Double-check WAJIB ada di DALAM helper ini, bukan hanya di closure
+/// pemanggil: mutex hanya MENYERIALKAN, ia tidak mendedupe. Tanpa cek di sini,
+/// 16 task yang menunggu gerbang akan tetap menjalankan `fanout` satu per satu
+/// setelah gerbang bebas (terbukti: test `chapter_paralel_sama_hanya_satu_fanout`
+/// membaca 16, bukan 1). Karena itu `cached` disuntikkan sebagai parameter:
+/// helper membaca ulang cache setelah memperoleh gerbang, sebelum memutuskan
+/// memanggil `fanout`.
+async fn chapter_single_flight<F, Fut, C>(
+    gates: &ChapterGates,
+    handle: &str,
+    number: &str,
+    cached: C,
+    fanout: F,
+) -> Result<Value, AppError>
+where
+    C: Fn() -> Option<Value>,
+    F: FnOnce() -> Fut,
+    Fut: std::future::Future<Output = Result<Value, AppError>>,
+{
+    let gate = chapter_gate(gates, handle, number);
+    let _guard = gate.lock().await;
+    // Request yang menunggu gerbang: kalau pemenang sudah mengisi cache,
+    // pakai hasilnya dan JANGAN fan-out lagi. Inilah dedup sesungguhnya.
+    if let Some(hit) = cached() {
+        return Ok(hit);
+    }
+    fanout().await
+}
+
 /// Bentuk JSON final respons series dari hasil union (dipakai jalur inline
 /// dan refresh latar SWR — satu sumber kebenaran, tak ada duplikasi logika).
 fn build_series_json(merged: &komik_core::aggregator::MergedSeries) -> serde_json::Value {
@@ -1274,9 +1385,63 @@ async fn u_chapter(State(state): State<Arc<crate::routes::AppState>>, Path((hand
 }
 
 async fn u_chapter_inner(state: Arc<UnifiedState>, handle: String, number: String) -> Res<Value> {
+    let key = chapter_gate_key(&handle, &number);
+
+    // 1. Cache segar -> seketika. Burst beruntun (request ke-17 datang setelah
+    //    fan-out pertama selesai) tetap satu fan-out karena cabang ini.
+    if let Some((CacheAge::Fresh, hit)) = chapter_cache_get(&state.chapter_cache, &key) {
+        return Ok(Json(hit));
+    }
+
+    // 2. Single-flight per chapter. Pemenang gerbang menghitung; sisanya
+    //    menunggu, lalu `chapter_single_flight` membaca ulang cache SEBELUM
+    //    memutuskan fan-out (itu dedup sesungguhnya — mutex hanya menyerialkan).
+    //    Tanpa ini 16 request paralel = 16 fan-out: terukur komiku +32 /
+    //    kiryuu +16 untuk satu chapter.
+    let out = chapter_single_flight(
+        &state.chapter_gates,
+        &handle,
+        &number,
+        || {
+            chapter_cache_get(&state.chapter_cache, &key)
+                .filter(|(age, _)| matches!(age, CacheAge::Fresh))
+                .map(|(_, hit)| hit)
+        },
+        || {
+            let state = state.clone();
+            let key = key.clone();
+            let handle = handle.clone();
+            let number = number.clone();
+            async move {
+                let out = fetch_chapter_payload(&state, &handle, &number).await?;
+                chapter_cache_put(&state.chapter_cache, key, out.clone());
+                Ok(out)
+            }
+        },
+    )
+    .await?;
+
+    // `chapter_single_flight` mengembalikan `Value` MENTAH; handler yang
+    // membungkusnya jadi `Json` (satu kali, di sini).
+    Ok(Json(out))
+}
+
+/// Fan-out chapter sesungguhnya: SATU `read_chapter_any` + bentuk JSON final.
+/// Dipisah dari `u_chapter_inner` supaya cache/gerbang di atasnya tidak
+/// menduplikasi logika bentuk respons.
+///
+/// Mengembalikan `Value` MENTAH (bukan `Res<Value>` = `Result<Json<Value>, _>`)
+/// karena pemanggilnya membungkus sendiri: lapisan cache menyimpan `Value` dan
+/// handler membalas `Json`. Mengembalikan `Json` di sini membuat pemanggil
+/// membungkus dua kali (`Json(Json(..))`) — itu error tipe yang sudah terjadi.
+async fn fetch_chapter_payload(
+    state: &UnifiedState,
+    handle: &str,
+    number: &str,
+) -> Result<Value, AppError> {
     let out = state
         .aggregator
-        .read_chapter_any(&handle, &number, None, SERIES_CHAPTER_LIMIT)
+        .read_chapter_any(handle, number, None, SERIES_CHAPTER_LIMIT)
         .await
         .map_err(classify_core_err)?;
     // title_key + judul SERIES sudah diperoleh `read_chapter_any` saat resolve
@@ -1298,7 +1463,7 @@ async fn u_chapter_inner(state: Arc<UnifiedState>, handle: String, number: Strin
     // 0.685. Field dipertahankan supaya kontrak klien utuh
     // (`readerSource.ts` melakukan `u.image_sizes ?? null`).
     let image_sizes: Vec<Option<[u32; 2]>> = Vec::new();
-    Ok(Json(json!({
+    Ok(json!({
         "title": out.pages.title,
         "number": out.pages.number,
         "source": out.pages.source.as_str(),
@@ -1310,7 +1475,7 @@ async fn u_chapter_inner(state: Arc<UnifiedState>, handle: String, number: Strin
         "next": out.next,
         "switched_from": out.switched_from.as_ref().map(|s| s.as_str()),
         "note": out.note,
-    })))
+    }))
 }
 
 // --------------------------------------------------- unduhan PDF (rak buku)
@@ -2235,5 +2400,173 @@ mod tests {
         let res = u_download_file(state, h, Path("0123456789abcdef".into())).await;
         let err = res.expect_err("header invalid harus galat, bukan 200");
         assert_eq!(status(err), 401);
+    }
+
+    // ------------------------------------- single-flight chapter per-chapter
+
+    /// Gerbang chapter = PER CHAPTER, bukan per handle series: dua nomor
+    /// berbeda pada series yang sama TIDAK boleh berbagi gerbang (kalau
+    /// berbagi, chapter 2 harus menunggu chapter 1 selesai — antre palsu).
+    #[test]
+    fn chapter_gate_terpisah_per_nomor_chapter() {
+        let gates = ChapterGates::default();
+        let a = chapter_gate(&gates, "komiku:398792", "4");
+        let b = chapter_gate(&gates, "komiku:398792", "5");
+        let c = chapter_gate(&gates, "komiku:398792", "4");
+        assert!(!Arc::ptr_eq(&a, &b), "chapter 4 dan 5 harus gerbang BERBEDA");
+        assert!(Arc::ptr_eq(&a, &c), "chapter sama harus gerbang SAMA (single-flight)");
+    }
+
+    /// Key gerbang memakai `chapter_number_key` (normalisasi leading/trailing
+    /// zero) supaya "04" dan "4" = SATU chapter, bukan dua fan-out. Handle
+    /// series tetap dibedakan: series lain boleh punya nomor sama.
+    #[test]
+    fn chapter_gate_key_menormalkan_nomor() {
+        assert_eq!(
+            chapter_gate_key("komiku:398792", "04"),
+            chapter_gate_key("komiku:398792", "4")
+        );
+        assert_eq!(
+            chapter_gate_key("komiku:398792", "179.60"),
+            chapter_gate_key("komiku:398792", "179.6")
+        );
+        assert_ne!(
+            chapter_gate_key("komiku:398792", "4"),
+            chapter_gate_key("komiku:999", "4")
+        );
+    }
+
+    /// INTI single-flight: 16 request paralel ke chapter yang SAMA harus
+    /// menghasilkan SATU fan-out. Pembeda "fan-out" vs "cache-hit" adalah
+    /// panggilan upstream per request — bukan latensi (cache core bisa
+    /// membuat request kedua murah walau tetap ada call).
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+    async fn chapter_paralel_sama_hanya_satu_fanout() {
+        let gates = Arc::new(ChapterGates::default());
+        let hits = Arc::new(std::sync::atomic::AtomicUsize::new(0));
+        // Cache bersama: meniru `chapter_cache` sungguhan. Inilah yang membuat
+        // task ke-2..16 (yang menunggu gerbang) berhenti tanpa fan-out.
+        let cache = Arc::new(std::sync::Mutex::new(None::<Value>));
+
+        let mut tasks = Vec::new();
+        for _ in 0..16 {
+            let gates = gates.clone();
+            let hits = hits.clone();
+            let cache = cache.clone();
+            tasks.push(tokio::spawn(async move {
+                let cache_read = cache.clone();
+                chapter_single_flight(
+                    &gates,
+                    "komiku:398792",
+                    "4",
+                    move || cache_read.lock().unwrap().clone(),
+                    || {
+                        let hits = hits.clone();
+                        let cache = cache.clone();
+                        async move {
+                            hits.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+                            // Tahan gerbang supaya 16 task benar-benar menumpuk.
+                            tokio::time::sleep(std::time::Duration::from_millis(60)).await;
+                            let v = serde_json::json!({"number": "4"});
+                            *cache.lock().unwrap() = Some(v.clone());
+                            Ok::<Value, AppError>(v)
+                        }
+                    },
+                )
+                .await
+            }));
+        }
+        for t in tasks {
+            t.await.unwrap().expect("semua request harus dapat hasil");
+        }
+
+        assert_eq!(
+            hits.load(std::sync::atomic::Ordering::SeqCst),
+            1,
+            "16 request paralel ke chapter SAMA harus SATU fan-out upstream"
+        );
+        let v = cache.lock().unwrap().clone().expect("fan-out harus jalan sekali");
+        assert_eq!(v["number"], "4");
+    }
+
+    /// Chapter BERBEDA tidak boleh saling mengunci: 8 nomor berbeda, masing-
+    /// masing 2 request paralel → 8 fan-out (bukan 1, bukan 16).
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+    async fn chapter_paralel_beda_nomor_tetap_fanout_sendiri() {
+        let gates = Arc::new(ChapterGates::default());
+        let hits = Arc::new(std::sync::atomic::AtomicUsize::new(0));
+        let cache = Arc::new(std::sync::Mutex::new(
+            std::collections::HashMap::<String, Value>::new(),
+        ));
+
+        let mut tasks = Vec::new();
+        for n in 0..8u32 {
+            for _ in 0..2 {
+                let gates = gates.clone();
+                let hits = hits.clone();
+                let cache = cache.clone();
+                tasks.push(tokio::spawn(async move {
+                    let num = n.to_string();
+                    let cache_read = cache.clone();
+                    let key = num.clone();
+                    chapter_single_flight(
+                        &gates,
+                        "komiku:398792",
+                        &num,
+                        move || cache_read.lock().unwrap().get(&key).cloned(),
+                        || {
+                            let hits = hits.clone();
+                            let cache = cache.clone();
+                            let num = num.clone();
+                            async move {
+                                hits.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+                                tokio::time::sleep(std::time::Duration::from_millis(40)).await;
+                                let v = serde_json::json!({"number": num});
+                                cache.lock().unwrap().insert(num, v.clone());
+                                Ok::<Value, AppError>(v)
+                            }
+                        },
+                    )
+                    .await
+                }));
+            }
+        }
+        for t in tasks {
+            t.await.unwrap().expect("semua request harus dapat hasil");
+        }
+        assert_eq!(
+            hits.load(std::sync::atomic::Ordering::SeqCst),
+            8,
+            "8 chapter berbeda x 2 request = 8 fan-out (per-chapter, bukan global)"
+        );
+    }
+
+    /// Kegagalan fan-out tidak boleh "membekukan" gerbang: request berikutnya
+    /// tetap boleh mencoba lagi (gerbang dilepas oleh drop guard, bukan cache
+    /// error permanen).
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    async fn chapter_gate_lepas_setelah_galat() {
+        let gates = Arc::new(ChapterGates::default());
+        let first = chapter_single_flight(
+            &gates,
+            "komiku:398792",
+            "4",
+            || None,
+            || async {
+                Err::<Value, AppError>(AppError::new(anyhow::anyhow!("upstream mati")))
+            },
+        )
+        .await;
+        assert!(first.is_err(), "fan-out gagal harus diteruskan sebagai galat");
+
+        let second = chapter_single_flight(
+            &gates,
+            "komiku:398792",
+            "4",
+            || None,
+            || async { Ok::<Value, AppError>(serde_json::json!({"number": "4"})) },
+        )
+        .await;
+        assert!(second.is_ok(), "gerbang harus dilepas setelah galat, bukan deadlock");
     }
 }

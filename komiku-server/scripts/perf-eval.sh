@@ -112,6 +112,22 @@ check_ratio() {
   printf "  [%s] %-42s %6s ms  budget %5s ms (<=%s%% cold %s ms)  %s\n" \
     "$id" "$name" "$warm" "$limit" "$max_pct" "$cold" "$status"
 }
+
+# ANGGARAN WARM ABSOLUT untuk CHAPTER (plafon, bukan target).
+#
+# Kenapa perlu meski sudah ada check_ratio: check_ratio hanya menjaga WARM
+# "jauh lebih cepat dari COLD". Setelah S1 membuang `probe_dims`, WARM chapter
+# terukur 3 ms; kalau suatu saat probe itu (atau kerja per-request lain)
+# kembali dan WARM jadi ~900 ms sementara COLD tetap ~1900 ms, check_ratio
+# (limit 1140 ms) tetap PASS — padahal justru warm path itulah yang tiap
+# buka chapter berikutnya dibayar user. Plafon absolut menutup celah itu.
+#
+# Nilai 300 ms dipilih longgar terhadap 3 ms terukur supaya tidak flaky di
+# runner CI (disk/CPU lambat, cold page cache) tapi tetap menangkap
+# kebangkitan kembali kerja per-request yang mahal.
+BUDGET_WARM_CHAPTER=300
+check P5 "chapter WARM (plafon absolut)" "$w_chap" "$BUDGET_WARM_CHAPTER"
+
 check_ratio P3 "series WARM (relatif thd COLD)"  "$w_series" "$c_series" 60
 check_ratio P4 "chapter WARM (relatif thd COLD)" "$w_chap"   "$c_chap"   60
 

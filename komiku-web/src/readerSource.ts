@@ -238,25 +238,58 @@ function liteFromChapter(ch: ChapterWithSeriesTitle, handle: string): SeriesLite
 const liteInflight = new Map<string, Promise<SeriesLite | null>>()
 
 /**
+ * Batas waktu request series di latar belakang.
+ *
+ * `fetch` TIDAK punya timeout bawaan: koneksi yang menggantung (upstream
+ * lambat, jaringan putus, tab di-suspend) membuat promise tak pernah settle.
+ * Karena `liteInflight` adalah single-flight per handle — pemanggil berikutnya
+ * menerima promise yang SAMA — promise yang menggantung berarti entri peta
+ * tidak pernah dihapus oleh `.finally()`, dan retry untuk handle itu terblokir
+ * PERMANEN sampai halaman di-reload. Timeout ini menjamin promise selalu
+ * settle, jadi entri selalu dibersihkan.
+ */
+const SERIES_LITE_TIMEOUT_MS = 8_000
+
+/**
  * Muat snapshot series di latar belakang lalu simpan ke `liteCache`.
  * Tidak pernah melempar (gagal = `null`) dan sengaja TIDAK memakai
  * `AbortSignal` pemanggil: hasilnya masuk cache tingkat modul yang hidup
  * lebih lama dari satu pemanggilan, jadi membatalkannya saat user pindah
  * chapter hanya membuang kerja yang tetap berguna untuk chapter berikutnya.
+ *
+ * Promise SELALU settle dalam `SERIES_LITE_TIMEOUT_MS`: timeout memanggil
+ * `abort()` (bukan cuma berhenti menunggu) supaya koneksi yang menggantung
+ * benar-benar dilepas, lalu resolve `null` — perilaku sama dengan gagal biasa.
  */
 function backgroundSeriesLite(handle: string): Promise<SeriesLite | null> {
   const running = liteInflight.get(handle)
   if (running) return running
-  const job = unifiedApi
-    .series(handle)
-    .then((s: UnifiedSeries) => {
+  const ctrl = new AbortController()
+  let timer: ReturnType<typeof setTimeout> | undefined
+  const timedOut = new Promise<null>((resolve) => {
+    timer = setTimeout(() => {
+      // Abort dulu: kalau hanya `Promise.race`, fetch yang menggantung tetap
+      // hidup dan menahan koneksi browser walau kita sudah berhenti menunggu.
+      ctrl.abort()
+      resolve(null)
+    }, SERIES_LITE_TIMEOUT_MS)
+  })
+  const job = Promise.race([
+    unifiedApi.series(handle, ctrl.signal).then((s: UnifiedSeries) => {
       const lite = liteOfSeries(s)
       rememberSeriesLite(handle, lite)
       return lite
-    })
+    }),
+    timedOut,
+  ])
     // judul gagal: chapter tetap harus tampil (jangan gagalkan baca)
     .catch(() => null)
-    .finally(() => liteInflight.delete(handle))
+    .finally(() => {
+      // Timer wajib dibersihkan saat request menang balapan; tanpa ini timer
+      // 8 s tetap hidup dan memanggil `abort()` pada request yang sudah selesai.
+      if (timer !== undefined) clearTimeout(timer)
+      liteInflight.delete(handle)
+    })
   liteInflight.set(handle, job)
   return job
 }
