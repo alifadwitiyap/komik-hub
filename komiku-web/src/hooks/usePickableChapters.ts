@@ -75,7 +75,7 @@ export function usePickableChapters({
     const job = unified
       ? unifiedApi.series(unified.handle, ctrl.signal).then((r) =>
           (r.chapters ?? []).map((c) => ({
-            key: `${unified.handle}:${c.number}`,
+            key: `${c.handle || unified.handle}:${c.number}`,
             number: c.number,
             title: c.title || `Chapter ${c.number}`,
           })),

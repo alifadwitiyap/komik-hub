@@ -518,7 +518,7 @@ export default function SeriesUnified() {
                     </button>
                   ) : (
                     <Link
-                      to={readerHref(`${handle}:${c.number}`)}
+                      to={readerHref(`${c.handle || handle}:${c.number}`)}
                       aria-label={
                         read
                           ? `${chapterLabel(c)} — sudah dibaca`
@@ -527,6 +527,9 @@ export default function SeriesUnified() {
                       className="flex min-w-0 flex-1 items-center justify-between gap-3 py-3 pr-3.5 transition-colors hover:bg-ink-850 active:bg-ink-850"
                     >
                       <span className={titleCls}>{chapterLabel(c)}</span>
+                      {c.source !== m.source && (
+                        <SourceBadge source={c.source} className="shrink-0" />
+                      )}
                       <span className="shrink-0 text-[10.5px] font-medium text-ink-500">
                         {chapterDate(c)}
                       </span>

@@ -89,6 +89,10 @@ export interface UnifiedChapterOut {
   title: string
   native_id: string
   updated_at: number | null
+  /** sumber yang benar-benar punya chapter ini (bisa beda dari sumber series) */
+  source: string
+  /** handle series di sumber itu ('komiku:865') — dipakai untuk URL baca */
+  handle: string
 }
 
 export interface UnifiedSeries {

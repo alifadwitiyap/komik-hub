@@ -437,45 +437,115 @@ pub(crate) fn pick_cross_source_neighbors(
     lists: &[crate::union::SourceChapterList],
     current: &str,
 ) -> (Option<ChapterRef>, Option<ChapterRef>) {
+    let candidates = lists.iter().flat_map(|list| {
+        list.chapters
+            .iter()
+            .map(move |ch| (ch.number.as_str(), &list.source, list.handle.as_str()))
+    });
+    pick_neighbors_by_number(candidates, current)
+}
+
+/// Pilih tetangga prev/next dari daftar chapter UNION lintas sumber.
+///
+/// Beda dengan [`neighbor_refs`] — yang hanya melihat daftar chapter SATU
+/// sumber, sehingga navigasi berhenti di tepi sumber pelayan walau sumber lain
+/// punya chapter lanjutan. Beda juga dengan [`pick_cross_source_neighbors`] —
+/// yang hanya menyala di TEPI (dipakai sebagai tambalan saat sumber pelayan
+/// tidak punya `next`/`prev`), sehingga tetangga di tengah daftar tetap milik
+/// satu sumber.
+///
+/// Fungsi ini memakai daftar yang SUDAH di-merge
+/// ([`crate::union::merge_chapter_lists`], urut terbaru-dulu), jadi tetangga
+/// selalu chapter yang berurutan di union — lintas sumber sekalipun:
+/// `["277"(shinigami), "233"(shinigami), "232"(komiku), "09"(komiku)]` memberi
+/// `233` tetangga `277` (next) dan `232` (prev).
+///
+/// Kontrak:
+/// - Posisi `current` dicari dengan identitas
+///   [`crate::model::chapter_number_key`] ("09" == "9", "179.60" == "179.6",
+///   "extra" != "7"), bukan `==` string mentah.
+/// - `next` = elemen `index-1` (lebih baru), `prev` = elemen `index+1` (lebih
+///   tua). Tepi daftar -> `None` (tidak wrap-around).
+/// - `current` TIDAK ada di daftar -> fallback berbasis perbandingan nomor
+///   lewat [`crate::union::cmp_chapter_number`]: `next` = nomor lebih besar
+///   terkecil, `prev` = nomor lebih kecil terbesar.
+/// - Setiap [`ChapterRef`] membawa `source` + `handle` MILIK chapter itu
+///   sendiri (bukan handle series primary) — inilah yang membuat client bisa
+///   lanjut baca ke sumber lain lewat
+///   [`crate::aggregator::Aggregator::read_chapter_any`].
+///
+/// Murni: tanpa I/O, tanpa async, tidak mengubah input.
+pub fn pick_union_neighbors(
+    merged: &[crate::union::MergedChapter],
+    current: &str,
+) -> (Option<ChapterRef>, Option<ChapterRef>) {
+    let want = chapter_number_key(current);
+    if let Some(pos) = merged.iter().position(|c| chapter_number_key(&c.number) == want) {
+        let mk = |c: &crate::union::MergedChapter| ChapterRef {
+            number: c.number.clone(),
+            source: c.source.clone(),
+            handle: c.handle.clone(),
+        };
+        let next = pos.checked_sub(1).and_then(|i| merged.get(i)).map(mk);
+        let prev = merged.get(pos + 1).map(mk);
+        return (prev, next);
+    }
+    // Tidak ada di daftar: pilih by nomor, bukan by posisi.
+    let candidates = merged
+        .iter()
+        .map(|c| (c.number.as_str(), &c.source, c.handle.as_str()));
+    pick_neighbors_by_number(candidates, current)
+}
+
+/// Inti pemilihan tetangga berbasis PERBANDINGAN nomor, dipakai bersama oleh
+/// [`pick_cross_source_neighbors`] (kandidat dari daftar per sumber) dan
+/// fallback [`pick_union_neighbors`] (kandidat dari daftar union).
+///
+/// `candidates` = iterator `(number, source, handle)`; tiap item sudah membawa
+/// sumber + handle MILIKNYA supaya `ChapterRef` hasilnya bisa dipakai lintas
+/// sumber.
+///
+/// - `next` = nomor lebih besar dari `current`, yang terkecil.
+/// - `prev` = nomor lebih kecil dari `current`, yang terbesar.
+/// - Nomor sama -> chapter itu sendiri, bukan tetangga.
+fn pick_neighbors_by_number<'a, I>(
+    candidates: I,
+    current: &str,
+) -> (Option<ChapterRef>, Option<ChapterRef>)
+where
+    I: IntoIterator<Item = (&'a str, &'a SourceId, &'a str)>,
+{
     let mut next: Option<ChapterRef> = None;
     let mut prev: Option<ChapterRef> = None;
-    for list in lists {
-        for ch in &list.chapters {
-            let mk = || ChapterRef {
-                number: ch.number.clone(),
-                source: list.source.clone(),
-                handle: list.handle.clone(),
-            };
-            match crate::union::cmp_chapter_number(&ch.number, current) {
-                // Nomor lebih besar -> kandidat `next`: ambil yang terkecil.
-                std::cmp::Ordering::Greater => {
-                    let better = match &next {
-                        None => true,
-                        Some(n) => {
-                            crate::union::cmp_chapter_number(&ch.number, &n.number)
-                                == std::cmp::Ordering::Less
-                        }
-                    };
-                    if better {
-                        next = Some(mk());
-                    }
+    for (number, source, handle) in candidates {
+        let mk = || ChapterRef {
+            number: number.to_string(),
+            source: source.clone(),
+            handle: handle.to_string(),
+        };
+        match cmp_chapter_number(number, current) {
+            // Nomor lebih besar -> kandidat `next`: ambil yang terkecil.
+            std::cmp::Ordering::Greater => {
+                let better = match &next {
+                    None => true,
+                    Some(n) => cmp_chapter_number(number, &n.number) == std::cmp::Ordering::Less,
+                };
+                if better {
+                    next = Some(mk());
                 }
-                // Nomor lebih kecil -> kandidat `prev`: ambil yang terbesar.
-                std::cmp::Ordering::Less => {
-                    let better = match &prev {
-                        None => true,
-                        Some(p) => {
-                            crate::union::cmp_chapter_number(&ch.number, &p.number)
-                                == std::cmp::Ordering::Greater
-                        }
-                    };
-                    if better {
-                        prev = Some(mk());
-                    }
-                }
-                // Nomor sama -> chapter itu sendiri, bukan tetangga.
-                std::cmp::Ordering::Equal => {}
             }
+            // Nomor lebih kecil -> kandidat `prev`: ambil yang terbesar.
+            std::cmp::Ordering::Less => {
+                let better = match &prev {
+                    None => true,
+                    Some(p) => cmp_chapter_number(number, &p.number) == std::cmp::Ordering::Greater,
+                };
+                if better {
+                    prev = Some(mk());
+                }
+            }
+            // Nomor sama -> chapter itu sendiri, bukan tetangga.
+            std::cmp::Ordering::Equal => {}
         }
     }
     (prev, next)
