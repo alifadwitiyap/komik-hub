@@ -1,12 +1,12 @@
 import { imgUrl } from '../imgUrl'
-import { useEffect, useRef, useState } from 'react'
+import { memo, useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { api, coverOf, thumbOf, toMangaCard, unifiedApi } from '../api'
 import type { Homepage, HomeSection, Manga } from '../types'
 import { Empty, Spinner } from '../App'
 import SourceBadge from '../components/SourceBadge'
 import HeartButton from '../components/HeartButton'
-import { IconBolt, IconMagnifyingGlass, IconRectangleHistory, IconRotateRight } from '../icons'
+import { IconBolt, IconMagnifyingGlass, IconPlaySolid, IconRectangleHistory, IconRotateRight } from '../icons'
 import * as rakStore from '../rakStore'
 import { marathonHref, resumeHref } from '../readerSource'
 import { useMarathonMemory } from '../hooks/useMarathonMemory'
@@ -142,6 +142,7 @@ export default function Home() {
       onTouchEnd={onTouchEnd}
       className="relative"
     >
+      <h1 className="sr-only">Komik Hub</h1>
       {/* indikator tarik-untuk-refresh */}
       {(pull > 10 || refreshing) && (
         <div
@@ -229,17 +230,31 @@ export default function Home() {
  */
 function BackdropCarousel({ items }: { items: Manga[] }) {
   const [idx, setIdx] = useState(0)
+  const [paused, setPaused] = useState(false)
+  const scrollRef = useRef<HTMLDivElement>(null)
 
+  // Auto-advance 4s — skip saat prefers-reduced-motion atau dijeda.
   useEffect(() => {
-    if (items.length <= 1) return
+    if (items.length <= 1 || paused) return
+    const mq = window.matchMedia('(prefers-reduced-motion: reduce)')
+    if (mq.matches) return
     const t = setInterval(() => setIdx((i) => (i + 1) % items.length), 4000)
     return () => clearInterval(t)
-  }, [items.length])
+  }, [items.length, paused])
+
+  const goTo = (i: number) => {
+    const el = scrollRef.current
+    if (!el) return
+    const target = Math.min(Math.max(i, 0), items.length - 1)
+    el.scrollTo({ left: target * el.clientWidth * 0.94, behavior: 'smooth' })
+    setIdx(target)
+  }
 
   return (
-    <div className="px-2.5 pt-3">
+    <div className="relative px-2.5 pt-3">
       <div
-        className="no-bar flex snap-x snap-mandatory gap-2.5 overflow-x-auto rounded-xl"
+        ref={scrollRef}
+        className="no-bar flex snap-x snap-mandatory gap-2.5 overflow-x-auto rounded-xl px-2.5"
         onScroll={(e) => {
           const el = e.currentTarget
           const i = Math.round(el.scrollLeft / (el.clientWidth * 0.94))
@@ -291,12 +306,28 @@ function BackdropCarousel({ items }: { items: Manga[] }) {
           )
         })}
       </div>
-      {/* dots */}
+      {/* kontrol jeda/putar otomatis */}
+      {items.length > 1 && (
+        <button
+          type="button"
+          onClick={() => setPaused((p) => !p)}
+          aria-label={paused ? 'Lanjutkan putar otomatis' : 'Jeda putar otomatis'}
+          aria-pressed={paused}
+          className="absolute right-4 top-4 grid size-7 place-items-center rounded-full bg-black/50 text-white backdrop-blur-sm transition-colors hover:bg-black/70"
+        >
+          {paused ? <IconPlaySolid className="size-3.5" /> : <IconPause className="size-3.5" />}
+        </button>
+      )}
+      {/* dots — tombol fokusabel */}
       {items.length > 1 && (
         <div className="mt-2 flex justify-center gap-1.5">
           {items.map((m, i) => (
-            <span
+            <button
               key={m.id}
+              type="button"
+              onClick={() => goTo(i)}
+              aria-label={`Menuju slide ${i + 1}`}
+              aria-current={i === idx ? 'true' : undefined}
               className={`h-1.5 rounded-full transition-all ${
                 i === idx ? 'w-4 bg-brand-amber' : 'w-1.5 bg-ink-300'
               }`}
@@ -305,6 +336,14 @@ function BackdropCarousel({ items }: { items: Manga[] }) {
         </div>
       )}
     </div>
+  )
+}
+
+function IconPause(p: React.SVGProps<SVGSVGElement>) {
+  return (
+    <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" {...p}>
+      <path d="M6 5h4v14H6zM14 5h4v14h-4z" />
+    </svg>
   )
 }
 
@@ -372,7 +411,7 @@ function ShortcutMenu() {
               className="flex flex-col items-center gap-1.5 rounded-xl border border-ink-800 bg-ink-900 px-1 py-2.5 transition-colors active:bg-ink-850"
             >
               <Icon className="size-5 text-brand-amber" />
-              <span className="text-[10.5px] font-semibold text-ink-200">{label}</span>
+              <span className="text-[11px] font-semibold text-ink-200">{label}</span>
             </Link>
           </li>
         ))}
@@ -381,7 +420,7 @@ function ShortcutMenu() {
   )
 }
 
-export function MangaCard({ manga }: { manga: Manga }) {
+export const MangaCard = memo(function MangaCard({ manga }: { manga: Manga }) {
   const [failed, setFailed] = useState(false)
   const img = coverOf(manga)
   // kartu unified (handle 'sumber:id') → route handle; kartu komiku → id lama.
@@ -457,7 +496,7 @@ export function MangaCard({ manga }: { manga: Manga }) {
       )}
     </Link>
   )
-}
+})
 
 /** Kartu kecil untuk daftar chapter / hasil pencarian list-style. */
 export function Row({ manga }: { manga: Manga }) {

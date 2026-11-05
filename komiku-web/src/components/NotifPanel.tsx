@@ -36,6 +36,16 @@ export default function NotifPanel({
   // satu baris per series (title_key), bukan per notifikasi
   const groups = useMemo(() => groupNotifsByTitle(items), [items])
 
+  // fokus ke panel saat buka; pulihkan ke trigger saat tutup
+  useEffect(() => {
+    if (!open) return
+    const prev = document.activeElement as HTMLElement | null
+    ref.current?.focus()
+    return () => {
+      prev?.focus()
+    }
+  }, [open])
+
   // tutup: klik di luar + Escape
   useEffect(() => {
     if (!open) return
@@ -63,8 +73,11 @@ export default function NotifPanel({
     <div
       ref={ref}
       role="dialog"
+      aria-modal="true"
       aria-label="Notifikasi"
-      className="absolute right-0 top-full z-50 mt-2 w-[min(22rem,calc(100vw-1.5rem))] overflow-hidden rounded-xl border border-ink-800 bg-ink-950 shadow-xl shadow-black/40"
+      tabIndex={-1}
+      onKeyDown={trapFocus}
+      className="absolute right-0 top-full z-50 mt-2 w-[min(22rem,calc(100vw-1.5rem))] overflow-hidden rounded-xl border border-ink-800 bg-ink-950 shadow-xl shadow-black/40 outline-none"
     >
       <div className="flex items-center gap-2 border-b border-ink-800 px-3.5 py-2.5">
         <h2 className="font-display text-[13px] font-bold text-ink-100">Notifikasi</h2>
@@ -155,6 +168,29 @@ export default function NotifPanel({
       )}
     </div>
   )
+}
+
+function trapFocus(e: React.KeyboardEvent<HTMLElement>) {
+  if (e.key !== 'Tab') return
+  const root = e.currentTarget
+  const focusables = Array.from(
+    root.querySelectorAll<HTMLElement>(
+      'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+    )
+  ).filter((el) => !el.hasAttribute('disabled') && el.offsetParent !== null)
+  if (focusables.length === 0) {
+    e.preventDefault()
+    return
+  }
+  const first = focusables[0]
+  const last = focusables[focusables.length - 1]
+  if (e.shiftKey && (document.activeElement === first || document.activeElement === root)) {
+    e.preventDefault()
+    last.focus()
+  } else if (!e.shiftKey && document.activeElement === last) {
+    e.preventDefault()
+    first.focus()
+  }
 }
 
 const rtf = new Intl.RelativeTimeFormat('id-ID', { numeric: 'auto' })

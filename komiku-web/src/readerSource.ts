@@ -148,6 +148,7 @@ function fromUnified(
     title: string
     number: string
     images: string[]
+    image_sizes?: [number, number][] | null
     prev: ChapterNav | null
     next: ChapterNav | null
     source: string
@@ -179,6 +180,7 @@ function fromUnified(
       next: nav(u.next),
     },
     images: u.images ?? [],
+    image_sizes: u.image_sizes ?? null,
     series,
     source: u.source,
     switched_from: u.switched_from ?? null,

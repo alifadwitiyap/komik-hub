@@ -88,20 +88,35 @@ export function encodeHandle(handle: string): string {
 }
 
 /**
- * Query string filter tipe/status (kontrak search-ux.md). Kosong kalau tidak
- * ada filter yang aktif — supaya request tanpa filter tetap bentuk lama yang
- * sudah terbukti, dan `genre` TIDAK PERNAH ikut terkirim (server menolaknya).
+ * Query string filter tipe/status/genre + sumber/urut (kontrak search-ux.md).
+ * Kosong kalau tidak ada filter yang aktif — supaya request tanpa filter tetap
+ * bentuk lama.
  */
 function filterQuery(f?: {
   tipe?: string | null
   status?: string | null
   genre?: string | null
+  source?: string | null
+  sort?: string | null
 }): string {
   let qs = ''
   if (f?.tipe) qs += `&tipe=${encodeURIComponent(f.tipe)}`
   if (f?.status) qs += `&status=${encodeURIComponent(f.status)}`
   if (f?.genre) qs += `&genre=${encodeURIComponent(f.genre)}`
+  if (f?.source) qs += `&source=${encodeURIComponent(f.source)}`
+  if (f?.sort) qs += `&sort=${encodeURIComponent(f.sort)}`
   return qs
+}
+
+/** Filter feed/katalog/pencarian terpadu — dikirim sebagai query string. */
+export interface UnifiedFilter {
+  tipe?: string | null
+  status?: string | null
+  genre?: string | null
+  /** Sumber (komiku/mangaku/shinigami/kiryuu); kosong = semua. */
+  source?: string | null
+  /** Urutan (''=terbaru, rating, trending); kosong = default server. */
+  sort?: string | null
 }
 
 export const unifiedApi = {
@@ -109,7 +124,7 @@ export const unifiedApi = {
     q: string,
     page = 1,
     signal?: AbortSignal,
-    filter?: { tipe?: string | null; status?: string | null; genre?: string | null },
+    filter?: UnifiedFilter,
   ) =>
     get<UnifiedListResult>(
       `/unified/search?q=${encodeURIComponent(q)}&page=${page}${filterQuery(filter)}`,
@@ -123,16 +138,22 @@ export const unifiedApi = {
   catalogue: (
     page = 1,
     signal?: AbortSignal,
-    filter?: { tipe?: string | null; status?: string | null; genre?: string | null },
+    filter?: UnifiedFilter,
   ) =>
     get<UnifiedListResult>(
       `/unified/catalogue?page=${page}${filterQuery(filter)}`,
       signal,
     ),
-  popular: (page = 1, signal?: AbortSignal) =>
-    get<UnifiedListResult>(`/unified/popular?page=${page}`, signal),
-  latest: (page = 1, signal?: AbortSignal) =>
-    get<UnifiedListResult>(`/unified/latest?page=${page}`, signal),
+  popular: (page = 1, signal?: AbortSignal, filter?: UnifiedFilter) =>
+    get<UnifiedListResult>(
+      `/unified/popular?page=${page}${filterQuery(filter)}`,
+      signal,
+    ),
+  latest: (page = 1, signal?: AbortSignal, filter?: UnifiedFilter) =>
+    get<UnifiedListResult>(
+      `/unified/latest?page=${page}${filterQuery(filter)}`,
+      signal,
+    ),
   genres: (signal?: AbortSignal) =>
     get<{ items: UnifiedGenre[] }>('/unified/genres', signal),
   /**

@@ -41,6 +41,8 @@ interface Block {
   /** sumber manga (hanya unified, null untuk komiku lama) */
   source?: string
   images: string[]
+  /** Dimensi asli (width,height) tiap gambar, sejajar dengan `images`. */
+  imageSizes?: [number, number][] | null
   nextId: string | null
   nextName: string | null
   prevId: string | null
@@ -650,6 +652,7 @@ export default function ReaderMarathon() {
       <ReaderFullscreenButton
         active={fsActive}
         visible={chrome.visible}
+        interactive
         onToggle={() => {
           if (fsActive) {
             autoFS.reset()
@@ -664,6 +667,7 @@ export default function ReaderMarathon() {
       <ReaderMarathonToggle
         active={true}
         visible={chrome.visible}
+        interactive
         onToggle={() => {
           const saved = marathon.forChapter(head?.chapterId ?? chapterId)
           // Blok aktif sebenarnya dari sesi tersimpan (saved.activeKey) — bukan
@@ -787,6 +791,12 @@ export default function ReaderMarathon() {
                   // pengukuran posisi baca (sama seperti Reader). Tanpa ini
                   // restore maraton tak bisa menemukan halamannya.
                   pageIndex={i}
+                  // reserve tinggi sebelum decode: dimensi asli dari server
+                  knownRatio={
+                    b.imageSizes?.[i] && b.imageSizes[i][1] > 0
+                      ? b.imageSizes[i][0] / b.imageSizes[i][1]
+                      : undefined
+                  }
                   // hanya halaman pertama blok PERTAMA yang langsung diminta;
                   // sisanya menunggu dekat layar (lihat ComicImage.mountAhead)
                   eager={bi === 0 && i === 0}
@@ -920,6 +930,7 @@ function toBlock(d: ChapterResponse, handleFromRoute?: string): Block {
     seriesTitle: d.series?.title ?? null,
     source: d.source ?? d.series?.source ?? undefined,
     images: d.images ?? [],
+    imageSizes: d.image_sizes ?? null,
     nextId: nextChapterId(d),
     nextName: d.chapter.next?.name ?? null,
     prevId: d.chapter.previous ? String(d.chapter.previous.id) : null,

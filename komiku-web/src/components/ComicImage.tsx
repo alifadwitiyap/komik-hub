@@ -160,6 +160,12 @@ interface ComicImageProps {
    * supaya isi halaman tidak melompat.
    */
   fallbackRatio?: number
+  /**
+   * Rasio w/h yang sudah Diketahui server (dibaca dari header gambar sebelum
+   * decode). Lebih akurat daripada `fallbackRatio`, jadi mengalahkannya saat
+   * rasio asli belum terukur. null/undefined = tidak diketahui.
+   */
+  knownRatio?: number | null
   /** `sizes` untuk srcset; default mengikuti lebar kontainer reader. */
   sizes?: string
   /** index chapter dalam rantai marathon — dipakai hitung progres baca. */
@@ -211,6 +217,7 @@ export default function ComicImage({
   eager,
   mountAhead = 1200,
   fallbackRatio = 0.685,
+  knownRatio,
   sizes = READER_SIZES,
   blockIndex,
   pageIndex,
@@ -245,9 +252,14 @@ export default function ComicImage({
   const settledRef = useRef(onSettled)
   settledRef.current = onSettled
 
-  // rasio w/h: hasil decode terbaru → memori kunjungan lalu → cadangan.
+  // rasio w/h: hasil decode terbaru → memori kunjungan lalu → dimensi yang
+  // dibaca server (header, sebelum decode) → cadangan. Semakin kiri, semakin
+  // akurat; halaman yang sudah pernah dibaca selalu menang.
   const ratio =
-    (measured?.url === url ? measured.ratio : null) ?? aspectOf(url) ?? fallbackRatio
+    (measured?.url === url ? measured.ratio : null) ??
+    aspectOf(url) ??
+    knownRatio ??
+    fallbackRatio
   // Reader ambil gambar lewat proxy `/img` (same-origin). Ini membuat r
   // display = URL cache offline (`downloadChapterImages` juga menyimpan via
   // `imgSrc`), jadi byte yang di-unduh offline benar-benar dipakai saat baca

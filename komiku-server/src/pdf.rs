@@ -13,6 +13,47 @@
 use image::codecs::jpeg::JpegEncoder;
 use image::{ExtendedColorType, ImageReader};
 
+/// Hasil JPEG satu halaman: pinjam byte asli (passthrough) atau milik hasil
+/// re-encode. `Borrow` menghindari salinan untuk halaman JPEG.
+enum Encoded<'a> {
+    Borrow(&'a [u8]),
+    Owned(Vec<u8>),
+}
+
+impl<'a> Encoded<'a> {
+    fn bytes(&self) -> &[u8] {
+        match self {
+            Self::Borrow(b) => b,
+            Self::Owned(v) => v,
+        }
+    }
+}
+
+/// Siapkan byte JPEG satu halaman: JPEG → validasi SOF lalu pinjam; non-JPEG
+/// → re-encode; tidak dikenal → ditolak. Dipakai worker paralel dan jaga
+/// konsistensi pesan galat antar jalur.
+fn encode_page<'a>(p: &'a Page, i: usize) -> anyhow::Result<Encoded<'a>> {
+    match sniff_format(&p.bytes) {
+        Some(ImageFormat::Jpeg) => {
+            if jpeg_info(&p.bytes).is_none() {
+                anyhow::bail!(
+                    "halaman {} ({}): header JPEG tidak terbaca (SOF tidak ditemukan)",
+                    i + 1,
+                    p.url
+                );
+            }
+            Ok(Encoded::Borrow(&p.bytes))
+        }
+        Some(_) => to_jpeg(&p.bytes, i + 1, &p.url).map(Encoded::Owned),
+        None => anyhow::bail!(
+            "halaman {} ({}): {} — ditolak, PDF tidak ditulis",
+            i + 1,
+            p.url,
+            reject_reason(&p.bytes)
+        ),
+    }
+}
+
 /// Format gambar yang didukung (sniff via magic bytes, bukan ekstensi).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ImageFormat {
@@ -80,23 +121,50 @@ pub struct PdfReport {
 /// Encode JPEG dari format lain (PNG/WebP/GIF). Quality 85: cukup untuk
 /// membaca teks manga tanpa blow-up ukuran.
 fn to_jpeg(bytes: &[u8], idx: usize, url: &str) -> anyhow::Result<Vec<u8>> {
-    let cursor = std::io::Cursor::new(bytes);
-    let reader = ImageReader::new(cursor)
-        .with_guessed_format()
-        .map_err(|e| anyhow::anyhow!("halaman {idx} ({url}): format tidak terdeteksi: {e}"))?;
-    let format = reader.format();
-    let img = match format {
-        Some(f) => image::load_from_memory_with_format(bytes, f),
-        None => image::load_from_memory(bytes),
-    }
-    .map_err(|e| anyhow::anyhow!("halaman {idx} ({url}): gagal decode: {e}"))?;
-    let rgb = img.to_rgb8();
+    let rgb = decode_rgb(bytes, idx, url)?;
     let (w, h) = rgb.dimensions();
     let mut out = Vec::new();
     JpegEncoder::new_with_quality(&mut out, 85)
         .encode(rgb.as_raw(), w, h, ExtendedColorType::Rgb8)
         .map_err(|e| anyhow::anyhow!("halaman {idx} ({url}): gagal encode JPEG: {e}"))?;
     Ok(out)
+}
+
+/// Decode ke `RgbImage`. WebP memakai crate `webp` (libwebp C) — decode-nya
+/// ~10x lebih cepat dari decoder Rust `image` di build debug (terukur 122 s vs
+/// 11,7 s untuk 15 banner 800x15000) dan jauh lebih murah memori. PNG/GIF
+/// tetap lewat `image` (tidak ada alternatif C di dep).
+fn decode_rgb(bytes: &[u8], idx: usize, url: &str) -> anyhow::Result<image::RgbImage> {
+    if sniff_format(bytes) == Some(ImageFormat::Webp) {
+        let d = webp::Decoder::new(bytes);
+        let decoded = d
+            .decode()
+            .ok_or_else(|| anyhow::anyhow!("halaman {idx} ({url}): gagal decode WebP"))?;
+        let (w, h) = (decoded.width(), decoded.height());
+        // `WebPImage` Deref ke byte piksel mentah; `layout()` memberi tahu RGB/
+        // RGBA. (libwebp C, jauh lebih cepat dari decoder Rust `image`).
+        let raw: &[u8] = &decoded;
+        let rgb: Vec<u8> = if decoded.is_alpha() {
+            raw.as_chunks::<4>().0.iter().flat_map(|p| [p[0], p[1], p[2]]).collect()
+        } else {
+            raw.to_vec()
+        };
+        image::RgbImage::from_raw(w, h, rgb).ok_or_else(|| {
+            anyhow::anyhow!("halaman {idx} ({url}): dimensi RGB WebP tidak valid")
+        })
+    } else {
+        let cursor = std::io::Cursor::new(bytes);
+        let reader = ImageReader::new(cursor)
+            .with_guessed_format()
+            .map_err(|e| anyhow::anyhow!("halaman {idx} ({url}): format tidak terdeteksi: {e}"))?;
+        let format = reader.format();
+        let img = match format {
+            Some(f) => image::load_from_memory_with_format(bytes, f),
+            None => image::load_from_memory(bytes),
+        }
+        .map_err(|e| anyhow::anyhow!("halaman {idx} ({url}): gagal decode: {e}"))?;
+        Ok(img.to_rgb8())
+    }
 }
 
 /// Bangun byte PDF dari halaman urut, satu halaman pada satu waktu.
@@ -112,8 +180,54 @@ pub fn write_pdf_bytes(pages: &[Page]) -> anyhow::Result<(Vec<u8>, PdfReport)> {
     if pages.is_empty() {
         anyhow::bail!("tidak ada halaman untuk ditulis ke PDF");
     }
-    let mut passthrough = 0usize;
-    let mut reencoded = 0usize;
+    let n = pages.len();
+
+    // Pre-pass paralel: tiap halaman non-JPEG di-decode + re-encode JPEG (CPU
+    // bound) di thread pool `std::thread::scope`; halaman JPEG cukup divalidasi
+    // SOF-nya. Setelah tahap ini `encoded[i]` selalu JPEG valid — loop utama di
+    // bawah hanya menulis, tanpa decode/encode. Fix P1 PDF besar: 15 halaman
+    // WebP 800x15000 (banner panjang) terukur 86 s serial -> ~20 s di 4 core.
+    //
+    // Pool TERBATAS = jumlah core (`available_parallelism`), BUKAN satu thread
+    // per halaman: tiap thread ini memegang buffer RGB satu halaman (800x15000
+    // ≈ 36 MB). 15 thread serentak = puncak RSS >1 GB (melewati gate 500 MB).
+    // Worker mengambil indeks via `AtomicUsize` (work-stealing) sampai habis.
+    let nworkers = std::thread::available_parallelism()
+        .map(|v| v.get())
+        .unwrap_or(2)
+        .clamp(1, 8);
+    // Worker menulis hasil ke `slots`; setelah scope join, baca berurutan.
+    // Work-stealing dinamis: worker mengambil indeks halaman berikutnya via
+    // counter `AtomicUsize` bersama. Blok statis (chunk per worker) tidak
+    // dipakai: halaman raksasa (banner WebP 800x15000 ≈ 36 MB RGB) membuat
+    // worker yang kebagian blok itu jauh lebih lama, worker lain menganggur.
+    // Dengan counter bersama, worker yang selesai cepat langsung melanjutkan
+    // halaman sisa → load balance merata. Hasil tetap ditulis ke slot
+    // per-indeks, jadi urutan (dan byte PDF) identik dengan versi blok statis.
+    let slots: Vec<std::sync::Mutex<Option<anyhow::Result<Encoded>>>> = (0..n)
+        .map(|_| std::sync::Mutex::new(None))
+        .collect();
+    let next = std::sync::atomic::AtomicUsize::new(0);
+    std::thread::scope(|s| {
+        for _ in 0..nworkers {
+            let slots = &slots;
+            let next = &next;
+            s.spawn(move || loop {
+                let i = next.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+                if i >= n {
+                    break;
+                }
+                let p = &pages[i];
+                let r = encode_page(p, i);
+                *slots[i].lock().unwrap() = Some(r);
+            });
+        }
+    });
+
+    let mut encoded: Vec<Encoded> = Vec::with_capacity(n);
+    for mut slot in slots {
+        encoded.push(slot.get_mut().unwrap().take().unwrap()?);
+    }
 
     let mut b = PdfBuilder::new();
     // 1 = catalog, 2 = pages.
@@ -124,51 +238,31 @@ pub fn write_pdf_bytes(pages: &[Page]) -> anyhow::Result<(Vec<u8>, PdfReport)> {
     // Tiap halaman selalu 3 objek (page, image, content), jadi nomor objek dan
     // /Kids bisa dihitung tanpa menunggu byte gambar apa pun — inilah yang
     // memungkinkan penulisan satu-pass tanpa menampung semua halaman dulu.
-    let kids: Vec<String> = (0..pages.len())
+    let kids: Vec<String> = (0..n)
         .map(|i| format!("{} 0 R", 3 + i * 3))
         .collect();
     b.begin(2);
     b.raw(&format!(
         "<< /Type /Pages /Count {} /Kids [{}] >>\n",
-        pages.len(),
+        n,
         kids.join(" ")
     ));
     b.end();
 
-    for (i, p) in pages.iter().enumerate() {
+    let mut passthrough = 0usize;
+    let mut reencoded = 0usize;
+
+    for (i, _p) in pages.iter().enumerate() {
         let page_obj = 3 + i * 3;
         let img_obj = page_obj + 1;
         let content_obj = page_obj + 2;
 
-        // Resolusi byte JPEG halaman ini. JPEG: pinjam `p.bytes` (nol salinan).
-        // Format lain: re-encode ke `owned`, yang hidup hanya sampai akhir
-        // iterasi ini sehingga puncaknya tetap satu halaman.
-        let owned: Vec<u8>;
-        let jpeg: &[u8] = match sniff_format(&p.bytes) {
-            Some(ImageFormat::Jpeg) => {
-                // Pastikan header-nya bisa dibaca PDF (butuh W/H + komponen).
-                if jpeg_info(&p.bytes).is_none() {
-                    anyhow::bail!(
-                        "halaman {} ({}): header JPEG tidak terbaca (SOF tidak ditemukan)",
-                        i + 1,
-                        p.url
-                    );
-                }
-                passthrough += 1;
-                &p.bytes
-            }
-            Some(_) => {
-                owned = to_jpeg(&p.bytes, i + 1, &p.url)?;
-                reencoded += 1;
-                &owned
-            }
-            None => anyhow::bail!(
-                "halaman {} ({}): {} — ditolak, PDF tidak ditulis",
-                i + 1,
-                p.url,
-                reject_reason(&p.bytes)
-            ),
-        };
+        let jpeg = encoded[i].bytes();
+        if matches!(encoded[i], Encoded::Borrow(_)) {
+            passthrough += 1;
+        } else {
+            reencoded += 1;
+        }
         // JPEG passthrough sudah divalidasi; hasil re-encode selalu JPEG valid.
         let (w, h, comps) = jpeg_info(jpeg).expect("JPEG valid sebelum ditulis ke PDF");
 

@@ -1,0 +1,1039 @@
+{
+ "base_url": "http://127.0.0.1:8788",
+ "mode": "bug",
+ "started": "2026-11-03T00:47:16",
+ "viewports": {
+  "390x844": {
+   "viewport": "390x844",
+   "driver": "touch",
+   "marathon_fresh": {
+    "rect": {
+     "x": 12,
+     "y": 56,
+     "w": 130,
+     "h": 44,
+     "right": 142,
+     "bottom": 100
+    },
+    "label": "Keluar maraton",
+    "opacity": 1
+   },
+   "b02_pre": {
+    "opacity": 0,
+    "pointerEvents": "none",
+    "inert": true,
+    "hitsButton": false,
+    "topEl": "DIV[marathon-tap-layer]",
+    "scrollY": 382
+   },
+   "exit": {
+    "taps": 2,
+    "log": [
+     {
+      "tap": 1,
+      "before": {
+       "opacity": 0,
+       "pointerEvents": "none",
+       "inert": true,
+       "hitsButton": false,
+       "topEl": "DIV[marathon-tap-layer]"
+      },
+      "click_targets": [
+       "DIV[marathon-tap-layer]"
+      ],
+      "click_on_button": false,
+      "click_on_tap_layer": true,
+      "after_path": "/maraton/komiku:1284/157",
+      "after_opacity": 1
+     },
+     {
+      "tap": 2,
+      "before": {
+       "opacity": 1,
+       "pointerEvents": "auto",
+       "inert": false,
+       "hitsButton": true,
+       "topEl": "SPAN"
+      },
+      "click_targets": [
+       "SPAN"
+      ],
+      "click_on_button": true,
+      "click_on_tap_layer": false,
+      "after_path": "/baca/komiku:1284/157",
+      "after_opacity": 1
+     }
+    ]
+   },
+   "build": {
+    "scripts": [
+     "/assets/index-DyaZ7eFF.js"
+    ]
+   },
+   "fresh": {
+    "rect": {
+     "x": 12,
+     "y": 56,
+     "w": 44,
+     "h": 44,
+     "right": 56,
+     "bottom": 100
+    },
+    "opacity": 1,
+    "pointerEvents": "auto",
+    "inert": false,
+    "label": "Masuk maraton",
+    "hitsButton": true,
+    "fs": {
+     "x": 334,
+     "y": 56,
+     "w": 44,
+     "h": 44,
+     "right": 378,
+     "bottom": 100
+    },
+    "overflowX": 0,
+    "scrollH": 53753
+   },
+   "tap_visible": {
+    "navigated": true,
+    "click_targets": [
+     "path"
+    ]
+   },
+   "tap_area": {
+    "hide": {
+     "point": [
+      195,
+      379
+     ],
+     "hit": "DIV[reader-tap-layer]",
+     "click_targets": [
+      "DIV[reader-tap-layer]"
+     ],
+     "on_layer": true,
+     "opacity": 0
+    },
+    "reveal": {
+     "point": [
+      195,
+      379
+     ],
+     "hit": "DIV[reader-tap-layer]",
+     "click_targets": [
+      "DIV[reader-tap-layer]"
+     ],
+     "on_layer": true,
+     "opacity": 1
+    }
+   },
+   "scroll_visible": {
+    "start": [
+     34,
+     78
+    ],
+    "dy": 120,
+    "scroll_before": 0,
+    "scroll_after": 105,
+    "delta": 105,
+    "clicks": 0,
+    "click_targets": [],
+    "click_on_button": false,
+    "path": "/baca/komiku:1284/157"
+   },
+   "hidden_state": {
+    "opacity": 0,
+    "pointerEvents": "none",
+    "inert": true,
+    "hitsButton": false,
+    "topEl": "DIV[reader-tap-layer]",
+    "scrollY": 382
+   },
+   "scroll_hidden": {
+    "start": [
+     34,
+     78
+    ],
+    "dy": 140,
+    "scroll_before": 382,
+    "scroll_after": 507,
+    "delta": 125,
+    "clicks": 0,
+    "click_targets": [],
+    "click_on_button": false,
+    "path": "/baca/komiku:1284/157"
+   },
+   "b01_pre": {
+    "opacity": 0,
+    "pointerEvents": "none",
+    "inert": true,
+    "hitsButton": false,
+    "topEl": "DIV[reader-tap-layer]",
+    "scrollY": 507
+   },
+   "enter": {
+    "taps": 2,
+    "log": [
+     {
+      "tap": 1,
+      "before": {
+       "opacity": 0,
+       "pointerEvents": "none",
+       "inert": true,
+       "hitsButton": false,
+       "topEl": "DIV[reader-tap-layer]"
+      },
+      "click_targets": [
+       "DIV[reader-tap-layer]"
+      ],
+      "click_on_button": false,
+      "click_on_tap_layer": true,
+      "after_path": "/baca/komiku:1284/157",
+      "after_opacity": 1
+     },
+     {
+      "tap": 2,
+      "before": {
+       "opacity": 1,
+       "pointerEvents": "auto",
+       "inert": false,
+       "hitsButton": true,
+       "topEl": "path"
+      },
+      "click_targets": [
+       "path"
+      ],
+      "click_on_button": true,
+      "click_on_tap_layer": false,
+      "after_path": "/maraton/komiku:1284/157",
+      "after_opacity": 1
+     }
+    ]
+   }
+  },
+  "360x640": {
+   "viewport": "360x640",
+   "driver": "touch",
+   "marathon_fresh": {
+    "rect": {
+     "x": 12,
+     "y": 56,
+     "w": 130,
+     "h": 44,
+     "right": 142,
+     "bottom": 100
+    },
+    "label": "Keluar maraton",
+    "opacity": 1
+   },
+   "b02_pre": {
+    "opacity": 0,
+    "pointerEvents": "none",
+    "inert": true,
+    "hitsButton": false,
+    "topEl": "DIV[marathon-tap-layer]",
+    "scrollY": 286
+   },
+   "exit": {
+    "taps": 2,
+    "log": [
+     {
+      "tap": 1,
+      "before": {
+       "opacity": 0,
+       "pointerEvents": "none",
+       "inert": true,
+       "hitsButton": false,
+       "topEl": "DIV[marathon-tap-layer]"
+      },
+      "click_targets": [
+       "DIV[marathon-tap-layer]"
+      ],
+      "click_on_button": false,
+      "click_on_tap_layer": true,
+      "after_path": "/maraton/komiku:1284/157",
+      "after_opacity": 1
+     },
+     {
+      "tap": 2,
+      "before": {
+       "opacity": 1,
+       "pointerEvents": "auto",
+       "inert": false,
+       "hitsButton": true,
+       "topEl": "SPAN"
+      },
+      "click_targets": [
+       "SPAN"
+      ],
+      "click_on_button": true,
+      "click_on_tap_layer": false,
+      "after_path": "/baca/komiku:1284/157",
+      "after_opacity": 1
+     }
+    ]
+   },
+   "build": {
+    "scripts": [
+     "/assets/index-DyaZ7eFF.js"
+    ]
+   },
+   "fresh": {
+    "rect": {
+     "x": 12,
+     "y": 56,
+     "w": 44,
+     "h": 44,
+     "right": 56,
+     "bottom": 100
+    },
+    "opacity": 1,
+    "pointerEvents": "auto",
+    "inert": false,
+    "label": "Masuk maraton",
+    "hitsButton": true,
+    "fs": {
+     "x": 304,
+     "y": 56,
+     "w": 44,
+     "h": 44,
+     "right": 348,
+     "bottom": 100
+    },
+    "overflowX": 0,
+    "scrollH": 50120
+   },
+   "tap_visible": {
+    "navigated": true,
+    "click_targets": [
+     "path"
+    ]
+   },
+   "tap_area": {
+    "hide": {
+     "point": [
+      180,
+      288
+     ],
+     "hit": "DIV[reader-tap-layer]",
+     "click_targets": [
+      "DIV[reader-tap-layer]"
+     ],
+     "on_layer": true,
+     "opacity": 0
+    },
+    "reveal": {
+     "point": [
+      180,
+      288
+     ],
+     "hit": "DIV[reader-tap-layer]",
+     "click_targets": [
+      "DIV[reader-tap-layer]"
+     ],
+     "on_layer": true,
+     "opacity": 1
+    }
+   },
+   "scroll_visible": {
+    "start": [
+     34,
+     78
+    ],
+    "dy": 120,
+    "scroll_before": 0,
+    "scroll_after": 105,
+    "delta": 105,
+    "clicks": 0,
+    "click_targets": [],
+    "click_on_button": false,
+    "path": "/baca/komiku:1284/157"
+   },
+   "hidden_state": {
+    "opacity": 0,
+    "pointerEvents": "none",
+    "inert": true,
+    "hitsButton": false,
+    "topEl": "DIV[reader-tap-layer]",
+    "scrollY": 286
+   },
+   "scroll_hidden": {
+    "start": [
+     34,
+     78
+    ],
+    "dy": 140,
+    "scroll_before": 286,
+    "scroll_after": 411,
+    "delta": 125,
+    "clicks": 0,
+    "click_targets": [],
+    "click_on_button": false,
+    "path": "/baca/komiku:1284/157"
+   },
+   "b01_pre": {
+    "opacity": 0,
+    "pointerEvents": "none",
+    "inert": true,
+    "hitsButton": false,
+    "topEl": "DIV[reader-tap-layer]",
+    "scrollY": 411
+   },
+   "enter": {
+    "taps": 2,
+    "log": [
+     {
+      "tap": 1,
+      "before": {
+       "opacity": 0,
+       "pointerEvents": "none",
+       "inert": true,
+       "hitsButton": false,
+       "topEl": "DIV[reader-tap-layer]"
+      },
+      "click_targets": [
+       "DIV[reader-tap-layer]"
+      ],
+      "click_on_button": false,
+      "click_on_tap_layer": true,
+      "after_path": "/baca/komiku:1284/157",
+      "after_opacity": 1
+     },
+     {
+      "tap": 2,
+      "before": {
+       "opacity": 1,
+       "pointerEvents": "auto",
+       "inert": false,
+       "hitsButton": true,
+       "topEl": "path"
+      },
+      "click_targets": [
+       "path"
+      ],
+      "click_on_button": true,
+      "click_on_tap_layer": false,
+      "after_path": "/maraton/komiku:1284/157",
+      "after_opacity": 1
+     }
+    ]
+   }
+  }
+ },
+ "exit_code": 0,
+ "verdict": "BASELINE TERBUKTI: bug 1-tap tereproduksi di SEMUA viewport (B02@390x844, B01@390x844, B02@360x640, B01@360x640), dan seluruh 24 guard tetap lulus.",
+ "checks": [
+  {
+   "id": "G02",
+   "viewport": "390x844",
+   "kind": "GUARD",
+   "name": "geometri tombol aktif ('Keluar') >= 44x44 px",
+   "ok": true,
+   "detail": "rect={'x': 12, 'y': 56, 'w': 130, 'h': 44, 'right': 142, 'bottom': 100} label=Keluar maraton (butuh w>=44 & h>=44)",
+   "evidence": {
+    "rect": {
+     "x": 12,
+     "y": 56,
+     "w": 130,
+     "h": 44,
+     "right": 142,
+     "bottom": 100
+    },
+    "label": "Keluar maraton",
+    "min": 44
+   }
+  },
+  {
+   "id": "B02",
+   "viewport": "390x844",
+   "kind": "BUG",
+   "name": "SATU tap 'Keluar maraton' (chrome tersembunyi) -> /baca/",
+   "ok": false,
+   "detail": "butuh 2 tap (bukan 1); tap#1 mendarat di ['DIV[marathon-tap-layer]'] (opacity=0, pointer-events=none, inert=True) — keluar maraton",
+   "evidence": {
+    "taps_to_exit": 2,
+    "log": [
+     {
+      "tap": 1,
+      "before": {
+       "opacity": 0,
+       "pointerEvents": "none",
+       "inert": true,
+       "hitsButton": false,
+       "topEl": "DIV[marathon-tap-layer]"
+      },
+      "click_targets": [
+       "DIV[marathon-tap-layer]"
+      ],
+      "click_on_button": false,
+      "click_on_tap_layer": true,
+      "after_path": "/maraton/komiku:1284/157",
+      "after_opacity": 1
+     },
+     {
+      "tap": 2,
+      "before": {
+       "opacity": 1,
+       "pointerEvents": "auto",
+       "inert": false,
+       "hitsButton": true,
+       "topEl": "SPAN"
+      },
+      "click_targets": [
+       "SPAN"
+      ],
+      "click_on_button": true,
+      "click_on_tap_layer": false,
+      "after_path": "/baca/komiku:1284/157",
+      "after_opacity": 1
+     }
+    ]
+   }
+  },
+  {
+   "id": "G11",
+   "viewport": "390x844",
+   "kind": "GUARD",
+   "name": "pemulihan: tap berikutnya tetap bisa keluar maraton",
+   "ok": true,
+   "detail": "butuh 2 tap (user tidak terjebak)",
+   "evidence": {
+    "taps_to_exit": 2
+   }
+  },
+  {
+   "id": "G01",
+   "viewport": "390x844",
+   "kind": "GUARD",
+   "name": "geometri tombol idle >= 44x44 CSS px",
+   "ok": true,
+   "detail": "rect={'x': 12, 'y': 56, 'w': 44, 'h': 44, 'right': 56, 'bottom': 100} (butuh w>=44 & h>=44)",
+   "evidence": {
+    "rect": {
+     "x": 12,
+     "y": 56,
+     "w": 44,
+     "h": 44,
+     "right": 56,
+     "bottom": 100
+    },
+    "min": 44
+   }
+  },
+  {
+   "id": "G03",
+   "viewport": "390x844",
+   "kind": "GUARD",
+   "name": "tombol maraton & layar penuh tidak bertumpuk",
+   "ok": true,
+   "detail": "maraton={'x': 12, 'y': 56, 'w': 44, 'h': 44, 'right': 56, 'bottom': 100} layarPenuh={'x': 334, 'y': 56, 'w': 44, 'h': 44, 'right': 378, 'bottom': 100} luasIrisan=0px2",
+   "evidence": {
+    "maraton": {
+     "x": 12,
+     "y": 56,
+     "w": 44,
+     "h": 44,
+     "right": 56,
+     "bottom": 100
+    },
+    "fullscreen": {
+     "x": 334,
+     "y": 56,
+     "w": 44,
+     "h": 44,
+     "right": 378,
+     "bottom": 100
+    },
+    "overlap_px2": 0
+   }
+  },
+  {
+   "id": "G12",
+   "viewport": "390x844",
+   "kind": "GUARD",
+   "name": "tap tombol saat chrome TAMPIL -> 1 tap masuk maraton",
+   "ok": true,
+   "detail": "navigasi=True clickTargets=['path']",
+   "evidence": {
+    "navigated": true,
+    "click_targets": [
+     "path"
+    ]
+   }
+  },
+  {
+   "id": "G04",
+   "viewport": "390x844",
+   "kind": "GUARD",
+   "name": "tap area baca: tap tengah -> chrome tersembunyi",
+   "ok": true,
+   "detail": "hasil={'point': [195, 379], 'hit': 'DIV[reader-tap-layer]', 'click_targets': ['DIV[reader-tap-layer]'], 'on_layer': True, 'opacity': 0}",
+   "evidence": {
+    "point": [
+     195,
+     379
+    ],
+    "hit": "DIV[reader-tap-layer]",
+    "click_targets": [
+     "DIV[reader-tap-layer]"
+    ],
+    "on_layer": true,
+    "opacity": 0
+   }
+  },
+  {
+   "id": "G05",
+   "viewport": "390x844",
+   "kind": "GUARD",
+   "name": "tap area baca: tap tengah -> chrome muncul kembali",
+   "ok": true,
+   "detail": "hasil={'point': [195, 379], 'hit': 'DIV[reader-tap-layer]', 'click_targets': ['DIV[reader-tap-layer]'], 'on_layer': True, 'opacity': 1}",
+   "evidence": {
+    "point": [
+     195,
+     379
+    ],
+    "hit": "DIV[reader-tap-layer]",
+    "click_targets": [
+     "DIV[reader-tap-layer]"
+    ],
+    "on_layer": true,
+    "opacity": 1
+   }
+  },
+  {
+   "id": "G06",
+   "viewport": "390x844",
+   "kind": "GUARD",
+   "name": "gulir mulai DI ATAS TOMBOL (chrome tampil) -> menggulir",
+   "ok": true,
+   "detail": "delta=105px clicks=0 path=/baca/komiku:1284/157 targets=[]",
+   "evidence": {
+    "start": [
+     34,
+     78
+    ],
+    "dy": 120,
+    "scroll_before": 0,
+    "scroll_after": 105,
+    "delta": 105,
+    "clicks": 0,
+    "click_targets": [],
+    "click_on_button": false,
+    "path": "/baca/komiku:1284/157"
+   }
+  },
+  {
+   "id": "G08",
+   "viewport": "390x844",
+   "kind": "GUARD",
+   "name": "chrome menyembunyikan diri saat scroll turun (opacity)",
+   "ok": true,
+   "detail": "opacity=0 pe=none inert=True (hanya opacity yang dikunci)",
+   "evidence": {
+    "opacity": 0,
+    "pointerEvents": "none",
+    "inert": true,
+    "scrollY": 105
+   }
+  },
+  {
+   "id": "G09",
+   "viewport": "390x844",
+   "kind": "GUARD",
+   "name": "chrome muncul lagi saat scroll naik",
+   "ok": true,
+   "detail": "opacity=1 scrollY=0",
+   "evidence": {
+    "opacity": 1,
+    "scrollY": 0
+   }
+  },
+  {
+   "id": "G07",
+   "viewport": "390x844",
+   "kind": "GUARD",
+   "name": "gulir mulai DI ATAS TOMBOL (chrome sembunyi) -> menggulir",
+   "ok": true,
+   "detail": "delta=125px clicks=0 path=/baca/komiku:1284/157 targets=[]",
+   "evidence": {
+    "start": [
+     34,
+     78
+    ],
+    "dy": 140,
+    "scroll_before": 382,
+    "scroll_after": 507,
+    "delta": 125,
+    "clicks": 0,
+    "click_targets": [],
+    "click_on_button": false,
+    "path": "/baca/komiku:1284/157"
+   }
+  },
+  {
+   "id": "B01",
+   "viewport": "390x844",
+   "kind": "BUG",
+   "name": "SATU tap tombol maraton (chrome tersembunyi) -> /maraton/",
+   "ok": false,
+   "detail": "butuh 2 tap (bukan 1); tap#1 mendarat di ['DIV[reader-tap-layer]'] (opacity=0, pointer-events=none, inert=True) — masuk maraton",
+   "evidence": {
+    "taps_to_enter": 2,
+    "log": [
+     {
+      "tap": 1,
+      "before": {
+       "opacity": 0,
+       "pointerEvents": "none",
+       "inert": true,
+       "hitsButton": false,
+       "topEl": "DIV[reader-tap-layer]"
+      },
+      "click_targets": [
+       "DIV[reader-tap-layer]"
+      ],
+      "click_on_button": false,
+      "click_on_tap_layer": true,
+      "after_path": "/baca/komiku:1284/157",
+      "after_opacity": 1
+     },
+     {
+      "tap": 2,
+      "before": {
+       "opacity": 1,
+       "pointerEvents": "auto",
+       "inert": false,
+       "hitsButton": true,
+       "topEl": "path"
+      },
+      "click_targets": [
+       "path"
+      ],
+      "click_on_button": true,
+      "click_on_tap_layer": false,
+      "after_path": "/maraton/komiku:1284/157",
+      "after_opacity": 1
+     }
+    ]
+   }
+  },
+  {
+   "id": "G10",
+   "viewport": "390x844",
+   "kind": "GUARD",
+   "name": "pemulihan: tap berikutnya tetap bisa masuk maraton",
+   "ok": true,
+   "detail": "butuh 2 tap (user tidak terjebak)",
+   "evidence": {
+    "taps_to_enter": 2
+   }
+  },
+  {
+   "id": "G02",
+   "viewport": "360x640",
+   "kind": "GUARD",
+   "name": "geometri tombol aktif ('Keluar') >= 44x44 px",
+   "ok": true,
+   "detail": "rect={'x': 12, 'y': 56, 'w': 130, 'h': 44, 'right': 142, 'bottom': 100} label=Keluar maraton (butuh w>=44 & h>=44)",
+   "evidence": {
+    "rect": {
+     "x": 12,
+     "y": 56,
+     "w": 130,
+     "h": 44,
+     "right": 142,
+     "bottom": 100
+    },
+    "label": "Keluar maraton",
+    "min": 44
+   }
+  },
+  {
+   "id": "B02",
+   "viewport": "360x640",
+   "kind": "BUG",
+   "name": "SATU tap 'Keluar maraton' (chrome tersembunyi) -> /baca/",
+   "ok": false,
+   "detail": "butuh 2 tap (bukan 1); tap#1 mendarat di ['DIV[marathon-tap-layer]'] (opacity=0, pointer-events=none, inert=True) — keluar maraton",
+   "evidence": {
+    "taps_to_exit": 2,
+    "log": [
+     {
+      "tap": 1,
+      "before": {
+       "opacity": 0,
+       "pointerEvents": "none",
+       "inert": true,
+       "hitsButton": false,
+       "topEl": "DIV[marathon-tap-layer]"
+      },
+      "click_targets": [
+       "DIV[marathon-tap-layer]"
+      ],
+      "click_on_button": false,
+      "click_on_tap_layer": true,
+      "after_path": "/maraton/komiku:1284/157",
+      "after_opacity": 1
+     },
+     {
+      "tap": 2,
+      "before": {
+       "opacity": 1,
+       "pointerEvents": "auto",
+       "inert": false,
+       "hitsButton": true,
+       "topEl": "SPAN"
+      },
+      "click_targets": [
+       "SPAN"
+      ],
+      "click_on_button": true,
+      "click_on_tap_layer": false,
+      "after_path": "/baca/komiku:1284/157",
+      "after_opacity": 1
+     }
+    ]
+   }
+  },
+  {
+   "id": "G11",
+   "viewport": "360x640",
+   "kind": "GUARD",
+   "name": "pemulihan: tap berikutnya tetap bisa keluar maraton",
+   "ok": true,
+   "detail": "butuh 2 tap (user tidak terjebak)",
+   "evidence": {
+    "taps_to_exit": 2
+   }
+  },
+  {
+   "id": "G01",
+   "viewport": "360x640",
+   "kind": "GUARD",
+   "name": "geometri tombol idle >= 44x44 CSS px",
+   "ok": true,
+   "detail": "rect={'x': 12, 'y': 56, 'w': 44, 'h': 44, 'right': 56, 'bottom': 100} (butuh w>=44 & h>=44)",
+   "evidence": {
+    "rect": {
+     "x": 12,
+     "y": 56,
+     "w": 44,
+     "h": 44,
+     "right": 56,
+     "bottom": 100
+    },
+    "min": 44
+   }
+  },
+  {
+   "id": "G03",
+   "viewport": "360x640",
+   "kind": "GUARD",
+   "name": "tombol maraton & layar penuh tidak bertumpuk",
+   "ok": true,
+   "detail": "maraton={'x': 12, 'y': 56, 'w': 44, 'h': 44, 'right': 56, 'bottom': 100} layarPenuh={'x': 304, 'y': 56, 'w': 44, 'h': 44, 'right': 348, 'bottom': 100} luasIrisan=0px2",
+   "evidence": {
+    "maraton": {
+     "x": 12,
+     "y": 56,
+     "w": 44,
+     "h": 44,
+     "right": 56,
+     "bottom": 100
+    },
+    "fullscreen": {
+     "x": 304,
+     "y": 56,
+     "w": 44,
+     "h": 44,
+     "right": 348,
+     "bottom": 100
+    },
+    "overlap_px2": 0
+   }
+  },
+  {
+   "id": "G12",
+   "viewport": "360x640",
+   "kind": "GUARD",
+   "name": "tap tombol saat chrome TAMPIL -> 1 tap masuk maraton",
+   "ok": true,
+   "detail": "navigasi=True clickTargets=['path']",
+   "evidence": {
+    "navigated": true,
+    "click_targets": [
+     "path"
+    ]
+   }
+  },
+  {
+   "id": "G04",
+   "viewport": "360x640",
+   "kind": "GUARD",
+   "name": "tap area baca: tap tengah -> chrome tersembunyi",
+   "ok": true,
+   "detail": "hasil={'point': [180, 288], 'hit': 'DIV[reader-tap-layer]', 'click_targets': ['DIV[reader-tap-layer]'], 'on_layer': True, 'opacity': 0}",
+   "evidence": {
+    "point": [
+     180,
+     288
+    ],
+    "hit": "DIV[reader-tap-layer]",
+    "click_targets": [
+     "DIV[reader-tap-layer]"
+    ],
+    "on_layer": true,
+    "opacity": 0
+   }
+  },
+  {
+   "id": "G05",
+   "viewport": "360x640",
+   "kind": "GUARD",
+   "name": "tap area baca: tap tengah -> chrome muncul kembali",
+   "ok": true,
+   "detail": "hasil={'point': [180, 288], 'hit': 'DIV[reader-tap-layer]', 'click_targets': ['DIV[reader-tap-layer]'], 'on_layer': True, 'opacity': 1}",
+   "evidence": {
+    "point": [
+     180,
+     288
+    ],
+    "hit": "DIV[reader-tap-layer]",
+    "click_targets": [
+     "DIV[reader-tap-layer]"
+    ],
+    "on_layer": true,
+    "opacity": 1
+   }
+  },
+  {
+   "id": "G06",
+   "viewport": "360x640",
+   "kind": "GUARD",
+   "name": "gulir mulai DI ATAS TOMBOL (chrome tampil) -> menggulir",
+   "ok": true,
+   "detail": "delta=105px clicks=0 path=/baca/komiku:1284/157 targets=[]",
+   "evidence": {
+    "start": [
+     34,
+     78
+    ],
+    "dy": 120,
+    "scroll_before": 0,
+    "scroll_after": 105,
+    "delta": 105,
+    "clicks": 0,
+    "click_targets": [],
+    "click_on_button": false,
+    "path": "/baca/komiku:1284/157"
+   }
+  },
+  {
+   "id": "G08",
+   "viewport": "360x640",
+   "kind": "GUARD",
+   "name": "chrome menyembunyikan diri saat scroll turun (opacity)",
+   "ok": true,
+   "detail": "opacity=0 pe=none inert=True (hanya opacity yang dikunci)",
+   "evidence": {
+    "opacity": 0,
+    "pointerEvents": "none",
+    "inert": true,
+    "scrollY": 105
+   }
+  },
+  {
+   "id": "G09",
+   "viewport": "360x640",
+   "kind": "GUARD",
+   "name": "chrome muncul lagi saat scroll naik",
+   "ok": true,
+   "detail": "opacity=1 scrollY=0",
+   "evidence": {
+    "opacity": 1,
+    "scrollY": 0
+   }
+  },
+  {
+   "id": "G07",
+   "viewport": "360x640",
+   "kind": "GUARD",
+   "name": "gulir mulai DI ATAS TOMBOL (chrome sembunyi) -> menggulir",
+   "ok": true,
+   "detail": "delta=125px clicks=0 path=/baca/komiku:1284/157 targets=[]",
+   "evidence": {
+    "start": [
+     34,
+     78
+    ],
+    "dy": 140,
+    "scroll_before": 286,
+    "scroll_after": 411,
+    "delta": 125,
+    "clicks": 0,
+    "click_targets": [],
+    "click_on_button": false,
+    "path": "/baca/komiku:1284/157"
+   }
+  },
+  {
+   "id": "B01",
+   "viewport": "360x640",
+   "kind": "BUG",
+   "name": "SATU tap tombol maraton (chrome tersembunyi) -> /maraton/",
+   "ok": false,
+   "detail": "butuh 2 tap (bukan 1); tap#1 mendarat di ['DIV[reader-tap-layer]'] (opacity=0, pointer-events=none, inert=True) — masuk maraton",
+   "evidence": {
+    "taps_to_enter": 2,
+    "log": [
+     {
+      "tap": 1,
+      "before": {
+       "opacity": 0,
+       "pointerEvents": "none",
+       "inert": true,
+       "hitsButton": false,
+       "topEl": "DIV[reader-tap-layer]"
+      },
+      "click_targets": [
+       "DIV[reader-tap-layer]"
+      ],
+      "click_on_button": false,
+      "click_on_tap_layer": true,
+      "after_path": "/baca/komiku:1284/157",
+      "after_opacity": 1
+     },
+     {
+      "tap": 2,
+      "before": {
+       "opacity": 1,
+       "pointerEvents": "auto",
+       "inert": false,
+       "hitsButton": true,
+       "topEl": "path"
+      },
+      "click_targets": [
+       "path"
+      ],
+      "click_on_button": true,
+      "click_on_tap_layer": false,
+      "after_path": "/maraton/komiku:1284/157",
+      "after_opacity": 1
+     }
+    ]
+   }
+  },
+  {
+   "id": "G10",
+   "viewport": "360x640",
+   "kind": "GUARD",
+   "name": "pemulihan: tap berikutnya tetap bisa masuk maraton",
+   "ok": true,
+   "detail": "butuh 2 tap (user tidak terjebak)",
+   "evidence": {
+    "taps_to_enter": 2
+   }
+  }
+ ]
+}

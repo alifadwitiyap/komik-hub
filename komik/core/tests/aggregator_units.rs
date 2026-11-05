@@ -257,7 +257,7 @@ async fn dedup_exact_title_keeps_most_recent_update() {
         Arc::new(Mock::new("mangaku").with_popular(vec![manga("mangaku", "m1", "naruto", Some(3000))])),
         Arc::new(Mock::new("kiryuu").with_popular(vec![manga("kiryuu", "k1", "NARUTO!", Some(500))])),
     ]);
-    let merged = agg.popular(1, 50, None).await;
+    let merged = agg.popular(1, 50, None, SortMode::Latest).await;
 
     let titles: Vec<&str> = merged.items.iter().map(|m| m.title.as_str()).collect();
     // Perwakilan grup naruto = judul milik entry terbaru (mangaku "naruto"),
@@ -282,7 +282,7 @@ async fn merge_from_fills_missing_fields_from_duplicates() {
         Arc::new(Mock::new("komiku").with_search(vec![covered])),
         Arc::new(Mock::new("kiryuu").with_search(vec![bare])),
     ]);
-    let merged = agg.search("solo leveling", 1, 10, None).await;
+    let merged = agg.search("solo leveling", 1, 10, None, SortMode::Latest).await;
     assert_eq!(merged.items.len(), 1);
     let m = &merged.items[0];
     // kiryuu menang recency, tapi metadata dari komiku ikut melengkapi.
@@ -300,9 +300,68 @@ async fn rank_recency_desc_with_none_last() {
         manga("komiku", "c", "Gamma", Some(300)),
         manga("komiku", "d", "Delta", Some(200)),
     ]))]);
-    let merged = agg.popular(1, 50, None).await;
+    let merged = agg.popular(1, 50, None, SortMode::Latest).await;
     let order: Vec<&str> = merged.items.iter().map(|m| m.title.as_str()).collect();
     assert_eq!(order, vec!["Gamma", "Delta", "Alpha", "Beta"], "None paling bawah");
+}
+
+/// Manga dengan rating (field `rating` bebas diisi di fixture).
+fn rated(src: &str, id: &str, title: &str, rating: &str, updated: i64) -> Manga {
+    let mut m = manga(src, id, title, Some(updated));
+    m.rating = Some(rating.to_string());
+    m
+}
+
+#[tokio::test]
+async fn sort_rating_desc_tiebreak_recency_fallback() {
+    let agg = Aggregator::new(vec![Arc::new(Mock::new("komiku").with_popular(vec![
+        rated("komiku", "a", "Alpha", "8.5", 100),
+        rated("komiku", "b", "Beta", "9", 50),
+        rated("komiku", "c", "Gamma", "8.5", 300),
+        rated("komiku", "d", "Delta", "7", 900),
+        rated("komiku", "e", "Epsilon", "", 700), // kosong => tanpa rating
+    ]))]);
+    let merged = agg.popular(1, 50, None, SortMode::Rating).await;
+    let order: Vec<&str> = merged.items.iter().map(|m| m.title.as_str()).collect();
+    assert_eq!(
+        order,
+        vec!["Beta", "Gamma", "Alpha", "Delta", "Epsilon"],
+        "rating desc; tie 8.5 -> recency (Gamma>Alpha); tanpa-rating di bawah"
+    );
+    assert!(merged.failures.is_empty());
+}
+
+#[tokio::test]
+async fn sort_trending_matches_rating_order() {
+    let agg = Aggregator::new(vec![Arc::new(Mock::new("komiku").with_popular(vec![
+        rated("komiku", "a", "Alpha", "8", 100),
+        rated("komiku", "b", "Beta", "10", 600),
+        rated("komiku", "c", "Gamma", "", 900),
+    ]))]);
+    let merged = agg.popular(1, 50, None, SortMode::Trending).await;
+    let order: Vec<&str> = merged.items.iter().map(|m| m.title.as_str()).collect();
+    assert_eq!(order, vec!["Beta", "Alpha", "Gamma"], "trending = rating di atas feed latest");
+}
+
+#[tokio::test]
+async fn filter_source_combo_and_cache_key_separate_per_sort() {
+    let agg = Aggregator::new(vec![
+        Arc::new(Mock::new("komiku").with_popular(vec![manga("komiku", "c1", "A", Some(1))])),
+        Arc::new(Mock::new("kiryuu").with_popular(vec![manga("kiryuu", "k1", "B", Some(2))])),
+    ]);
+    // Filter sumber: hanya kiryuu yang ikut fan-out.
+    let merged = agg.popular(1, 50, Some("kiryuu"), SortMode::Latest).await;
+    assert_eq!(merged.items.len(), 1);
+    assert_eq!(merged.items[0].source.as_str(), "kiryuu");
+    assert_eq!(merged.sources_total, 1);
+
+    // Cache terpisah per mode: latest vs rating tak berbagi kunci.
+    let agg2 = Aggregator::new(vec![Arc::new(
+        Mock::new("komiku").with_popular(vec![manga("komiku", "c1", "A", Some(1))]),
+    )]);
+    let _ = agg2.popular(1, 50, None, SortMode::Latest).await;
+    assert!(cache_value(&agg2, "list:*:popular:1:latest").is_some(), "cache latest ada");
+    assert!(cache_value(&agg2, "list:*:popular:1:rating").is_none(), "mod berbeda tidak berbagi cache");
 }
 
 #[tokio::test]
@@ -313,7 +372,7 @@ async fn tiebreak_source_priority_when_recency_equal() {
         Arc::new(Mock::new("komiku").with_popular(vec![manga("komiku", "c1", "Same Title", Some(same))])),
         Arc::new(Mock::new("shinigami").with_popular(vec![manga("shinigami", "s1", "Same Title", Some(same))])),
     ]);
-    let merged = agg.popular(1, 50, None).await;
+    let merged = agg.popular(1, 50, None, SortMode::Latest).await;
     assert_eq!(merged.items.len(), 1, "dedup jadi satu");
     assert_eq!(merged.items[0].source.as_str(), "komiku", "komiku > mangaku > shinigami > kiryuu");
 }
@@ -333,7 +392,7 @@ async fn partial_failure_reports_source_and_keeps_results() {
         Arc::new(Mock::new("mangaku").erroring()),
         Arc::new(Mock::new("kiryuu").erroring()),
     ]);
-    let merged = agg.search("one", 1, 50, None).await;
+    let merged = agg.search("one", 1, 50, None, SortMode::Latest).await;
 
     assert_eq!(merged.items.len(), 1, "hasil sukses tetap dikembalikan");
     assert_eq!(merged.failures.len(), 2);
@@ -352,12 +411,12 @@ async fn all_sources_failed_differs_from_empty_result() {
         Arc::new(Mock::new("komiku").erroring()),
         Arc::new(Mock::new("kiryuu").erroring()),
     ]);
-    let merged = all_bad.search("x", 1, 50, None).await;
+    let merged = all_bad.search("x", 1, 50, None, SortMode::Latest).await;
     assert!(merged.items.is_empty());
     assert!(merged.all_failed());
 
     let empty_ok = Aggregator::new(vec![Arc::new(Mock::new("komiku"))]);
-    let merged2 = empty_ok.search("x", 1, 50, None).await;
+    let merged2 = empty_ok.search("x", 1, 50, None, SortMode::Latest).await;
     assert!(merged2.items.is_empty());
     assert!(!merged2.all_failed(), "hasil kosong != semua sumber gagal");
     assert!(merged2.warning().is_none());
@@ -372,7 +431,7 @@ async fn timeout_source_counts_as_failure() {
     ])
     .with_timeout(Duration::from_millis(120));
 
-    let merged = agg.search("q", 1, 50, None).await;
+    let merged = agg.search("q", 1, 50, None, SortMode::Latest).await;
     assert_eq!(merged.items.len(), 1);
     assert_eq!(merged.failures.len(), 2);
     let (src, msg) = merged.failures.iter().find(|(s, _)| s.as_str() == "mangaku").unwrap();
@@ -386,7 +445,7 @@ async fn source_filter_narrows_fanout() {
         Arc::new(Mock::new("komiku").with_search(vec![manga("komiku", "c1", "A", Some(1))])),
         Arc::new(Mock::new("kiryuu").with_search(vec![manga("kiryuu", "k1", "B", Some(2))])),
     ]);
-    let merged = agg.search("q", 1, 50, Some("kiryuu")).await;
+    let merged = agg.search("q", 1, 50, Some("kiryuu"), SortMode::Latest).await;
     assert_eq!(merged.items.len(), 1);
     assert_eq!(merged.items[0].source.as_str(), "kiryuu");
     assert_eq!(merged.sources_total, 1);
@@ -571,20 +630,20 @@ async fn memory_ttl_serves_then_expires() {
         cache,
     );
 
-    let first = agg.search("cached", 1, 10, None).await;
+    let first = agg.search("cached", 1, 10, None, SortMode::Latest).await;
     assert!(!first.from_cache, "panggilan pertama dari sumber");
     assert_eq!(first.items.len(), 1);
 
-    let second = agg.search("cached", 1, 10, None).await;
+    let second = agg.search("cached", 1, 10, None, SortMode::Latest).await;
     assert!(second.from_cache, "hit memory dalam TTL");
     assert_eq!(second.items.len(), 1);
 
     now.store(1_000 + DEFAULT_TTL.as_millis() as u64 + 1, Ordering::SeqCst);
-    let third = agg.search("cached", 1, 10, None).await;
+    let third = agg.search("cached", 1, 10, None, SortMode::Latest).await;
     assert!(!third.from_cache, "TTL kedaluwarsa -> fetch ulang");
     assert_eq!(third.items.len(), 1);
 
-    let other = agg.search("lain", 1, 10, None).await;
+    let other = agg.search("lain", 1, 10, None, SortMode::Latest).await;
     assert!(!other.from_cache, "kunci berbeda");
 }
 
@@ -626,17 +685,17 @@ async fn successful_result_is_cached_but_partial_failure_is_not() {
         vec![Arc::new(Mock::new("komiku").with_search(vec![manga("komiku", "c1", "PF", Some(1))]))],
         Cache::memory(DEFAULT_TTL),
     );
-    let merged = agg_ok.search("pf", 1, 10, None).await;
+    let merged = agg_ok.search("pf", 1, 10, None, SortMode::Latest).await;
     assert!(merged.failures.is_empty());
-    assert!(cache_value(&agg_ok, "list:*:search:1:pf").is_some(), "hasil sukses di-cache");
+    assert!(cache_value(&agg_ok, "list:*:search:1:pf:latest").is_some(), "hasil sukses di-cache");
 
     let agg_bad = Aggregator::with_cache(
         vec![Arc::new(Mock::new("komiku").erroring())],
         Cache::memory(DEFAULT_TTL),
     );
-    let bad = agg_bad.search("pf", 1, 10, None).await;
+    let bad = agg_bad.search("pf", 1, 10, None, SortMode::Latest).await;
     assert!(bad.all_failed());
-    assert!(cache_value(&agg_bad, "list:*:search:1:pf").is_none(), "kegagalan tidak di-cache");
+    assert!(cache_value(&agg_bad, "list:*:search:1:pf:latest").is_none(), "kegagalan tidak di-cache");
 }
 
 #[tokio::test]
@@ -646,9 +705,9 @@ async fn no_cache_mode_always_fetches() {
     )])
     .without_cache();
     assert!(agg.cache().is_none());
-    let first = agg.search("nc", 1, 10, None).await;
+    let first = agg.search("nc", 1, 10, None, SortMode::Latest).await;
     assert!(!first.from_cache);
-    let second = agg.search("nc", 1, 10, None).await;
+    let second = agg.search("nc", 1, 10, None, SortMode::Latest).await;
     assert!(!second.from_cache, "--no-cache: selalu fetch");
 }
 
@@ -673,7 +732,7 @@ async fn all_sources_registered_and_accounted_for() {
     let ids: Vec<String> = sources.iter().map(|s| s.id().to_string()).collect();
     assert_eq!(ids, vec!["komiku", "mangaku", "shinigami", "kiryuu"]);
     let agg = Aggregator::new(sources);
-    let merged = agg.popular(1, 5, None).await;
+    let merged = agg.popular(1, 5, None, SortMode::Latest).await;
     assert_eq!(merged.sources_total, 4);
     assert_eq!(merged.sources_ok + merged.failures.len(), 4, "semua sumber diperhitungkan");
 }
@@ -1146,4 +1205,23 @@ async fn read_chapter_any_caches_result_second_call_no_fetch() {
     assert_eq!(calls_after_second, calls_after_first, "baca kedua harus cache, tanpa fetch");
     assert_eq!(first.pages.images, second.pages.images);
     assert_eq!(first.pages.title, second.pages.title);
+}
+
+#[test]
+fn filtered_sumber_tak_dikenal_fallback_semua() {
+    // QA F1: source tak dikenal / format salah tidak boleh balik kosong — harus
+    // fallback ke SEMUA sumber.
+    let agg = Aggregator::new(vec![
+        Arc::new(Mock::new("komiku")),
+        Arc::new(Mock::new("mangaku")),
+        Arc::new(Mock::new("shinigami")),
+    ]);
+    // source valid → hanya 1
+    assert_eq!(agg.filtered(Some("mangaku")).len(), 1);
+    // source tak dikenal → semua (3)
+    assert_eq!(agg.filtered(Some("xyz")).len(), 3);
+    // format salah (tanda koma) → semua
+    assert_eq!(agg.filtered(Some("komiku,mangaku")).len(), 3);
+    // None → semua
+    assert_eq!(agg.filtered(None).len(), 3);
 }

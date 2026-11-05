@@ -24,11 +24,18 @@
 // WAJIB di-bump setiap deploy yang mengubah daftar precache. Nama cache adalah
 // satu-satunya cara membersihkan aset ber-hash lama: `activate` menghapus semua
 // cache yang tidak ada di daftar, jadi naikkan versi = buang aset build lama.
-const SHELL = 'komiku-shell-v3'
-// v3: buang cache API lama yang mungkin masih menyimpan PDF /api/unified/downloads.
+// VERSI SHELL di-inject otomatis oleh plugin build (vite.config.ts) memakai
+// hash nama-nama aset build saat ini. Naiknya versi = activate menghapus cache
+// lama → aset ber-hash usang tidak pernah numpuk (skill: stale chunk 404).
+const SHELL = __SHELL_VERSION__
+// API cache: nama statis, tidak perlu bump per deploy (isi API di-SWR).
 const API = 'komiku-api-v4'
 // v4: strategi batas gambar berubah (byte + entri), cache v3 lama dibuang.
 const IMG = 'komiku-img-v4'
+// PRECACHE di-inject otomatis oleh plugin build (vite.config.ts): daftar aset
+// kritis (entry JS/CSS + vendor) yang BISA disentuh saat offline. Nama
+// ber-hash ikut versi build, jadi selalu sinkron dengan dist/ saat ini.
+const PRECACHE = __PRECACHE_LIST__
 
 /**
  * Batas cache gambar.
@@ -46,7 +53,19 @@ const IMG_MAX_BYTES = 300 * 1024 * 1024
 
 self.addEventListener('install', (e) => {
   e.waitUntil(
-    caches.open(SHELL).then((c) => c.addAll(['/', '/index.html', '/offline.html'])),
+    caches.open(SHELL).then(async (c) => {
+      // Shell inti: navigasi fallback + offline page. Ditambah satu-satu supaya
+      // satu kegagalan tidak menggagalkan seluruh install (addAll gagal total
+      // kalau satu request gagal).
+      await Promise.all(
+        ['/', '/index.html', '/offline.html'].map((u) =>
+          c.add(u).catch(() => {}),
+        ),
+      )
+      // Pre-cache aset kritis (bundle JS/CSS). Ini yang membuat kunjungan
+      // ulang cepat: bundle utama tidak menunggu jaringan saat SW aktif.
+      await Promise.all(PRECACHE.map((u) => c.add(u).catch(() => {})))
+    }),
   )
   self.skipWaiting()
 })

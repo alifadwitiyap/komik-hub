@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { memo, useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { imgUrl } from '../imgUrl'
 import * as rakStore from '../rakStore'
@@ -17,7 +17,7 @@ import type { ProgressEntry } from '../hooks/useProgress'
  */
 const MAX_CARDS = 6
 
-export default function ContinueReading() {
+const ContinueReading = memo(function ContinueReading() {
   const [history, setHistory] = useState(() => rakStore.listHistory())
   const { recent } = useProgress()
   const marathon = useMarathonMemory()
@@ -75,7 +75,9 @@ export default function ContinueReading() {
       </div>
     </section>
   )
-}
+})
+
+export default ContinueReading
 
 function Card({
   to,

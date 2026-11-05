@@ -228,7 +228,7 @@ export default function Series() {
       <div className="relative">
         {s.cover && (
           <div className="absolute inset-0 h-56 overflow-hidden">
-            <img referrerPolicy="no-referrer" src={imgUrl(s.cover)} alt="" className="size-full object-cover opacity-25 blur-md" />
+            <img referrerPolicy="no-referrer" src={imgUrl(s.cover)} alt="" loading="lazy" width={225} height={300} className="size-full object-cover opacity-25 blur-md" />
             <div className="absolute inset-0 bg-gradient-to-b from-ink-950/60 to-ink-950" />
           </div>
         )}
@@ -288,7 +288,7 @@ export default function Series() {
             <>
               <Link
                 to={cta.to}
-                className="flex-1 rounded-xl bg-brand-amber py-2.5 text-center text-[13px] font-bold text-ink-950 transition-colors hover:bg-brand-amber-soft"
+                className="flex-1 rounded-xl bg-brand-amber py-2.5 text-center text-[13px] font-bold text-ink-100 transition-colors hover:bg-brand-amber-soft"
               >
                 {cta.label}
               </Link>
@@ -302,8 +302,8 @@ export default function Series() {
                   aria-label="Unduh chapter"
                   className={`flex items-center gap-1.5 rounded-xl px-3.5 py-2.5 text-[13px] font-bold transition-colors disabled:opacity-50 ${
                     pickMode
-                      ? 'bg-brand-amber-soft text-ink-950 ring-2 ring-brand-amber/50'
-                      : 'bg-brand-amber text-ink-950 hover:bg-brand-amber-soft'
+                      ? 'bg-brand-amber-soft text-ink-100 ring-2 ring-brand-amber/50'
+                      : 'bg-brand-amber text-ink-100 hover:bg-brand-amber-soft'
                   }`}
                 >
                   <IconDownload className="size-4" />
@@ -385,7 +385,7 @@ export default function Series() {
                     type="button"
                     onClick={() => setShowDlType(true)}
                     disabled={dlBusy || rangeEnd == null || downloadable.length === 0}
-                    className="rounded-lg bg-brand-amber px-3 py-1.5 text-[11.5px] font-bold text-ink-950 disabled:opacity-50"
+                    className="rounded-lg bg-brand-amber px-3 py-1.5 text-[11.5px] font-bold text-ink-100 disabled:opacity-50"
                   >
                     {dlBusy ? 'Mengunduh…' : `Unduh (${dlCount})`}
                   </button>

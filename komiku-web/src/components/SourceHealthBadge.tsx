@@ -86,7 +86,7 @@ export default function SourceHealthBadge() {
             ))}
           </ul>
         )}
-        <p className="mt-2 text-[10.5px] text-ink-500">
+        <p className="mt-2 text-[11px] text-ink-500">
           {status === 'stale'
             ? total <= 0
               ? 'Belum bisa memeriksa sumber.'

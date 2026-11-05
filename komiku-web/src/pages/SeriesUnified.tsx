@@ -100,7 +100,7 @@ export default function SeriesUnified() {
         const na = Number(a.number)
         const nb = Number(b.number)
         if (Number.isFinite(na) && Number.isFinite(nb) && na !== nb) return nb - na
-        return b.number.localeCompare(b.number)
+        return a.number.localeCompare(b.number)
       }),
     [data],
   )
@@ -173,18 +173,22 @@ export default function SeriesUnified() {
   // (lihat downloadStore), navigasi ke chapter lain / halaman lain bukan
   // pembatalan. Yang membatalkan hanya tombol "Batal" (cancelRun).
 
+  // ... cache untuk halaman baca (toolbar/rak) — di-effect supaya tidak
+  // double-invoke saat StrictMode (side-effect tidak boleh di badan render).
+  const manga = data?.manga
+  useEffect(() => {
+    if (!manga) return
+    rememberSeriesLite(handle, {
+      title: manga.title,
+      title_key: manga.title_key,
+      cover_url: manga.cover_url ?? null,
+    })
+  }, [manga, handle])
+
   if (error) return <Empty title="Gagal memuat manga" body={error} />
   if (!data) return <Spinner label="Memuat manga…" />
 
   const { manga: m } = data
-  // reader nanti butuh judul + title_key ini untuk toolbar dan rak (sejarah/
-  // favorit) — isi cache sekarang supaya halaman baca tidak perlu fetch series
-  // lagi (hemat satu request/chapter).
-  rememberSeriesLite(handle, {
-    title: m.title,
-    title_key: m.title_key,
-    cover_url: m.cover_url ?? null,
-  })
   const visible = showAll ? chapters : chapters.slice(0, 40)
   // progres dari run store: yang sudah berstatus terminal (ok/fail)
   const dlDone = dlRun
@@ -203,7 +207,7 @@ export default function SeriesUnified() {
       <div className="relative">
         {m.cover_url && (
           <div className="absolute inset-0 h-56 overflow-hidden">
-            <img referrerPolicy="no-referrer" src={imgUrl(m.cover_url)} alt="" className="size-full object-cover opacity-25 blur-md" />
+            <img referrerPolicy="no-referrer" src={imgUrl(m.cover_url)} alt="" loading="lazy" width={225} height={300} className="size-full object-cover opacity-25 blur-md" />
             <div className="absolute inset-0 bg-gradient-to-b from-ink-950/60 to-ink-950" />
           </div>
         )}
@@ -294,7 +298,7 @@ export default function SeriesUnified() {
             <>
               <Link
                 to={resumeHref ?? `/baca/${handle}/${oldest.number}`}
-                className="flex-1 rounded-xl bg-brand-amber py-2.5 text-center text-[13px] font-bold text-ink-950 transition-colors hover:bg-brand-amber-soft"
+                className="flex-1 rounded-xl bg-brand-amber py-2.5 text-center text-[13px] font-bold text-ink-100 transition-colors hover:bg-brand-amber-soft"
               >
                 {resumeKey ? `Lanjut · ${resume?.chapterName}` : `Baca ${chapterLabel(oldest)}`}
               </Link>

@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react'
 import { Link, useLocation, useSearchParams } from 'react-router-dom'
 import { imgUrl } from '../imgUrl'
-import { unifiedApi } from '../api'
+import { toMangaCard, unifiedApi } from '../api'
+import type { Manga } from '../types'
+import { MangaCard } from './Home'
 import * as rakStore from '../rakStore'
 import { readerHref } from '../readerSource'
 import { Empty, Spinner } from '../App'
@@ -14,21 +16,25 @@ import { humanSize } from '../downloadBatch'
 import { cancelRun, getRuns, subscribeRuns } from '../downloadStore'
 import { useNotifCounts } from '../notifCounts'
 import SourceBadge from '../components/SourceBadge'
+import { SourceSortBar, useSortFilter, useSourceFilter } from '../components/SourceSortBar'
 import type { DownloadItem, DownloadsResponse } from '../types'
 
-type TabKey = 'sejarah' | 'favorit' | 'unduhan'
+type TabKey = 'terbaru' | 'sejarah' | 'favorit' | 'unduhan'
 
-/** Query ?tab= → tab aktif; nilai tak dikenal jatuh ke 'sejarah'. */
+/** Query ?tab= → tab aktif; nilai tak dikenal jatuh ke 'terbaru'. */
 function tabFromQuery(value: string | null): TabKey {
-  return value === 'favorit' || value === 'unduhan' ? value : 'sejarah'
+  return value === 'sejarah' || value === 'favorit' || value === 'unduhan'
+    ? value
+    : 'terbaru'
 }
 
 /**
- * Halaman /rak — 3 tab: Sejarah · Favorit · Unduhan.
+ * Halaman /rak — 4 tab: Terbaru (feed unified) · Sejarah · Favorit · Unduhan.
  *
- * Sejarah & Favorit dibaca dari rakStore (localStorage, snapshot) — kebuka
- * instan tanpa tunggu server. Unduhan hidup di server (downloads/index.json)
- * jadi tab ini fetch kontrak /api/unified/*.
+ * Terbaru = feed `latest` gabungan sumber dengan filter sumber + urutan
+ * (state di URL ?source=&sort=). Sejarah & Favorit dibaca dari rakStore
+ * (localStorage, snapshot) — kebuka instan tanpa tunggu server. Unduhan hidup
+ * di server (downloads/index.json).
  *
  * Tab awal boleh di-deep-link: /rak?tab=unduhan dipakai halaman series
  * setelah batch unduh selesai.
@@ -77,9 +83,10 @@ export default function Rak() {
         </div>
       )}
 
-      <div className="mb-4 grid grid-cols-3 gap-2">
+      <div className="mb-4 grid grid-cols-4 gap-2">
         {(
           [
+            ['terbaru', 'Terbaru'],
             ['sejarah', 'Sejarah'],
             ['favorit', 'Favorit'],
             ['unduhan', 'Unduhan'],
@@ -88,7 +95,7 @@ export default function Rak() {
           <button
             key={key}
             onClick={() => setTab(key)}
-            className={`rounded-xl py-2.5 text-[12.5px] font-bold transition-colors ${
+            className={`rounded-xl py-2.5 text-[12px] font-bold transition-colors ${
               tab === key
                 ? 'bg-brand-amber text-ink-950'
                 : 'border border-ink-800 bg-ink-900 text-ink-300'
@@ -99,9 +106,61 @@ export default function Rak() {
         ))}
       </div>
 
+      {tab === 'terbaru' && <LatestTab />}
       {tab === 'sejarah' && <HistoryTab entries={history} />}
       {tab === 'favorit' && <FavoritesTab entries={favorites} />}
       {tab === 'unduhan' && <DownloadsTab />}
+    </div>
+  )
+}
+
+// ---------------------------------------------------------------- Terbaru
+
+/** Feed `latest` gabungan sumber + filter sumber/urutan (state di URL). */
+function LatestTab() {
+  const [items, setItems] = useState<Manga[] | null>(null)
+  const [error, setError] = useState<string | null>(null)
+  const srcRaw = useSourceFilter()
+  const srtRaw = useSortFilter()
+  const src = srcRaw === 'semua' ? null : srcRaw
+  const srt = srtRaw === 'terbaru' ? null : srtRaw
+
+  useEffect(() => {
+    const ctrl = new AbortController()
+    setItems(null)
+    setError(null)
+    unifiedApi
+      .latest(1, ctrl.signal, { source: src, sort: srt })
+      .then((r) => setItems(r.items.map(toMangaCard)))
+      .catch((e: Error) => {
+        if (e.name !== 'AbortError') setError(e.message)
+      })
+    return () => ctrl.abort()
+  }, [src, srt])
+
+  return (
+    <div>
+      <SourceSortBar />
+      {error && (
+        <p className="mt-3 rounded-xl border border-brand-red/40 bg-brand-red/10 px-3 py-2 text-[12px] text-brand-red">
+          {error}
+        </p>
+      )}
+      {items === null && !error && <div className="mt-5"><Spinner label="Memuat terbaru…" /></div>}
+      {items !== null && items.length === 0 && !error && (
+        <div className="mt-5">
+          <Empty title="Tidak ada hasil" body="Belum ada komik yang cocok dengan filter ini." />
+        </div>
+      )}
+      {items !== null && items.length > 0 && (
+        <ul className="mt-4 grid grid-cols-2 gap-x-3 gap-y-4">
+          {items.map((m) => (
+            <li key={m.id} className="[&_a]:w-full">
+              <MangaCard manga={m} />
+            </li>
+          ))}
+        </ul>
+      )}
     </div>
   )
 }

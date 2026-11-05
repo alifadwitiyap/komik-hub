@@ -33,7 +33,7 @@ use once_cell::sync::OnceCell;
 use serde::Deserialize;
 use std::{
     collections::HashMap,
-    path::PathBuf,
+    path::{Path, PathBuf},
     sync::Arc,
     time::Duration,
 };
@@ -45,7 +45,11 @@ const W_MIN: u32 = 96;
 /// Batas ukuran gambar upstream yang mau diproses (byte).
 const MAX_UPSTREAM: usize = 24 * 1024 * 1024;
 /// Batas total isi cache di disk; di atas ini entri terlama dihapus.
-const CACHE_CAP_BYTES: u64 = 4 * 1024 * 1024 * 1024;
+/// 512 MB: satu chapter ≈ 5,4 MB, jadi muat ~95 chapter — jauh di atas
+/// kebutuhan baca normal, tapi tak membiarkan disk membengkak tanpa batas.
+const CACHE_CAP_BYTES: u64 = 512 * 1024 * 1024;
+/// Pemicu evict: bersihkan bila total ≥ cap. Di bawah ini tidak usah.
+const CACHE_CAP_TRIGGER_BYTES: u64 = CACHE_CAP_BYTES * 19 / 20;
 const TIMEOUT: Duration = Duration::from_secs(25);
 const RETRIES: u32 = 2;
 
@@ -246,18 +250,23 @@ fn resize_encode(src: &[u8], target_w: u32) -> Result<Vec<u8>, String> {
     }
     let w = target_w.min(sw); // jangan pernah memperbesar (byte naik, tak berguna)
     let h = ((sh as u64 * w as u64) / sw as u64).max(1) as u32;
-    // Lanczos3 lebih tajam untuk line-art manga; Triangle dipakai kalau
-    // gambarnya besar supaya CPU tidak meledak (rasio downscale ekstrem).
-    // Ambang 2M px: banner halaman (720x8300-plus = 6-7M px) jatuh ke Triangle
-    // (cepat), halaman normal (720x1200 ≈ 0.9M px) tetap Lanczos3.
-    let filter = if (sw as u64 * sh as u64) > 2_000_000 {
-        FilterType::Triangle
-    } else {
-        FilterType::Lanczos3
-    };
     let small = if w == sw {
         img
+    } else if w <= 160 {
+        // LQIP reader (96 px) — hasilnya di-blur, jadi box-filter (`thumbnail`)
+        // sudah cukup: 8x lebih cepat dari Triangle (terukur 41 vs 325 ms untuk
+        // banner 720x8300) tanpa beda kasat mata di 96 px.
+        img.thumbnail(w, h)
     } else {
+        // Lanczos3 lebih tajam untuk line-art manga; Triangle dipakai kalau
+        // gambarnya besar supaya CPU tidak meledak (rasio downscale ekstrem).
+        // Ambang 2M px: banner halaman (720x8300-plus = 6-7M px) jatuh ke Triangle
+        // (cepat), halaman normal (720x1200 ≈ 0.9M px) tetap Lanczos3.
+        let filter = if (sw as u64 * sh as u64) > 2_000_000 {
+            FilterType::Triangle
+        } else {
+            FilterType::Lanczos3
+        };
         img.resize_exact(w, h, filter)
     };
     let rgb = small.to_rgb8();
@@ -269,7 +278,12 @@ fn resize_encode(src: &[u8], target_w: u32) -> Result<Vec<u8>, String> {
         78.0
     };
     let enc = webp::Encoder::from_rgb(rgb.as_raw(), rgb.width(), rgb.height());
-    Ok(enc.encode(q).to_vec())
+    // thread_level=1: libwebp pakai multi-core (terukur encode 647→454 ms di
+    // 4 core). Sama byte (172146), sekadar lebih cepat.
+    let mut cfg = webp::WebPConfig::new().map_err(|_| "config".to_string())?;
+    cfg.quality = q;
+    cfg.thread_level = 1;
+    Ok(enc.encode_advanced(&cfg).map_err(|e| format!("encode: {e:?}"))?.to_vec())
 }
 
 /// Decode → resize (decode/lebar/filter sama seperti `resize_encode`) → AVIF
@@ -358,26 +372,39 @@ async fn fetch_upstream(url: &str) -> Result<(String, Vec<u8>), String> {
 
 /// Hapus entri cache terlama sampai total di bawah `cap`. Dipanggil sesekali
 /// (bukan tiap request) supaya tidak ada pengembaraan disk tiap gambar.
+///
+/// Rekursif satu tingkat: cache raw (`raw/<2 hex>/<sha>.bin`) bersarang lebih
+/// dalam dari shard biasa (`<2 hex>/<sha>.webp`). Tanpa rekursi, file raw
+/// lolos dari penghitungan & evict — 66 MB dari 75 MB baseline ada di sana.
 fn evict_if_needed() {
-    let dir = cache_dir();
-    let mut entries: Vec<(std::time::SystemTime, u64, PathBuf)> = Vec::new();
-    let mut total: u64 = 0;
-    let Ok(shards) = std::fs::read_dir(dir) else {
-        return;
-    };
-    for shard in shards.flatten() {
-        let Ok(files) = std::fs::read_dir(shard.path()) else {
-            continue;
+    fn collect(
+        dir: &Path,
+        entries: &mut Vec<(std::time::SystemTime, u64, PathBuf)>,
+        total: &mut u64,
+    ) {
+        let Ok(children) = std::fs::read_dir(dir) else {
+            return;
         };
-        for f in files.flatten() {
-            if let Ok(md) = f.metadata() {
+        for c in children.flatten() {
+            let p = c.path();
+            let Ok(md) = c.metadata() else {
+                continue;
+            };
+            if md.is_dir() {
+                collect(&p, entries, total);
+            } else {
                 let t = md.modified().unwrap_or(std::time::SystemTime::UNIX_EPOCH);
-                total += md.len();
-                entries.push((t, md.len(), f.path()));
+                *total += md.len();
+                entries.push((t, md.len(), p));
             }
         }
     }
-    if total <= CACHE_CAP_BYTES {
+
+    let dir = cache_dir();
+    let mut entries: Vec<(std::time::SystemTime, u64, PathBuf)> = Vec::new();
+    let mut total: u64 = 0;
+    collect(dir, &mut entries, &mut total);
+    if total < CACHE_CAP_TRIGGER_BYTES {
         return;
     }
     entries.sort_by_key(|e| e.0);
@@ -621,6 +648,20 @@ mod tests {
         let out = resize_encode(&buf, 900).expect("encode");
         let back = image::load_from_memory(&out).expect("decode hasil");
         assert_eq!((back.width(), back.height()), (300, 400));
+    }
+
+    #[test]
+    fn resize_lqip_96_memakai_thumbnail_dan_menghasilkan_dimensi_benar() {
+        // LQIP 96 px: box-filter (thumbnail) tetap harus menjaga rasio.
+        let mut buf = Vec::new();
+        let img = image::RgbImage::from_pixel(900, 1200, image::Rgb([200, 200, 200]));
+        image::DynamicImage::ImageRgb8(img)
+            .write_to(&mut std::io::Cursor::new(&mut buf), image::ImageFormat::Png)
+            .unwrap();
+        let out = resize_encode(&buf, 96).expect("encode");
+        let back = image::load_from_memory(&out).expect("decode hasil");
+        assert_eq!((back.width(), back.height()), (96, 128));
+        assert!(out.len() < buf.len());
     }
 
     #[test]

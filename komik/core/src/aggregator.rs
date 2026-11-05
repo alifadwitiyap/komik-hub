@@ -306,8 +306,80 @@ pub fn http_client() -> HttpClient {
         .unwrap_or_else(|_| reqwest::Client::new())
 }
 
+// --------------------------------------------------------------- SortMode
+
+/// Mode urutan daftar lintas sumber.
+///
+/// - `Latest`: recency (default; hasil merge `dedup_rank` apa adanya).
+/// - `Rating`: rating tertinggi dulu, tie-break recency; item tanpa rating
+///   jatuh ke recency (tak pernah kosong).
+/// - `Trending`: rating di atas feed latest — urutan sama dengan `Rating`
+///   (rating dulu, sisa recency), penamaan beda untuk frontend.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum SortMode {
+    Latest,
+    Rating,
+    Trending,
+}
+
+impl SortMode {
+    /// Sufiks kunci cache: antar mode WAJIB beda biar tak ada hasil salah
+    /// (cache tidak menyimpan mode, hanya set item yang sama).
+    pub fn as_str(self) -> &'static str {
+        match self {
+            SortMode::Latest => "latest",
+            SortMode::Rating => "rating",
+            SortMode::Trending => "trending",
+        }
+    }
+
+    /// Parsing `?sort=`. Tidak dikenal / kosong -> `Latest`. Case-insensitive.
+    pub fn parse(s: Option<&str>) -> Self {
+        match s.map(str::trim).filter(|s| !s.is_empty()) {
+            Some(s) if s.eq_ignore_ascii_case("rating") => SortMode::Rating,
+            Some(s) if s.eq_ignore_ascii_case("trending") => SortMode::Trending,
+            _ => SortMode::Latest,
+        }
+    }
+}
+
+/// Parsing rating best-effort: string numerik ("9", "8.5", "10.0") -> f64.
+/// Non-numerik / kosong -> None (lihat `merge_from`: field rating diisi dari
+/// duplikat sumber lain, jadi nilai bisa beda sumber).
+fn parse_rating(r: &Option<String>) -> Option<f64> {
+    r.as_deref().and_then(|s| s.parse::<f64>().ok())
+}
+
+/// Urut daftar sesuai `SortMode`. `Latest` = no-op (hasil merge sudah recency).
+/// `Rating`/`Trending`: rating tinggi dulu, tie-break recency (`rank_cmp`);
+/// item tanpa rating jatuh ke recency — tak pernah kosong.
+pub fn apply_sort(mut items: Vec<Manga>, sort: SortMode) -> Vec<Manga> {
+    if matches!(sort, SortMode::Latest) {
+        return items;
+    }
+    items.sort_by(compare_rating);
+    items
+}
+
+/// Rating desc; tie-break recency (updated_at desc, lalu prioritas sumber).
+fn compare_rating(a: &Manga, b: &Manga) -> std::cmp::Ordering {
+    match (parse_rating(&a.rating), parse_rating(&b.rating)) {
+        (Some(x), Some(y)) if x != y => {
+            return x
+                .partial_cmp(&y)
+                .unwrap_or(std::cmp::Ordering::Equal)
+                .reverse();
+        }
+        (Some(_), None) => return std::cmp::Ordering::Less,
+        (None, Some(_)) => return std::cmp::Ordering::Greater,
+        _ => {}
+    }
+    rank_cmp(a, b)
+}
+
 // --------------------------------------------------------------- Aggregator
 
+#[derive(Clone)]
 pub struct Aggregator {
     pub sources: Vec<Arc<dyn Source>>,
     cache: Option<Cache>,
@@ -350,12 +422,20 @@ impl Aggregator {
     pub fn filtered(&self, source: Option<&str>) -> Vec<Arc<dyn Source>> {
         match source {
             None => self.sources.clone(),
-            Some(s) => self
-                .sources
-                .iter()
-                .filter(|src| src.id().as_str() == s)
-                .cloned()
-                .collect(),
+            Some(s) => {
+                let known = self.sources.iter().any(|src| src.id().as_str() == s);
+                if !known {
+                    // Sumber tak dikenal / format salah (mis. "komiku,mangaku"):
+                    // fallback SEMUA — jangan balik kosong (QA F1).
+                    self.sources.clone()
+                } else {
+                    self.sources
+                        .iter()
+                        .filter(|src| src.id().as_str() == s)
+                        .cloned()
+                        .collect()
+                }
+            }
         }
     }
 
@@ -365,16 +445,33 @@ impl Aggregator {
 
     // ---------------------------------------------------------- merged list
 
-    pub async fn popular(&self, page: u32, limit: u32, source: Option<&str>) -> Merged<Manga> {
-        self.merged(&format!("popular:{page}"), false, source, move |src| async move {
-            src.popular(page).await
-        })
-        .await
-        .truncate(limit)
+    pub async fn popular(
+        &self,
+        page: u32,
+        limit: u32,
+        source: Option<&str>,
+        sort: SortMode,
+    ) -> Merged<Manga> {
+        // Sort disematkan ke kunci: hasil per mode disimpan terpisah.
+        let key = format!("popular:{page}:{}", sort.as_str());
+        let mut merged = self
+            .merged(&key, false, source, move |src| async move {
+                src.popular(page).await
+            })
+            .await;
+        merged.items = apply_sort(merged.items, sort);
+        merged.truncate(limit)
     }
 
-    pub async fn latest(&self, page: u32, limit: u32, source: Option<&str>) -> Merged<Manga> {
-        let key = format!("latest:{page}");
+    pub async fn latest(
+        &self,
+        page: u32,
+        limit: u32,
+        source: Option<&str>,
+        sort: SortMode,
+    ) -> Merged<Manga> {
+        // Sort disematkan ke kunci: kunci `latest` penuh = ceil + sort.
+        let key = format!("latest:{page}:{}", sort.as_str());
         let full_key = self.cache_key("list", source, &format!("ceil:{key}"));
 
         let sources = self.filtered(source);
@@ -382,12 +479,13 @@ impl Aggregator {
         if let Some(cache) = &self.cache {
             if let Some(hit) = cache.fresh_json::<Vec<Manga>>(&full_key) {
                 return Merged {
-                    items: hit,
+                    items: apply_sort(hit, sort),
                     failures: vec![],
                     sources_total: total,
                     sources_ok: total,
                     from_cache: true,
-                };
+                }
+                .truncate(limit);
             }
         }
 
@@ -407,7 +505,7 @@ impl Aggregator {
             }
         }
 
-        let resolved = self.resolve_latest_feed(items).await;
+        let resolved = apply_sort(self.resolve_latest_feed(items).await, sort);
         let merged = Merged {
             items: resolved,
             failures,
@@ -506,25 +604,45 @@ impl Aggregator {
                         }).unwrap()
                     }
                 } else {
-                    let mut chosen: Option<usize> = None;
-                    for &i in &tied {
+                    // Validasi tie: tanya SEMUA kandidat serentak, bukan satu
+                    // per satu. Versi serial membayar N× round-trip upstream
+                    // (tiap `series_resolve` = 1 request jaringan) padahal
+                    // kandidatnya independen — jadi latency tie = jumlah, bukan
+                    // maksimum. `JoinSet` menjaga urutan prioritas tetap
+                    // deterministik: kandidat pertama (urutan `tied`, sudah
+                    // terurut prioritas sumber) yang mengonfirmasi menang.
+                    let mut set = tokio::task::JoinSet::new();
+                    for (pos, &i) in tied.iter().enumerate() {
                         let handle = group[i].handle();
-                        if let Ok(outcome) = self.series_resolve(&handle, 2000, None).await {
-                            if outcome.detail.chapters.iter().any(|c| {
-                                chapter_number_key(&c.number) == chapter_number_key(&max_num)
-                            }) {
-                                chosen = Some(i);
-                                break;
-                            }
+                        let want = chapter_number_key(&max_num);
+                        let agg = self.clone();
+                        set.spawn(async move {
+                            let ok = match agg.series_resolve(&handle, 2000, None).await {
+                                Ok(outcome) => outcome
+                                    .detail
+                                    .chapters
+                                    .iter()
+                                    .any(|c| chapter_number_key(&c.number) == want),
+                                Err(_) => false,
+                            };
+                            (pos, i, ok)
+                        });
+                    }
+                    let mut confirmed: Vec<(usize, usize)> = Vec::new();
+                    while let Some(joined) = set.join_next().await {
+                        if let Ok((pos, i, true)) = joined {
+                            confirmed.push((pos, i));
                         }
                     }
-                    let winner_idx = chosen.unwrap_or_else(|| {
-                        tied.into_iter().reduce(|best, cur| {
+                    confirmed.sort_unstable();
+                    let winner_idx = match confirmed.first() {
+                        Some(&(_, i)) => i,
+                        None => tied.into_iter().reduce(|best, cur| {
                             let pb = source_priority(group[best].rank_source());
                             let pc = source_priority(group[cur].rank_source());
                             if pb <= pc { best } else { cur }
-                        }).unwrap()
-                    });
+                        }).unwrap(),
+                    };
                     tie_validation_cache().lock().unwrap().insert(cache_key, group[winner_idx].handle());
                     winner_idx
                 }
@@ -546,10 +664,12 @@ impl Aggregator {
         page: u32,
         limit: u32,
         source: Option<&str>,
+        sort: SortMode,
     ) -> Merged<Manga> {
         let q = query.to_string();
-        let merged = self
-            .merged(&format!("search:{page}:{q}"), false, source, move |src| {
+        let key = format!("search:{page}:{q}:{}", sort.as_str());
+        let mut merged = self
+            .merged(&key, false, source, move |src| {
                 let q = q.clone();
                 async move { src.search(&q, page).await }
             })
@@ -558,7 +678,9 @@ impl Aggregator {
         // Ceiling: kartu search menunjuk sumber dengan episode TERBESAR —
         // `last_chapter` tiap kartu = max numerik lintas sumber sekunci kanonik.
         apply_ceiling_last_chapter(&mut items);
-        Merged { items: rank_by_query(items, query), ..merged }.truncate(limit)
+        let ranked = rank_by_query(items, query);
+        merged.items = apply_sort(ranked, sort);
+        merged.truncate(limit)
     }
 
     /// Search DUA FASE: kembalikan hasil sumber cepat sekarang, selesaikan
@@ -579,9 +701,10 @@ impl Aggregator {
         limit: u32,
         source: Option<&str>,
         deadline: Duration,
+        sort: SortMode,
     ) -> (Merged<Manga>, Vec<SourceId>) {
         let q = query.to_string();
-        let key = format!("search:{page}:{q}");
+        let key = format!("search:{page}:{q}:{}", sort.as_str());
         // Kunci HARUS identik dengan yang dipakai `merged()` (tanpa awalan
         // "list" ganda) supaya hasil fase 2 benar-benar dibaca `search()`.
         let list_key = self.cache_key("list", source, &key);
@@ -592,7 +715,7 @@ impl Aggregator {
         // Fase 2 sebelumnya mungkin sudah selesai: sajikan cache penuh.
         if let Some(cache) = &self.cache {
             if let Some(hit) = cache.fresh_json::<Vec<Manga>>(&list_key) {
-                let items = rank_by_query(hit, query);
+                let items = apply_sort(rank_by_query(hit, query), sort);
                 return (
                     Merged {
                         items,
@@ -666,7 +789,7 @@ impl Aggregator {
                     all.extend(extra);
                     let mut deduped = dedup_rank(all);
                     apply_ceiling_last_chapter(&mut deduped);
-                    let ranked = rank_by_query(deduped, &q2);
+                    let ranked = apply_sort(rank_by_query(deduped, &q2), sort);
                     if let Err(e) = cache.set_json(&list_key, &ranked) {
                         eprintln!("⚠ cache fase-2 gagal ditulis ({list_key}): {e}");
                     }
@@ -676,8 +799,9 @@ impl Aggregator {
 
         let mut items = merged.items;
         apply_ceiling_last_chapter(&mut items);
+        let ranked = apply_sort(rank_by_query(items, query), sort);
         (
-            Merged { items: rank_by_query(items, query), ..merged }.truncate(limit),
+            Merged { items: ranked, ..merged }.truncate(limit),
             pending,
         )
     }
@@ -696,12 +820,14 @@ impl Aggregator {
         page: u32,
         limit: u32,
         source: Option<&str>,
+        sort: SortMode,
     ) -> Merged<Manga> {
         let q = query.to_string();
         let g = genre.to_string();
-        let merged = self
+        let key = format!("search-genre:{page}:{q}:{g}:{}", sort.as_str());
+        let mut merged = self
             .merged(
-                &format!("search-genre:{page}:{q}:{g}"),
+                &key,
                 false,
                 source,
                 move |src| {
@@ -714,7 +840,9 @@ impl Aggregator {
         // Rank relevansi kueri sama seperti `search` (deterministik, cache aman).
         let mut items = merged.items;
         apply_ceiling_last_chapter(&mut items);
-        Merged { items: rank_by_query(items, query), ..merged }.truncate(limit)
+        let ranked = apply_sort(rank_by_query(items, query), sort);
+        merged.items = ranked;
+        merged.truncate(limit)
     }
 
     /// Katalog + filter genre (slug/nama diteruskan ke sumber apa adanya).
@@ -724,19 +852,23 @@ impl Aggregator {
         page: u32,
         limit: u32,
         source: Option<&str>,
+        sort: SortMode,
     ) -> Merged<Manga> {
         let g = genre.map(|s| s.to_string());
-        self.merged(
-            &format!("list:{page}:{}", genre.unwrap_or("*")),
-            false,
-            source,
-            move |src| {
-                let g = g.clone();
-                async move { src.list(g.as_deref(), page).await }
-            },
-        )
-        .await
-        .truncate(limit)
+        let key = format!("list:{page}:{}:{}", genre.unwrap_or("*"), sort.as_str());
+        let mut merged = self
+            .merged(
+                &key,
+                false,
+                source,
+                move |src| {
+                    let g = g.clone();
+                    async move { src.list(g.as_deref(), page).await }
+                },
+            )
+            .await;
+        merged.items = apply_sort(merged.items, sort);
+        merged.truncate(limit)
     }
 
     /// Union genre semua sumber: (slug, nama, [sumber]).

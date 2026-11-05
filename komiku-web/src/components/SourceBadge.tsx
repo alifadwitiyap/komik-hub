@@ -39,7 +39,7 @@ export default function SourceBadge({
   const isKomiku = source === KOMIKU_SOURCE
   return (
     <span
-      className={`inline-flex items-center rounded bg-black/55 px-1.5 py-0.5 text-[9.5px] font-semibold text-white/85 backdrop-blur-sm ${
+      className={`inline-flex items-center rounded bg-black/55 px-1.5 py-0.5 text-[11px] font-semibold text-white/85 backdrop-blur-sm ${
         isKomiku ? '' : 'ring-1 ring-brand-amber/60'
       } ${className}`}
       title={`Sumber: ${text}`}
