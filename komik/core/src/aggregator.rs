@@ -24,12 +24,12 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use crate::rank::{
-    apply_ceiling_last_chapter, neighbor_refs, pick_cross_source_neighbors, rank_cmp,
-    source_priority, tie_validation_cache,
+    apply_ceiling_last_chapter, neighbor_refs, pick_union_neighbors, rank_cmp, source_priority,
+    tie_validation_cache,
 };
 pub use crate::rank::{
-    ChapterRef, Rankable, chapter_by_number, chapter_index_by_key, dedup_rank,
-    dedup_rank_ceiling, rank_by_query,
+    chapter_by_number, chapter_index_by_key, dedup_rank, dedup_rank_ceiling, rank_by_query,
+    ChapterRef, Rankable,
 };
 
 // -------------------------------------------------------------------- serde
@@ -272,8 +272,10 @@ enum SeriesLoad {
     Inaccessible(SourceError),
 }
 
-/// Alasan sumber primary tidak melayani chapter — hanya untuk menyusun
-/// catatan pindah sumber (`note`), BUKAN klasifikasi kegagalan.
+/// Alasan sumber primary tidak melayani chapter. Dipakai untuk menyusun
+/// catatan pindah sumber (`note`), dan `Empty`/`Inaccessible` juga memicu
+/// percobaan ULANG ke sumber pelayan yang sama (adapter kadang transien):
+/// `Missing` tidak, karena itu kesimpulan pasti.
 enum PrimaryMiss {
     /// Primary terakses tapi chapter/series-nya tidak ada.
     Missing,
@@ -1046,6 +1048,9 @@ impl Aggregator {
             .collect_series_across_sources(&manga.title, Some(&manga.source), limit)
             .await;
 
+        // Sumber pelayan di urutan PERTAMA: label nomornya menang dedup
+        // ("09" tetap "09", bukan "9"), jadi kredit sumber di halaman series
+        // mengikuti sumber yang benar-benar menyajikan series itu.
         let mut lists = Vec::with_capacity(others.len() + 1);
         lists.push(primary);
         lists.extend(others);
@@ -1163,11 +1168,15 @@ impl Aggregator {
     /// 2. Cari chapter di primary pakai kunci kanonik STRING
     ///    ([`chapter_number_key`]: "179.60" == "179.6", "extra" != "7").
     ///    KETEMU -> `chapter_pages` -> selesai, `switched_from: None`.
-    /// 3. TIDAK ketemu (atau gambarnya kosong — keputusan 1) -> sumber lain
-    ///    urut prioritas: resolve by JUDUL (exact `title_key`), ambil series,
-    ///    cari chapter. Pertama yang punya menang; `switched_from` + `note`
-    ///    diisi, dan `prev`/`next` mengikuti sumber PELAYAN itu.
-    /// 4. Semua request sumber dibungkus timeout [`PER_SOURCE_TIMEOUT_SECS`].
+    /// 3. TIDAK ketemu (atau gambarnya kosong / tak bisa dipakai — keputusan 1)
+    ///    -> sumber lain urut prioritas: resolve by JUDUL (exact `title_key`),
+    ///    ambil series, cari chapter. Pertama yang punya menang;
+    ///    `switched_from` + `note` diisi.
+    /// 4. `prev`/`next` dihitung dari daftar chapter UNION lintas sumber
+    ///    (urutan yang sama dengan halaman series), jadi chapter eksklusif
+    ///    sumber lain tidak pernah dilompati. Dengan filter `--source`,
+    ///    navigasi tetap di sumber yang diminta (tanpa fan-out).
+    /// 5. Semua request sumber dibungkus timeout [`PER_SOURCE_TIMEOUT_SECS`].
     ///
     /// Kegagalan (A4): kalau semua sumber TIDAK BISA DIAKSES, pesannya
     /// "gagal memuat chapter ... (semua sumber gagal diakses)" — BUKAN
@@ -1278,97 +1287,181 @@ impl Aggregator {
             };
             let chapter = detail.chapters[pos].clone();
 
-            match tokio::time::timeout(self.timeout, src.chapter_pages(&manga, &chapter)).await {
-                Ok(Ok(pages)) if !pages.images.is_empty() => {
-                    let (mut prev, mut next) = neighbor_refs(&detail, pos);
-                    // Tepi sumber pelayan -> cari tetangga di sumber lain yang
-                    // punya series dengan judul sama. Sumber pelayan tetap
-                    // menang selama punya tetangga (regresi).
-                    //
-                    // Syarat:
-                    // - Pemanggil TIDAK mempersempit sumber (`--source`):
-                    //   dengan filter, navigasi harus tetap di sumber yang
-                    //   diminta.
-                    // - Daftar chapter sumber pelayan punya konteks urutan
-                    //   (>1 chapter). Daftar 1 chapter = sumber tak memberi
-                    //   tahu itu tepi atas atau tepi bawah, jadi tak ada
-                    //   tebakan tetangga lintas sumber.
-                    if (prev.is_none() || next.is_none())
-                        && source.is_none()
-                        && detail.chapters.len() > 1
-                    {
-                        let (lists, _failed) = self
-                            .collect_series_across_sources(
-                                &manga.title,
-                                Some(&sid),
-                                CROSS_SOURCE_CHAPTER_LIMIT,
-                            )
-                            .await;
-                        let (cross_prev, cross_next) =
-                            pick_cross_source_neighbors(&lists, &chapter.number);
-                        if next.is_none() {
-                            next = cross_next;
+            // Gambar chapter dari sumber ini. `None` = sumber punya nomornya
+            // tapi GAGAL memberi gambar yang bisa dipakai, jadi chapter yang
+            // ADA di daftar union tetap harus dicoba di sumber lain.
+            //
+            // Ada dua bentuk kegagalan yang keduanya berarti "tidak ada
+            // gambar": adapter mem-`bail!` (komiku/shinigami/kiryuu untuk
+            // daftar kosong), atau adapter "sukses" tapi URL-nya kosong
+            // (base/path gagal disusun). Bentuk kedua dulu lolos karena
+            // `images` tidak kosong, sehingga reader menerima URL sampah
+            // padahal sumber lain punya nomor yang sama dengan gambar valid.
+            let mut images: Option<Vec<String>> = None;
+            // Sumber yang melayani ternyata transien -> boleh dicoba sekali
+            // lagi sebelum pindah (lihat pemakaian di bawah).
+            let mut retry_serving = false;
+            for attempt in 0..2 {
+                match tokio::time::timeout(self.timeout, src.chapter_pages(&manga, &chapter)).await {
+                    Ok(Ok(pages)) => {
+                        if has_usable_images(&pages) {
+                            images = Some(pages.images);
+                            break;
                         }
-                        // `prev` hanya boleh lintas sumber kalau daftar
-                        // sumber pelayan TIDAK terpotong: `cap` memotong dari
-                        // yang paling tua (daftar terbaru-dulu), jadi tepi
-                        // bawah bisa jadi artefak pemotongan — sumber pelayan
-                        // mungkin punya chapter lebih tua yang kita buang.
-                        // Tanpa guard, prev bisa melompati chapter yang
-                        // sebenarnya milik sumber pelayan.
-                        if prev.is_none() && detail.chapters.len() < cap {
-                            prev = cross_prev;
+                        // Gambar kosong = trigger pindah sumber (keputusan 1);
+                        // TIDAK di-cache sebagai "tidak ada" (bukan kesimpulan
+                        // pasti). Percobaan pertama: ulangi sekali ke sumber
+                        // yang sama, karena sumber ini TERBUKTI punya chapter
+                        // dengan nomor itu — gambar kosong lebih sering
+                        // transien daripada "chapter ini memang tanpa gambar".
+                        // Tanpa retry, sumber pelayan yang sedang rewel bikin
+                        // reader pindah ke sumber yang bahkan tidak punya
+                        // nomornya.
+                        if attempt == 0 {
+                            retry_serving = true;
+                            continue;
                         }
-                    }
-                    let switched_from = (sid != primary).then(|| primary.clone());
-                    let note = switched_from.as_ref().map(|p| match &primary_miss {
-                        Some(PrimaryMiss::Empty) => {
-                            format!("chapter {number} tanpa gambar di {p} — dibaca dari {sid}")
-                        }
-                        Some(PrimaryMiss::Inaccessible(kind)) => format!(
-                            "chapter {number} dibaca dari {sid} — {p} gagal diakses ({kind})"
-                        ),
-                        Some(PrimaryMiss::Missing) | None => {
-                            format!("chapter {number} tidak ada di {p} — dibaca dari {sid}")
-                        }
-                    });
-                    let outcome = ReadOutcomeX {
-                        pages,
-                        prev,
-                        next,
-                        switched_from,
-                        note,
-                        series_title_key: Some(manga.title_key.clone()),
-                        series_title: Some(manga.title.clone()),
-                    };
-                    self.cache_put(&read_key, &outcome);
-                    return Ok(outcome);
-                }
-                // Gambar kosong = trigger pindah sumber (keputusan 1);
-                // TIDAK di-cache sebagai "tidak ada" (bukan kesimpulan pasti).
-                Ok(Ok(_)) => {
-                    if idx == 0 {
-                        primary_miss = Some(PrimaryMiss::Empty);
-                    }
-                }
-                Ok(Err(e)) => {
-                    let kind = SourceError::from(e);
-                    if kind.is_inaccessible() {
-                        inaccessible.push((sid.clone(), kind.clone()));
                         if idx == 0 {
-                            primary_miss = Some(PrimaryMiss::Inaccessible(kind));
+                            primary_miss = Some(PrimaryMiss::Empty);
                         }
-                    } else if idx == 0 {
-                        primary_miss = Some(PrimaryMiss::Missing);
+                    }
+                    Ok(Err(e)) => {
+                        let kind = SourceError::from(e);
+                        if kind.is_inaccessible() {
+                            inaccessible.push((sid.clone(), kind.clone()));
+                            if attempt == 0 {
+                                retry_serving = true;
+                                continue;
+                            }
+                            if idx == 0 {
+                                primary_miss = Some(PrimaryMiss::Inaccessible(kind));
+                            }
+                        } else if idx == 0 {
+                            // Kesimpulan pasti dari sumber yang terakses.
+                            primary_miss = Some(PrimaryMiss::Missing);
+                        }
+                    }
+                    Err(_) => {
+                        inaccessible.push((sid.clone(), SourceError::Timeout));
+                        if attempt == 0 {
+                            retry_serving = true;
+                            continue;
+                        }
+                        if idx == 0 {
+                            primary_miss = Some(PrimaryMiss::Inaccessible(SourceError::Timeout));
+                        }
                     }
                 }
-                Err(_) => {
-                    inaccessible.push((sid, SourceError::Timeout));
-                    if idx == 0 {
-                        primary_miss = Some(PrimaryMiss::Inaccessible(SourceError::Timeout));
-                    }
-                }
+                break;
             }
+
+            if let Some(images) = images {
+                let pages = ChapterPages {
+                    source: sid.clone(),
+                    title: chapter.title.clone(),
+                    number: chapter.number.clone(),
+                    images,
+                };
+                // Tetangga: SATU definisi dari daftar UNION lintas sumber
+                // (urutan yang sama dengan halaman series), jadi chapter
+                // eksklusif sumber lain tidak pernah dilompati. Tepi union =
+                // `None` (tidak wrap-around).
+                //
+                // Syarat:
+                // - Pemanggil TIDAK mempersempit sumber (`--source`): dengan
+                //   filter, navigasi harus tetap di sumber yang diminta dan
+                //   tidak boleh memicu fan-out.
+                // - Daftar chapter sumber pelayan punya konteks urutan
+                //   (>1 chapter). Daftar 1 chapter tidak memberi tahu apakah
+                //   itu tepi atas atau tepi bawah, jadi tak ada yang bisa
+                //   ditaruh di union — dan tidak perlu request tambahan.
+                let (local_prev, local_next) = neighbor_refs(&detail, pos);
+                let (prev, next) = if source.is_some() || detail.chapters.len() <= 1 {
+                    (local_prev, local_next)
+                } else {
+                    let (others, _failed) = self
+                        .collect_series_across_sources(
+                            &manga.title,
+                            Some(&sid),
+                            CROSS_SOURCE_CHAPTER_LIMIT,
+                        )
+                        .await;
+                    // Urutan daftar menentukan LABEL pemenang dedup saat satu
+                    // nomor ada di beberapa sumber ("01" vs "1"). Kalau daftar
+                    // sumber PELAYAN ditaruh pertama, label yang menang
+                    // bergantung pada chapter mana yang sedang dibuka — halaman
+                    // series menampilkan "1" (shinigami) sementara tombol
+                    // Berikutnya di chapter lain menampilkan "01" (komiku)
+                    // untuk chapter yang SAMA.
+                    //
+                    // Karena itu urutan ditetapkan oleh SOURCE_PRIORITY, bukan
+                    // oleh sumber pelayan: hasilnya identik dengan
+                    // `series_merged` (yang juga mengurutkan menurut prioritas),
+                    // jadi halaman series dan navigasi reader selalu sepakat.
+                    //
+                    // PENTING: sumber pelayan WAJIB ikut di daftar. Kalau ia
+                    // dibuang (perilaku lama), union hanya berisi sumber LAIN
+                    // sehingga chapter yang dilayani sumber pelayan sendiri
+                    // bisa "hilang" dari perhitungan tetangga.
+                    // Sumber pelayan di urutan PERTAMA (label nomornya menang
+                    // dedup, sama seperti `series_merged`), jadi label chapter
+                    // di reader identik dengan yang tampil di halaman series
+                    // untuk series yang sama.
+                    let primary_list = crate::union::SourceChapterList {
+                        source: sid.clone(),
+                        handle: manga.handle(),
+                        chapters: detail.chapters.clone(),
+                    };
+                    let mut lists = Vec::with_capacity(others.len() + 1);
+                    lists.push(primary_list);
+                    lists.extend(others);
+                    let merged = crate::union::merge_chapter_lists(&lists);
+                    let (union_prev, union_next) =
+                        pick_union_neighbors(&merged, &chapter.number);
+                    // Guard pemotongan: `cap` memotong dari yang PALING TUA,
+                    // jadi tepi ATAS selalu jujur (`next` aman), tapi tepi
+                    // BAWAH bisa jadi artefak — sumber pelayan mungkin punya
+                    // chapter lebih tua yang kita buang, dan itu bisa lebih
+                    // dekat daripada kandidat sumber lain. Kalau daftar
+                    // pelayan (mungkin) terpotong DAN dia tidak punya prev
+                    // lokal, jangan menebak: `None` (perilaku lama).
+                    let truncated = detail.chapters.len() >= cap;
+                    let prev = if truncated && local_prev.is_none() {
+                        None
+                    } else {
+                        union_prev
+                    };
+                    (prev, union_next)
+                };
+                let switched_from = (sid != primary).then(|| primary.clone());
+                let note = switched_from.as_ref().map(|p| match &primary_miss {
+                    Some(PrimaryMiss::Empty) => {
+                        format!("chapter {number} tanpa gambar di {p} — dibaca dari {sid}")
+                    }
+                    Some(PrimaryMiss::Inaccessible(kind)) => format!(
+                        "chapter {number} dibaca dari {sid} — {p} gagal diakses ({kind})"
+                    ),
+                    Some(PrimaryMiss::Missing) | None => {
+                        format!("chapter {number} tidak ada di {p} — dibaca dari {sid}")
+                    }
+                });
+                let outcome = ReadOutcomeX {
+                    pages,
+                    prev,
+                    next,
+                    switched_from,
+                    note,
+                    series_title_key: Some(manga.title_key.clone()),
+                    series_title: Some(manga.title.clone()),
+                };
+                self.cache_put(&read_key, &outcome);
+                return Ok(outcome);
+            }
+
+            // Sumber punya nomornya tapi gambarnya tetap tak terpakai: lanjut
+            // ke sumber berikutnya. `retry_serving` sengaja dibiarkan agar
+            // penanda `note` tetap jujur (bukan "tidak ada di primary").
+            let _ = retry_serving;
         }
 
         // A4: jangan klaim "tidak ditemukan" kalau ada sumber yang cuma tidak
@@ -1849,6 +1942,17 @@ fn unique_sources(list: &[String]) -> Vec<String> {
 /// 0 = tanpa pemotongan: daftar chapter sumber lain dipakai utuh supaya
 /// kandidat terdekat (mis. "233" dari "232") tak terpotong.
 const CROSS_SOURCE_CHAPTER_LIMIT: u32 = 0;
+
+/// Minimal satu URL gambar yang benar-benar bisa dipakai?
+///
+/// `images.is_empty()` saja tidak cukup: adapter yang menyusun URL dari
+/// `base_url` + `path` yang gagal bisa mengembalikan daftar BERISI string
+/// kosong. Itu bukan gambar — menganggapnya sukses berarti reader menerima
+/// URL sampah padahal sumber lain punya nomor chapter yang sama dengan gambar
+/// valid. Jadi "gagal memberi gambar" = tak ada satu pun URL non-kosong.
+fn has_usable_images(pages: &ChapterPages) -> bool {
+    pages.images.iter().any(|u| !u.trim().is_empty())
+}
 
 /// Tambah sumber ke daftar urutan kalau belum ada (dedup by SourceId).
 fn push_unique(list: &mut Vec<Arc<dyn Source>>, src: Arc<dyn Source>) {
