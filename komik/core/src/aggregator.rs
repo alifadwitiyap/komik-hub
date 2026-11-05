@@ -1680,6 +1680,16 @@ impl Aggregator {
         format!("neg-series:{id}:{}", sid.as_str())
     }
 
+    /// Kunci penanda negatif untuk sumber yang GAGAL (bukan "tidak ada")
+    /// saat pengumpulan union `series-union:{title_key}`.
+    ///
+    /// Sengaja memakai `title_key`, bukan handle: panggilan berikutnya datang
+    /// dengan judul/handle berbeda (chapter request vs halaman series) tapi
+    /// `title_key`-nya sama, dan justru itu yang mau dilewati.
+    fn neg_union_key(&self, tkey: &str, sid: &SourceId) -> String {
+        format!("neg-union:{tkey}:{}", sid.as_str())
+    }
+
     fn neg_hit(&self, key: &str) -> bool {
         self.cache
             .as_ref()
@@ -1691,6 +1701,18 @@ impl Aggregator {
     fn neg_put(&self, key: &str) {
         if let Some(cache) = &self.cache {
             if let Err(e) = cache.set_negative(key, serde_json::json!(true)) {
+                eprintln!("⚠ cache negatif gagal ditulis ({key}): {e}");
+            }
+        }
+    }
+
+    /// Seperti [`Aggregator::neg_put`], tapi menyimpan PESAN kegagalan, bukan
+    /// `true`. Dipakai penanda `neg-union`: panggilan warm melewati sumbernya
+    /// tapi tetap bisa melaporkannya di `failed` dengan alasan yang sama
+    /// seperti saat cold (bukan "hilang diam-diam" dari `failed_sources`).
+    fn neg_put_msg(&self, key: &str, msg: &str) {
+        if let Some(cache) = &self.cache {
+            if let Err(e) = cache.set_negative(key, serde_json::json!(msg)) {
                 eprintln!("⚠ cache negatif gagal ditulis ({key}): {e}");
             }
         }
@@ -1900,6 +1922,11 @@ impl Aggregator {
     ///
     /// - Sumber yang gagal/timeout DILEWATI (partial failure tolerated) dan
     ///   dikembalikan di `failed` sebagai (SourceId, pesan).
+    /// - Sumber yang gagal juga ditandai negatif TTL pendek
+    ///   (`neg-union:{title_key}:{sumber}`, `cache::NEGATIVE_TTL`) supaya
+    ///   panggilan WARM berikutnya tidak mengulang fetch sumber yang sama.
+    ///   Tanpa itu cache per-sumber selalu bolong satu sumber dan setiap
+    ///   request membayar ulang HTTP-nya (terukur 470-517 ms untuk kiryuu).
     /// - Sumber tidak boleh yang sama dengan `skip_source` (sumber pelayan).
     /// - `title` = judul series yang sudah dimuat (bukan handle).
     /// - Kunci cache: "series-union:{title_key}".
@@ -1932,17 +1959,31 @@ impl Aggregator {
         }
 
         // Target: semua sumber yang dikenal, kecuali sumber pelayan
-        // (`skip_source`) dan yang sudah ada di cache.
+        // (`skip_source`), yang sudah ada di cache, dan yang sedang ditandai
+        // GAGAL oleh percobaan sebelumnya (`neg-union:{title_key}:{sumber}`).
+        // Penanda itu TTL pendek (`cache::NEGATIVE_TTL`), jadi sumber yang
+        // pulih kembali diikutkan lagi paling lama 60 detik kemudian.
         let skip_id = skip_source.cloned();
-        let targets: Vec<Arc<dyn Source>> = self
-            .sources
-            .iter()
-            .filter(|s| Some(&s.id()) != skip_id.as_ref())
-            .filter(|s| !by_source.contains_key(s.id().as_str()))
-            .cloned()
-            .collect();
-
         let mut failed: Vec<(SourceId, String)> = Vec::new();
+        let mut targets: Vec<Arc<dyn Source>> = Vec::new();
+        for s in &self.sources {
+            let sid = s.id();
+            if Some(&sid) == skip_id.as_ref() || by_source.contains_key(sid.as_str()) {
+                continue;
+            }
+            // Sumber yang ditandai gagal tetap DILAPORKAN di `failed` (dengan
+            // pesan aslinya) tapi TIDAK di-fetch lagi — itulah inti Fix D.
+            // Tanpa pelaporan ini `failed_sources` jadi kosong saat warm dan
+            // klien kehilangan sinyal "sumber ini sedang bermasalah".
+            match self
+                .cache
+                .as_ref()
+                .and_then(|c| c.fresh_json::<String>(&self.neg_union_key(&tkey, &sid)))
+            {
+                Some(msg) => failed.push((sid, msg)),
+                None => targets.push(s.clone()),
+            }
+        }
         if !targets.is_empty() {
             // DUA TAHAP, bukan resolve->series berurutan per sumber.
             //
@@ -1998,7 +2039,14 @@ impl Aggregator {
                     }
                     // Sumber tidak punya series itu -> dilewati (bukan failed).
                     Ok((_, None)) => {}
-                    Err((sid, msg)) => failed.push((sid, msg)),
+                    Err((sid, msg)) => {
+                        // Gagal = sumber tak terakses / error sementara.
+                        // Tandai negatif TTL pendek supaya warm tidak
+                        // mengulang fetch sumber yang sama; pesannya ikut
+                        // disimpan agar `failed` tetap jujur saat warm.
+                        self.neg_put_msg(&self.neg_union_key(&tkey, &sid), &msg);
+                        failed.push((sid, msg));
+                    }
                 }
             }
 
@@ -2030,7 +2078,12 @@ impl Aggregator {
                         }
                         // Sumber tak punya series -> dilewati (bukan failed).
                         Ok((_, (_, None))) => {}
-                        Err((sid, msg)) => failed.push((sid, msg)),
+                        Err((sid, msg)) => {
+                            // Sama seperti tahap 1: kegagalan sementara
+                            // ditandai negatif TTL pendek (Fix D).
+                            self.neg_put_msg(&self.neg_union_key(&tkey, &sid), &msg);
+                            failed.push((sid, msg));
+                        }
                     }
                 }
             }

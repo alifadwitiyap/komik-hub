@@ -1289,13 +1289,15 @@ async fn u_chapter_inner(state: Arc<UnifiedState>, handle: String, number: Strin
         _ => title_key(&out.pages.title),
     };
     let series_title = out.series_title.as_deref().filter(|t| !t.is_empty());
-    // Probe dimensi asli tiap halaman (range GET kecil) supaya reader bisa
-    // reserve tinggi SEBELUM decode — perbaikan CLS. `None` = tidak diketahui.
-    let image_sizes = probe_dims(&state.image_client, &out.pages.images)
-        .await
-        .into_iter()
-        .map(|d| d.map(|(w, h)| [w, h]))
-        .collect::<Vec<_>>();
+    // `image_sizes` sengaja KOSONG: dulu tiap request chapter menjalankan
+    // `probe_dims` (satu range-GET upstream per halaman) hanya untuk mengisi
+    // field ini. Terukur: warm chapter 471.8 ms → 15.1 ms tanpa probe (97%
+    // biaya warm), dan 59% probe tetap menghasilkan `null` karena
+    // `parse_img_dims` tak mengenali WebP lossy (`VP8 `). CLS terukur tidak
+    // berubah (0.0244 vs 0.0240) — `ComicImage` sudah punya `fallbackRatio`
+    // 0.685. Field dipertahankan supaya kontrak klien utuh
+    // (`readerSource.ts` melakukan `u.image_sizes ?? null`).
+    let image_sizes: Vec<Option<[u32; 2]>> = Vec::new();
     Ok(Json(json!({
         "title": out.pages.title,
         "number": out.pages.number,
@@ -1491,6 +1493,12 @@ fn parse_img_dims(b: &[u8]) -> Option<(u32, u32)> {
 
 /// Probe dimensi untuk SEMUA halaman chapter, konkuren per batch, urutan
 /// dipertahankan. `None` per-halaman = tidak diketahui.
+///
+/// Tidak lagi dipanggil dari respons chapter (lihat `u_chapter_inner`): probe
+/// ini satu range-GET upstream per halaman dan 59% hasilnya `null` untuk WebP
+/// lossy. Disimpan (bukan dihapus) karena masih bisa dipakai kalau `image_sizes`
+/// nanti di-cache per chapter (Fix B).
+#[allow(dead_code)]
 async fn probe_dims(client: &reqwest::Client, urls: &[String]) -> Vec<Option<(u32, u32)>> {
     const PROBE_CONCURRENCY: usize = 8;
     let mut slots: Vec<Option<Option<(u32, u32)>>> = vec![None; urls.len()];

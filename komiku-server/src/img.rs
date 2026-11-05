@@ -227,16 +227,12 @@ fn immutable(bytes: Vec<u8>, etag: &str, cache: &str, mime: &'static str) -> Res
     resp
 }
 
-/// AVIF hanya untuk thumbnail 160–320 px. LQIP reader memakai 96 px dan
-/// di-blur; AVIF di lebar itu tidak terlihat bedanya tapi encode-nya jauh
-/// lebih mahal (terukur 32 s vs 6 s cold di debug) — dan satu chapter memicu
-/// satu LQIP per halaman. 0 (passthrough) juga selalu WebP.
-fn negotiated_format(accepts_avif: bool, raw_w: u32) -> ImgFormat {
-    if accepts_avif && (160..=320).contains(&raw_w) {
-        ImgFormat::Avif
-    } else {
-        ImgFormat::WebP
-    }
+/// AVIF dimatikan: klien web tidak pernah meminta lebar 160–320
+/// (READER_WIDTHS=[480,640,900], LQIP kosong), dan encode AVIF mahal
+/// (1.8–5.3 s/gambar, 24.8 s untuk 8 paralel). Selalu WebP. Jalan encode
+/// AVIF (`resize_encode_avif`) dibiarkan utuh tapi tidak pernah dipicu.
+fn negotiated_format(_accepts_avif: bool, _raw_w: u32) -> ImgFormat {
+    ImgFormat::WebP
 }
 
 /// Decode → resize (lebar `w`, rasio dipertahankan) → WebP lossy.
@@ -682,13 +678,16 @@ mod tests {
     }
 
     #[test]
-    fn avif_hanya_thumbnail_bukan_lqip() {
-        assert!(matches!(negotiated_format(true, 96), ImgFormat::WebP));
-        assert!(matches!(negotiated_format(true, 160), ImgFormat::Avif));
-        assert!(matches!(negotiated_format(true, 320), ImgFormat::Avif));
-        assert!(matches!(negotiated_format(true, 321), ImgFormat::WebP));
-        assert!(matches!(negotiated_format(true, 0), ImgFormat::WebP));
-        assert!(matches!(negotiated_format(false, 200), ImgFormat::WebP));
+    fn avif_dimatikan_selalu_webp() {
+        // AVIF mati: semua kombinasi (termasuk klien yang minta image/avif di
+        // lebar 160–320) harus WebP.
+        for w in [0, 96, 160, 320, 321, 200] {
+            assert!(
+                matches!(negotiated_format(true, w), ImgFormat::WebP),
+                "w={w} harus WebP"
+            );
+            assert!(matches!(negotiated_format(false, w), ImgFormat::WebP));
+        }
     }
 
     #[test]

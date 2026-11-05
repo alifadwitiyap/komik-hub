@@ -5,6 +5,7 @@ import type {
   ChapterNav,
   Manga,
   MangaOut,
+  UnifiedChapter,
   UnifiedSeries,
 } from './types'
 
@@ -192,6 +193,13 @@ function fromUnified(
   }
 }
 
+/**
+ * Respons chapter unified + `series_title`. Field ini dikirim server (lihat
+ * `u_chapter` di unified.rs) tapi belum ada di tipe `UnifiedChapter`, jadi
+ * dideklarasikan lokal di sini supaya perubahan tetap satu file.
+ */
+type ChapterWithSeriesTitle = UnifiedChapter & { series_title?: string | null }
+
 /** Snapshot series dari respons unified (judul + title_key + sampul). */
 export function liteOfSeries(s: UnifiedSeries): SeriesLite {
   const m = s.manga as MangaOut
@@ -203,9 +211,69 @@ export function liteOfSeries(s: UnifiedSeries): SeriesLite {
 }
 
 /**
- * Muat chapter dari flow yang tepat. Judul/title_key manga hanya di-fetch
- * sekali per handle (paralel, lalu dicache) supaya toolbar + riwayat tetap
- * informatif tanpa menambah latency berarti untuk chapter berikutnya.
+ * Snapshot series MINIMAL dari respons chapter — dipakai saat `/unified/series`
+ * belum (atau tidak pernah) tiba. Judul & title_key sudah ikut di respons
+ * chapter, jadi toolbar dan riwayat rak tetap benar tanpa request kedua;
+ * `cover_url` satu-satunya yang belum ada (menyusul lewat cache).
+ */
+function liteFromChapter(ch: ChapterWithSeriesTitle, handle: string): SeriesLite {
+  const title = (ch.series_title ?? '').trim()
+  return {
+    // handle mentah ('komiku:123') jangan sampai jadi judul kalau server
+    // mengirim series_title kosong — itu perilaku lama saat series gagal.
+    title: title || handle,
+    title_key: ch.title_key ?? '',
+    // Server saat ini belum mengirim cover_url di respons chapter (hanya di
+    // /unified/series), tapi tipenya sudah ada — pakai kalau nanti tersedia.
+    cover_url: ch.cover_url ?? null,
+  }
+}
+
+/**
+ * Request `/unified/series` yang sedang jalan, per handle. Snapshot series
+ * dimuat di BELAKANG render (lihat `loadChapter`), jadi beberapa chapter yang
+ * dibuka berurutan / di-prefetch bisa meminta handle yang sama bersamaan —
+ * peta ini menyatukannya jadi satu request.
+ */
+const liteInflight = new Map<string, Promise<SeriesLite | null>>()
+
+/**
+ * Muat snapshot series di latar belakang lalu simpan ke `liteCache`.
+ * Tidak pernah melempar (gagal = `null`) dan sengaja TIDAK memakai
+ * `AbortSignal` pemanggil: hasilnya masuk cache tingkat modul yang hidup
+ * lebih lama dari satu pemanggilan, jadi membatalkannya saat user pindah
+ * chapter hanya membuang kerja yang tetap berguna untuk chapter berikutnya.
+ */
+function backgroundSeriesLite(handle: string): Promise<SeriesLite | null> {
+  const running = liteInflight.get(handle)
+  if (running) return running
+  const job = unifiedApi
+    .series(handle)
+    .then((s: UnifiedSeries) => {
+      const lite = liteOfSeries(s)
+      rememberSeriesLite(handle, lite)
+      return lite
+    })
+    // judul gagal: chapter tetap harus tampil (jangan gagalkan baca)
+    .catch(() => null)
+    .finally(() => liteInflight.delete(handle))
+  liteInflight.set(handle, job)
+  return job
+}
+
+/**
+ * Muat chapter dari flow yang tepat.
+ *
+ * Snapshot series TIDAK lagi ada di jalur kritis. Dulu keduanya di-`await`
+ * bersamaan (`Promise.all([chapter, series])`), padahal `/unified/series`
+ * membawa ~82 KB dan cold 1,5–2 s — jauh lebih lambat dari chapter — sehingga
+ * halaman pertama tertunda tanpa manfaat: judul, `title_key`, dan handle sudah
+ * ikut di respons chapter. Sekarang chapter di-`await` sendirian, series
+ * menyusul di latar belakang dan mengisi cache untuk chapter berikutnya.
+ *
+ * Konsekuensi yang diterima: `cover_url` belum ada pada render pertama (hanya
+ * dipakai sampul riwayat rak); nilai itu terisi begitu request series selesai
+ * atau saat halaman series dibuka lebih dulu (SeriesUnified mengisi cache).
  */
 export async function loadChapter(
   key: string,
@@ -213,21 +281,22 @@ export async function loadChapter(
 ): Promise<ChapterResponse> {
   const u = parseUnifiedKey(key)
   if (!u) return api.chapter(key, signal)
+  // Mulai lebih dulu supaya berjalan PARALEL dengan chapter (bukan sesudahnya),
+  // lalu jangan ditunggu.
+  if (!liteCache.get(u.handle)?.title) void backgroundSeriesLite(u.handle)
+  const ch = (await unifiedApi.chapter(
+    u.handle,
+    u.number,
+    signal,
+  )) as ChapterWithSeriesTitle
+  // Cache dulu (diisi halaman series / chapter sebelumnya); kalau kosong,
+  // susun dari respons chapter supaya toolbar tak menampilkan handle mentah.
+  // `title_key` chapter menang atas cache yang kosong: entri cache bisa dibuat
+  // `rememberSeriesTitle` tanpa title_key, dan title_key kosong membuat rak
+  // serta mark "sudah dibaca" tidak pernah tercatat (gagal senyap).
   const cached = liteCache.get(u.handle)
-  const liteJob: Promise<SeriesLite | null> = cached?.title
-    ? Promise.resolve(cached)
-    : unifiedApi
-        .series(u.handle, signal)
-        .then((s: UnifiedSeries) => {
-          const lite = liteOfSeries(s)
-          rememberSeriesLite(u.handle, lite)
-          return lite
-        })
-        // judul gagal: chapter tetap harus tampil (jangan gagalkan baca)
-        .catch(() => null)
-  const [ch, lite] = await Promise.all([
-    unifiedApi.chapter(u.handle, u.number, signal),
-    liteJob,
-  ])
+  const lite: SeriesLite = cached
+    ? { ...cached, title_key: cached.title_key || (ch.title_key ?? '') }
+    : liteFromChapter(ch, u.handle)
   return fromUnified(ch, u.handle, lite)
 }

@@ -310,6 +310,113 @@ async fn collect_gabung_semua_sumber_dan_toleransi_gagal() {
     assert_eq!(failed[0].0.as_str(), "mangaku");
 }
 
+/// Warm TIDAK mengulang sumber yang gagal saat cold (Fix D).
+///
+/// `collect_series_across_sources` menyimpan hasil union PER SUMBER, jadi
+/// sumber yang gagal saat cold tidak punya entri di cache -> tanpa penanda
+/// negatif ia di-fetch ulang di SETIAP panggilan berikutnya (terukur: 1
+/// panggilan kiryuu 470-517 ms per request chapter). Kontrak: kegagalan
+/// sementara (resolve/series error) disimpan sebagai penanda negatif TTL
+/// pendek, jadi panggilan kedua tidak menyentuh sumber itu lagi.
+///
+/// Sengaja pakai cache in-memory baru: `Aggregator::new` memberi cache, dan
+/// kunci `series-union:{title_key}` bertabrakan antar-test kalau dipakai
+/// ulang (lihat catatan di `read_multi_source_units.rs`).
+#[tokio::test]
+async fn collect_warm_tidak_mengulang_sumber_yang_gagal_saat_cold() {
+    let a = Mock::new("komiku").owning("chainsaw man", "k1");
+    let b = Mock::new("shinigami").owning("chainsaw man", "s1");
+    let c = Mock::new("mangaku").owning("chainsaw man", "m1").fail_series();
+    let agg = Aggregator::with_cache(
+        vec![Arc::new(a.clone()), Arc::new(b.clone()), Arc::new(c.clone())],
+        komik_core::cache::Cache::memory(komik_core::cache::DEFAULT_TTL),
+    );
+
+    // COLD: mangaku ikut dipanggil dan gagal.
+    let (lists, failed) = agg
+        .collect_series_across_sources("Chainsaw Man", None, 100)
+        .await;
+    assert_eq!(lists.len(), 2, "dua sumber sehat: {lists:?}");
+    assert_eq!(failed.len(), 1, "kegagalan cold dilaporkan: {failed:?}");
+    assert_eq!(c.resolve_calls(), 1, "cold: mangaku di-resolve sekali");
+    assert_eq!(c.series_calls(), 1, "cold: mangaku series dipanggil sekali");
+
+    // WARM: sumber yang gagal tidak boleh di-fetch ulang.
+    let (lists2, failed2) = agg
+        .collect_series_across_sources("Chainsaw Man", None, 100)
+        .await;
+    assert_eq!(lists2.len(), 2, "hasil warm tetap sama: {lists2:?}");
+    assert_eq!(
+        failed2.len(),
+        1,
+        "warm tetap melaporkan sumber gagal (bukan hilang diam-diam): {failed2:?}"
+    );
+    assert_eq!(failed2[0].0.as_str(), "mangaku");
+    assert!(
+        !failed2[0].1.is_empty(),
+        "pesan kegagalan ikut tersimpan di penanda negatif"
+    );
+    assert_eq!(
+        c.resolve_calls(),
+        1,
+        "warm: sumber gagal TIDAK di-resolve ulang"
+    );
+    assert_eq!(
+        c.series_calls(),
+        1,
+        "warm: series sumber gagal TIDAK dipanggil ulang"
+    );
+    // Sumber sehat juga tidak diulang (sudah ada di cache per-sumber).
+    assert_eq!(a.resolve_calls(), 1, "warm: sumber sehat dari cache");
+    assert_eq!(b.resolve_calls(), 1, "warm: sumber sehat dari cache");
+}
+
+/// Penanda negatif union BERKEDALUWARSA: sumber dicoba lagi setelah
+/// `NEGATIVE_TTL`, jadi sumber yang pulih tidak "hilang" selamanya dari union.
+///
+/// TTL-nya pendek (60 s) justru supaya kegagalan sementara tidak mengunci
+/// sumber yang sehat kembali. Test ini mengunci kedua sisi kontrak: dilewati
+/// saat segar, diambil lagi saat kedaluwarsa.
+#[tokio::test]
+async fn collect_penanda_gagal_kedaluwarsa_setelah_negative_ttl() {
+    use komik_core::cache::{Cache, DEFAULT_TTL, NEGATIVE_TTL};
+    use std::sync::atomic::AtomicU64;
+
+    let now = Arc::new(AtomicU64::new(1_000_000));
+    let clock_now = now.clone();
+    let cache = Cache::memory_with_clock(
+        DEFAULT_TTL,
+        Arc::new(move || clock_now.load(Ordering::SeqCst)),
+    );
+
+    let a = Mock::new("komiku").owning("chainsaw man", "k1");
+    let b = Mock::new("shinigami").owning("chainsaw man", "s1").fail_series();
+    let agg = Aggregator::with_cache(vec![Arc::new(a.clone()), Arc::new(b.clone())], cache);
+
+    let _ = agg
+        .collect_series_across_sources("Chainsaw Man", None, 100)
+        .await;
+    assert_eq!(b.series_calls(), 1, "cold: sumber gagal dicoba");
+
+    // Masih di dalam TTL -> dilewati.
+    now.fetch_add(NEGATIVE_TTL.as_millis() as u64 / 2, Ordering::SeqCst);
+    let _ = agg
+        .collect_series_across_sources("Chainsaw Man", None, 100)
+        .await;
+    assert_eq!(b.series_calls(), 1, "di dalam TTL: sumber gagal dilewati");
+
+    // Lewat TTL -> dicoba lagi (sumber mungkin sudah pulih).
+    now.fetch_add(NEGATIVE_TTL.as_millis() as u64, Ordering::SeqCst);
+    let _ = agg
+        .collect_series_across_sources("Chainsaw Man", None, 100)
+        .await;
+    assert_eq!(
+        b.series_calls(),
+        2,
+        "setelah TTL: sumber dicoba lagi supaya bisa pulih"
+    );
+}
+
 #[tokio::test]
 async fn collect_anti_false_positive_judul_mirip_tidak_tergabung() {
     // Komiku punya "Tower Of God: Side Story"; shinigami punya "Tower Of God"
