@@ -285,26 +285,34 @@ fn dims_from_raw_cache(url: &str) -> Option<(u32, u32)> {
     (w > 0 && h > 0).then_some((w, h))
 }
 
+/// Dimensi dari byte dalam memori, baca header SAJA (tanpa decode piksel).
+/// Dipakai `resize_encode` untuk memutuskan passthrough WebP sebelum
+/// `load_from_memory` yang mahal.
+fn header_dims(src: &[u8]) -> Option<(u32, u32)> {
+    let reader = image::ImageReader::new(std::io::Cursor::new(src))
+        .with_guessed_format()
+        .ok()?;
+    let (w, h) = reader.into_dimensions().ok()?;
+    (w > 0 && h > 0).then_some((w, h))
+}
+
 /// Decode → resize (lebar `w`, rasio dipertahankan) → WebP lossy.
 /// Kualitas diturunkan untuk gambar kecil: di 480 px q72 sudah tak terbedakan
 /// dari aslinya di layar HP, dan selisih byte-nya besar.
 fn resize_encode(src: &[u8], target_w: u32, url: &str) -> Result<Vec<u8>, String> {
-    let img = image::load_from_memory(src).map_err(|e| format!("decode: {e}"))?;
-    let (sw, sh) = (img.width(), img.height());
-    if sw == 0 || sh == 0 {
-        return Err("dimensi tak valid".into());
-    }
+    // Cek passthrough SEBELUM decode penuh: untuk WebP yang sudah lebar pas
+    // (w>=sw), baca dimensi dari header (murah) saja. Decode `load_from_memory`
+    // penuh adalah CPU sia-sia di path hangat paling umum.
+    let (sw, sh) = header_dims(src).ok_or("dimensi tak valid")?;
     let w = target_w.min(sw); // jangan pernah memperbesar (byte naik, tak berguna)
-    let h = ((sh as u64 * w as u64) / sw as u64).max(1) as u32;
-    // R3-#1: sumber SUDAH WebP lossy & tidak perlu resize (w>=sw) → kirim
-    // byte asli apa adanya. Decode + re-encode WebP→WebP adalah CPU sia-sia
-    // pada path hangat paling umum (67% cache raw sudah WebP lossy, median
-    // 89KB; terukur 0.3–1 s/gambar). Dimensi tetap direkam supaya
-    // `image_sizes` terisi.
     if w == sw && sniff_type(src) == "image/webp" {
+        // R3-#1: sumber SUDAH WebP lossy & tidak perlu resize → kirim byte asli
+        // apa adanya. Dimensi tetap direkam supaya `image_sizes` terisi.
         record_orig_dims(url, sw, sh);
         return Ok(src.to_vec());
     }
+    let img = image::load_from_memory(src).map_err(|e| format!("decode: {e}"))?;
+    let h = ((sh as u64 * w as u64) / sw as u64).max(1) as u32;
     let small = if w == sw {
         img
     } else if w <= 160 {
@@ -820,9 +828,41 @@ mod tests {
         );
     }
 
-    /// R2-#1 (RED): format nyata cache raw paling banyak adalah WebP VP8
-    /// *lossy* (`VP8 ` bukan `VP8X`). Parser header lama di unified.rs cuma
-    /// mengenal VP8X, jadi ini kasus yang benar-benar diskriminatif.
+    /// QA (ulw-qa): JPEG dengan w==sw TIDAK boleh passthrough — harus tetap
+    /// di-decode + re-encode ke WebP. Fix header_dims tidak boleh membuat
+    /// passthrough false-positive untuk format non-WebP.
+    #[test]
+    fn jpeg_w_sama_tidak_passthrough() {
+        let mut src = Vec::new();
+        let img = image::RgbImage::from_fn(720, 960, |x, y| {
+            image::Rgb([(x % 251) as u8, (y % 233) as u8, ((x + y) % 199) as u8])
+        });
+        image::DynamicImage::ImageRgb8(img)
+            .write_to(&mut std::io::Cursor::new(&mut src), image::ImageFormat::Jpeg)
+            .unwrap();
+        let out = resize_encode(&src, 900, "https://x/qa-jpeg.webp").expect("encode");
+        // hasil harus WebP (bukan byte JPEG asli), dan harus lebih kecil.
+        assert_eq!(sniff_type(&out), "image/webp", "JPEG w==sw harus re-encode ke WebP");
+        assert!(out.len() < src.len(), "re-encode harus lebih kecil dari JPEG sumber");
+    }
+
+    /// QA (ulw-qa): WebP dengan w<sw harus resize, BUKAN passthrough. Kalau
+    /// passthrough salah nyala saat perlu resize, klien dapet gambar lebih besar
+    /// dari minta (boros bandwidth).
+    #[test]
+    fn webp_w_kecil_harus_resize() {
+        let img = image::RgbImage::from_fn(720, 960, |x, y| {
+            image::Rgb([(x % 251) as u8, (y % 233) as u8, ((x + y) % 199) as u8])
+        });
+        let src = webp::Encoder::from_rgb(img.as_raw(), img.width(), img.height())
+            .encode(75.0)
+            .to_vec();
+        let out = resize_encode(&src, 360, "https://x/qa-resize.webp").expect("encode");
+        assert_ne!(out, src, "w<sw harus resize, bukan passthrough byte asli");
+        let back = image::load_from_memory(&out).expect("decode hasil");
+        assert_eq!((back.width(), back.height()), (360, 480));
+    }
+
     #[test]
     fn known_orig_dims_dari_raw_cache_vp8_lossy() {
         let url = "https://x/r2-hit-vp8lossy-640x960.webp";

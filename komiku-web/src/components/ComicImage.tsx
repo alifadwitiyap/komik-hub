@@ -503,9 +503,9 @@ export default function ComicImage({
       }}
       // Tanpa latar: selama gambar belum decode, yang terlihat adalah
       // permukaan baca (putih / #131313 saat night shift) — bukan pita abu.
-      className={`select-none transition-opacity duration-200 ${
-        shown ? 'opacity-100' : 'opacity-0'
-      } ${className ?? ''}`}
+      // Tanpa `duration-200`: gambar yang sudah ter-decode langsung
+      // `opacity-100` (TTVI tidak menunggu fade 200ms yang sia-sia).
+      className={`select-none ${shown ? 'opacity-100' : 'opacity-0'} ${className ?? ''}`}
       draggable={false}
     />
     </div>
