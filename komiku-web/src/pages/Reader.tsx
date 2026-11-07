@@ -12,6 +12,7 @@ import ReaderSettingsSheet from '../components/ReaderSettingsSheet'
 import ReaderToolbar from '../components/ReaderToolbar'
 import SourceBadge from '../components/SourceBadge'
 import { imgSrc, imgUrl, mountAheadPx, slowLink } from '../imgUrl'
+import { nextFillFrontier } from '../fillAhead'
 import { tapHitsReaderControl } from '../readerControls'
 import { downloadChapterImages } from '../chapterOffline'
 import { unifiedApi } from '../api'
@@ -229,24 +230,27 @@ export default function Reader() {
 
   // B4 — Fill-ahead kontinu: jadwalkan pemuatan halaman di BELAKANG frontier
   // `bgFillIdx` lewat imgQueue (tanpa menunggu IntersectionObserver sempit).
-  // Frontier selalu memimpin ~LEAD halaman di depan posisi baca (p) dan naik
-  // monoton searah scroll — jadi selalu ada backlog siap-muat, rendering tidak
-  // pernah berhenti menunggu fetch. Rantai setTimeout (CANDU requestIdleCallback
-  // yang jarang menembak di headless) + interval cukup lambat (250ms) supaya
-  // tidak mencuri frame utama. Slow-link/hemat memimpin lebih pendek.
+  // Frontier naik MONOTON seiring tick (waktu), bukan cuma posisi scroll.
+  // Scroll boleh mempercepat saat pembaca melompat, tapi tidak boleh menjadi
+  // satu-satunya pemicu — kalau tidak, chapter mandek setelah burst awal.
+  // Rantai setTimeout (pengganti requestIdleCallback yang jarang menembak di
+  // headless) + interval 250ms supaya tidak mencuri frame utama. Fetch
+  // sungguhan tetap dibatasi imgQueue; ini cuma target MOUNT.
   useEffect(() => {
     if (!data || images.length === 0) return
     const mode = getReaderSettings().prefetchMode
     const slow = slowLink() || mode === 'hemat'
     const n = images.length
     let timer: ReturnType<typeof setTimeout>
+    let ticks = 0
     const tick = () => {
+      ticks += 1
       const vh = window.innerHeight
       const total = document.documentElement.scrollHeight - vh
       const p = total > 0 ? Math.min(1, Math.max(0, window.scrollY / total)) : 0
-      const lead = slow ? 6 : 10
-      const frontier = Math.min(n - 1, Math.floor(p * n) + lead)
-      setBgFillIdx((prev) => Math.max(prev, frontier))
+      setBgFillIdx((prev) =>
+        nextFillFrontier({ prev, ticks, pageCount: n, slow, scrollProgress: p }),
+      )
       timer = setTimeout(tick, 250)
     }
     timer = setTimeout(tick, 50)

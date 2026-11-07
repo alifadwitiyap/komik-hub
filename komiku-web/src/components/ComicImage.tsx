@@ -373,8 +373,16 @@ export default function ComicImage({
   }, [url, attempt, failed, started])
 
   if (failed) {
+    // P2: jangan biarkan permukaan putih polos meski gambar gagal dimuat.
+    // Latar zinc yang sama dengan skeleton normal (holder non-failed), plus
+    // aspectRatio agar tinggi halaman tetap terjaga. Badge/tombol retry tetap
+    // dirender lewat portal seperti sebelumnya.
     return (
-      <div ref={slotRef} className="relative" style={ratio ? { aspectRatio: String(ratio) } : undefined}>
+      <div
+        ref={slotRef}
+        className="relative overflow-hidden bg-zinc-200/60 dark:bg-zinc-800/40"
+        style={ratio ? { aspectRatio: String(ratio) } : undefined}
+      >
         {createPortal(
           <FixedRetry
             targetRef={slotRef}
