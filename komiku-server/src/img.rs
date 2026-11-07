@@ -296,6 +296,15 @@ fn resize_encode(src: &[u8], target_w: u32, url: &str) -> Result<Vec<u8>, String
     }
     let w = target_w.min(sw); // jangan pernah memperbesar (byte naik, tak berguna)
     let h = ((sh as u64 * w as u64) / sw as u64).max(1) as u32;
+    // R3-#1: sumber SUDAH WebP lossy & tidak perlu resize (w>=sw) → kirim
+    // byte asli apa adanya. Decode + re-encode WebP→WebP adalah CPU sia-sia
+    // pada path hangat paling umum (67% cache raw sudah WebP lossy, median
+    // 89KB; terukur 0.3–1 s/gambar). Dimensi tetap direkam supaya
+    // `image_sizes` terisi.
+    if w == sw && sniff_type(src) == "image/webp" {
+        record_orig_dims(url, sw, sh);
+        return Ok(src.to_vec());
+    }
     let small = if w == sw {
         img
     } else if w <= 160 {
@@ -766,6 +775,20 @@ mod tests {
         assert!(cache_path_fmt(&k_avif, ImgFormat::Avif)
             .to_string_lossy()
             .ends_with(".avif"));
+    }
+
+    /// R3-#1 (RED): sumber SUDAH WebP lossy & tidak perlu resize (w>=sw) →
+    /// harus dikirim apa adanya tanpa decode + re-encode WebP→WebP.
+    #[test]
+    fn webp_lossy_tanpa_resize_tidak_reencode() {
+        // gradient non-trivial → re-encode lossy→lossy TIDAK akan byte-identical
+        let img = image::RgbImage::from_fn(720, 960, |x, y| {
+            image::Rgb([(x % 251) as u8, (y % 233) as u8, ((x + y) % 199) as u8])
+        });
+        let src = webp::Encoder::from_rgb(img.as_raw(), 720, 960).encode(75.0).to_vec();
+        let out = resize_encode(&src, 900, "https://x/r3-pass.webp").expect("encode");
+        assert_eq!(out, src, "WebP sudah lossy + tidak resize → passthrough byte asli");
+        assert_eq!(known_orig_dims("https://x/r3-pass.webp"), Some((720, 960)));
     }
 
     /// R2-#1 (RED): proses BARU (ORIG_DIMS kosong) tapi byte asli sudah ada di

@@ -10,7 +10,7 @@ import ReaderMenu from '../components/ReaderMenu'
 import ReaderSettingsSheet from '../components/ReaderSettingsSheet'
 import ReaderToolbar from '../components/ReaderToolbar'
 import SourceBadge from '../components/SourceBadge'
-import { imgUrl, mountAheadPx } from '../imgUrl'
+import { imgSrc, imgUrl, mountAheadPx } from '../imgUrl'
 import { tapHitsReaderControl } from '../readerControls'
 import { useReaderSettings } from '../hooks/useReaderSettings'
 import { useChromeOnScroll } from '../hooks/useChromeOnScroll'
@@ -162,8 +162,6 @@ export default function ReaderMarathon() {
     setError(null)
     setNextLoadFailed(false)
     setLoadingNext(false)
-    // indeks gambar global kembali dari 0 → penanda settled harus dikosongkan
-    setSettled(new Set())
     // channel baru: chrome tampil lagi (jangan warisi keadaan tersembunyi)
     chrome.show()
 
@@ -291,19 +289,18 @@ export default function ReaderMarathon() {
    * gagal). Gagal ikut dihitung supaya satu gambar rusak tidak menahan rantai
    * selamanya; pembaca tetap melihat chip "Coba lagi" di tempatnya.
    */
-  const [settled, setSettled] = useState<Set<number>>(() => new Set())
-  const markSettled = useCallback((g: number) => {
-    setSettled((s) => (s.has(g) ? s : new Set(s).add(g)))
-  }, [])
+  // `settled` dihapus: gate chaining tidak lagi menunggu semua gambar blok
+  // terakhir beres (perfC H1) — progres baca (`readBlock`+`readInBlock`)
+  // yang menentukan kapan chaining nyala, jadi set ini tak diperlukan.
 
-  // chapter TERAKHIR baru boleh memicu chaining kalau SEMUA gambarnya beres:
-  // kalau komik belum ke-load semua, chapter berikutnya tidak dinyalakan —
-  // pembaca tidak menemui lubang kosong di tengah chapter.
-  const lastBlockStart = totalPages - (lastBlock?.images.length ?? 0)
+  // chapter TERAKHIR tidak wajib SEMUA gambar beres sebelum chaining nyala —
+  // menunggu semua-settled menunda transisi karena gambar-gambar itu
+  // lazy-mount hanya di dekat dasar (perfC H1). Cukup data bloknya ada;
+  // progres baca (`readBlock` + `readInBlock/curLen`) yang menentukan kapan
+  // memicu, dan `settled` tetap dipakai jaring pengaman IntersectionObserver
+  // agar tidak ada lubang kosong.
   const lastBlockSettled =
-    !!lastBlock &&
-    lastBlock.images.length > 0 &&
-    lastBlock.images.every((_, i) => settled.has(lastBlockStart + i))
+    !!lastBlock && lastBlock.images.length > 0
 
   // progres: halaman ke-`tailIdx` (global) sudah tampil
   useEffect(() => {
@@ -541,6 +538,16 @@ export default function ReaderMarathon() {
     loadChapter(nextId)
       .then((d) => {
         setNextLoadFailed(false)
+        // Warm gambar pertama chapter berikutnya lewat proxy pada lebar yang
+        // BENAR-BENAR dipilih browser (mirip Reader.tsx:404-413). Ini
+        // memindahkan decode+gambar keluar dari critical path transisi.
+        // `prefetchMode` 'hemat' + saveData → jangan pemanasan.
+        const im = d.images?.[0]
+        const conn = (navigator as Navigator & { connection?: { saveData?: boolean } }).connection
+        if (im && settings.prefetchMode !== 'hemat' && !conn?.saveData) {
+          const w = new window.Image()
+          w.src = imgSrc(im)
+        }
         pushBlock(toBlock(d))
       })
       .catch(() => {
@@ -549,7 +556,7 @@ export default function ReaderMarathon() {
         setNextLoadFailed(true)
       })
       .finally(() => setLoadingNext(false))
-  }, [lastBlock, pushBlock])
+  }, [lastBlock, pushBlock, settings.prefetchMode])
 
   useEffect(() => {
     if (chainExhausted) return
@@ -804,8 +811,6 @@ export default function ReaderMarathon() {
                   onLoad={() =>
                     setTailIdx((n) => (start + i === n ? n + 1 : Math.max(n, start + i)))
                   }
-                  // gerbang chaining: termuat ATAU gagal dua-duanya "beres"
-                  onSettled={() => markSettled(start + i)}
                   className="manga-img w-full"
                 />
               ))}
@@ -908,7 +913,6 @@ export default function ReaderMarathon() {
               window.scrollTo({ top: 0 })
               setBlocks([])
               setTailIdx(-1)
-              setSettled(new Set())
               fetchedRef.current = new Set()
               const ctrl = new AbortController()
               loadChapter(chapterId, ctrl.signal)
