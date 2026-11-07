@@ -235,10 +235,28 @@ fn negotiated_format(_accepts_avif: bool, _raw_w: u32) -> ImgFormat {
     ImgFormat::WebP
 }
 
+/// Dimensi asli (width×height) per URL upstream, direkam saat encode sukses.
+/// Keyed by upstream URL; dipakai `unified::fetch_chapter_payload` untuk mengisi
+/// `image_sizes` (BE-3) tanpa network — menggantikan probe range-GET yang
+/// sia-sia (59% null untuk WebP lossy).
+static ORIG_DIMS: OnceCell<std::sync::Mutex<HashMap<String, (u32, u32)>>> = OnceCell::new();
+
+fn record_orig_dims(url: &str, w: u32, h: u32) {
+    if let Ok(mut m) = ORIG_DIMS.get_or_init(|| std::sync::Mutex::new(HashMap::new())).lock() {
+        m.insert(url.to_string(), (w, h));
+    }
+}
+
+/// Query dimensi asli yang sudah direkam untuk URL upstream. `None` = belum
+/// pernah di-encode sukses (MISS → frontend fallback rasio 0.685).
+pub fn known_orig_dims(url: &str) -> Option<(u32, u32)> {
+    ORIG_DIMS.get()?.lock().ok()?.get(url).copied()
+}
+
 /// Decode → resize (lebar `w`, rasio dipertahankan) → WebP lossy.
 /// Kualitas diturunkan untuk gambar kecil: di 480 px q72 sudah tak terbedakan
 /// dari aslinya di layar HP, dan selisih byte-nya besar.
-fn resize_encode(src: &[u8], target_w: u32) -> Result<Vec<u8>, String> {
+fn resize_encode(src: &[u8], target_w: u32, url: &str) -> Result<Vec<u8>, String> {
     let img = image::load_from_memory(src).map_err(|e| format!("decode: {e}"))?;
     let (sw, sh) = (img.width(), img.height());
     if sw == 0 || sh == 0 {
@@ -279,7 +297,9 @@ fn resize_encode(src: &[u8], target_w: u32) -> Result<Vec<u8>, String> {
     let mut cfg = webp::WebPConfig::new().map_err(|_| "config".to_string())?;
     cfg.quality = q;
     cfg.thread_level = 1;
-    Ok(enc.encode_advanced(&cfg).map_err(|e| format!("encode: {e:?}"))?.to_vec())
+    let out = enc.encode_advanced(&cfg).map_err(|e| format!("encode: {e:?}"))?.to_vec();
+    record_orig_dims(url, sw, sh);
+    Ok(out)
 }
 
 /// Decode → resize (decode/lebar/filter sama seperti `resize_encode`) → AVIF
@@ -520,7 +540,8 @@ pub async fn img_handler(Query(q): Query<ImgQuery>, headers: HeaderMap) -> Respo
                 tracing::warn!("img avif gagal — fallback WebP");
                 match tokio::task::spawn_blocking({
                     let src = upstream.clone();
-                    move || resize_encode(&src, target)
+                    let u = q.u.clone();
+                    move || resize_encode(&src, target, &u)
                 })
                 .await
                 {
@@ -535,7 +556,8 @@ pub async fn img_handler(Query(q): Query<ImgQuery>, headers: HeaderMap) -> Respo
     } else {
         let r = tokio::task::spawn_blocking({
             let src = upstream.clone();
-            move || resize_encode(&src, target)
+            let u = q.u.clone();
+            move || resize_encode(&src, target, &u)
         })
         .await;
         match r {
@@ -628,7 +650,7 @@ mod tests {
         image::DynamicImage::ImageRgb8(img)
             .write_to(&mut std::io::Cursor::new(&mut buf), image::ImageFormat::Png)
             .unwrap();
-        let out = resize_encode(&buf, 480).expect("encode");
+        let out = resize_encode(&buf, 480, "https://x/1.webp").expect("encode");
         let back = image::load_from_memory(&out).expect("decode hasil");
         assert_eq!((back.width(), back.height()), (480, 640));
         assert!(out.len() < buf.len(), "hasil harus lebih kecil dari PNG sumber");
@@ -641,7 +663,7 @@ mod tests {
         image::DynamicImage::ImageRgb8(img)
             .write_to(&mut std::io::Cursor::new(&mut buf), image::ImageFormat::Png)
             .unwrap();
-        let out = resize_encode(&buf, 900).expect("encode");
+        let out = resize_encode(&buf, 900, "https://x/2.webp").expect("encode");
         let back = image::load_from_memory(&out).expect("decode hasil");
         assert_eq!((back.width(), back.height()), (300, 400));
     }
@@ -654,10 +676,24 @@ mod tests {
         image::DynamicImage::ImageRgb8(img)
             .write_to(&mut std::io::Cursor::new(&mut buf), image::ImageFormat::Png)
             .unwrap();
-        let out = resize_encode(&buf, 96).expect("encode");
+        let out = resize_encode(&buf, 96, "https://x/3.webp").expect("encode");
         let back = image::load_from_memory(&out).expect("decode hasil");
         assert_eq!((back.width(), back.height()), (96, 128));
         assert!(out.len() < buf.len());
+    }
+
+    #[test]
+    fn record_query_orig_dims_roundtrip() {
+        // BE-3: encode sukses merekam dimensi asli; query mengembalikannya.
+        let mut buf = Vec::new();
+        let img = image::RgbImage::from_pixel(900, 1200, image::Rgb([200, 200, 200]));
+        image::DynamicImage::ImageRgb8(img)
+            .write_to(&mut std::io::Cursor::new(&mut buf), image::ImageFormat::Png)
+            .unwrap();
+        let url = "https://x/rt.webp";
+        assert_eq!(known_orig_dims(url), None, "belum direkam");
+        resize_encode(&buf, 480, url).expect("encode");
+        assert_eq!(known_orig_dims(url), Some((900, 1200)));
     }
 
     #[test]

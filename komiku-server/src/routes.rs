@@ -4,7 +4,7 @@
 //! jadi React cukup mengonsumsi JSON bersih (lihat `shape`).
 
 use axum::{
-    extract::{Path, Query, State},
+    extract::{Path, Query},
     http::StatusCode,
     response::{IntoResponse, Response},
     routing::get,
@@ -13,26 +13,21 @@ use axum::{
 use serde::Deserialize;
 use serde_json::{json, Value};
 use std::sync::Arc;
-use std::time::Duration;
-use tokio::sync::RwLock;
 
 use crate::{api, crypto, unified};
 use komik_core::model::title_key;
 
-/// Cache katalog A-Z: 5.6 MB, satu-satunya panggilan yang mahal.
 /// `unified` = state terpusat untuk semua handler `/api/unified/*` (aggregator,
 /// caches, gerbang single-flight, semaphore fan-out, store unduhan) — dipakai
 /// via axum `State` extractor, bukan OnceLock statis lagi.
 #[derive(Clone)]
 pub struct AppState {
-    catalogue: Arc<RwLock<Option<(Value, std::time::Instant)>>>,
     pub unified: Arc<unified::UnifiedState>,
 }
 
 impl AppState {
     pub fn new() -> Self {
         AppState {
-            catalogue: Arc::new(RwLock::new(None)),
             unified: Arc::new(unified::UnifiedState::new()),
         }
     }
@@ -43,8 +38,6 @@ impl Default for AppState {
         Self::new()
     }
 }
-
-const CATALOGUE_TTL: Duration = Duration::from_secs(30 * 60);
 
 /// Hitung request user. Probe healthcheck TIDAK dihitung supaya angka
 /// `/api/stats` tidak bias oleh container yang mengecek dirinya sendiri.
@@ -289,71 +282,6 @@ struct SearchQuery {
     page: Option<u32>,
 }
 
-async fn categories() -> Res<Value> {
-    let raw = api::categories().await?;
-    // buang grup kosong (mis. "berwarna" tanpa isi) supaya UI tidak menampilkan header hampa
-    let groups: Vec<Value> = raw
-        .get("data")
-        .and_then(|d| d.as_array())
-        .map(|arr| {
-            arr.iter()
-                .filter(|g| {
-                    g.get("data")
-                        .and_then(|d| d.as_array())
-                        .map(|a| !a.is_empty())
-                        .unwrap_or(false)
-                })
-                .map(|g| {
-                    json!({
-                        "category": g.get("category"),
-                        "items": g.get("data"),
-                    })
-                })
-                .collect()
-        })
-        .unwrap_or_default();
-    Ok(Json(json!({ "groups": groups })))
-}
-
-async fn catalogue(State(st): State<Arc<AppState>>) -> Res<Value> {
-    {
-        let guard = st.catalogue.read().await;
-        if let Some((val, at)) = guard.as_ref() {
-            if at.elapsed() < CATALOGUE_TTL {
-                return Ok(Json(val.clone()));
-            }
-        }
-    }
-    // Graceful degradation: kalau upstream katalog gagal, sajikan cache lama
-    // (walau sudah lewat TTL) daripada 502. Katalog 5.6 MB berubah lambat;
-    // data basi jauh lebih berguna daripada halaman kosong.
-    let raw = match api::catalogue().await {
-        Ok(v) => v,
-        Err(e) => {
-            let guard = st.catalogue.read().await;
-            if let Some((val, _)) = guard.as_ref() {
-                tracing::warn!("catalogue upstream gagal, sajikan cache lama: {e:#}");
-                return Ok(Json(val.clone()));
-            }
-            return Err(AppError::new(e));
-        }
-    };
-    // raw: { success, message, data: { "#": [...], "A": [...], ... } }
-    let mut letters = serde_json::Map::new();
-    if let Some(buckets) = raw.get("data").and_then(|d| d.as_object()) {
-        for (letter, items) in buckets {
-            let list: Vec<Value> = items
-                .as_array()
-                .map(|a| a.iter().map(slim).collect())
-                .unwrap_or_default();
-            letters.insert(letter.clone(), json!(list));
-        }
-    }
-    let val = json!({ "letters": letters });
-    *st.catalogue.write().await = Some((val.clone(), std::time::Instant::now()));
-    Ok(Json(val))
-}
-
 async fn series(Path(id): Path<i64>) -> Res<Value> {
     let raw = api::series(id).await?;
     let mut s = raw.get("series").cloned().unwrap_or(Value::Null);
@@ -436,8 +364,6 @@ pub fn router(state: Arc<AppState>) -> Router {
         .route("/api/debug/net", get(crate::debugnet::net_probe))
         .route("/api/homepage", get(homepage))
         .route("/api/search", get(search))
-        .route("/api/categories", get(categories))
-        .route("/api/catalogue", get(catalogue))
         .route("/api/series/:id", get(series))
         .route("/api/chapter/:id", get(chapter))
         // Proxy gambar ber-resize (same-origin supaya bisa di-cache service

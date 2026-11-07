@@ -11,10 +11,11 @@ import ReaderMenu from '../components/ReaderMenu'
 import ReaderSettingsSheet from '../components/ReaderSettingsSheet'
 import ReaderToolbar from '../components/ReaderToolbar'
 import SourceBadge from '../components/SourceBadge'
-import { imgSrc, imgUrl, mountAheadPx } from '../imgUrl'
+import { imgSrc, imgUrl, mountAheadPx, slowLink } from '../imgUrl'
 import { tapHitsReaderControl } from '../readerControls'
 import { downloadChapterImages } from '../chapterOffline'
 import { unifiedApi } from '../api'
+import { getReaderSettings } from '../readerSettings'
 import { useReaderSettings } from '../hooks/useReaderSettings'
 import { useChromeOnScroll } from '../hooks/useChromeOnScroll'
 import { useAutoFullscreen } from '../hooks/useAutoFullscreen'
@@ -95,6 +96,8 @@ export default function Reader() {
   const writeRef = useRef<(force: boolean) => void>(() => {})
   /** prefetch chapter berikutnya sudah dipicu (sekali per chapter) */
   const prefetchedNext = useRef(false)
+  /** frontier fill-ahead background: index halaman berikut yang dipanaskan */
+  const [bgFillIdx, setBgFillIdx] = useState(0)
 
   // reset saat chapter berganti
   useEffect(() => {
@@ -105,6 +108,7 @@ export default function Reader() {
     setImagesReady(false)
     pending.current = null
     prefetchedNext.current = false
+    setBgFillIdx(0)
     // React Router v7 TIDAK reset scroll saat rute berubah → chapter baru
     // akan tampil di posisi scroll chapter lama (bawah). Scroll ke atas
     // SEBELUM fetch; kalau chapter ini punya anchor tersimpan, efek restore
@@ -192,14 +196,62 @@ export default function Reader() {
     )
   }, [downloading, images, chapterId])
 
-  // Seberapa jauh di luar layar gambar boleh mulai diminta. Skalanya mengikuti
-  // preferensi reader (hemat 0,4 · seimbang 1,5 · siapkan 3 viewport) dan
-  // dipaksa hemat saat Save-Data/2G. Dihitung sekali per mount: nilai ini yang
-  // menentukan berapa byte yang berebut di detik pertama.
-  const mountAhead = useMemo(
-    () => mountAheadPx(typeof window !== 'undefined' ? window.innerHeight : 800),
-    [],
+  // B2 — Seberapa jauh di luar layar gambar boleh mulai diminta. Dasar skala
+  // mengikuti preferensi reader (hemat/seimbang/siapkan) & Save-Data, lalu
+  // naik lembut seiring pembaca maju (max ~2x dasar). Dihitung ulang saat
+  // scroll (rAF ringan) — bukan sekali per mount.
+  const [mountAhead, setMountAhead] = useState<number>(() =>
+    mountAheadPx(typeof window !== 'undefined' ? window.innerHeight : 800),
   )
+  useEffect(() => {
+    let raf = 0
+    let base = 0
+    const update = () => {
+      raf = 0
+      const vh = window.innerHeight
+      if (base === 0) base = mountAheadPx(vh)
+      const total = document.documentElement.scrollHeight - vh
+      const p = total > 0 ? Math.min(1, window.scrollY / total) : 0
+      const next = Math.round(base * (1 + p)) // horizon: base → 2x base
+      setMountAhead((prev) => (Math.abs(prev - next) > 24 ? next : prev))
+    }
+    const onScroll = () => {
+      if (!raf) raf = requestAnimationFrame(update)
+    }
+    window.addEventListener('scroll', onScroll, { passive: true })
+    window.addEventListener('resize', onScroll)
+    return () => {
+      window.removeEventListener('scroll', onScroll)
+      window.removeEventListener('resize', onScroll)
+      if (raf) cancelAnimationFrame(raf)
+    }
+  }, [])
+
+  // B4 — Fill-ahead kontinu: jadwalkan pemuatan halaman di BELAKANG frontier
+  // `bgFillIdx` lewat imgQueue (tanpa menunggu IntersectionObserver sempit).
+  // Frontier selalu memimpin ~LEAD halaman di depan posisi baca (p) dan naik
+  // monoton searah scroll — jadi selalu ada backlog siap-muat, rendering tidak
+  // pernah berhenti menunggu fetch. Rantai setTimeout (CANDU requestIdleCallback
+  // yang jarang menembak di headless) + interval cukup lambat (250ms) supaya
+  // tidak mencuri frame utama. Slow-link/hemat memimpin lebih pendek.
+  useEffect(() => {
+    if (!data || images.length === 0) return
+    const mode = getReaderSettings().prefetchMode
+    const slow = slowLink() || mode === 'hemat'
+    const n = images.length
+    let timer: ReturnType<typeof setTimeout>
+    const tick = () => {
+      const vh = window.innerHeight
+      const total = document.documentElement.scrollHeight - vh
+      const p = total > 0 ? Math.min(1, Math.max(0, window.scrollY / total)) : 0
+      const lead = slow ? 6 : 10
+      const frontier = Math.min(n - 1, Math.floor(p * n) + lead)
+      setBgFillIdx((prev) => Math.max(prev, frontier))
+      timer = setTimeout(tick, 250)
+    }
+    timer = setTimeout(tick, 50)
+    return () => clearTimeout(timer)
+  }, [data, images.length])
 
   // A1 — guard navigasi basi: setiap load chapter (ganti chapterId) menaikkan
   // counter; kalau respons lama kembali setelah user sudah pindah, respons itu
@@ -323,8 +375,7 @@ export default function Reader() {
     const nextId = data.chapter?.next ? String(data.chapter.next.id) : null
     if (!nextId || prefetchedNext.current) return
     try {
-      const raw = localStorage.getItem('komiku.web.reader.settings.v1')
-      const mode = raw ? (JSON.parse(raw) as { prefetchMode?: string }).prefetchMode : undefined
+      const mode = getReaderSettings().prefetchMode
       const conn = (
         typeof navigator !== 'undefined'
           ? (navigator as Navigator & { connection?: { saveData?: boolean } }).connection
@@ -707,19 +758,24 @@ export default function Reader() {
         }`}
         style={filterStyle}
       >
-        {images.map((src, i) => (
+      {images.map((src, i) => (
           <div key={`${chapter.id}-${i}`} className="reader-page w-full">
             <ComicImage
               src={src}
               alt={`${chapter.name} halaman ${i + 1}`}
               pageIndex={i}
               knownRatio={knownRatios[i]}
-              // HANYA halaman pertama yang langsung diminta (LCP + prioritas
+              // HANYA 2 halaman pertama yang langsung diminta (LCP + prioritas
               // tinggi). Sisanya menunggu sampai dekat layar — dulu 3 halaman
               // eager + margin lazy bawaan Chrome membuat 9 gambar / 1,7 MB
               // berebut, dan halaman yang sedang dibaca kalah (53 detik di 3G).
-              eager={i === 0}
-              mountAhead={mountAhead}
+              eager={i < 2}
+              // TODO(FE-A): kirim prop nearViewport={Math.abs(i - currentVisibleIndex) <= 2}
+              // ke ComicImage untuk halaman dekat layar — belum terdefinisi di ComicImage.tsx.
+              // B2: horizon adaptif saat scroll (mountAhead tumbuh 3x).
+              // B4: halaman di belakang frontier fill-ahead dipaksa mount dengan
+              // mountAhead raksasa → antre di imgQueue (satu-satu) hingga memuat.
+              mountAhead={i <= bgFillIdx ? 500000 : mountAhead}
               onLoad={() => {
                 setLoadedPages((s) => (s.has(i) ? s : new Set(s).add(i)))
               }}

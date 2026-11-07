@@ -1,14 +1,15 @@
 import { useCallback, useEffect, useState } from 'react'
 import { DEFAULT_SETTINGS, type ReaderSettings } from '../components/ReaderMenu'
+import { READER_SETTINGS_KEY, parseReaderSettings } from '../readerSettings'
 import { useAutoScroll } from './useAutoScroll'
 
-const KEY = 'komiku.web.reader.settings.v1'
+const KEY = READER_SETTINGS_KEY
 
 function load(): ReaderSettings {
   try {
     const raw = localStorage.getItem(KEY)
     if (!raw) return DEFAULT_SETTINGS
-    return { ...DEFAULT_SETTINGS, ...(JSON.parse(raw) as Partial<ReaderSettings>) }
+    return { ...DEFAULT_SETTINGS, ...(parseReaderSettings(raw) as Partial<ReaderSettings>) }
   } catch {
     return DEFAULT_SETTINGS
   }

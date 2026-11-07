@@ -23,9 +23,6 @@ const UA: &str = "Mozilla/5.0 (Linux; Android 13; SM-S908B) AppleWebKit/537.36 \
 /// ~91 s saat upstream hang; sekarang 8 s × 2 = ~16 s (dan 522/523 yang
 /// dijawab Cloudflare langsung gagal tanpa retry).
 const REQUEST_TIMEOUT: Duration = Duration::from_secs(8);
-/// Katalog A-Z 5.6 MB boleh lebih lambat; tetap dibatasi supaya request
-/// pertama saat sumber mati tidak menggantung selamanya.
-const CATALOGUE_TIMEOUT: Duration = Duration::from_secs(20);
 /// Percobaan maksimum. Retry hanya untuk 401/403 (seed basi) dan galat
 /// jaringan; status HTTP non-2xx lain (mis. 522) langsung dikembalikan.
 const MAX_ATTEMPTS: u32 = 2;
@@ -117,23 +114,8 @@ pub async fn search(q: &str, page: u32) -> Result<Value> {
     .await
 }
 
-/// Katalog A-Z lengkap (5.6 MB). Di-cache di `routes::catalogue`.
-pub async fn catalogue() -> Result<Value> {
-    get_with_timeout(
-        BASE_INDEX,
-        "",
-        &[("content", "mangalist".into())],
-        CATALOGUE_TIMEOUT,
-    )
-    .await
-}
-
 pub async fn homepage() -> Result<Value> {
     get(BASE_INDEX, "", &[("content", "homepage".into())]).await
-}
-
-pub async fn categories() -> Result<Value> {
-    get(BASE_INDEX, "", &[("content", "categorylist".into())]).await
 }
 
 /// Detail manga + daftar chapter (blob terenkripsi di dalamnya).

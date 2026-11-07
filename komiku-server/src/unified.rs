@@ -48,8 +48,8 @@
 use axum::{
     body::Body,
     extract::{Path, Query, State},
-    http::{header, HeaderMap},
-    response::Response,
+    http::{header, HeaderMap, HeaderValue},
+    response::{IntoResponse, Response},
     routing::{get, post},
     Json, Router,
 };
@@ -1372,19 +1372,60 @@ fn budget_err(op: &str) -> AppError {
 /// tidak ada di sumber handle (atau gambarnya kosong), core ambil dari sumber
 /// lain yang punya judul sama; `prev`/`next` objek {number,source,handle}
 /// selalu dari sumber yang MELAYANI.
-async fn u_chapter(State(state): State<Arc<crate::routes::AppState>>, Path((handle, number)): Path<(String, String)>) -> Res<Value> {
+async fn u_chapter(State(state): State<Arc<crate::routes::AppState>>, Path((handle, number)): Path<(String, String)>) -> Result<Response, AppError> {
     validate_handle(&handle)?;
     let state = state.unified.clone();
     // Budget total: series_resolve + read_chapter_any berurutan, masing-masing
     // bisa fallback antar sumber. Tanpa batas, dua jalur ini bisa menumpuk
     // timeout jauh melewati 6 s per sumber.
-    match tokio::time::timeout(UNIFIED_REQUEST_BUDGET, u_chapter_inner(state, handle, number)).await {
+    let json = match tokio::time::timeout(UNIFIED_REQUEST_BUDGET, u_chapter_inner(state, handle, number)).await {
         Ok(r) => r,
-        Err(_) => Err(budget_err("chapter")),
+        Err(_) => return Err(budget_err("chapter")),
+    }?;
+    let link_header = chapter_link_header(&json.0);
+    let mut resp = json.into_response();
+    // BE-1: preload `Link` untuk 2-3 gambar pertama → browser mulai fetch /img
+    // PARALEL dengan parsing JSON + init JS (menyerang white screen A2).
+    if let Some(link) = link_header {
+        if let Ok(lv) = HeaderValue::from_str(&link) {
+            resp.headers_mut().insert(header::LINK, lv);
+        }
     }
+    Ok(resp)
 }
 
+/// Bangun nilai header `Link` untuk preload 2-3 URL gambar pertama dari payload
+/// chapter. `</img?u=<encoded>&w=900>` → URL relatif server /img dengan `u`
+/// di-encode (sama seperti yang dipakai frontend) dan lebar desktop 900 px.
+/// `None` kalau payload tidak punya array `images` / kosong.
+fn chapter_link_header(payload: &Value) -> Option<String> {
+    let img = payload.get("images")?.as_array()?;
+    let mut entries = Vec::new();
+    for u in img.iter().take(3) {
+        let Some(u) = u.as_str() else { continue };
+        entries.push(format!("</img?u={}&w=900>; rel=preload; as=image", encode_uri_component(u)));
+    }
+    if entries.is_empty() { None } else { Some(entries.join(", ")) }
+}
+
+/// `encodeURIComponent` padanan Rust: encode semua byte kecuali unreserved.
+fn encode_uri_component(s: &str) -> String {
+    let mut out = String::with_capacity(s.len());
+    for &b in s.as_bytes() {
+        match b {
+            b'A'..=b'Z' | b'a'..=b'z' | b'0'..=b'9' | b'-' | b'_' | b'.' | b'~' => {
+                out.push(b as char);
+            }
+            _ => out.push_str(&format!("%{b:02X}")),
+        }
+    }
+    out
+}
+
+
 async fn u_chapter_inner(state: Arc<UnifiedState>, handle: String, number: String) -> Res<Value> {
+    // TODO(BE-2): prefetch chapter N+1 — butuh kebijakan eviction + backpressure
+    // sebelum aktif (risiko thundering herd).
     let key = chapter_gate_key(&handle, &number);
 
     // 1. Cache segar -> seketika. Burst beruntun (request ke-17 datang setelah
@@ -1454,15 +1495,17 @@ async fn fetch_chapter_payload(
         _ => title_key(&out.pages.title),
     };
     let series_title = out.series_title.as_deref().filter(|t| !t.is_empty());
-    // `image_sizes` sengaja KOSONG: dulu tiap request chapter menjalankan
-    // `probe_dims` (satu range-GET upstream per halaman) hanya untuk mengisi
-    // field ini. Terukur: warm chapter 471.8 ms → 15.1 ms tanpa probe (97%
-    // biaya warm), dan 59% probe tetap menghasilkan `null` karena
-    // `parse_img_dims` tak mengenali WebP lossy (`VP8 `). CLS terukur tidak
-    // berubah (0.0244 vs 0.0240) — `ComicImage` sudah punya `fallbackRatio`
-    // 0.685. Field dipertahankan supaya kontrak klien utuh
-    // (`readerSource.ts` melakukan `u.image_sizes ?? null`).
-    let image_sizes: Vec<Option<[u32; 2]>> = Vec::new();
+    // `image_sizes` diisi dari cache /img yang sudah ada (BE-3): dimensi asli
+    // direkam `img::resize_encode` saat encode sukses, keyed by upstream URL.
+    // HIT → Some((w,h)); MISS → None (frontend fallback rasio 0.685). Ini
+    // memperbaiki CLS residual tanpa biaya network (probe range-GET upstream
+    // yang dulu sia-sia dihapus).
+    let image_sizes: Vec<Option<[u32; 2]>> = out
+        .pages
+        .images
+        .iter()
+        .map(|u| crate::img::known_orig_dims(u).map(|(w, h)| [w, h]))
+        .collect();
     Ok(json!({
         "title": out.pages.title,
         "number": out.pages.number,

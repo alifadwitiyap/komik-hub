@@ -18,6 +18,8 @@
  * dan baca offline jadi instan) — lihat `public/sw.js`.
  */
 
+import { getReaderSettings } from './readerSettings'
+
 /** Berapa banyak gambar dihangatkan lebih awal per mode preferensi. */
 const PREFETCH_LIMITS = {
   hemat: 1,
@@ -25,7 +27,7 @@ const PREFETCH_LIMITS = {
   siapkan: 8,
 } as const
 
-const SETTINGS_KEY = 'komiku.web.reader.settings.v1'
+
 
 interface NetworkInformationLike {
   saveData?: boolean
@@ -78,9 +80,9 @@ export const READER_SIZES = '(min-width: 800px) 768px, 100vw'
  * baru tampil 53 detik; 12 detik kalau tidak ada yang berebut.
  */
 const MOUNT_AHEAD = {
-  hemat: 0.4,
-  seimbang: 1.5,
-  siapkan: 3,
+  hemat: 2,
+  seimbang: 3,
+  siapkan: 6,
 } as const
 
 /** URL halaman/sampul → URL CDN apa adanya (idempoten, IDENTITAS). */
@@ -181,18 +183,12 @@ export function pickWidth(viewportW: number): number {
 
 /** Mode pembaca tersimpan; `undefined` = belum pernah memilih (default). */
 export function readerMode(): string | undefined {
-  try {
-    const raw = localStorage.getItem(SETTINGS_KEY)
-    return raw ? (JSON.parse(raw) as { prefetchMode?: string }).prefetchMode : undefined
-  } catch {
-    /* storage tertutup / JSON rusak: pakai default */
-    return undefined
-  }
+  return getReaderSettings().prefetchMode
 }
 
 /**
  * Seberapa jauh (px) di luar layar sebuah gambar boleh mulai dimuat.
- * `hemat` → 0,4 viewport (hampir hanya yang terlihat), `siapkan` → 3 viewport
+ * `hemat` → 2 viewport, `seimbang` → 3 viewport, `siapkan` → 6 viewport
  * (nyaris tanpa jeda saat scroll cepat), Save-Data/2G dipaksa hemat.
  */
 export function mountAheadPx(viewportHeight: number): number {

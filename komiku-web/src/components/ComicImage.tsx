@@ -150,6 +150,12 @@ interface ComicImageProps {
    */
   eager?: boolean
   /**
+   * true = halaman ini dekat viewport → naikkan prioritas unduhan ke tinggi
+   * (fetchPriority='high'). Hook untuk lane FE-B memanggilnya dari Reader.tsx;
+   * default false = prioritas normal ('auto').
+   */
+  nearViewport?: boolean
+  /**
    * Jarak (px) di luar viewport untuk mulai memuat gambar ini. Ditentukan
    * pemanggil dari preferensi reader (hemat/seimbang/siapkan) + Save-Data.
    */
@@ -215,6 +221,7 @@ export default function ComicImage({
   src,
   alt,
   eager,
+  nearViewport = false,
   mountAhead = 1200,
   fallbackRatio = 0.685,
   knownRatio,
@@ -383,12 +390,17 @@ export default function ComicImage({
   }
 
   return (
-    // Holder SENGAJA transparan (bukan bg-ink-800). Latar abu-abu membuat
-    // setiap halaman yang belum decode tampil sebagai pita/persegi abu di
-    // antara halaman putih — persis "garis-garis" yang dikeluhkan user.
-    // Kotak tetap memesan tinggi lewat atribut width/height <img>, jadi tidak
-    // ada layout shift; isyarat "sedang memuat" datang dari LQIP blur.
-    <div ref={slotRef} className="relative">
+    // Holder saat `!shown` diberi latar subtle (zinc) + pulse shimmer CSS
+    // murni supaya kotak terbaca "sedang memuat", bukan layar putih kosong.
+    // Begitu gambar decode (`shown`), bg/pulse lepas dan <img> crossfade
+    // masuk. Kotak tetap memesan tinggi lewat atribut width/height <img>,
+    // jadi tidak ada layout shift.
+    <div
+      ref={slotRef}
+      className={`relative overflow-hidden ${
+        shown ? '' : 'animate-pulse bg-zinc-200/60 dark:bg-zinc-800/40'
+      }`}
+    >
       {/** LQIP: thumbnail blur sebagai placeholder selama gambar penuh belum `shown`.
           Crossfade halus via opacity; tidak menangkap pointer. */}
       {started && lqip && (
@@ -456,10 +468,10 @@ export default function ComicImage({
       width={1000}
       height={Math.round(1000 / ratio)}
       loading={started ? 'eager' : 'lazy'}
-      // LCP: halaman pertama diminta prioritas tinggi. Gambar lanjutan
-      // sengaja `low` — mereka boleh menunggu, yang penting halaman yang
-      // sedang dibaca tidak kalah rebutan.
-      fetchPriority={eager ? 'high' : 'low'}
+      // LCP: halaman pertama diminta prioritas tinggi. Halaman dekat viewport
+      // (nearViewport) juga naik ke high supaya tidak kalah rebutan di
+      // koneksi mobile; sisanya 'auto' (dibolehkan browser mengatur sendiri).
+      fetchPriority={eager || nearViewport ? 'high' : 'auto'}
       decoding="async"
       data-b={blockIndex}
       data-page={pageIndex}
