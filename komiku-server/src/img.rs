@@ -247,10 +247,42 @@ fn record_orig_dims(url: &str, w: u32, h: u32) {
     }
 }
 
-/// Query dimensi asli yang sudah direkam untuk URL upstream. `None` = belum
-/// pernah di-encode sukses (MISS → frontend fallback rasio 0.685).
+/// Query dimensi asli untuk URL upstream.
+///
+/// Urutan: (1) map in-memory yang diisi `resize_encode` saat MISS; (2) kalau
+/// kosong — kasus paling umum, semua `/img` HIT atau server baru restart —
+/// baca HEADER byte asli yang sudah ada di cache raw disk. Itu tanpa network
+/// dan tanpa decode piksel, lalu hasilnya disimpan di (1) supaya 56 halaman
+/// chapter tidak membuka 56 file berulang kali. `None` = benar-benar belum
+/// ada byte-nya (frontend fallback rasio 0.685).
 pub fn known_orig_dims(url: &str) -> Option<(u32, u32)> {
-    ORIG_DIMS.get()?.lock().ok()?.get(url).copied()
+    let map = ORIG_DIMS.get_or_init(|| std::sync::Mutex::new(HashMap::new()));
+    if let Ok(m) = map.lock() {
+        if let Some(v) = m.get(url) {
+            return Some(*v);
+        }
+    }
+    let dims = dims_from_raw_cache(url)?;
+    if let Ok(mut m) = map.lock() {
+        m.insert(url.to_string(), dims);
+    }
+    Some(dims)
+}
+
+/// Dimensi dari byte ASLI di `data/imgcache/raw/<sha1>.bin`.
+///
+/// `File` dipakai langsung sebagai `Read + Seek`: `with_guessed_format()`
+/// hanya membaca magic bytes lalu seek balik, dan `into_dimensions()` cuma
+/// membaca header format (SOF/VP8/IHDR) — bukan seluruh 200 KB, bukan
+/// decode RGBA. Menutup celah `img_handler` yang return lebih awal di HIT
+/// (`src/img.rs:469`) sebelum `resize_encode` sempat merekam dimensi.
+fn dims_from_raw_cache(url: &str) -> Option<(u32, u32)> {
+    let file = std::fs::File::open(raw_cache_path(&sha1_hex(url))).ok()?;
+    let reader = image::ImageReader::new(std::io::BufReader::new(file))
+        .with_guessed_format()
+        .ok()?;
+    let (w, h) = reader.into_dimensions().ok()?;
+    (w > 0 && h > 0).then_some((w, h))
 }
 
 /// Decode → resize (lebar `w`, rasio dipertahankan) → WebP lossy.
@@ -734,5 +766,61 @@ mod tests {
         assert!(cache_path_fmt(&k_avif, ImgFormat::Avif)
             .to_string_lossy()
             .ends_with(".avif"));
+    }
+
+    /// R2-#1 (RED): proses BARU (ORIG_DIMS kosong) tapi byte asli sudah ada di
+    /// cache raw disk. Ini skenario paling umum: buka ulang chapter / restart
+    /// server → semua `/img` HIT, jadi `resize_encode` tidak pernah jalan dan
+    /// `image_sizes` di respons chapter jadi semua null.
+    #[test]
+    fn known_orig_dims_dari_raw_cache_saat_hit() {
+        let url = "https://x/r2-hit-jpeg-891x1300.webp";
+        let mut buf = Vec::new();
+        let img = image::RgbImage::from_pixel(891, 1300, image::Rgb([12, 34, 56]));
+        image::DynamicImage::ImageRgb8(img)
+            .write_to(&mut std::io::Cursor::new(&mut buf), image::ImageFormat::Jpeg)
+            .unwrap();
+        let path = raw_cache_path(&sha1_hex(url));
+        write_atomic(&path, &buf);
+        // simulasi restart: entri in-memory sengaja dibuang
+        ORIG_DIMS
+            .get_or_init(|| std::sync::Mutex::new(HashMap::new()))
+            .lock()
+            .unwrap()
+            .remove(url);
+        let got = known_orig_dims(url);
+        let _ = std::fs::remove_file(&path);
+        assert_eq!(
+            got,
+            Some((891, 1300)),
+            "HIT harus tetap tahu dimensi asli dari cache raw"
+        );
+    }
+
+    /// R2-#1 (RED): format nyata cache raw paling banyak adalah WebP VP8
+    /// *lossy* (`VP8 ` bukan `VP8X`). Parser header lama di unified.rs cuma
+    /// mengenal VP8X, jadi ini kasus yang benar-benar diskriminatif.
+    #[test]
+    fn known_orig_dims_dari_raw_cache_vp8_lossy() {
+        let url = "https://x/r2-hit-vp8lossy-640x960.webp";
+        let rgb = image::RgbImage::from_pixel(640, 960, image::Rgb([90, 80, 70]));
+        let buf = webp::Encoder::from_rgb(rgb.as_raw(), rgb.width(), rgb.height())
+            .encode(75.0)
+            .to_vec();
+        assert!(buf.len() > 20 && &buf[12..16] == b"VP8 ", "harus VP8 lossy");
+        let path = raw_cache_path(&sha1_hex(url));
+        write_atomic(&path, &buf);
+        ORIG_DIMS
+            .get_or_init(|| std::sync::Mutex::new(HashMap::new()))
+            .lock()
+            .unwrap()
+            .remove(url);
+        let got = known_orig_dims(url);
+        let _ = std::fs::remove_file(&path);
+        assert_eq!(
+            got,
+            Some((640, 960)),
+            "VP8 lossy harus terbaca dari cache raw"
+        );
     }
 }
