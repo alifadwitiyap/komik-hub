@@ -206,3 +206,81 @@ body {
   display: block;
   vertical-align: top;
 }
+
+/* ---------------------------------------------------------------------------
+   MOTION TOKENS (Emil Kowalski) — satu-satunya sumber easing di codebase.
+   Dipakai lewat var(--ease-*) di class Tailwind atau CSS mentah.
+   Easing eksak dari skill; jangan diganti perkiraan.
+   --------------------------------------------------------------------------- */
+:root {
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+  --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
+  --ease-drawer: cubic-bezier(0.32, 0.72, 0, 1);
+}
+
+/* Delight satu-kali saat favorit berhasil ditambah: bounce halus, 300ms,
+   ease-out. Dipicu oleh class `animate-heart-pop` yang ditoggle React
+   (dengan reset via onAnimationEnd) — bukan loop, bukan auto-retrigger. */
+@keyframes heart-pop {
+  0% {
+    transform: scale(1);
+  }
+  40% {
+    transform: scale(1.3);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+.animate-heart-pop {
+  animation: heart-pop 300ms var(--ease-out);
+}
+
+/* ---------------------------------------------------------------------------
+   Indikator tab aktif BottomNav — SATU-SATUNYA aturan untuk .nav-indicator.
+   Elemen ini di-mount ulang tiap pindah route (isActive && <span>), jadi
+   @starting-style memberi entrance tanpa JS/animation/key library.
+   Lebar sengaja tidak disetel di sini: tetap w-8 dari App.tsx.
+   --------------------------------------------------------------------------- */
+.nav-indicator {
+  opacity: 1;
+  transform: translateY(0);
+  /* Fallback: browser tanpa @starting-style mengabaikan blok di bawah, jadi
+     indikator langsung tampil (seperti sediakala) dengan transisi normal. */
+  transition:
+    opacity 200ms var(--ease-out),
+    transform 200ms var(--ease-out);
+}
+
+@starting-style {
+  .nav-indicator {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+}
+
+/* Cover kartu: 200ms ease-out, dan hanya pada perangkat dengan hover nyata
+   (mouse/trackpad). Di layar sentuh :hover bisa menempel setelah tap. */
+.card-cover {
+  transition: transform 200ms var(--ease-out);
+}
+@media (hover: hover) and (pointer: fine) {
+  .group:hover .card-cover {
+    transform: scale(1.03);
+  }
+}
+
+/* Bottom-sheet: panel naik dari bawah layar + fade saat mount. Overlay
+   sengaja tidak dianimasi (langsung muncul). @starting-style memberi nilai
+   awal tanpa JS/state; saat komponen di-unmount tidak ada animasi keluar. */
+.sheet-panel {
+  transform: translateY(0);
+  transition: transform 250ms var(--ease-drawer), opacity 250ms var(--ease-out);
+}
+
+@starting-style {
+  .sheet-panel {
+    transform: translateY(100%);
+    opacity: 0.4;
+  }
+}

@@ -216,12 +216,12 @@ function ThemeToggle() {
       {/* dua ikon ditumpuk; yang aktif yang terlihat (fade + rotate 200ms) */}
       <span className="relative size-4">
         <IconMoon
-          className={`absolute inset-0 m-auto size-4 transition-all duration-200 ${
+          className={`absolute inset-0 m-auto size-4 transition-[transform,opacity] duration-200 ${
             dark ? 'scale-50 rotate-90 opacity-0' : 'scale-100 rotate-0 opacity-100'
           }`}
         />
         <IconSun
-          className={`absolute inset-0 m-auto size-4 transition-all duration-200 ${
+          className={`absolute inset-0 m-auto size-4 transition-[transform,opacity] duration-200 ${
             dark ? 'scale-100 rotate-0 opacity-100' : 'scale-50 -rotate-90 opacity-0'
           }`}
         />
@@ -281,7 +281,7 @@ function BottomNav() {
                   {isActive && (
                     <span
                       aria-hidden="true"
-                      className="absolute top-0 h-0.5 w-8 rounded-b-full bg-brand-amber"
+                      className="nav-indicator absolute top-0 h-0.5 w-8 rounded-b-full bg-brand-amber"
                     />
                   )}
                   <span className="grid size-4 place-items-center">

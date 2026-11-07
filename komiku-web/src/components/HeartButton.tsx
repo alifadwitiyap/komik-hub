@@ -26,6 +26,7 @@ function badgeClass() {
  */
 export default function HeartButton({ manga, className = '', labeled = false }: HeartButtonProps) {
   const [loved, setLoved] = useState(() => isFavorite(manga.title_key))
+  const [pop, setPop] = useState(false)
   const { unreadByTitle } = useNotifCounts()
   const count = unreadByTitle[manga.title_key] ?? 0
 
@@ -40,7 +41,8 @@ export default function HeartButton({ manga, className = '', labeled = false }: 
       viewBox="0 0 512 512"
       strokeWidth="36"
       aria-hidden="true"
-      className={`${loved ? 'fill-brand-amber stroke-brand-amber' : 'fill-none stroke-current'} ${labeled ? 'size-4' : 'size-6'}`}
+      onAnimationEnd={() => setPop(false)}
+      className={`${loved ? 'fill-brand-amber stroke-brand-amber' : 'fill-none stroke-current'} ${labeled ? 'size-4' : 'size-6'} ${pop ? 'animate-heart-pop' : ''}`}
     >
       <path d={HEART_D} />
     </svg>
@@ -55,8 +57,9 @@ export default function HeartButton({ manga, className = '', labeled = false }: 
           e.preventDefault()
           e.stopPropagation()
           toggleFavorite(manga)
+          if (isFavorite(manga.title_key)) setPop(true)
         }}
-        className={`flex shrink-0 items-center gap-1.5 rounded-xl border px-3 py-2.5 text-[13px] font-semibold transition-colors ${
+        className={`flex shrink-0 items-center gap-1.5 rounded-xl border px-3 py-2.5 text-[13px] font-semibold transition-colors active:scale-[0.97] active:transition-transform active:duration-100 ${
           loved
             ? 'border-brand-amber-dim bg-brand-amber/15 text-brand-amber'
             : 'border-ink-700 text-ink-300 hover:bg-ink-850'
@@ -77,8 +80,9 @@ export default function HeartButton({ manga, className = '', labeled = false }: 
         e.preventDefault()
         e.stopPropagation()
         toggleFavorite(manga)
+        if (isFavorite(manga.title_key)) setPop(true)
       }}
-      className={`relative grid place-items-center rounded-full p-2.5 transition-colors ${className}`}
+      className={`relative grid place-items-center rounded-full p-2.5 transition-colors active:scale-[0.97] active:transition-transform active:duration-100 ${className}`}
     >
       {heart}
       {count > 0 && (

@@ -62,7 +62,7 @@ export default function ReaderSettingsSheet({
         role="dialog"
         aria-modal="true"
         tabIndex={-1}
-        className="w-full max-w-md rounded-t-2xl bg-ink-900 pb-6 outline-none"
+        className="sheet-panel w-full max-w-md rounded-t-2xl bg-ink-900 pb-6 outline-none"
         onClick={(e) => e.stopPropagation()}
         onKeyDown={trapFocus}
       >

@@ -328,7 +328,7 @@ function BackdropCarousel({ items }: { items: Manga[] }) {
               onClick={() => goTo(i)}
               aria-label={`Menuju slide ${i + 1}`}
               aria-current={i === idx ? 'true' : undefined}
-              className={`h-1.5 rounded-full transition-all ${
+              className={`h-1.5 rounded-full transition-[width] duration-200 ${
                 i === idx ? 'w-4 bg-brand-amber' : 'w-1.5 bg-ink-300'
               }`}
             />
@@ -408,7 +408,7 @@ function ShortcutMenu() {
             <Link
               to={to}
               onClick={(e) => go(e, to)}
-              className="flex flex-col items-center gap-1.5 rounded-xl border border-ink-800 bg-ink-900 px-1 py-2.5 transition-colors active:bg-ink-850"
+              className="flex flex-col items-center gap-1.5 rounded-xl border border-ink-800 bg-ink-900 px-1 py-2.5 transition-colors active:bg-ink-850 active:scale-[0.97] active:transition-transform active:duration-100"
             >
               <Icon className="size-5 text-brand-amber" />
               <span className="text-[11px] font-semibold text-ink-200">{label}</span>
@@ -440,7 +440,7 @@ export const MangaCard = memo(function MangaCard({ manga }: { manga: Manga }) {
             loading="lazy"
             decoding="async"
             onError={() => setFailed(true)}
-            className="size-full object-cover transition-transform duration-300 group-hover:scale-[1.03]"
+            className="size-full object-cover card-cover"
           />
         ) : (
           <span className="grid size-full place-items-center px-2 text-center text-[11px] text-ink-500">

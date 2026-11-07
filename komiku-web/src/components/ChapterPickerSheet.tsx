@@ -213,7 +213,7 @@ export default function ChapterPickerSheet({
         aria-labelledby="chapter-picker-title"
         aria-describedby="chapter-picker-desc"
         data-chapter-picker
-        className="flex max-h-[85dvh] w-full max-w-md flex-col overflow-hidden rounded-t-2xl border-t border-white/10 bg-night-dark/97 backdrop-blur"
+        className="sheet-panel flex max-h-[85dvh] w-full max-w-md flex-col overflow-hidden rounded-t-2xl border-t border-white/10 bg-night-dark/97 backdrop-blur"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex shrink-0 items-start gap-3 px-4 pb-3 pt-3">

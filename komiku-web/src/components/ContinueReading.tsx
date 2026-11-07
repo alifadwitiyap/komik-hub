@@ -106,7 +106,7 @@ function Card({
             loading="lazy"
             decoding="async"
             onError={() => setFailed(true)}
-            className="size-full object-cover transition-transform duration-300 group-hover:scale-[1.03]"
+            className="size-full object-cover card-cover"
           />
         ) : (
           <span className="grid size-full place-items-center px-2 text-center text-[12px] font-bold text-ink-500">
