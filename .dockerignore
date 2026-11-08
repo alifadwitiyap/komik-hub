@@ -12,12 +12,23 @@
 **/.vite/
 
 # --- VCS / tooling / local state ---
+# Tailwind v4 auto-source menghormati .gitignore di cwd (/build/komiku-web).
+# Jika file itu hilang dari build context, direktori scratch (.checktmp/ sisa
+# harness verifikasi) ikut dipindai dan CSS container menyimpang dari dist/
+# lokal yang di-QA (7 aturan CSS mati, +314 B). Kirim HANYA .gitignore milik
+# komiku-web lewat negasi supaya context stage server tidak berubah (cache
+# `cargo build --release` tetap aman). Scratch tetap di-exclude eksplisit
+# sebagai defense-in-depth. Lihat _audit_shots/qa/QA_FINAL.md.
 **/.git/
-**/.gitignore
 **/.gitattributes
+**/.gitignore
+!komiku-web/.gitignore
 .omh/
 .hermes/
 .hermes-tmp.*
+**/.checktmp/
+**/.checkbase
+**/__pycache__/
 
 # --- heavy sibling projects NOT needed by the server build ---
 3d-html-site/
