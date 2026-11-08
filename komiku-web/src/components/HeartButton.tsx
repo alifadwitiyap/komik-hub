@@ -10,9 +10,9 @@ interface HeartButtonProps {
   labeled?: boolean
 }
 
-/** Path FontAwesome heart (viewBox 0 0 512 512). */
+/** Outline heart simetris (viewBox 0 0 24 24), stroke 2 + sudut membulat. */
 const HEART_D =
-  'M47.6 300.4L228.3 469.1c7.5 7 17.4 10.9 27.7 10.9s20.2-3.9 27.7-10.9L464.4 300.4c30.4-28.3 47.6-68 47.6-109.5v-5.8c0-69.9-50.5-129.5-119.4-141C347 36.5 300.6 51.4 268 84L256 96 244 84c-32.6-32.6-79-47.5-124.6-39.9C50.5 55.6 0 115.2 0 185.1v5.8c0 41.5 17.2 81.2 47.6 109.5z'
+  'M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z'
 
 /** "UP n" parity: gelembung kecil di kanan-atas ikon; '9+' supaya tetap ~14px. */
 function badgeClass() {
@@ -38,11 +38,13 @@ export default function HeartButton({ manga, className = '', labeled = false }: 
 
   const heart = (
     <svg
-      viewBox="0 0 512 512"
-      strokeWidth="36"
+      viewBox="0 0 24 24"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
       aria-hidden="true"
       onAnimationEnd={() => setPop(false)}
-      className={`${loved ? 'fill-brand-amber stroke-brand-amber' : 'fill-none stroke-current'} ${labeled ? 'size-4' : 'size-6'} ${pop ? 'animate-heart-pop' : ''}`}
+      className={`${loved ? 'fill-brand-amber stroke-brand-amber' : 'fill-none stroke-current'} ${labeled ? 'size-4' : 'size-5'} ${pop ? 'animate-heart-pop' : ''}`}
     >
       <path d={HEART_D} />
     </svg>
@@ -82,7 +84,7 @@ export default function HeartButton({ manga, className = '', labeled = false }: 
         toggleFavorite(manga)
         if (isFavorite(manga.title_key)) setPop(true)
       }}
-      className={`relative grid place-items-center rounded-full p-2.5 transition-colors active:scale-[0.97] active:transition-transform active:duration-100 ${className}`}
+      className={`relative grid place-items-center rounded-full p-2 transition-colors active:scale-[0.97] active:transition-transform active:duration-100 ${className}`}
     >
       {heart}
       {count > 0 && (

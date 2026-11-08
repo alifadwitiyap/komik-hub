@@ -448,14 +448,24 @@ export const MangaCard = memo(function MangaCard({ manga }: { manga: Manga }) {
           </span>
         )}
 
-        {/* badge sumber + favorit: kolom kanan-atas cover (badge hanya non-komiku).
-            Semua kartu ber-title_key dapat ♥ overlay — kartu Komiku lama
-            (handle kosong) memakai id numerik sebagai handle rak. */}
-        {manga.title_key && (manga.handle || manga.id != null) ? (
-          <div className="absolute right-1 top-1 flex flex-col items-end gap-1">
-            {manga.source && manga.source !== 'komiku' && (
-              <SourceBadge source={manga.source} />
-            )}
+        {/* Info (rating + sumber) di kiri-atas, aksi love di kanan-atas.
+            Dua kolom terpisah: posisi love identik di SEMUA kartu -- badge
+            sumber tak lagi menumpuk / menggeser tombol ke bawah. */}
+        <div className="absolute left-1 top-1 flex max-w-[70%] flex-col items-start gap-1">
+          {manga.score && manga.score !== '-' && (
+            <span className="w-fit rounded bg-black/70 px-1.5 py-0.5 text-[10px] font-bold text-white">
+              ★ {manga.score}
+            </span>
+          )}
+          {manga.source && manga.source !== 'komiku' && (
+            <SourceBadge source={manga.source} className="max-w-full" />
+          )}
+        </div>
+
+        {/* Aksi love selalu di kanan-atas, posisi identik di semua kartu.
+            Kartu Komiku lama (handle kosong) memakai id numerik sebagai handle rak. */}
+        {manga.title_key && (manga.handle || manga.id != null) && (
+          <div className="absolute right-1 top-1">
             <HeartButton
               manga={{
                 title_key: manga.title_key,
@@ -464,19 +474,9 @@ export const MangaCard = memo(function MangaCard({ manga }: { manga: Manga }) {
                 handle: manga.handle ?? String(manga.id),
                 source: manga.source ?? 'komiku',
               }}
-              className="size-9 bg-black/60 text-white backdrop-blur hover:bg-black/75"
+              className="size-9 bg-black/60 text-white ring-1 ring-white/15 backdrop-blur hover:bg-black/75"
             />
           </div>
-        ) : (
-          manga.source && manga.source !== 'komiku' && (
-            <SourceBadge source={manga.source} className="absolute right-1 top-1" />
-          )
-        )}
-
-        {manga.score && manga.score !== '-' && (
-          <span className="absolute left-1 top-1 w-fit rounded bg-black/70 px-1.5 py-0.5 text-[10px] font-bold text-white">
-            ★ {manga.score}
-          </span>
         )}
         {manga.tipe?.[0] && (
           <span className="absolute bottom-1 right-1 w-fit max-w-[90%] truncate rounded bg-brand-red/90 px-1.5 py-0.5 text-[9.5px] font-semibold text-white">
