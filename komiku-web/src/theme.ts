@@ -56,11 +56,24 @@ export function writeStoredTheme(t: Theme): void {
   }
 }
 
+/** Warna status bar, sama persis dengan dua meta `theme-color` di index.html. */
+const STATUS_BAR_COLOR: Record<Theme, string> = {
+  dark: '#0b0b0d',
+  light: '#f1f4f7',
+}
+
 /** Pasang class `dark` di <html> — sumber kebenaran tunggal untuk CSS. */
 export function applyTheme(t: Theme): void {
   const root = document.documentElement
   root.classList.toggle('dark', t === 'dark')
   root.style.colorScheme = t
+  // Meta bermedia di index.html hanya benar saat first paint. Samakan isi
+  // keduanya ke tema aktif dan buang `media` agar OS tak menang keliru.
+  const color = STATUS_BAR_COLOR[t]
+  document.querySelectorAll<HTMLMetaElement>('meta[name="theme-color"]').forEach((m) => {
+    m.setAttribute('content', color)
+    m.removeAttribute('media')
+  })
 }
 
 /** Siapkan tema SEBELUM render (dipanggil dari main.tsx) supaya tidak kedip. */

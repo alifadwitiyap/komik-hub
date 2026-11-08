@@ -98,6 +98,7 @@ export default function Akun() {
             Masuk atau daftar
           </label>
           <div className="flex gap-2">
+            {/* text-base (16px): cegah auto-zoom iOS saat input difokuskan. */}
             <input
               id="akun-username"
               type="text"
@@ -107,12 +108,12 @@ export default function Akun() {
               autoCapitalize="none"
               spellCheck={false}
               placeholder="username"
-              className="min-w-0 flex-1 rounded-xl border border-ink-700 bg-ink-850 px-3 py-2 text-sm text-ink-100 outline-none focus:border-brand-amber"
+              className="min-h-11 min-w-0 flex-1 rounded-xl border border-ink-700 bg-ink-850 px-3 py-2 text-base text-ink-100 outline-none focus:border-brand-amber"
             />
             <button
               type="submit"
               disabled={busy}
-              className="rounded-xl bg-brand-amber px-4 py-2 text-sm font-semibold text-white transition-opacity active:opacity-80 disabled:opacity-50"
+              className="min-h-11 rounded-xl bg-brand-amber px-4 py-2 text-sm font-semibold text-white transition-opacity active:opacity-80 disabled:opacity-50"
             >
               {busy ? '…' : 'Lanjut'}
             </button>
@@ -183,7 +184,7 @@ export default function Akun() {
         sudah di balik satu password bersama, jadi halaman ini efektifnya undangan.
       </p>
 
-      <Link to="/rak" className="mt-4 inline-block text-sm font-medium text-brand-amber">
+      <Link to="/rak" className="mt-4 inline-flex min-h-11 items-center text-sm font-medium text-brand-amber">
         Lihat rak →
       </Link>
     </div>

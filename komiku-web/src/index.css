@@ -132,6 +132,11 @@ body,
   display: none;
 }
 
+html {
+  /* hilangkan delay 300ms double-tap; BUKAN none supaya scroll tetap hidup */
+  touch-action: manipulation;
+}
+
 html,
 body,
 #root {
@@ -166,12 +171,18 @@ body {
   display: none;
 }
 
+/* Reduced motion SELEKTIF: animasi/gerak (transform, translate) dimatikan,
+   tapi feedback warna & opacity jangan ikut mati supaya state masih terbaca.
+   !important hanya dipakai di blok ini untuk menimpa utilitas Tailwind. */
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
   *::after {
-    animation-duration: 0.01ms !important;
-    transition-duration: 0.01ms !important;
+    animation: none !important;
+    transition-property: color, background-color, border-color, opacity,
+      box-shadow !important;
+    transition-duration: 120ms !important;
+    scroll-behavior: auto !important;
   }
 }
 

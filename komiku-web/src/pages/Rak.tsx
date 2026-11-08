@@ -95,7 +95,7 @@ export default function Rak() {
           <button
             key={key}
             onClick={() => setTab(key)}
-            className={`rounded-xl py-2.5 text-[12px] font-bold transition-colors ${
+            className={`min-h-11 rounded-xl py-2.5 text-[12px] font-bold transition-colors ${
               tab === key
                 ? 'bg-brand-amber text-ink-950'
                 : 'border border-ink-800 bg-ink-900 text-ink-300'

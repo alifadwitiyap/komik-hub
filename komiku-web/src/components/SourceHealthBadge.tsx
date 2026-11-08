@@ -57,7 +57,7 @@ export default function SourceHealthBadge() {
         aria-label={description}
         aria-live="polite"
         title={description}
-        className={`flex h-[35px] items-center gap-1.5 rounded-full px-2.5 text-[11.5px] font-bold ring-1 transition-colors ${TIER_CLASS[tier]}`}
+        className={`flex h-11 touch-manipulation items-center gap-1.5 rounded-full px-2.5 text-[12px] font-bold ring-1 transition-colors ${TIER_CLASS[tier]}`}
       >
         <span aria-hidden="true" className={`size-1.5 rounded-full ${DOT_CLASS[tier]}`} />
         <span className="tabular-nums">{countText}</span>

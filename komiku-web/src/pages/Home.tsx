@@ -111,7 +111,7 @@ export default function Home() {
     return <Spinner label="Memuat beranda…" />
   }
   if (!data && (popular?.length ?? 0) === 0 && (latest?.length ?? 0) === 0 && error) {
-    return <Empty title="Gagal memuat beranda" body={error} />
+    return <Empty title="Gagal memuat beranda" body="Coba lagi." />
   }
 
   const sections = Object.entries((data ?? {}) as Homepage)
@@ -230,31 +230,58 @@ export default function Home() {
  */
 function BackdropCarousel({ items }: { items: Manga[] }) {
   const [idx, setIdx] = useState(0)
-  const [paused, setPaused] = useState(false)
+  // autoplay = izin putar otomatis; jeda/henti user mematikannya permanen.
+  const [autoplay, setAutoplay] = useState(true)
+  const [tabHidden, setTabHidden] = useState(() => document.hidden)
+  const [focusInside, setFocusInside] = useState(false)
   const scrollRef = useRef<HTMLDivElement>(null)
+  // Gate fokus harus mencakup dot + tombol jeda (sibling di luar track).
+  const wrapperRef = useRef<HTMLDivElement>(null)
 
-  // Auto-advance 4s — skip saat prefers-reduced-motion atau dijeda.
   useEffect(() => {
-    if (items.length <= 1 || paused) return
+    const sync = () => setTabHidden(document.hidden)
+    document.addEventListener('visibilitychange', sync)
+    return () => document.removeEventListener('visibilitychange', sync)
+  }, [])
+
+  // Putar otomatis 4s HANYA saat tab terlihat, tak ada fokus di carousel, dan
+  // OS tidak meminta reduced-motion. Interaksi user (sentuhan, klik dot, jeda)
+  // mematikan autoplay sampai tombol Lanjutkan dipencet (WCAG 2.2.2 / 3.2.5).
+  useEffect(() => {
+    if (items.length <= 1 || !autoplay || tabHidden || focusInside) return
     const mq = window.matchMedia('(prefers-reduced-motion: reduce)')
     if (mq.matches) return
-    const t = setInterval(() => setIdx((i) => (i + 1) % items.length), 4000)
+    const t = setInterval(() => {
+      // Setelan OS / visibilitas bisa berubah saat halaman terbuka.
+      if (mq.matches || document.hidden) return
+      if (wrapperRef.current?.contains(document.activeElement)) return
+      setIdx((i) => (i + 1) % items.length)
+    }, 4000)
     return () => clearInterval(t)
-  }, [items.length, paused])
+  }, [items.length, autoplay, tabHidden, focusInside])
 
   const goTo = (i: number) => {
     const el = scrollRef.current
     if (!el) return
     const target = Math.min(Math.max(i, 0), items.length - 1)
-    el.scrollTo({ left: target * el.clientWidth * 0.94, behavior: 'smooth' })
+    const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    el.scrollTo({ left: target * el.clientWidth * 0.94, behavior: reduce ? 'auto' : 'smooth' })
     setIdx(target)
   }
 
   return (
-    <div className="relative px-2.5 pt-3">
+    <div
+      ref={wrapperRef}
+      className="relative px-2.5 pt-3"
+      onFocusCapture={() => setFocusInside(true)}
+      onBlurCapture={(e) => {
+        if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setFocusInside(false)
+      }}
+    >
       <div
         ref={scrollRef}
         className="no-bar flex snap-x snap-mandatory gap-2.5 overflow-x-auto rounded-xl px-2.5"
+        onPointerDownCapture={() => setAutoplay(false)}
         onScroll={(e) => {
           const el = e.currentTarget
           const i = Math.round(el.scrollLeft / (el.clientWidth * 0.94))
@@ -310,28 +337,36 @@ function BackdropCarousel({ items }: { items: Manga[] }) {
       {items.length > 1 && (
         <button
           type="button"
-          onClick={() => setPaused((p) => !p)}
-          aria-label={paused ? 'Lanjutkan putar otomatis' : 'Jeda putar otomatis'}
-          aria-pressed={paused}
-          className="absolute right-4 top-4 grid size-7 place-items-center rounded-full bg-black/50 text-white backdrop-blur-sm transition-colors hover:bg-black/70"
+          onClick={() => setAutoplay((a) => !a)}
+          aria-label={autoplay ? 'Jeda putar otomatis' : 'Lanjutkan putar otomatis'}
+          aria-pressed={!autoplay}
+          className="absolute right-4 top-4 grid size-11 place-items-center rounded-full bg-black/50 text-white backdrop-blur-sm transition-colors hover:bg-black/70"
         >
-          {paused ? <IconPlaySolid className="size-3.5" /> : <IconPause className="size-3.5" />}
+          {autoplay ? <IconPause className="size-3.5" /> : <IconPlaySolid className="size-3.5" />}
         </button>
       )}
-      {/* dots — tombol fokusabel */}
+      {/* dots — area sentuh 44px, titik visual tetap 6/16px */}
       {items.length > 1 && (
         <div className="mt-2 flex justify-center gap-1.5">
           {items.map((m, i) => (
             <button
               key={m.id}
               type="button"
-              onClick={() => goTo(i)}
+              onClick={() => {
+                setAutoplay(false)
+                goTo(i)
+              }}
               aria-label={`Menuju slide ${i + 1}`}
               aria-current={i === idx ? 'true' : undefined}
-              className={`h-1.5 rounded-full transition-[width] duration-200 ${
-                i === idx ? 'w-4 bg-brand-amber' : 'w-1.5 bg-ink-300'
-              }`}
-            />
+              className="grid size-11 place-items-center rounded-full"
+            >
+              <span
+                aria-hidden="true"
+                className={`h-1.5 rounded-full transition-[width] duration-200 ${
+                  i === idx ? 'w-4 bg-brand-amber' : 'w-1.5 bg-ink-300'
+                }`}
+              />
+            </button>
           ))}
         </div>
       )}

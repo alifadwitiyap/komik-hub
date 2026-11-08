@@ -77,7 +77,7 @@ export default function NotifPanel({
       aria-label="Notifikasi"
       tabIndex={-1}
       onKeyDown={trapFocus}
-      className="absolute right-0 top-full z-50 mt-2 w-[min(22rem,calc(100vw-1.5rem))] overflow-hidden rounded-xl border border-ink-800 bg-ink-950 shadow-xl shadow-black/40 outline-none"
+      className="absolute right-0 top-full z-50 mt-2 w-[min(22rem,calc(100vw-1.5rem))] overflow-hidden rounded-xl border border-ink-800 bg-ink-950 pb-[env(safe-area-inset-bottom)] shadow-xl shadow-black/40 outline-none"
     >
       <div className="flex items-center gap-2 border-b border-ink-800 px-3.5 py-2.5">
         <h2 className="font-display text-[13px] font-bold text-ink-100">Notifikasi</h2>
@@ -88,7 +88,7 @@ export default function NotifPanel({
         )}
       </div>
 
-      <ul className="max-h-[60vh] overflow-y-auto overscroll-contain">
+      <ul className="max-h-[85dvh] overflow-y-auto overscroll-contain">
         {groups.length === 0 ? (
           <li className="px-3.5 py-8 text-center text-[12.5px] text-ink-500">
             {loading ? 'Memuat…' : 'Belum ada notifikasi'}
@@ -151,7 +151,7 @@ export default function NotifPanel({
           <button
             onClick={() => onMarkRead('all')}
             disabled={unread === 0}
-            className="flex-1 rounded-xl py-2 text-[12px] font-bold text-brand-amber transition-colors hover:bg-ink-900 disabled:text-ink-500 disabled:hover:bg-transparent"
+            className="min-h-11 flex-1 rounded-xl py-2 text-[12px] font-bold text-brand-amber transition-colors hover:bg-ink-900 disabled:text-ink-500 disabled:hover:bg-transparent"
           >
             Tandai semua dibaca
           </button>
@@ -160,7 +160,7 @@ export default function NotifPanel({
               navigate('/notifikasi')
               onClose()
             }}
-            className="shrink-0 rounded-xl py-2 pl-2 pr-1 text-[12px] font-bold text-ink-300 transition-colors hover:text-ink-100"
+            className="inline-flex min-h-11 shrink-0 items-center rounded-xl py-2 pl-2 pr-1 text-[12px] font-bold text-ink-300 transition-colors hover:text-ink-100"
           >
             Lihat semua
           </button>

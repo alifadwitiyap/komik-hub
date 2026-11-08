@@ -63,14 +63,14 @@ export function SourceSortBar() {
   return (
     <div className="flex flex-wrap items-center gap-2">
       {/* chip sumber */}
-      <div className="flex flex-wrap items-center gap-1.5" role="group" aria-label="Filter sumber">
+      <div className="flex flex-wrap items-center gap-2" role="group" aria-label="Filter sumber">
         {SOURCES.map((s) => (
           <button
             key={s.id}
             type="button"
             aria-pressed={source === s.id}
             onClick={() => setField('source', s.id)}
-            className={`rounded-full px-3 py-1.5 text-[12px] font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber focus-visible:ring-offset-2 ${
+            className={`min-h-11 touch-manipulation rounded-full px-3 py-1.5 text-[13px] font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber focus-visible:ring-offset-2 ${
               source === s.id
                 ? 'bg-brand-amber text-ink-950'
                 : 'border border-ink-800 bg-ink-900 text-ink-300 hover:border-ink-700'
@@ -87,7 +87,7 @@ export function SourceSortBar() {
           aria-label="Urutkan"
           value={sort}
           onChange={(e) => setField('sort', e.target.value)}
-          className="appearance-none rounded-full border border-ink-300 bg-ink-900 py-1.5 pl-3.5 pr-8 text-[12px] font-medium text-ink-100 focus:border-brand-amber focus:outline-none"
+          className="min-h-11 touch-manipulation appearance-none rounded-full border border-ink-300 bg-ink-900 py-1.5 pl-3.5 pr-8 text-base font-medium text-ink-100 focus:border-brand-amber focus:outline-none"
         >
           {SORTS.map((s) => (
             <option key={s.value} value={s.value}>

@@ -234,7 +234,8 @@ export default function Series() {
         )}
 
         <div className="relative px-4 pb-4 pt-5">
-          <Link to="/" className="text-[12px] font-medium text-ink-400 hover:text-ink-200">
+          {/* py-3.5 memperluas area sentuh ke >=44px; font 13px agar setara halaman unified. */}
+          <Link to="/" className="py-3.5 text-[13px] font-medium text-ink-400 hover:text-ink-200">
             ← Beranda
           </Link>
 
@@ -481,7 +482,7 @@ export default function Series() {
         {chapters.length > 40 && (
           <button
             onClick={() => setShowAll((v) => !v)}
-            className="mt-3 w-full rounded-xl border border-ink-700 py-2.5 text-[13px] font-medium text-ink-300"
+            className="mt-3 min-h-11 w-full rounded-xl border border-ink-700 py-2.5 text-[13px] font-medium text-ink-300"
           >
             {showAll ? 'Tampilkan lebih sedikit' : `Tampilkan semua ${chapters.length} chapter`}
           </button>
@@ -529,7 +530,7 @@ function ChapterRow({
   read?: boolean
 }) {
   const isAnchor = mark === 'start' || mark === 'end'
-  const cls = `flex w-full items-center justify-between gap-3 px-3.5 py-3 text-left transition-colors ${
+  const cls = `flex min-h-11 w-full items-center justify-between gap-3 px-3.5 py-3 text-left transition-colors ${
     isAnchor
       ? 'bg-brand-amber/15 ring-1 ring-inset ring-brand-amber/50'
       : mark === 'mid'

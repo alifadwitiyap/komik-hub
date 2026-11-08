@@ -213,7 +213,8 @@ export default function SeriesUnified() {
         )}
 
         <div className="relative px-4 pb-4 pt-5">
-          <Link to="/" className="text-[12px] font-medium text-ink-400 hover:text-ink-200">
+          {/* py-3.5 memperluas area sentuh ke >=44px; padding inline tak mengubah tinggi header. */}
+          <Link to="/" className="py-3.5 text-[12px] font-medium text-ink-400 hover:text-ink-200">
             ← Beranda
           </Link>
 
@@ -508,7 +509,7 @@ export default function SeriesUnified() {
                           : `Pilih chapter ${c.number}`
                       }
                       onClick={() => range.select(i)}
-                      className="flex w-full items-center justify-between gap-3 px-3.5 py-3 text-left transition-colors hover:bg-ink-850 active:bg-ink-850"
+                      className="flex min-h-11 w-full items-center justify-between gap-3 px-3.5 py-3 text-left transition-colors hover:bg-ink-850 active:bg-ink-850"
                     >
                       <span className={titleCls}>{chapterLabel(c)}</span>
                       {anchor && (
@@ -528,7 +529,7 @@ export default function SeriesUnified() {
                           ? `${chapterLabel(c)} — sudah dibaca`
                           : `${chapterLabel(c)} — belum dibaca`
                       }
-                      className="flex min-w-0 flex-1 items-center justify-between gap-3 py-3 pr-3.5 transition-colors hover:bg-ink-850 active:bg-ink-850"
+                      className="flex min-h-11 min-w-0 flex-1 items-center justify-between gap-3 py-3 pr-3.5 transition-colors hover:bg-ink-850 active:bg-ink-850"
                     >
                       <span className={titleCls}>{chapterLabel(c)}</span>
                       {c.source !== m.source && (
@@ -548,7 +549,7 @@ export default function SeriesUnified() {
         {chapters.length > 40 && (
           <button
             onClick={() => setShowAll((v) => !v)}
-            className="mt-3 w-full rounded-xl border border-ink-700 py-2.5 text-[13px] font-medium text-ink-300"
+            className="mt-3 min-h-11 w-full rounded-xl border border-ink-700 py-2.5 text-[13px] font-medium text-ink-300"
           >
             {showAll ? 'Tampilkan lebih sedikit' : `Tampilkan semua ${chapters.length} chapter`}
           </button>

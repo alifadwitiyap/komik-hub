@@ -42,7 +42,7 @@ export default function Notifikasi() {
         <button
           onClick={() => navigate(-1)}
           aria-label="Kembali"
-          className="-ml-2 rounded-lg p-1.5 text-ink-400 transition-colors hover:bg-ink-850 hover:text-ink-200"
+          className="-ml-2 grid size-11 place-items-center rounded-lg text-ink-400 transition-colors hover:bg-ink-850 hover:text-ink-200"
         >
           <IconAngleLeft className="size-5" />
         </button>
@@ -55,7 +55,7 @@ export default function Notifikasi() {
         <button
           onClick={() => notif.markRead('all')}
           disabled={notif.unread === 0}
-          className="ml-auto text-[12px] font-bold text-brand-amber transition-colors hover:underline disabled:text-ink-500 disabled:hover:no-underline"
+          className="ml-auto inline-flex min-h-11 items-center text-[12px] font-bold text-brand-amber transition-colors hover:underline disabled:text-ink-500 disabled:hover:no-underline"
         >
           Tandai semua dibaca
         </button>

@@ -74,6 +74,7 @@ export default function HeartButton({ manga, className = '', labeled = false }: 
     )
   }
 
+  // Target 44px: p-3 + ikon 20px; min-* mengatasi size-9 dari pemanggil.
   return (
     <button
       aria-label={loved ? 'Hapus dari favorit' : 'Tambah ke favorit'}
@@ -84,7 +85,7 @@ export default function HeartButton({ manga, className = '', labeled = false }: 
         toggleFavorite(manga)
         if (isFavorite(manga.title_key)) setPop(true)
       }}
-      className={`relative grid place-items-center rounded-full p-2 transition-colors active:scale-[0.97] active:transition-transform active:duration-100 ${className}`}
+      className={`relative grid min-h-11 min-w-11 touch-manipulation place-items-center rounded-full p-3 transition-colors active:scale-[0.97] active:transition-transform active:duration-100 ${className}`}
     >
       {heart}
       {count > 0 && (

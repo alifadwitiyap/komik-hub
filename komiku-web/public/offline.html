@@ -2,19 +2,23 @@
 <html lang="id">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, interactive-widget=resizes-content" />
+    <meta name="theme-color" content="#0b0b0d" />
     <title>Komik Hub — offline</title>
     <style>
       body {
         margin: 0;
-        min-height: 100vh;
+        box-sizing: border-box;
+        min-height: 100dvh;
         display: grid;
         place-items: center;
         background: #0b0b0d;
         color: #b6b6c9;
         font-family: 'Nunito Sans', system-ui, sans-serif;
         text-align: center;
-        padding: 24px;
+        /* 24px + safe-area: teks tidak tertutup notch / home indicator. */
+        padding: calc(24px + env(safe-area-inset-top, 0px)) calc(24px + env(safe-area-inset-right, 0px))
+                 calc(24px + env(safe-area-inset-bottom, 0px)) calc(24px + env(safe-area-inset-left, 0px));
       }
       h1 { color: #d9d9e6; font-size: 18px; margin: 0 0 8px; }
       p { font-size: 13px; margin: 4px 0; }

@@ -27,15 +27,12 @@ const NAV = [
 
 export default function App() {
   const { pathname } = useLocation()
-  const mainRef = useRef<HTMLElement>(null)
   // Reader adalah halaman layar penuh: nav bawah disembunyikan
   const immersive = /^\/(baca|maraton)/.test(pathname)
 
-  // Pindahkan fokus ke konten utama setiap navigasi route supaya keyboard /
-  // screen-reader tidak tertinggal di top bar. preventScroll: jangan geser.
-  useEffect(() => {
-    mainRef.current?.focus({ preventScroll: true })
-  }, [pathname])
+  // Fokus TIDAK dipindah otomatis saat ganti route: Tab pertama harus selalu
+  // mendarat di skip link (WCAG 2.4.1 / 2.4.3). Konteks screen-reader tetap
+  // lewat <main id="konten" tabIndex={-1}> sebagai target skip link.
 
   // Link akun (?u=<username>) bisa mendarat di route mana pun (default '/').
   // Tangkap identitasnya SEKALI, sebelum sync favorit mulai, supaya hydrate
@@ -61,7 +58,7 @@ export default function App() {
           <TopBar bellOpen={bellOpen} onToggleBell={() => setBellOpen((o) => !o)} onClosePanel={() => setBellOpen(false)} />
         )}
 
-        <main id="konten" ref={mainRef} tabIndex={-1} className={immersive ? '' : 'pb-24 pt-14 outline-none'}>
+        <main id="konten" tabIndex={-1} className={immersive ? '' : 'pb-24 pt-14 outline-none'}>
           {/* Boundary DI LUAR Suspense: Suspense menangani pending, boundary
               harus melihat error yang lolos darinya. Diletakkan di sini (bukan
               membungkus seluruh App) supaya TopBar/BottomNav tetap hidup dan
@@ -132,7 +129,7 @@ function TopBar({
   return (
     <header className="fixed inset-x-0 top-0 z-40 border-b border-ink-800 bg-ink-950/95 backdrop-blur">
       <div className="mx-auto flex h-14 max-w-3xl items-center gap-1 px-3">
-        <Link to="/" className="flex items-center" aria-label="Komik Hub">
+        <Link to="/" className="flex min-h-11 items-center py-2.5" aria-label="Komik Hub">
           <img
             src="/logo-komik-hub.png"
             alt="Komik Hub"
@@ -172,7 +169,7 @@ function TopBar({
             {notif.unread > 0 && (
               <span
                 role="status"
-                className="pointer-events-none absolute -right-1 -top-1 grid min-w-4 place-items-center rounded-full bg-brand-amber px-1 text-[9px] font-bold leading-4 text-ink-950"
+                className="pointer-events-none absolute -right-1 -top-1 grid min-w-4 place-items-center rounded-full bg-brand-amber px-1 text-[11px] font-bold leading-4 text-ink-950"
               >
                 {notif.unread > 99 ? '99+' : notif.unread}
               </span>
@@ -211,7 +208,7 @@ function ThemeToggle() {
       aria-pressed={dark}
       data-theme-toggle
       title={toggleLabel}
-      className="grid size-[40px] place-items-center rounded-full bg-ink-850 text-ink-200 transition-colors active:bg-ink-800"
+      className="grid size-11 place-items-center rounded-full bg-ink-850 text-ink-200 transition-colors active:bg-ink-800"
     >
       {/* dua ikon ditumpuk; yang aktif yang terlihat (fade + rotate 200ms) */}
       <span className="relative size-4">

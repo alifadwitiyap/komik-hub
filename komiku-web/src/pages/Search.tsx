@@ -40,8 +40,9 @@ const STATUS = ['Ongoing', 'Completed']
 /** Chip kata kunci cepat, diturunkan dari nama genre yang tersedia. */
 const QUICK_KEYWORDS = 6
 
+/** text-base + min-h-11: cegah auto-zoom iOS saat fokus dan jaga target sentuh 44px. */
 const selectBase =
-  'min-w-0 flex-1 appearance-none rounded-full border border-ink-300 bg-ink-900 py-2 pl-3.5 pr-8 text-[12.5px] font-medium text-ink-100 focus:border-brand-amber focus:outline-none'
+  'min-w-0 flex-1 appearance-none rounded-full border border-ink-300 bg-ink-900 min-h-11 pl-3.5 pr-8 text-base font-medium text-ink-100 focus:border-brand-amber focus:outline-none'
 
 /** Chevron kecil di kanan tiap dropdown (native select tak bisa di-style). */
 function SelectChevron() {
@@ -291,6 +292,7 @@ export default function Search() {
       >
         <div className="relative flex min-w-0 flex-1 items-center">
           <IconMagnifyingGlass className="pointer-events-none absolute left-3.5 size-4 text-ink-500" />
+          {/* text-base (16px): di bawah 16px iOS Safari auto-zoom saat input difokuskan. */}
           <input
             value={input}
             onChange={(e) => setInput(e.target.value)}
@@ -298,12 +300,12 @@ export default function Search() {
             inputMode="search"
             enterKeyHint="search"
             aria-label="Cari manga"
-            className="min-w-0 flex-1 rounded-full border border-ink-300 bg-ink-900 py-2.5 pl-10 pr-3.5 text-sm text-ink-100 placeholder:text-ink-500 focus:border-brand-amber focus:outline-none"
+            className="min-w-0 flex-1 rounded-full border border-ink-300 bg-ink-900 py-2.5 pl-10 pr-3.5 text-base text-ink-100 placeholder:text-ink-500 focus:border-brand-amber focus:outline-none"
           />
         </div>
         <button
           type="submit"
-          className="shrink-0 rounded-full bg-brand-amber px-5 py-2.5 text-sm font-bold text-ink-100 transition-colors hover:bg-brand-amber-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber focus-visible:ring-offset-2"
+          className="shrink-0 min-h-11 rounded-full bg-brand-amber px-5 py-2.5 text-sm font-bold text-ink-100 transition-colors hover:bg-brand-amber-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber focus-visible:ring-offset-2"
         >
           Cari
         </button>
@@ -386,7 +388,7 @@ export default function Search() {
                 key={r}
                 type="button"
                 onClick={() => commitQuery(r)}
-                className="shrink-0 rounded-full border border-ink-800 bg-ink-900 px-3 py-1.5 text-[12px] font-medium text-ink-300 transition-colors hover:border-ink-700"
+                className="min-h-11 shrink-0 rounded-full border border-ink-800 bg-ink-900 px-3 py-1.5 text-[12px] font-medium text-ink-300 transition-colors hover:border-ink-700"
               >
                 {r}
               </button>
@@ -395,7 +397,7 @@ export default function Search() {
               type="button"
               aria-label="Hapus riwayat pencarian"
               onClick={() => setRecent(clearRecent())}
-              className="shrink-0 rounded-full border border-ink-800 px-3 py-1.5 text-[12px] font-medium text-ink-500 transition-colors hover:border-ink-700 hover:text-ink-300"
+              className="min-h-11 shrink-0 rounded-full border border-ink-800 px-3 py-1.5 text-[12px] font-medium text-ink-500 transition-colors hover:border-ink-700 hover:text-ink-300"
             >
               Hapus
             </button>
@@ -409,7 +411,7 @@ export default function Search() {
                 key={k}
                 type="button"
                 onClick={() => commitQuery(k)}
-                className="shrink-0 rounded-full border border-ink-800 bg-ink-900 px-3 py-1.5 text-[12px] font-medium text-ink-300 transition-colors hover:border-ink-700"
+                className="min-h-11 shrink-0 rounded-full border border-ink-800 bg-ink-900 px-3 py-1.5 text-[12px] font-medium text-ink-300 transition-colors hover:border-ink-700"
               >
                 {k}
               </button>
@@ -421,7 +423,8 @@ export default function Search() {
       {searching ? (
         <div className="mt-5">
           {loading && <Spinner label="Mencari…" />}
-          {error && <Empty title="Pencarian gagal" body={error} />}
+          {/* lane5_microcopy.md:80 (High) — "Pencarian gagal — coba lagi." tanpa error mentah. */}
+          {error && <Empty title="Pencarian gagal" body="Coba lagi." />}
           {!loading && !error && (
             <>
               <div className="mb-2 flex flex-wrap items-center gap-2">
@@ -477,7 +480,8 @@ export default function Search() {
       ) : (
         <div className="mt-5">
           {listLoading && <Spinner label="Memuat daftar…" />}
-          {listError && <Empty title="Gagal memuat daftar" body={listError} />}
+          {/* lane5_microcopy.md:81 (High) — "Gagal memuat daftar — coba lagi." tanpa error mentah. */}
+          {listError && <Empty title="Gagal memuat daftar" body="Coba lagi." />}
           {!listLoading && !listError && (
             <>
               <div className="mb-2 flex flex-wrap items-center gap-2">
@@ -500,7 +504,7 @@ export default function Search() {
                   <button
                     disabled={more}
                     onClick={loadMore}
-                    className="rounded-full border border-ink-700 px-5 py-2.5 text-[13px] font-medium text-ink-300 transition-colors hover:border-brand-amber hover:text-brand-amber disabled:opacity-40"
+                    className="min-h-11 rounded-full border border-ink-700 px-5 py-2.5 text-[13px] font-medium text-ink-300 transition-colors hover:border-brand-amber hover:text-brand-amber disabled:opacity-40"
                   >
                     {more ? 'Memuat…' : 'Muat lebih'}
                   </button>
