@@ -18,6 +18,8 @@ interface ReaderSettingsSheetProps {
   onClose: () => void
   onChange: (patch: Partial<ReaderSettings>) => void
   onReset: () => void
+  /** Memberi feedback saat Maraton nyala/mati. */
+  setToast?: (m: string | null) => void
   /** Slot: aksi unduhan (Ekspor PDF / Simpan offline). */
   downloadActions?: React.ReactNode
   /** Slot: seksi Maraton (Mulai maraton dari awal). */
@@ -36,6 +38,7 @@ export default function ReaderSettingsSheet({
   onClose,
   onChange,
   onReset,
+  setToast,
   downloadActions,
   marathonActions,
 }: ReaderSettingsSheetProps) {
@@ -62,13 +65,13 @@ export default function ReaderSettingsSheet({
         role="dialog"
         aria-modal="true"
         tabIndex={-1}
-        className="sheet-panel w-full max-w-md rounded-t-2xl bg-ink-900 pb-6 outline-none"
+        className="sheet-panel w-full max-w-md rounded-t-2xl bg-ink-900 pb-[calc(1.5rem+env(safe-area-inset-bottom))] outline-none"
         onClick={(e) => e.stopPropagation()}
         onKeyDown={trapFocus}
       >
         <div className="flex items-center justify-between px-4 py-3">
           <h2 className="font-display text-[15px] font-bold text-ink-100">Preferensi</h2>
-          <button onClick={onClose} aria-label="Tutup" className="p-1.5 text-ink-500">
+          <button onClick={onClose} aria-label="Tutup" className="grid size-11 place-items-center rounded-xl text-ink-500 active:bg-ink-800 active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber">
             <IconXmark className="size-4" />
           </button>
         </div>
@@ -85,7 +88,12 @@ export default function ReaderSettingsSheet({
           label="Maraton"
           labelId="reader-marathon-label"
           toggle={settings.marathon}
-          onToggle={(v) => onChange({ marathon: v })}
+          onToggle={(v) => {
+            const firstRun = !settings.marathon && v
+            if (firstRun) setToast?.('Mode maraton aktif — chapter berikutnya terbuka otomatis')
+            if (!v && settings.marathon) setToast?.('Keluar maraton — kembali ke mode baca')
+            onChange({ marathon: v })
+          }}
         />
         <Row
           icon={<IconPlaySolid className="size-4" />}
@@ -99,7 +107,7 @@ export default function ReaderSettingsSheet({
               <button
                 key={s}
                 onClick={() => onChange({ speed: s })}
-                className={`flex-1 rounded-lg border px-2 py-1.5 text-[11.5px] font-semibold ${
+                className={`min-h-11 flex-1 rounded-lg border px-2 py-2.5 text-[11.5px] font-semibold active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70 ${
                   settings.speed === s
                     ? 'border-brand-amber bg-brand-amber/10 text-brand-amber'
                     : 'border-ink-300 text-ink-300'
@@ -115,7 +123,7 @@ export default function ReaderSettingsSheet({
           label="Kecerahan Layar"
           value={`${settings.brightness}%`}
         />
-        <div className="px-4 pb-2">
+        <div className="grid min-h-11 place-items-center px-4 pb-2">
           <input
             type="range"
             min={20}
@@ -124,7 +132,7 @@ export default function ReaderSettingsSheet({
             aria-label="Kecerahan Layar"
             aria-valuetext={`${settings.brightness}%`}
             onChange={(e) => onChange({ brightness: Number(e.target.value) })}
-            className="w-full accent-brand-amber"
+            className="w-full py-2 accent-brand-amber [&::-webkit-slider-thumb]:size-6 [&::-moz-range-thumb]:size-6 [&::-moz-range-track]:h-1.5"
           />
         </div>
         <Row
@@ -157,7 +165,7 @@ export default function ReaderSettingsSheet({
             <button
               key={mode}
               onClick={() => onChange({ prefetchMode: mode })}
-              className={`flex-1 rounded-lg border px-2 py-1.5 text-[11.5px] font-semibold ${
+              className={`min-h-11 flex-1 rounded-lg border px-2 py-2.5 text-[11.5px] font-semibold active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70 ${
                 settings.prefetchMode === mode
                   ? 'border-brand-amber bg-brand-amber/10 text-brand-amber'
                   : 'border-ink-300 text-ink-300'
@@ -175,7 +183,7 @@ export default function ReaderSettingsSheet({
         <div className="mt-2 px-4">
           <button
             onClick={onReset}
-            className="w-full rounded-xl border border-ink-300 py-2.5 text-[12.5px] font-semibold text-ink-300"
+            className="min-h-11 w-full rounded-xl border border-ink-300 py-2.5 text-[12.5px] font-semibold text-ink-300 active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70"
           >
             Kembalikan Semula
           </button>
@@ -235,27 +243,29 @@ export function Row({
       aria-disabled={disabled || undefined}
       onClick={disabled ? undefined : onClick}
       onKeyDown={clickable && !disabled ? (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onClick() } } : undefined}
-      className={`flex items-center gap-3 px-4 py-3 ${clickable ? `${disabled ? 'cursor-not-allowed opacity-50' : 'cursor-pointer select-none active:bg-ink-850'}` : ''}`}
+      className={`flex items-center gap-3 px-4 py-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70 focus-visible:ring-inset ${clickable ? `${disabled ? 'cursor-not-allowed opacity-50' : 'cursor-pointer select-none active:bg-ink-850'}` : ''}`}
     >
       <span className="grid size-8 place-items-center rounded-full bg-ink-850 text-ink-300">{icon}</span>
       <span id={labelId} className="min-w-0 flex-1 text-[13px] font-medium text-ink-100">{label}</span>
       {value && <span className="text-[12px] text-ink-500">{value}</span>}
       {toggle !== undefined && (
-        <button
+        <span className="grid min-h-11 min-w-11 shrink-0 place-items-center">
+          <button
           role="switch"
           aria-checked={toggle}
           aria-labelledby={labelId}
           onClick={() => onToggle?.(!toggle)}
-          className={`relative h-6 w-11 shrink-0 rounded-full transition-colors ${
+          className={`relative h-6 w-11 shrink-0 rounded-full transition-colors duration-200 ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70 ${
             toggle ? 'bg-brand-amber' : 'bg-ink-700'
           }`}
         >
           <span
-            className={`absolute top-0.5 size-5 rounded-full bg-white shadow transition-all ${
-              toggle ? 'left-[22px]' : 'left-0.5'
+            className={`absolute top-0.5 left-0.5 size-5 rounded-full bg-white shadow transition-transform duration-200 ease-[var(--ease-out)] ${
+              toggle ? 'translate-x-[21.5px]' : 'translate-x-0'
             }`}
           />
-        </button>
+          </button>
+        </span>
       )}
     </div>
   )

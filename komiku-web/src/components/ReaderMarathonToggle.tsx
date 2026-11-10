@@ -21,6 +21,8 @@ interface ReaderMarathonToggleProps {
  *
  * Saat tidak aktif (reader biasa): ikon lari, teks "Maraton" saat hover/aktif.
  * Saat aktif (maraton): ikon X, teks "Keluar".
+
+ * ponytail: label saat aktif = "Keluar maraton" — biarkan bila minta versi pendek
  */
 export default function ReaderMarathonToggle({
   active,
@@ -37,12 +39,14 @@ export default function ReaderMarathonToggle({
       title={label}
       data-testid="reader-marathon-toggle"
       onClick={onToggle}
-      className={`fixed left-[max(0.75rem,env(safe-area-inset-left))] top-[calc(env(safe-area-inset-top)+3.5rem)] z-40 flex h-11 select-none touch-manipulation items-center justify-center gap-1.5 rounded-xl border shadow-lg transition-opacity duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-black/50 ${
+      tabIndex={interactive ? 0 : -1}
+      disabled={!interactive}
+      className={`fixed left-[max(0.75rem,env(safe-area-inset-left))] top-[calc(env(safe-area-inset-top)+3.5rem)] z-40 flex h-11 select-none touch-manipulation items-center justify-center gap-1.5 rounded-xl border shadow-lg transition-opacity ease-out duration-200 active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-black/50 ${
         active ? 'px-3' : 'w-11 px-0'
       } ${
         active
           ? 'border-white/40 bg-black/75 text-white'
-          : 'border-brand-amber-soft bg-brand-amber text-white'
+          : 'border-brand-red-soft/60 bg-brand-red text-white'
       } ${visible ? 'opacity-100' : 'opacity-0'} ${
         interactive ? '' : 'pointer-events-none'
       }`}

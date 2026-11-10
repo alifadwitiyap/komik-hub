@@ -42,29 +42,39 @@ export default function Notifikasi() {
         <button
           onClick={() => navigate(-1)}
           aria-label="Kembali"
-          className="-ml-2 grid size-11 place-items-center rounded-lg text-ink-400 transition-colors hover:bg-ink-850 hover:text-ink-200"
+          className="-ml-2 grid size-11 place-items-center rounded-lg text-ink-400 transition-colors [@media(hover:hover)]:hover:bg-ink-850 [@media(hover:hover)]:hover:text-ink-200"
         >
           <IconAngleLeft className="size-5" />
         </button>
         <h1 className="text-lg font-semibold text-ink-100">Notifikasi</h1>
         {notif.unread > 0 && (
-          <span className="rounded-full bg-brand-amber px-2 py-px text-[10.5px] font-bold text-ink-950">
+          <span className="rounded-full bg-brand-amber px-2 py-px text-[10.5px] font-bold text-white">
             {notif.unread} belum dibaca
           </span>
         )}
         <button
           onClick={() => notif.markRead('all')}
           disabled={notif.unread === 0}
-          className="ml-auto inline-flex min-h-11 items-center text-[12px] font-bold text-brand-amber transition-colors hover:underline disabled:text-ink-500 disabled:hover:no-underline"
+          className="ml-auto inline-flex min-h-11 items-center text-[12px] font-bold text-brand-amber transition-colors [@media(hover:hover)]:hover:underline disabled:text-ink-500 disabled:[@media(hover:hover)]:hover:no-underline"
         >
           Tandai semua dibaca
         </button>
       </div>
 
       {notif.items.length === 0 ? (
-        <p className="py-16 text-center text-[13px] text-ink-500">
-          {notif.loading ? 'Memuat…' : 'Belum ada notifikasi.'}
-        </p>
+        <div className="flex flex-col items-center gap-4 py-16 text-center">
+          <p className="text-[13px] text-ink-500">
+            {notif.loading ? 'Memuat…' : 'Belum ada notifikasi.'}
+          </p>
+          {!notif.loading && (
+            <a
+              href="/"
+              className="inline-flex min-h-11 items-center rounded-xl bg-brand-amber px-4 py-2.5 text-[12px] font-bold text-white"
+            >
+              Jelajahi komik
+            </a>
+          )}
+        </div>
       ) : (
         <div className="space-y-6">
           {days.map(([label, groups]) => (
@@ -75,7 +85,7 @@ export default function Notifikasi() {
               <ul className="overflow-hidden rounded-xl border border-ink-800 bg-ink-950">
                 {groups.map((g) => (
                   <li key={g.title_key} className="border-b border-ink-800 last:border-0">
-                    <div className="flex items-start gap-2.5 px-3 py-3">
+                    <div className="flex min-h-11 items-start gap-2.5 px-3 py-3">
                       <button
                         onClick={() => {
                           navigate(`/manga/${g.latest.handle}`)
@@ -112,7 +122,7 @@ export default function Notifikasi() {
                           for (const id of g.ids) notif.dismiss(id)
                         }}
                         aria-label={`Hapus notifikasi ${g.latest.title}`}
-                        className="-mr-1 shrink-0 rounded-lg p-1.5 text-ink-500 transition-colors hover:bg-ink-850 hover:text-ink-200"
+                        className="grid size-11 shrink-0 place-items-center rounded-lg text-ink-500 transition-colors [@media(hover:hover)]:hover:bg-ink-850 [@media(hover:hover)]:hover:text-ink-200"
                       >
                         <IconXmark className="size-3.5" />
                       </button>

@@ -50,7 +50,7 @@ export default function App() {
       <div className="min-h-full bg-ink-950">
         <a
           href="#konten"
-          className="sr-only focus:not-sr-only focus:fixed focus:left-3 focus:top-3 focus:z-50 focus:rounded-full focus:bg-brand-amber focus:px-4 focus:py-2 focus:text-sm focus:font-bold focus:text-ink-950"
+          className="sr-only focus:not-sr-only focus:fixed focus:left-3 focus:top-3 focus:z-50 focus:rounded-full focus:bg-brand-amber focus:px-4 focus:py-2 focus:text-sm focus:font-bold focus:text-white"
         >
           Lewati ke konten
         </a>
@@ -128,7 +128,7 @@ function TopBar({
 
   return (
     <header className="fixed inset-x-0 top-0 z-40 border-b border-ink-800 bg-ink-950/95 backdrop-blur">
-      <div className="mx-auto flex h-14 max-w-3xl items-center gap-1 px-3">
+      <div className="mx-auto flex h-[calc(3.5rem+env(safe-area-inset-top))] max-w-3xl items-center gap-1 px-3 pr-[max(0.75rem,env(safe-area-inset-right))]">
         <Link to="/" className="flex min-h-11 items-center py-2.5" aria-label="Komik Hub">
           <img
             src="/logo-komik-hub.png"
@@ -169,7 +169,7 @@ function TopBar({
             {notif.unread > 0 && (
               <span
                 role="status"
-                className="pointer-events-none absolute -right-1 -top-1 grid min-w-4 place-items-center rounded-full bg-brand-amber px-1 text-[11px] font-bold leading-4 text-ink-950"
+                className="pointer-events-none absolute -right-1 -top-1 grid min-w-4 place-items-center rounded-full bg-brand-amber px-1 text-[11px] font-bold leading-4 text-white"
               >
                 {notif.unread > 99 ? '99+' : notif.unread}
               </span>
@@ -208,7 +208,7 @@ function ThemeToggle() {
       aria-pressed={dark}
       data-theme-toggle
       title={toggleLabel}
-      className="grid size-11 place-items-center rounded-full bg-ink-850 text-ink-200 transition-colors active:bg-ink-800"
+      className="grid size-11 place-items-center rounded-full bg-ink-850 text-ink-200 transition-colors active:scale-[0.97] active:bg-ink-800"
     >
       {/* dua ikon ditumpuk; yang aktif yang terlihat (fade + rotate 200ms) */}
       <span className="relative size-4">
@@ -268,8 +268,8 @@ function BottomNav() {
               to={to}
               end={to === '/'}
               className={({ isActive }) =>
-                `relative flex flex-col items-center gap-[3px] py-2 text-[10.5px] font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber focus-visible:ring-inset ${
-                  isActive ? 'text-brand-amber' : 'text-ink-500 hover:text-ink-200'
+                `relative flex min-h-11 min-w-11 flex-col items-center justify-center gap-[3px] py-2 text-[11px] font-medium transition-colors active:scale-[0.97] active:duration-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber focus-visible:ring-inset ${
+                  isActive ? 'text-brand-amber' : 'text-ink-500 [@media(hover:hover)]:hover:text-ink-200'
                 }`
               }
             >
@@ -299,11 +299,20 @@ function NotFound() {
   return <Empty title="Halaman tidak ada" body="Periksa lagi alamatnya." />
 }
 
-export function Empty({ title, body }: { title: string; body: string }) {
+export function Empty({
+  title,
+  body,
+  action,
+}: {
+  title: string
+  body: string
+  action?: React.ReactNode
+}) {
   return (
     <div className="mx-auto max-w-3xl px-4 py-16 text-center">
       <p className="text-base font-semibold text-ink-200">{title}</p>
       <p className="mt-1 text-sm text-ink-400">{body}</p>
+      {action && <div className="mt-4">{action}</div>}
     </div>
   )
 }

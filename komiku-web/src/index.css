@@ -117,7 +117,7 @@
    bukan layout, supaya scroll dan gambar tidak ikut beranimasi. */
 body,
 .dark body {
-  transition: background-color 200ms ease, color 200ms ease;
+  transition: background-color 200ms var(--ease-out), color 200ms var(--ease-out);
 }
 
 /* Logo brand: varian terang untuk mode siang, varian oranye-putih untuk

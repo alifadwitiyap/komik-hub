@@ -58,6 +58,7 @@ export default function Series() {
   // Cover yang gagal dimuat (host mati / 403 / DNS hilang) → tampilkan judul,
   // bukan ikon gambar rusak.
   const [coverFailed, setCoverFailed] = useState(false)
+  const [reloadKey, setReloadKey] = useState(0)
 
   useEffect(() => {
     if (!id) return
@@ -79,7 +80,7 @@ export default function Series() {
       // batch jalan di closure-nya sendiri dan hasilnya tetap masuk store.
       ctrl.abort()
     }
-  }, [id])
+  }, [id, reloadKey])
 
   // Semua hook HARUS di atas early return (Rules of Hooks): kalau useMemo
   // diletakkan setelah `if (!data) return`, urutan hook berubah antar render.
@@ -114,7 +115,18 @@ export default function Series() {
   const { resume, marathonPos, resumeHref, marathonHref: marathonLink } =
     useSeriesResume(id)
 
-  if (error) return <Empty title="Gagal memuat manga" body={error} />
+  if (error) return (
+    <div className="mx-auto max-w-3xl px-4 py-16 text-center">
+      <Empty title="Gagal memuat manga" body={error} />
+      <button
+        type="button"
+        onClick={() => setReloadKey((k) => k + 1)}
+        className="mt-4 min-h-11 rounded-xl bg-brand-amber px-5 py-2.5 text-[13px] font-bold text-white transition-colors active:scale-[0.97] active:duration-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber focus-visible:ring-offset-2 [@media(hover:hover)]:hover:bg-brand-amber-soft"
+      >
+        Muat ulang
+      </button>
+    </div>
+  )
   if (!data) return <Spinner label="Memuat manga…" />
 
   const { series: s, chapters } = data
@@ -235,7 +247,7 @@ export default function Series() {
 
         <div className="relative px-4 pb-4 pt-5">
           {/* py-3.5 memperluas area sentuh ke >=44px; font 13px agar setara halaman unified. */}
-          <Link to="/" className="py-3.5 text-[13px] font-medium text-ink-400 hover:text-ink-200">
+          <Link to="/" className="py-3.5 text-[13px] font-medium text-ink-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber focus-visible:ring-offset-2 [@media(hover:hover)]:hover:text-ink-200">
             ← Beranda
           </Link>
 
@@ -283,34 +295,16 @@ export default function Series() {
       </div>
 
       {/* Tombol baca */}
-      <div className="sticky top-14 z-30 border-y border-ink-800 bg-ink-950/95 px-4 py-2.5 backdrop-blur">
-        <div className="flex gap-2">
+      <div className="sticky top-[calc(3.5rem+env(safe-area-inset-top))] z-30 border-y border-ink-800 bg-ink-950/95 px-4 py-2.5 backdrop-blur">
+        <div className="grid grid-cols-2 gap-2">
           {cta && (
             <>
               <Link
                 to={cta.to}
-                className="flex-1 rounded-xl bg-brand-amber py-2.5 text-center text-[13px] font-bold text-ink-100 transition-colors hover:bg-brand-amber-soft"
+                className="flex min-h-11 flex-1 items-center justify-center rounded-xl bg-brand-amber py-2.5 text-center text-[13px] font-bold text-white transition-colors active:scale-[0.97] active:duration-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber focus-visible:ring-offset-2 [@media(hover:hover)]:hover:bg-brand-amber-soft"
               >
                 {cta.label}
               </Link>
-              {/* unduh PDF: aktifkan mode pilih rentang Awal/Akhir di daftar chapter */}
-              {dlHandle && (
-                <button
-                  type="button"
-                  onClick={togglePickMode}
-                  disabled={dlBusy}
-                  aria-pressed={pickMode}
-                  aria-label="Unduh chapter"
-                  className={`flex items-center gap-1.5 rounded-xl px-3.5 py-2.5 text-[13px] font-bold transition-colors disabled:opacity-50 ${
-                    pickMode
-                      ? 'bg-brand-amber-soft text-ink-100 ring-2 ring-brand-amber/50'
-                      : 'bg-brand-amber text-ink-100 hover:bg-brand-amber-soft'
-                  }`}
-                >
-                  <IconDownload className="size-4" />
-                  Unduh
-                </button>
-              )}
               {oldest && (
                 <Link
                   to={
@@ -323,10 +317,28 @@ export default function Series() {
                       ? 'Lanjutkan maraton dari posisi terakhir'
                       : `Mulai maraton dari ${oldest.name}`
                   }
-                  className="rounded-xl border border-brand-amber-dim px-3.5 py-2.5 text-center text-[13px] font-semibold text-brand-amber transition-colors hover:bg-brand-amber-dim/20"
+                  className="flex min-h-11 items-center justify-center rounded-xl border border-brand-amber-dim px-3.5 py-2.5 text-center text-[13px] font-semibold text-brand-amber transition-colors active:scale-[0.97] active:duration-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber focus-visible:ring-offset-2 [@media(hover:hover)]:hover:bg-brand-amber-dim/20"
                 >
                   Maraton
                 </Link>
+              )}
+              {/* unduh PDF: aktifkan mode pilih rentang Awal/Akhir di daftar chapter */}
+              {dlHandle && (
+                <button
+                  type="button"
+                  onClick={togglePickMode}
+                  disabled={dlBusy}
+                  aria-pressed={pickMode}
+                  aria-label="Unduh chapter"
+                  className={`flex min-h-11 items-center gap-1.5 rounded-xl px-3.5 py-2.5 text-[13px] font-bold transition-colors active:scale-[0.97] active:duration-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber focus-visible:ring-offset-2 disabled:opacity-50 ${
+                    pickMode
+                      ? 'bg-brand-amber-soft text-ink-100 ring-2 ring-brand-amber/50'
+                      : 'bg-brand-amber text-white [@media(hover:hover)]:hover:bg-brand-amber-soft'
+                  }`}
+                >
+                  <IconDownload className="size-4" />
+                  Unduh
+                </button>
               )}
               {/* favorit — identitas dari server (title_key), handle = id lama */}
               {s.title_key && (
@@ -347,7 +359,7 @@ export default function Series() {
         {resume && (
           <Link
             to={resumeHref as string}
-            className="mt-2 block text-center text-[12px] font-medium text-ink-300 hover:text-brand-amber"
+            className="mt-2 block min-h-11 content-center text-center text-[12px] font-medium text-ink-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber focus-visible:ring-offset-2 [@media(hover:hover)]:hover:text-brand-amber"
           >
             Lanjut dari {resume.chapterName} · halaman {resume.page + 1}
           </Link>
@@ -386,7 +398,7 @@ export default function Series() {
                     type="button"
                     onClick={() => setShowDlType(true)}
                     disabled={dlBusy || rangeEnd == null || downloadable.length === 0}
-                    className="rounded-lg bg-brand-amber px-3 py-1.5 text-[11.5px] font-bold text-ink-100 disabled:opacity-50"
+                    className="min-h-11 min-w-11 rounded-lg bg-brand-amber px-4 py-2.5 text-[12px] font-bold text-white transition-colors active:scale-[0.97] active:duration-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber focus-visible:ring-offset-2 disabled:opacity-50"
                   >
                     {dlBusy ? 'Mengunduh…' : `Unduh (${dlCount})`}
                   </button>
@@ -399,7 +411,7 @@ export default function Series() {
                         startDownloadOffline()
                       }}
                       disabled={dlBusy}
-                      className="rounded-lg border border-brand-amber-dim bg-brand-amber/10 px-2.5 py-1.5 text-[11.5px] font-semibold text-brand-amber disabled:opacity-50"
+                      className="min-h-11 min-w-11 rounded-lg border border-brand-amber-dim bg-brand-amber/10 px-4 py-2.5 text-[12px] font-semibold text-brand-amber transition-colors active:scale-[0.97] active:duration-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber focus-visible:ring-offset-2 disabled:opacity-50"
                     >
                       Offline
                     </button>
@@ -410,7 +422,7 @@ export default function Series() {
                         startDownloadPdf()
                       }}
                       disabled={dlBusy}
-                      className="rounded-lg border border-ink-600 px-2.5 py-1.5 text-[11.5px] font-semibold text-ink-200 hover:bg-ink-850 disabled:opacity-50"
+                      className="min-h-11 min-w-11 rounded-lg border border-ink-600 px-4 py-2.5 text-[12px] font-semibold text-ink-200 transition-colors active:scale-[0.97] active:duration-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber focus-visible:ring-offset-2 [@media(hover:hover)]:hover:bg-ink-850 disabled:opacity-50"
                     >
                       PDF
                     </button>
@@ -441,7 +453,7 @@ export default function Series() {
                   <button
                     type="button"
                     onClick={() => dlHandle && cancelRun(dlHandle)}
-                    className="shrink-0 rounded-lg border border-ink-700 px-2.5 py-1 text-[11px] font-bold text-ink-200 transition-colors hover:bg-ink-800"
+                    className="min-h-11 shrink-0 rounded-lg border border-ink-700 px-4 py-2.5 text-[12px] font-bold text-ink-200 transition-colors active:scale-[0.97] active:duration-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber focus-visible:ring-offset-2 [@media(hover:hover)]:hover:bg-ink-800"
                   >
                     Batal
                   </button>
@@ -464,7 +476,15 @@ export default function Series() {
         )}
 
         {chapters.length === 0 ? (
-          <p className="text-[12.5px] text-ink-500">Belum ada chapter.</p>
+          <div className="text-center">
+            <p className="text-[12.5px] text-ink-500">Belum ada chapter.</p>
+            <Link
+              to="/cari"
+              className="mt-3 inline-flex min-h-11 items-center rounded-xl bg-brand-amber px-5 py-2.5 text-[13px] font-bold text-white transition-colors active:scale-[0.97] active:duration-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber focus-visible:ring-offset-2 [@media(hover:hover)]:hover:bg-brand-amber-soft"
+            >
+              Cari judul lain
+            </Link>
+          </div>
         ) : (
           <ul className="divide-y divide-ink-800 overflow-hidden rounded-xl border border-ink-800 bg-ink-900">
             {visible.map((c, i) => (
@@ -535,7 +555,7 @@ function ChapterRow({
       ? 'bg-brand-amber/15 ring-1 ring-inset ring-brand-amber/50'
       : mark === 'mid'
         ? 'bg-brand-amber/10'
-        : 'hover:bg-ink-850 active:bg-ink-850'
+        : '[@media(hover:hover)]:hover:bg-ink-850 active:bg-ink-850'
   }`
   const titleCls = read
     ? 'min-w-0 flex-1 truncate text-[13px] font-medium text-ink-500'
@@ -544,7 +564,7 @@ function ChapterRow({
     <>
       <span className={titleCls}>{chapter.name}</span>
       {isAnchor && (
-        <span className="shrink-0 rounded-full bg-brand-amber px-1.5 py-0.5 text-[9.5px] font-bold text-ink-950">
+        <span className="shrink-0 rounded-full bg-brand-amber px-1.5 py-0.5 text-[9.5px] font-bold text-white">
           {mark === 'start' ? 'Awal' : 'Akhir'}
         </span>
       )}

@@ -327,7 +327,7 @@ export default function ChapterPickerSheet({
                     className={`flex min-h-11 items-center gap-3 rounded-xl px-3 py-2.5 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/80 ${
                       isCurrent
                         ? 'bg-brand-amber/20 ring-1 ring-inset ring-brand-amber/60'
-                        : 'hover:bg-white/5 active:bg-white/10'
+                        : '[@media(hover:hover)_and_(pointer:fine)]:hover:bg-white/5 active:bg-white/10'
                     }`}
                   >
                     <span

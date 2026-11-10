@@ -72,8 +72,8 @@ export function SourceSortBar() {
             onClick={() => setField('source', s.id)}
             className={`min-h-11 touch-manipulation rounded-full px-3 py-1.5 text-[13px] font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber focus-visible:ring-offset-2 ${
               source === s.id
-                ? 'bg-brand-amber text-ink-950'
-                : 'border border-ink-800 bg-ink-900 text-ink-300 hover:border-ink-700'
+                ? 'bg-brand-amber text-white'
+                : 'border border-ink-800 bg-ink-900 text-ink-300 transition-colors active:scale-[0.97] active:border-brand-amber [@media(hover:hover)]:hover:border-ink-700'
             }`}
           >
             {s.label}

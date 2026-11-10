@@ -6,11 +6,13 @@ interface ReaderMarathonActionsProps {
    * Mode maraton: buang posisi tersimpan sesi ini lalu mulai rantai dari
    * blok pertama. Tanpa ini, membuka maraton selalu melanjutkan posisi
    * terakhir dan pembaca tidak punya jalan kembali ke awal.
+   * true = tahap konfirmasi (ketuk sekali dulu, hapus di ketukan kedua)
    */
+  restartConfirm?: boolean
   onRestartMarathon?: () => void
 }
 
-export default function ReaderMarathonActions({ onRestartMarathon }: ReaderMarathonActionsProps) {
+export default function ReaderMarathonActions({ restartConfirm, onRestartMarathon }: ReaderMarathonActionsProps) {
   if (!onRestartMarathon) return null
   return (
     <>
@@ -23,8 +25,8 @@ export default function ReaderMarathonActions({ onRestartMarathon }: ReaderMarat
       </div>
       <Row
         icon={<IconPersonRunning className="size-4" />}
-        label="Mulai maraton dari awal"
-        value="Hapus posisi tersimpan"
+        label={restartConfirm ? 'Tap sekali lagi untuk menghapus' : 'Mulai maraton dari awal'}
+        value={restartConfirm ? 'Posisi maraton akan dihapus' : 'Hapus posisi tersimpan'}
         onClick={onRestartMarathon}
       />
     </>

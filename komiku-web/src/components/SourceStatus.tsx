@@ -82,7 +82,7 @@ export function SourceStatus({
         <button
           type="button"
           onClick={onRetry}
-          className="shrink-0 rounded-md bg-warn/20 px-3 py-2.5 text-[11px] font-bold text-warn transition hover:bg-warn/30"
+          className="shrink-0 rounded-md bg-warn/20 px-3 py-2.5 text-[11px] font-bold text-warn transition [@media(hover:hover)_and_(pointer:fine)]:hover:bg-warn/30"
         >
           Coba lagi
         </button>

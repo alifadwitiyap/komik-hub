@@ -143,8 +143,7 @@ export function RangeSelectBar({
   const disabled = busy || needEnd || count === 0
   return (
     <div
-      role="dialog"
-      aria-modal="true"
+      role="region"
       aria-label="Pilih range unduhan"
       className="rounded-xl border border-ink-800 bg-ink-900 p-3"
     >
@@ -158,7 +157,7 @@ export function RangeSelectBar({
             onClick={() => setShowType(true)}
             disabled={disabled}
             title={needEnd ? 'Pilih chapter akhir' : undefined}
-            className="rounded-lg bg-brand-amber px-3 py-1.5 text-[11.5px] font-bold text-ink-950 disabled:opacity-50"
+            className="min-h-11 min-w-11 rounded-lg bg-brand-amber px-4 py-2.5 text-[12px] font-bold text-white disabled:opacity-50"
           >
             {busy ? 'Mengunduh…' : `Unduh (${count})`}
           </button>
@@ -171,7 +170,7 @@ export function RangeSelectBar({
                 onDownloadOffline()
               }}
               disabled={busy}
-              className="rounded-lg border border-brand-amber-dim bg-brand-amber/10 px-2.5 py-1.5 text-[11.5px] font-semibold text-brand-amber disabled:opacity-50"
+              className="min-h-11 min-w-11 rounded-lg border border-brand-amber-dim bg-brand-amber/10 px-4 py-2.5 text-[12px] font-semibold text-brand-amber disabled:opacity-50"
             >
               Offline
             </button>
@@ -182,7 +181,7 @@ export function RangeSelectBar({
                 onDownloadPdf()
               }}
               disabled={busy}
-              className="rounded-lg border border-ink-600 px-2.5 py-1.5 text-[11.5px] font-semibold text-ink-200 hover:bg-ink-850 disabled:opacity-50"
+              className="min-h-11 min-w-11 rounded-lg border border-ink-600 px-4 py-2.5 text-[12px] font-semibold text-ink-200 [@media(hover:hover)]:hover:bg-ink-850 disabled:opacity-50"
             >
               PDF
             </button>

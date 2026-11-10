@@ -48,7 +48,7 @@ const ContinueReading = memo(function ContinueReading() {
         <h2 className="font-display text-[14.5px] font-semibold text-ink-100">
           Lanjut membaca
         </h2>
-        <Link to="/rak" className="text-[12px] font-semibold text-brand-amber">
+        <Link to="/rak" className="grid min-h-11 min-w-11 place-items-center px-2 py-3 -mx-2 text-[12px] font-semibold text-brand-amber">
           Lihat semua
         </Link>
       </div>

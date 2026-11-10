@@ -76,7 +76,7 @@ export default function Rak() {
           <button
             onClick={() => setFlash(null)}
             aria-label="Tutup pesan"
-            className="shrink-0 p-1.5 text-ink-400"
+            className="grid size-11 shrink-0 place-items-center text-ink-400"
           >
             <IconXmark className="size-4" />
           </button>
@@ -97,7 +97,7 @@ export default function Rak() {
             onClick={() => setTab(key)}
             className={`min-h-11 rounded-xl py-2.5 text-[12px] font-bold transition-colors ${
               tab === key
-                ? 'bg-brand-amber text-ink-950'
+                ? 'bg-brand-amber text-white'
                 : 'border border-ink-800 bg-ink-900 text-ink-300'
             }`}
           >
@@ -120,6 +120,7 @@ export default function Rak() {
 function LatestTab() {
   const [items, setItems] = useState<Manga[] | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [attempt, setAttempt] = useState(0)
   const srcRaw = useSourceFilter()
   const srtRaw = useSortFilter()
   const src = srcRaw === 'semua' ? null : srcRaw
@@ -133,20 +134,35 @@ function LatestTab() {
       .latest(1, ctrl.signal, { source: src, sort: srt })
       .then((r) => setItems(r.items.map(toMangaCard)))
       .catch((e: Error) => {
-        if (e.name !== 'AbortError') setError(e.message)
+        if (e.name === 'AbortError') return
+        console.error('[rak] latest failed', e)
+        setError('Terjadi kendala saat memuat daftar terbaru. Coba lagi.')
       })
     return () => ctrl.abort()
-  }, [src, srt])
+  }, [src, srt, attempt])
 
   return (
     <div>
       <SourceSortBar />
       {error && (
-        <p className="mt-3 rounded-xl border border-brand-red/40 bg-brand-red/10 px-3 py-2 text-[12px] text-brand-red">
-          {error}
-        </p>
+        <div className="mt-3 rounded-xl border border-brand-red/40 bg-brand-red/10 px-3 py-2 text-[12px] text-brand-red">
+          <p>{error}</p>
+          <button
+            type="button"
+            onClick={() => setAttempt((a) => a + 1)}
+            className="mt-2 min-h-11 rounded-full bg-brand-amber px-5 py-2.5 text-[13px] font-bold text-white transition-colors active:scale-[0.97] active:duration-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber focus-visible:ring-offset-2 [@media(hover:hover)]:hover:bg-brand-amber-soft"
+          >
+            Coba lagi
+          </button>
+        </div>
       )}
-      {items === null && !error && <div className="mt-5"><Spinner label="Memuat terbaru…" /></div>}
+      {items === null && !error && (
+        <ul className="mt-5 grid grid-cols-2 gap-x-3 gap-y-4" aria-hidden="true">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <li key={i} className="aspect-[62/82] animate-pulse rounded-xl bg-ink-850" />
+          ))}
+        </ul>
+      )}
       {items !== null && items.length === 0 && !error && (
         <div className="mt-5">
           <Empty title="Tidak ada hasil" body="Belum ada komik yang cocok dengan filter ini." />
@@ -177,7 +193,7 @@ function HistoryTab({ entries }: { entries: rakStore.HistoryEntry[] }) {
         <li key={e.title_key}>
           <Link
             to={readerHref(`${e.handle}:${e.last_chapter}`)}
-            className="flex items-center gap-3 rounded-xl border border-ink-800 bg-ink-900 p-2.5 transition-colors hover:border-ink-700"
+            className="flex items-center gap-3 rounded-xl border border-ink-800 bg-ink-900 p-2.5 transition-colors [@media(hover:hover)]:hover:border-ink-700 active:scale-[0.98]"
           >
             <Cover src={e.cover_url} title={e.title} />
             <div className="min-w-0 flex-1">
@@ -208,7 +224,7 @@ function FavoritesTab({ entries }: { entries: rakStore.FavoriteEntry[] }) {
           <li key={e.title_key} className="flex items-center gap-2">
             <Link
               to={`/manga/${e.handle}`}
-              className="relative flex min-w-0 flex-1 items-center gap-3 rounded-xl border border-ink-800 bg-ink-900 p-2.5 transition-colors hover:border-ink-700"
+              className="relative flex min-w-0 flex-1 items-center gap-3 rounded-xl border border-ink-800 bg-ink-900 p-2.5 transition-colors [@media(hover:hover)]:hover:border-ink-700 active:scale-[0.98]"
             >
               <Cover src={e.cover_url} title={e.title} />
               <div className="min-w-0 flex-1">
@@ -220,7 +236,7 @@ function FavoritesTab({ entries }: { entries: rakStore.FavoriteEntry[] }) {
               {count > 0 && (
                 <span
                   aria-hidden="true"
-                  className="pointer-events-none absolute -right-1 -top-1 grid h-[14px] min-w-[14px] place-items-center rounded-full bg-brand-amber px-0.5 text-[9px] font-bold leading-none text-ink-950"
+                  className="pointer-events-none absolute -right-1 -top-1 grid min-h-5 min-w-5 place-items-center rounded-full bg-brand-amber px-1 text-[10px] font-bold leading-none text-white"
                 >
                   {count > 9 ? '9+' : count}
                 </span>
@@ -350,7 +366,7 @@ function ActiveDownloads({ runs }: { runs: DlRun[] }) {
               </div>
               <button
                 onClick={() => void loadStore().then((s) => s?.cancelRun(run.handle))}
-                className="shrink-0 rounded-lg border border-ink-700 px-3 py-1.5 text-[11.5px] font-semibold text-ink-300"
+                className="min-h-11 min-w-11 shrink-0 rounded-lg border border-ink-700 px-4 py-2.5 text-[12px] font-semibold text-ink-300"
               >
                 Batal
               </button>
@@ -412,12 +428,17 @@ function DownloadsTab() {
   const [openOverride, setOpenOverride] = useState<Record<string, boolean>>({})
   const pending = usePendingRuns()
 
+  const friendlyError = 'Terjadi kendala saat memuat unduhan. Coba lagi.'
+
   const load = () => {
     setError(null)
     unifiedApi
       .downloads()
       .then(setData)
-      .catch((e: Error) => setError(e.message))
+      .catch((e: unknown) => {
+        console.error('[rak] downloads failed', e)
+        setError(friendlyError)
+      })
   }
 
   useEffect(() => {
@@ -433,9 +454,16 @@ function DownloadsTab() {
       <ActiveDownloads runs={pending} />
 
       {error && (
-        <p className="mb-3 rounded-xl border border-brand-red/40 bg-brand-red/10 px-3 py-2 text-[12px] text-brand-red">
-          {error}
-        </p>
+        <div className="mb-3 flex items-center justify-between gap-3 rounded-xl border border-brand-red/40 bg-brand-red/10 px-3 py-2 text-[12px] text-brand-red">
+          <p>{error}</p>
+          <button
+            type="button"
+            onClick={load}
+            className="min-h-11 shrink-0 rounded-lg border border-brand-red/50 px-3 py-2 font-semibold"
+          >
+            Coba lagi
+          </button>
+        </div>
       )}
 
       {busy && !data && <Spinner label="Memuat unduhan…" />}
@@ -458,7 +486,7 @@ function DownloadsTab() {
                 className="flex w-full items-center gap-2.5 p-3 text-left"
               >
                 <IconArrowRight
-                  className={`size-3.5 shrink-0 text-ink-400 transition-transform ${
+                  className={`size-3.5 shrink-0 text-ink-400 transition-transform duration-200 ease-[var(--ease-out)] ${
                     open ? 'rotate-90' : ''
                   }`}
                 />
@@ -490,14 +518,14 @@ function DownloadsTab() {
                         href={unifiedApi.downloadFileUrl(d.id, d.filename)}
                         target="_blank"
                         rel="noreferrer noopener"
-                        className="rounded-lg bg-brand-amber px-3 py-1.5 text-[11.5px] font-bold text-ink-950"
+                        className="min-h-11 min-w-11 rounded-lg bg-brand-amber px-4 py-2.5 text-[12px] font-bold text-white"
                       >
                         Baca
                       </a>
                       <a
                         href={unifiedApi.downloadFileUrl(d.id, d.filename)}
                         download={d.filename || 'chapter.pdf'}
-                        className="rounded-lg border border-ink-700 px-3 py-1.5 text-[11.5px] font-semibold text-ink-300"
+                        className="min-h-11 min-w-11 rounded-lg border border-ink-700 px-4 py-2.5 text-[12px] font-semibold text-ink-300"
                       >
                         Unduh lagi
                       </a>
@@ -510,10 +538,13 @@ function DownloadsTab() {
                           unifiedApi
                             .deleteDownload(d.id)
                             .then(() => load())
-                            .catch((e: Error) => setError(e.message))
+                            .catch((e: unknown) => {
+                              console.error('[rak] downloads failed', e)
+                              setError(friendlyError)
+                            })
                             .finally(() => setBusy(false))
                         }}
-                        className="rounded-lg border border-brand-red/50 px-3 py-1.5 text-[11.5px] font-semibold text-brand-red disabled:opacity-60"
+                        className="min-h-11 min-w-11 rounded-lg border border-brand-red/50 px-4 py-2.5 text-[12px] font-semibold text-brand-red disabled:opacity-60"
                       >
                         Hapus
                       </button>

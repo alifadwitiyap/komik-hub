@@ -111,6 +111,7 @@ export default function ReaderMarathon() {
   const [menuOpen, setMenuOpen] = useState(false)
   const [sheetOpen, setSheetOpen] = useState(false)
   const [chapterPickerOpen, setChapterPickerOpen] = useState(false)
+  const [restartConfirm, setRestartConfirm] = useState(false)
   const [toast, setToast] = useState<string | null>(null)
   const [nextLoadFailed, setNextLoadFailed] = useState(false)
   /** sedang mengambil chapter berikutnya — untuk status "memuat" di dasar */
@@ -602,6 +603,11 @@ export default function ReaderMarathon() {
   }, [chainExhausted, lastBlockSettled, loadNext])
 
   if (error) return <Empty title="Gagal memuat mode maraton" body={error} />
+  if (blocks.length > 0 && blocks[blocks.length - 1].images.length === 0) {
+    return (
+      <Empty title="Halaman tidak tersedia" body="Sumber belum mengirim halaman chapter ini. Coba lagi nanti." />
+    )
+  }
   if (blocks.length === 0) {
     return (
       <div className="flex min-h-dvh flex-col items-center justify-center gap-8 bg-night px-6">
@@ -707,7 +713,7 @@ export default function ReaderMarathon() {
       />
 
       <ReaderToolbar
-        title="Mode Baca Marathon"
+        title="Maraton"
         subtitle={`${curBlock?.chapterName ?? ''} · ${readInBlock}/${curLen} halaman`}
         onBack={() => navigate(seriesHref(head?.seriesId) ?? '/')}
         onHome={() => navigate('/')}
@@ -762,8 +768,8 @@ export default function ReaderMarathon() {
           Teks 12px + warna reader-muted: kontras aman di tema terang & gelap.
           pt = tinggi toolbar + safe-area supaya tidak tertutup toolbar fixed.
           Chip "Maraton" di toolbar DIHAPUS: judul sudah menyebut mode ini, dan
-          di 390 px chip itu memakan ~60 px lebar judul sampai terpotong. */}
-      <div className="mx-auto max-w-3xl pl-4 pr-16 pt-[calc(env(safe-area-inset-top)+3.5rem)] lg:pr-4">
+          Judul di 390 px menyisakan ~120 px untuk teks + ikon kembali. */}
+      <div className="mx-auto max-w-3xl px-5 pr-16 pt-[calc(env(safe-area-inset-top)+7.5rem)] lg:pr-5">
         <p
           className={`rounded-lg border border-brand-amber-dim/60 bg-brand-amber-dim/10 px-3 py-2 text-center text-[12px] font-medium leading-snug ${
             settings.nightShift ? 'text-reader-muted-night' : 'text-reader-muted'
@@ -859,16 +865,23 @@ export default function ReaderMarathon() {
             </Link>
           </div>
         )}
-        {chainExhausted && (
-          <p
-            className={`px-4 pb-28 text-center text-[12px] ${
-              settings.nightShift ? 'text-reader-muted-night' : 'text-reader-muted'
-            }`}
-          >
-            {blocks.length >= MAX_BLOCKS
-              ? `Berhenti di ${MAX_BLOCKS} chapter — mulai maraton lagi dari sini.`
-              : 'Semua chapter sudah terbaca.'}
-          </p>
+        {chainExhausted && (blocks.length >= MAX_BLOCKS || (tail && !tail.nextId)) && (
+          <div className={`mx-4 mt-6 flex flex-col items-center gap-3 pb-28 text-center`}>
+            <p className={`text-[12px] ${settings.nightShift ? 'text-reader-muted-night' : 'text-reader-muted'}`}>
+              {blocks.length >= MAX_BLOCKS
+                ? `Berhenti di ${MAX_BLOCKS} chapter — mulai maraton lagi dari sini.`
+                : 'Semua chapter sudah terbaca.'}
+            </p>
+            {tail?.nextId && (
+              <Link
+                to={marathonHref(tail.nextId)}
+                replace
+                className="flex min-h-11 items-center justify-center rounded-xl bg-brand-amber px-5 py-3 text-center text-[13px] font-bold text-white active:bg-brand-amber-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber focus-visible:ring-offset-2"
+              >
+                Lanjutkan ke {tail.nextName ?? 'chapter berikutnya'}
+              </Link>
+            )}
+          </div>
         )}
       </div>
 
@@ -894,16 +907,28 @@ export default function ReaderMarathon() {
 
       <ReaderSettingsSheet
         open={sheetOpen}
-        settings={settings}
+        settings={{ ...settings, marathon: true }}
         onClose={() => setSheetOpen(false)}
-        onChange={onChange}
+        onChange={(patch) => {
+          if (patch.marathon === false) {
+            setSheetOpen(false)
+            gotoReader()
+            return
+          }
+          onChange(patch)
+        }}
         onReset={onReset}
+        setToast={setToast}
         marathonActions={
           <ReaderMarathonActions
+            restartConfirm={restartConfirm}
             onRestartMarathon={() => {
-              // "Mulai dari awal": buang posisi sesi ini + seluruh sesi series ini,
-              // lalu muat ulang rantai dari blok pertama (posisi tidak dipulihkan
-              // karena kuncinya sudah tidak ada).
+              // Destruktif: hapus sesi maraton series ini. konfirmasi dulu di baris bawah.
+              if (!restartConfirm) {
+                setRestartConfirm(true)
+                return
+              }
+              setRestartConfirm(false)
               setSheetOpen(false)
               marathon.clearSeries(handleOf(chapterId) ?? null)
               marathon.clear(chapterId)

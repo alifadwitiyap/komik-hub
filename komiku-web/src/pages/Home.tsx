@@ -6,10 +6,8 @@ import type { Homepage, HomeSection, Manga } from '../types'
 import { Empty, Spinner } from '../App'
 import SourceBadge from '../components/SourceBadge'
 import HeartButton from '../components/HeartButton'
-import { IconBolt, IconMagnifyingGlass, IconPlaySolid, IconRectangleHistory, IconRotateRight } from '../icons'
-import * as rakStore from '../rakStore'
-import { marathonHref, resumeHref } from '../readerSource'
-import { useMarathonMemory } from '../hooks/useMarathonMemory'
+import { IconBolt, IconMagnifyingGlass, IconPlaySolid, IconRectangleHistory } from '../icons'
+
 import ContinueReading from '../components/ContinueReading'
 
 /**
@@ -30,24 +28,8 @@ export default function Home() {
   const [error, setError] = useState<string | null>(null)
   const [refreshing, setRefreshing] = useState(false)
   const [pull, setPull] = useState(0)
+  const [reloadKey, setReloadKey] = useState(0)
   const touchY = useRef(0)
-  // FAB "Lanjut baca": entri sejarah rak terbaru. Kosong → FAB disembunyikan.
-  const [resume, setResume] = useState<rakStore.HistoryEntry | null>(() =>
-    rakStore.listHistory()[0] ?? null,
-  )
-  const marathon = useMarathonMemory()
-  // Tujuan FAB: kalau series terakhir dibaca punya sesi maraton tersimpan,
-  // lanjutkan RANTAI-nya (mode maraton) — bukan reader satu chapter.
-  const resumePos = resume ? marathon.forHandle(resume.handle) : null
-  const resumeTo = resumePos
-    ? marathonHref(resumePos.chapterKey)
-    : resumeHref(resume)
-
-  useEffect(() => {
-    const onRak = () => setResume(rakStore.listHistory()[0] ?? null)
-    window.addEventListener('rak-change', onRak)
-    return () => window.removeEventListener('rak-change', onRak)
-  }, [])
 
   const load = (sig?: AbortSignal) =>
     api.homepage(sig).then(setData).catch((e: Error) => {
@@ -58,7 +40,7 @@ export default function Home() {
     const ctrl = new AbortController()
     load(ctrl.signal)
     return () => ctrl.abort()
-  }, [])
+  }, [reloadKey])
 
   // Kartu untuk (a) backdrop carousel + (d) section "Populer" — SATU fetch
   // popular(1) dipakai dua tempat (app juga memakai satu respons populer).
@@ -80,7 +62,7 @@ export default function Home() {
       .then((r) => setLatest(r.items.map(toMangaCard)))
       .catch(() => setLatest([]))
     return () => ctrl.abort()
-  }, [])
+  }, [reloadKey])
 
   // SwipeRefresh replika: tarik dari atas saat scroll sudah di puncak
   const onTouchStart = (e: React.TouchEvent) => {
@@ -111,7 +93,24 @@ export default function Home() {
     return <Spinner label="Memuat beranda…" />
   }
   if (!data && (popular?.length ?? 0) === 0 && (latest?.length ?? 0) === 0 && error) {
-    return <Empty title="Gagal memuat beranda" body="Coba lagi." />
+    return (
+      <Empty
+        title="Gagal memuat beranda"
+        body="Coba lagi."
+        action={
+          <button
+            type="button"
+            onClick={() => {
+              setError(null)
+              setReloadKey((k) => k + 1)
+            }}
+            className="min-h-11 rounded-full bg-brand-amber px-5 py-2.5 text-[13px] font-bold text-white transition-colors active:scale-[0.97] active:duration-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber focus-visible:ring-offset-2 [@media(hover:hover)]:hover:bg-brand-amber-soft"
+          >
+            Coba lagi
+          </button>
+        }
+      />
+    )
   }
 
   const sections = Object.entries((data ?? {}) as Homepage)
@@ -159,7 +158,7 @@ export default function Home() {
 
       {/* Legacy Komiku gagal: beri tahu tanpa memblokir feed sumber lain. */}
       {error && (
-        <div className="mx-2.5 mt-3 rounded-lg border border-ink-800 bg-ink-900 px-3 py-2 text-[12px] text-ink-300">
+        <div className="mx-2.5 mt-3 rounded-xl border border-ink-800 bg-ink-900 px-3 py-2 text-[12px] text-ink-300">
           Sebagian konten Komiku tidak tersedia — menampilkan sumber lain.
         </div>
       )}
@@ -204,21 +203,6 @@ export default function Home() {
         )}
       </div>
 
-      {/* ExtendedFAB replika fragment_home: kanan-bawah, di atas bottom nav.
-          Titik masuk resume sekarang dari rak (sejarah[0]) — FAB disembunyikan
-          kalau rak masih kosong. */}
-      {resume && resumeTo && (
-        <Link
-          to={resumeTo}
-          aria-label="Lanjut baca"
-          className="fixed bottom-24 right-4 z-30 flex items-center gap-2 rounded-2xl bg-brand-amber px-4 py-3.5 shadow-lg shadow-black/20 active:bg-brand-amber-soft"
-        >
-          <IconRotateRight className="size-4 text-white" />
-          <span className="text-[12.5px] font-bold text-white">
-            Lanjut baca · Ch {resume.last_chapter}
-          </span>
-        </Link>
-      )}
     </div>
   )
 }
@@ -294,7 +278,7 @@ function BackdropCarousel({ items }: { items: Manga[] }) {
             <Link
               key={m.id}
               to={`/manga/${m.id}`}
-              className="relative w-[94%] shrink-0 snap-start overflow-hidden rounded-xl border-[0.8px] border-ink-800"
+              className="relative w-[94%] shrink-0 snap-start overflow-hidden rounded-xl border-[0.8px] border-ink-800 active:scale-[0.97] active:duration-100"
             >
               <div className="relative aspect-[2/1.1]">
                 {img && (
@@ -309,7 +293,7 @@ function BackdropCarousel({ items }: { items: Manga[] }) {
                   />
                 )}
                 {/* gradien gelap bawaan APK (bg_gradient_shape) */}
-                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/25 to-transparent" />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/40 to-transparent" />
                 {m.tipe?.[0] && (
                   <span className="absolute right-2 top-2 rounded bg-brand-red/90 px-1.5 py-0.5 text-[9.5px] font-semibold text-white">
                     {m.tipe[0]}
@@ -323,7 +307,7 @@ function BackdropCarousel({ items }: { items: Manga[] }) {
                     {m.other?.slice(0, 2).join(' · ') || 'Manga'}
                   </p>
                   {m.update_date && (
-                    <p className="mt-0.5 line-clamp-1 text-[10.5px] text-white/70">
+                    <p className="mt-0.5 line-clamp-1 text-[10.5px] text-white/70 [text-shadow:_0_1px_4px_rgb(0_0_0_/_80%)]">
                       Update {m.update_date.trim()}
                     </p>
                   )}
@@ -340,7 +324,7 @@ function BackdropCarousel({ items }: { items: Manga[] }) {
           onClick={() => setAutoplay((a) => !a)}
           aria-label={autoplay ? 'Jeda putar otomatis' : 'Lanjutkan putar otomatis'}
           aria-pressed={!autoplay}
-          className="absolute right-4 top-4 grid size-11 place-items-center rounded-full bg-black/50 text-white backdrop-blur-sm transition-colors hover:bg-black/70"
+          className="absolute right-4 top-4 grid size-11 place-items-center rounded-full bg-black/50 text-white backdrop-blur-sm transition-colors [@media(hover:hover)]:hover:bg-black/70"
         >
           {autoplay ? <IconPause className="size-3.5" /> : <IconPlaySolid className="size-3.5" />}
         </button>
@@ -362,8 +346,8 @@ function BackdropCarousel({ items }: { items: Manga[] }) {
             >
               <span
                 aria-hidden="true"
-                className={`h-1.5 rounded-full transition-[width] duration-200 ${
-                  i === idx ? 'w-4 bg-brand-amber' : 'w-1.5 bg-ink-300'
+                className={`h-1.5 rounded-full transition-[transform] duration-200 ease-out origin-left ${
+                  i === idx ? 'w-2 scale-x-[2.5] bg-brand-amber' : 'w-2 bg-ink-300'
                 }`}
               />
             </button>
@@ -402,7 +386,7 @@ export function Section({
       <div className="flex items-baseline justify-between px-4">
         <h2 className="font-display text-[14.5px] font-semibold text-ink-100">{title}</h2>
         {moreTo && (
-          <Link to={moreTo} className="text-[12px] font-semibold text-brand-amber">
+          <Link to={moreTo} className="grid min-h-11 min-w-11 place-items-center px-2 py-3 -mx-2 text-[12px] font-semibold text-brand-amber">
             Lihat semua
           </Link>
         )}
@@ -464,10 +448,10 @@ export const MangaCard = memo(function MangaCard({ manga }: { manga: Manga }) {
   return (
     <Link
       to={to}
-      className="group w-[132px] shrink-0 snap-start sm:w-[150px]"
+      className="group w-[132px] shrink-0 snap-start active:scale-[0.97] active:duration-100 sm:w-[150px]"
     >
       {/* cover replika item_trend: radius 6, badge tipe di kanan bawah */}
-      <div className="relative aspect-[62/82] overflow-hidden rounded-md border border-ink-800 bg-ink-850">
+      <div className="relative aspect-[62/82] overflow-hidden rounded-xl border border-ink-800 bg-ink-850">
         {img && !failed ? (
           <img referrerPolicy="no-referrer"
             src={imgUrl(img)}
@@ -509,7 +493,7 @@ export const MangaCard = memo(function MangaCard({ manga }: { manga: Manga }) {
                 handle: manga.handle ?? String(manga.id),
                 source: manga.source ?? 'komiku',
               }}
-              className="size-9 bg-black/60 text-white ring-1 ring-white/15 backdrop-blur hover:bg-black/75"
+              className="bg-black/60 text-white ring-1 ring-white/15 backdrop-blur [@media(hover:hover)]:hover:bg-black/75"
             />
           </div>
         )}
@@ -542,9 +526,9 @@ export function Row({ manga }: { manga: Manga }) {
   return (
     <Link
       to={to}
-      className="flex items-center gap-3 rounded-xl border border-ink-800 bg-ink-900 p-2.5 transition-colors hover:border-ink-700"
+      className="flex items-center gap-3 rounded-xl border border-ink-800 bg-ink-900 p-2.5 transition-colors active:scale-[0.97] active:duration-100 [@media(hover:hover)]:hover:border-ink-700"
     >
-      <div className="size-12 shrink-0 overflow-hidden rounded-lg bg-ink-850">
+      <div className="size-12 shrink-0 overflow-hidden rounded-xl bg-ink-850">
         {img && !failed && (
           <img referrerPolicy="no-referrer"
             src={imgUrl(img)}
@@ -578,7 +562,7 @@ export function Row({ manga }: { manga: Manga }) {
             handle: manga.handle ?? String(manga.id),
             source: manga.source ?? 'komiku',
           }}
-          className="size-9 shrink-0 text-ink-300 hover:text-brand-amber"
+          className="shrink-0 text-ink-300 [@media(hover:hover)]:hover:text-brand-amber"
         />
       )}
     </Link>

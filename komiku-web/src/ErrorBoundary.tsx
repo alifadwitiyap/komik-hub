@@ -54,7 +54,7 @@ export class ErrorBoundary extends Component<Props, State> {
         <button
           type="button"
           onClick={this.reload}
-          className="mt-5 rounded-full bg-brand-amber px-5 py-2.5 text-sm font-bold text-ink-950 transition-colors hover:bg-brand-amber-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber focus-visible:ring-offset-2"
+          className="mt-5 rounded-full bg-brand-amber px-5 py-2.5 text-sm font-bold text-white transition-colors [@media(hover:hover)_and_(pointer:fine)]:hover:bg-brand-amber-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber focus-visible:ring-offset-2"
         >
           Muat ulang
         </button>

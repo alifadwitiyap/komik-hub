@@ -44,7 +44,9 @@ export default function ReaderFullscreenButton({
       data-testid="reader-fullscreen-toggle"
       data-fs-toggle=""
       onClick={onToggle}
-      className={`fixed right-[max(0.75rem,env(safe-area-inset-right))] top-[calc(env(safe-area-inset-top)+3.5rem)] z-40 flex h-11 select-none touch-manipulation items-center justify-center gap-1.5 rounded-xl border shadow-lg transition-opacity duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-black/50 ${
+      tabIndex={interactive ? 0 : -1}
+      disabled={!interactive}
+      className={`fixed right-[max(0.75rem,env(safe-area-inset-right))] top-[calc(env(safe-area-inset-top)+3.5rem)] z-40 flex h-11 select-none touch-manipulation items-center justify-center gap-1.5 rounded-xl border shadow-lg transition-[transform,opacity] duration-200 active:scale-[0.97] active:duration-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-black/50 ${
         expanded ? 'px-3' : 'w-11 px-0'
       } ${
         active

@@ -185,7 +185,18 @@ export default function SeriesUnified() {
     })
   }, [manga, handle])
 
-  if (error) return <Empty title="Gagal memuat manga" body={error} />
+  if (error) return (
+    <div className="mx-auto max-w-3xl px-4 py-16 text-center">
+      <Empty title="Gagal memuat manga" body={error} />
+      <button
+        type="button"
+        onClick={() => setReloadKey((k) => k + 1)}
+        className="mt-4 min-h-11 rounded-xl bg-brand-amber px-5 py-2.5 text-[13px] font-bold text-white transition-colors active:scale-[0.97] active:duration-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber focus-visible:ring-offset-2 [@media(hover:hover)]:hover:bg-brand-amber-soft"
+      >
+        Muat ulang
+      </button>
+    </div>
+  )
   if (!data) return <Spinner label="Memuat manga…" />
 
   const { manga: m } = data
@@ -214,7 +225,7 @@ export default function SeriesUnified() {
 
         <div className="relative px-4 pb-4 pt-5">
           {/* py-3.5 memperluas area sentuh ke >=44px; padding inline tak mengubah tinggi header. */}
-          <Link to="/" className="py-3.5 text-[12px] font-medium text-ink-400 hover:text-ink-200">
+          <Link to="/" className="py-3.5 text-[12px] font-medium text-ink-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber focus-visible:ring-offset-2 [@media(hover:hover)]:hover:text-ink-200">
             ← Beranda
           </Link>
 
@@ -293,13 +304,13 @@ export default function SeriesUnified() {
       </div>
 
       {/* Tombol baca / maraton */}
-      <div className="sticky top-14 z-30 border-y border-ink-800 bg-ink-950/95 px-4 py-2.5 backdrop-blur">
-        <div className="flex gap-2">
+      <div className="sticky top-[calc(3.5rem+env(safe-area-inset-top))] z-30 border-y border-ink-800 bg-ink-950/95 px-4 py-2.5 backdrop-blur">
+        <div className="grid grid-cols-2 gap-2">
           {oldest && (
             <>
               <Link
                 to={resumeHref ?? `/baca/${handle}/${oldest.number}`}
-                className="flex-1 rounded-xl bg-brand-amber py-2.5 text-center text-[13px] font-bold text-ink-100 transition-colors hover:bg-brand-amber-soft"
+                className="flex min-h-11 flex-1 items-center justify-center rounded-xl bg-brand-amber py-2.5 text-center text-[13px] font-bold text-white transition-colors active:scale-[0.97] active:duration-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber focus-visible:ring-offset-2 [@media(hover:hover)]:hover:bg-brand-amber-soft"
               >
                 {resumeKey ? `Lanjut · ${resume?.chapterName}` : `Baca ${chapterLabel(oldest)}`}
               </Link>
@@ -315,7 +326,7 @@ export default function SeriesUnified() {
                     ? 'Lanjutkan maraton dari posisi terakhir'
                     : `Mulai maraton dari ${chapterLabel(oldest)}`
                 }
-                className="rounded-xl border border-brand-amber-dim px-3.5 py-2.5 text-center text-[13px] font-semibold text-brand-amber transition-colors hover:bg-brand-amber-dim/20"
+                className="flex min-h-11 items-center justify-center rounded-xl border border-brand-amber-dim px-3.5 py-2.5 text-center text-[13px] font-semibold text-brand-amber transition-colors active:scale-[0.97] active:duration-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber focus-visible:ring-offset-2 [@media(hover:hover)]:hover:bg-brand-amber-dim/20"
               >
                 Maraton
               </Link>
@@ -330,10 +341,10 @@ export default function SeriesUnified() {
                     if (pickMode) range.reset()
                     setPickMode(!pickMode)
                   }}
-                  className={`flex shrink-0 items-center gap-1.5 rounded-xl border px-3 py-2.5 text-center text-[13px] font-semibold transition-colors ${
+                  className={`flex min-h-11 shrink-0 items-center gap-1.5 rounded-xl border px-3 py-2.5 text-center text-[13px] font-semibold transition-colors active:scale-[0.97] active:duration-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber focus-visible:ring-offset-2 ${
                     pickMode
                       ? 'border-brand-amber bg-brand-amber/15 text-brand-amber'
-                      : 'border-brand-amber-dim text-brand-amber hover:bg-brand-amber-dim/20'
+                      : 'border-brand-amber-dim text-brand-amber [@media(hover:hover)]:hover:bg-brand-amber-dim/20'
                   }`}
                 >
                   <svg
@@ -455,7 +466,7 @@ export default function SeriesUnified() {
               <button
                 type="button"
                 onClick={() => cancelRun(handle)}
-                className="mt-2 w-full rounded-lg border border-ink-700 py-1.5 text-[11.5px] font-semibold text-ink-300 transition-colors hover:border-brand-red/60 hover:text-brand-red"
+                className="mt-2 min-h-11 w-full rounded-lg border border-ink-700 py-1.5 text-[11.5px] font-semibold text-ink-300 transition-colors active:scale-[0.97] active:duration-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber focus-visible:ring-offset-2 [@media(hover:hover)]:hover:border-brand-red/60 [@media(hover:hover)]:hover:text-brand-red"
               >
                 Batal
               </button>
@@ -476,7 +487,15 @@ export default function SeriesUnified() {
         )}
 
         {chapters.length === 0 ? (
-          <p className="text-[12.5px] text-ink-500">Belum ada chapter.</p>
+          <div className="text-center">
+            <p className="text-[12.5px] text-ink-500">Belum ada chapter.</p>
+            <Link
+              to="/cari"
+              className="mt-3 inline-flex min-h-11 items-center rounded-xl bg-brand-amber px-5 py-2.5 text-[13px] font-bold text-white transition-colors active:scale-[0.97] active:duration-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber focus-visible:ring-offset-2 [@media(hover:hover)]:hover:bg-brand-amber-soft"
+            >
+              Cari judul lain
+            </Link>
+          </div>
         ) : (
           <ul className="divide-y divide-ink-800 overflow-hidden rounded-xl border border-ink-800 bg-ink-900">
             {visible.map((c, i) => {
@@ -509,11 +528,11 @@ export default function SeriesUnified() {
                           : `Pilih chapter ${c.number}`
                       }
                       onClick={() => range.select(i)}
-                      className="flex min-h-11 w-full items-center justify-between gap-3 px-3.5 py-3 text-left transition-colors hover:bg-ink-850 active:bg-ink-850"
+                      className="flex min-h-11 w-full items-center justify-between gap-3 px-3.5 py-3 text-left transition-colors [@media(hover:hover)]:hover:bg-ink-850 active:bg-ink-850"
                     >
                       <span className={titleCls}>{chapterLabel(c)}</span>
                       {anchor && (
-                        <span className="shrink-0 rounded-md bg-brand-amber px-1.5 py-0.5 text-[10px] font-bold text-ink-950">
+                        <span className="shrink-0 rounded-md bg-brand-amber px-1.5 py-0.5 text-[10px] font-bold text-white">
                           {anchor}
                         </span>
                       )}
@@ -529,7 +548,7 @@ export default function SeriesUnified() {
                           ? `${chapterLabel(c)} — sudah dibaca`
                           : `${chapterLabel(c)} — belum dibaca`
                       }
-                      className="flex min-h-11 min-w-0 flex-1 items-center justify-between gap-3 py-3 pr-3.5 transition-colors hover:bg-ink-850 active:bg-ink-850"
+                      className="flex min-h-11 min-w-0 flex-1 items-center justify-between gap-3 py-3 pr-3.5 transition-colors [@media(hover:hover)]:hover:bg-ink-850 active:bg-ink-850"
                     >
                       <span className={titleCls}>{chapterLabel(c)}</span>
                       {c.source !== m.source && (
@@ -549,7 +568,7 @@ export default function SeriesUnified() {
         {chapters.length > 40 && (
           <button
             onClick={() => setShowAll((v) => !v)}
-            className="mt-3 min-h-11 w-full rounded-xl border border-ink-700 py-2.5 text-[13px] font-medium text-ink-300"
+            className="mt-3 min-h-11 w-full rounded-xl border border-ink-700 py-2.5 text-[13px] font-medium text-ink-300 transition-colors active:scale-[0.97] active:duration-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber focus-visible:ring-offset-2"
           >
             {showAll ? 'Tampilkan lebih sedikit' : `Tampilkan semua ${chapters.length} chapter`}
           </button>

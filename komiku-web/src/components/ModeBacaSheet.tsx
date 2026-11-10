@@ -25,8 +25,8 @@ export interface ModeBacaSheetProps {
  * - Putar Otomatis ("Ketuk tombol putar otomatis di bawah untuk memulai"),
  *   dengan Kecepatan Pertama / Kecepatan Kedua
  * - Baca Marathon ("Putar ke chapter selanjutnya tanpa ada hambatan cocok
- *   untuk kamu yang sedang maraton.") — mulai dari chapter paling awal series,
- *   supaya rantai marathon benar-benar berjalan.
+ *   untuk kamu yang sedang maraton.") — melanjutkan sesi tersimpan bila ada,
+ *   mulai dari chapter paling awal bila belum pernah maraton di series ini.
  */
 export default function ModeBacaSheet({
   chapterId,
@@ -97,7 +97,7 @@ export default function ModeBacaSheet({
         aria-modal="true"
         tabIndex={-1}
         onKeyDown={trapFocus}
-        className="sheet-panel w-full max-w-md rounded-t-2xl border-t border-ink-700 bg-ink-900 pb-6 outline-none"
+        className="sheet-panel w-full max-w-md rounded-t-2xl border-t border-ink-700 bg-ink-900 pb-[calc(1.5rem+env(safe-area-inset-bottom))] outline-none"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between px-4 py-3">
@@ -105,7 +105,7 @@ export default function ModeBacaSheet({
           <button
             onClick={onClose}
             aria-label="Tutup"
-            className="rounded-lg p-1.5 text-ink-400 hover:bg-white/10 hover:text-ink-200"
+            className="grid size-11 place-items-center rounded-lg text-ink-400 [@media(hover:hover)_and_(pointer:fine)]:hover:bg-white/10 [@media(hover:hover)_and_(pointer:fine)]:hover:text-ink-200"
           >
             <svg viewBox="0 0 24 24" className="size-5" fill="none" stroke="currentColor" strokeWidth="1.9">
               <path d="M6 6l12 12M18 6L6 18" strokeLinecap="round" />
@@ -117,10 +117,10 @@ export default function ModeBacaSheet({
           {/* Gulir Halaman — mode manual (aktif saat auto scroll mati) */}
           <button
             onClick={() => onAutoToggle(false)}
-            className={`flex w-full items-center gap-3 rounded-xl border px-3.5 py-3 text-left transition-colors ${
+            className={`flex min-h-11 w-full items-center gap-3 rounded-xl border px-3.5 py-3 text-left transition-colors ${
               !autoOn
                 ? 'border-brand-amber-dim bg-brand-amber-dim/10'
-                : 'border-ink-700 hover:bg-white/5'
+                : 'border-ink-700 [@media(hover:hover)_and_(pointer:fine)]:hover:bg-white/5'
             }`}
           >
             <Icon name="hand" />
@@ -134,10 +134,10 @@ export default function ModeBacaSheet({
           {/* Putar Otomatis */}
           <button
             onClick={() => onAutoToggle(true)}
-            className={`flex w-full items-center gap-3 rounded-xl border px-3.5 py-3 text-left transition-colors ${
+            className={`flex min-h-11 w-full items-center gap-3 rounded-xl border px-3.5 py-3 text-left transition-colors ${
               autoOn
                 ? 'border-brand-amber-dim bg-brand-amber-dim/10'
-                : 'border-ink-700 hover:bg-white/5'
+                : 'border-ink-700 [@media(hover:hover)_and_(pointer:fine)]:hover:bg-white/5'
             }`}
           >
             <Icon name="play" />
@@ -159,10 +159,10 @@ export default function ModeBacaSheet({
                 <button
                   key={v}
                   onClick={() => onSpeed(v)}
-                  className={`flex-1 rounded-lg px-2 py-1.5 text-[11.5px] font-semibold transition-colors ${
+                  className={`min-h-11 flex-1 rounded-lg px-2 py-2.5 text-[11.5px] font-semibold transition-colors ${
                     speed === v
-                      ? 'bg-brand-amber text-ink-950'
-                      : 'border border-ink-600 text-ink-300 hover:bg-white/5'
+                      ? 'bg-brand-amber text-white'
+                      : 'border border-ink-600 text-ink-300 [@media(hover:hover)_and_(pointer:fine)]:hover:bg-white/5'
                   }`}
                 >
                   {label}
@@ -171,11 +171,11 @@ export default function ModeBacaSheet({
             </div>
           )}
 
-          {/* Baca Marathon — mulai dari chapter paling awal series */}
+          {/* Baca Marathon — lanjutkan sesi tersimpan, else dari awal */}
           <button
             onClick={startMarathon}
             disabled={preparing}
-            className="mt-2 flex w-full items-center gap-3 rounded-xl border border-ink-700 bg-ink-850 px-3.5 py-3 text-left transition-colors hover:border-ink-600 disabled:opacity-60"
+            className="mt-2 flex min-h-11 w-full items-center gap-3 rounded-xl border border-ink-700 bg-ink-850 px-3.5 py-3 text-left transition-colors active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70 disabled:opacity-60"
           >
             <Icon name="stack" />
             <span className="min-w-0 flex-1">

@@ -148,7 +148,7 @@ export default function Akun() {
               <button
                 type="button"
                 onClick={copyLink}
-                className="shrink-0 rounded-xl bg-ink-850 px-3 py-2 text-[12px] font-medium text-ink-200 active:bg-ink-800"
+                className="min-h-11 shrink-0 rounded-xl bg-ink-850 px-4 py-2.5 text-[12px] font-medium text-ink-200 active:bg-ink-800"
               >
                 {copied ? 'Tersalin' : 'Salin'}
               </button>
@@ -159,14 +159,14 @@ export default function Akun() {
             <button
               type="button"
               onClick={switchAccount}
-              className="rounded-xl border border-ink-700 px-3 py-2 text-sm font-medium text-ink-200 active:bg-ink-850"
+              className="min-h-11 rounded-xl border border-ink-700 px-4 py-2.5 text-sm font-medium text-ink-200 active:bg-ink-850"
             >
               Ganti akun
             </button>
             <button
               type="button"
               onClick={logout}
-              className="rounded-xl border border-brand-red/40 px-3 py-2 text-sm font-medium text-brand-red active:bg-brand-red/10"
+              className="min-h-11 rounded-xl border border-brand-red/40 px-4 py-2.5 text-sm font-medium text-brand-red active:bg-brand-red/10"
             >
               Keluar
             </button>

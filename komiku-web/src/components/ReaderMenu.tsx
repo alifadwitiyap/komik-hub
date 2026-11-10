@@ -1,3 +1,4 @@
+import { useEffect } from 'react'
 import {
   IconBars,
   IconPersonRunning,
@@ -56,6 +57,15 @@ export default function ReaderMenu({
   onChange,
   onOpenSettings,
 }: ReaderMenuProps) {
+  useEffect(() => {
+    if (!open) return
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose()
+    }
+    document.addEventListener('keydown', onKey)
+    return () => document.removeEventListener('keydown', onKey)
+  }, [open, onClose])
+
   if (!open) return null
   const items = [
     {
@@ -70,6 +80,7 @@ export default function ReaderMenu({
       label: 'Maraton',
       icon: <IconPersonRunning className="size-5" />,
       active: settings.marathon,
+      ariaPressed: settings.marathon,
       onClick: () => onChange({ marathon: !settings.marathon }),
     },
     {
@@ -77,6 +88,7 @@ export default function ReaderMenu({
       label: 'Putar Otomatis',
       icon: <IconPlaySolid className="size-5" />,
       active: settings.autoScroll,
+      ariaPressed: settings.autoScroll,
       onClick: () => onChange({ autoScroll: !settings.autoScroll }),
     },
     {
@@ -84,6 +96,7 @@ export default function ReaderMenu({
       label: 'Perisai Malam',
       icon: <IconMoonOverSun className="size-5" />,
       active: settings.nightShift,
+      ariaPressed: settings.nightShift,
       onClick: () => onChange({ nightShift: !settings.nightShift }),
     },
     {
@@ -101,7 +114,10 @@ export default function ReaderMenu({
   return (
     <div className="fixed inset-0 z-50 flex items-end bg-black/40" onClick={onClose}>
       <div
-        className="w-full rounded-t-2xl bg-night-dark/95 px-2 pb-5 pt-3 backdrop-blur"
+        role="dialog"
+        aria-modal="true"
+        aria-label="Menu reader"
+        className="sheet-panel w-full rounded-t-2xl bg-night-dark/95 px-2 pb-[calc(1.25rem+env(safe-area-inset-bottom))] pt-3 backdrop-blur"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="mb-2 flex justify-center">
@@ -112,7 +128,8 @@ export default function ReaderMenu({
             <button
               key={it.key}
               onClick={it.onClick}
-              className="flex w-16 flex-col items-center gap-1.5 rounded-xl py-2 active:bg-white/10"
+              aria-pressed={'ariaPressed' in it ? it.ariaPressed : undefined}
+              className="flex w-16 flex-col items-center gap-1.5 rounded-xl py-2 active:bg-white/10 active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70"
             >
               <span
                 className={`grid size-10 place-items-center rounded-full ${
@@ -121,12 +138,12 @@ export default function ReaderMenu({
               >
                 {it.icon}
               </span>
-              <span className="text-[9.5px] leading-tight text-white/75">{it.label}</span>
+              <span className="text-center text-[10px] font-medium leading-tight text-white/85">{it.label}</span>
             </button>
           ))}
         </div>
-        <p className="mt-2 text-center text-[10px] text-white/40">
-          Ketuk sisi kanan/kiri layar untuk gulir halaman
+        <p className="mt-2 text-center text-[10px] font-medium text-white/70">
+          Ketuk — 5 kontrol
         </p>
       </div>
     </div>

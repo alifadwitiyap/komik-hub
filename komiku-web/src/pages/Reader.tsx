@@ -65,6 +65,7 @@ export default function Reader() {
   const chapterId = chapterKeyOf(params.chapterId, params.handle, params.number)
   const [data, setData] = useState<ChapterResponse | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [attempt, setAttempt] = useState(0)
   // jumlah halaman yang BENAR-BENAR selesai dimuat (bukan prefix berurutan:
   // gambar bisa selesai decode bersilang, jadi yang dihitung himpunan
   // halaman complete — lihat onLoad ComicImage di flow bawah)
@@ -149,10 +150,12 @@ export default function Reader() {
       })
       .catch((e: Error) => {
         if (genRef.current !== gen) return
-        e.name !== 'AbortError' && setError(e.message)
+        if (e.name === 'AbortError') return
+        console.error('[reader] load chapter failed', e)
+        setError('Terjadi kendala saat memuat chapter. Coba lagi.')
       })
     return () => ctrl.abort()
-  }, [chapterId])
+  }, [chapterId, attempt])
 
   const images = data?.images ?? []
 
@@ -515,7 +518,19 @@ export default function Reader() {
     return () => clearTimeout(t)
   }, [toast])
 
-  if (error) return <Empty title="Gagal memuat chapter" body={error} />
+  if (error)
+    return (
+      <div className="mx-auto max-w-3xl px-4 py-16 text-center">
+        <Empty title="Gagal memuat chapter" body={error} />
+        <button
+          type="button"
+          onClick={() => setAttempt((a) => a + 1)}
+          className="mt-4 min-h-11 rounded-full bg-brand-amber px-5 py-2.5 text-[13px] font-bold text-white transition-colors active:scale-[0.97] active:duration-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber focus-visible:ring-offset-2 [@media(hover:hover)]:hover:bg-brand-amber-soft"
+        >
+          Coba lagi
+        </button>
+      </div>
+    )
   // chapter sukses tapi sumber tak kirim gambar: pesan jelas, jangan halaman kosong (QA gap D)
   if (data && images.length === 0) {
     return (
@@ -535,7 +550,7 @@ export default function Reader() {
           />
           <p className="text-[14px] font-medium text-white/85">Memuat…</p>
           <div className="h-0.5 w-44 overflow-hidden rounded-full bg-white/15">
-            <div className="h-full w-1/3 animate-[loadbar_1.2s_ease-in-out_infinite] rounded-full bg-brand-red" />
+            <div className="h-full w-1/3 animate-[loadbar_1.2s_ease-in-out_infinite] motion-reduce:animate-none rounded-full bg-brand-red" />
           </div>
         </div>
         {/* jalan keluar saat jaringan lambat / request menggantung */}
@@ -568,7 +583,7 @@ export default function Reader() {
   // turun = sembunyi, naik = tampil, supaya area baca tetap bersih saat
   // membaca. Tombol keluar tetap bisa dijangkau lewat tap tengah (toggle
   // chrome) atau scroll ke atas.
-  const showFsButton = chrome.visible
+  const fsInteractive = chrome.visible || fsActive
 
   return (
     // overflow-x-clip: jaring pengaman. Kalau satu gambar (mis. spread halaman
@@ -627,8 +642,8 @@ export default function Reader() {
        */}
       <ReaderFullscreenButton
         active={fsActive}
-        visible={showFsButton}
-        interactive
+        visible={fsInteractive}
+        interactive={fsInteractive}
         onToggle={() => {
           if (fsActive) {
             autoFS.reset()
@@ -823,6 +838,7 @@ export default function Reader() {
         onClose={() => setSheetOpen(false)}
         onChange={onChange}
         onReset={onReset}
+        setToast={setToast}
         downloadActions={
           <ReaderDownloadActions
             exportingPdf={exportingPdf}

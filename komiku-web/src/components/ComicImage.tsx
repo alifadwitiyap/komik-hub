@@ -406,7 +406,7 @@ export default function ComicImage({
     <div
       ref={slotRef}
       className={`relative overflow-hidden ${
-        shown ? '' : 'animate-pulse bg-zinc-200/60 dark:bg-zinc-800/40'
+        shown ? '' : 'animate-pulse motion-reduce:animate-none bg-zinc-200/60 dark:bg-zinc-800/40'
       }`}
     >
       {/** LQIP: thumbnail blur sebagai placeholder selama gambar penuh belum `shown`.

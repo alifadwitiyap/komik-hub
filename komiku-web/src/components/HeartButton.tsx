@@ -16,7 +16,7 @@ const HEART_D =
 
 /** "UP n" parity: gelembung kecil di kanan-atas ikon; '9+' supaya tetap ~14px. */
 function badgeClass() {
-  return 'pointer-events-none absolute -right-1 -top-1 grid h-[14px] min-w-[14px] place-items-center rounded-full bg-brand-amber px-0.5 text-[9px] font-bold leading-none text-ink-950'
+  return 'pointer-events-none absolute -right-1 -top-1 grid h-[14px] min-w-[14px] place-items-center rounded-full bg-brand-amber px-0.5 text-[9px] font-bold leading-none text-white'
 }
 
 /**
@@ -61,10 +61,10 @@ export default function HeartButton({ manga, className = '', labeled = false }: 
           toggleFavorite(manga)
           if (isFavorite(manga.title_key)) setPop(true)
         }}
-        className={`flex shrink-0 items-center gap-1.5 rounded-xl border px-3 py-2.5 text-[13px] font-semibold transition-colors active:scale-[0.97] active:transition-transform active:duration-100 ${
+        className={`flex min-h-11 shrink-0 items-center gap-1.5 rounded-xl border px-3 py-2.5 text-[13px] font-semibold transition-colors active:scale-[0.97] active:transition-transform active:duration-100 ${
           loved
             ? 'border-brand-amber-dim bg-brand-amber/15 text-brand-amber'
-            : 'border-ink-700 text-ink-300 hover:bg-ink-850'
+            : 'border-ink-700 text-ink-300 [@media(hover:hover)_and_(pointer:fine)]:hover:bg-ink-850'
         } ${className}`}
       >
         {heart}

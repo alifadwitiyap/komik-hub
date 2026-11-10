@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { api, toMangaCard, unifiedApi } from '../api'
 import type { Manga, UnifiedGenre } from '../types'
-import { Empty, Spinner } from '../App'
+import { Empty } from '../App'
 import { MangaCard } from './Home'
 import { clearRecent, listRecent, rememberSearch } from '../recentSearches'
 import { useUnifiedSearch } from '../hooks/useUnifiedSearch'
@@ -155,10 +155,13 @@ export default function Search() {
   const [listFailed, setListFailed] = useState(0)
   /** total sumber dari server untuk chip mode eksplorasi (0 = belum dilaporkan) */
   const [listSourcesTotal, setListSourcesTotal] = useState(0)
+  const [listReloadKey, setListReloadKey] = useState(0)
   /** handle yang sudah masuk daftar — cegah duplikat lintas halaman. */
   const seen = useRef<Set<string>>(new Set())
-  /** filter aktif → feed pindah ke katalog (bukan populer). */
-  const filtered = Boolean(tipe || status || genreSlug)
+  /** filter aktif → feed pindah ke katalog (bukan populer). Termasuk
+   *  sumber/urutan pilihan user (dulu diabaikan: klik sort tidak mengubah
+   *  gambar karena tetap mengambil feed popular yang sama). */
+  const filtered = Boolean(tipe || status || genreSlug || src || srt)
   const filterArg = { tipe, status, genre: genreSlug, source: src, sort: srt }
 
   // Union genre semua sumber. Gagal → dropdown genre kosong, halaman tetap
@@ -202,17 +205,17 @@ export default function Search() {
         )
         setListLoading(false)
       })
-      .catch((e: Error) => {
-        if (e.name !== 'AbortError') {
-          setListError(e.message)
-          setListLoading(false)
-        }
+      .catch((e: unknown) => {
+        if (e instanceof Error && e.name === 'AbortError') return
+        console.error('[search] list failed', e)
+        setListError('Terjadi kendala saat memuat daftar. Coba lagi.')
+        setListLoading(false)
       })
     return () => ctrl.abort()
     // filterArg sengaja tidak jadi dependensi: nilainya sudah terwakili oleh
     // tipe/status/genreSlug/src/srt di bawah (objek baru tiap render akan loop).
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searching, filtered, tipe, status, genreSlug, src, srt])
+  }, [searching, filtered, tipe, status, genreSlug, src, srt, listReloadKey])
 
   // "Muat lebih" menambah halaman berikutnya (append + dedup).
   const loadMore = () => {
@@ -296,16 +299,26 @@ export default function Search() {
           <input
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            placeholder="Judul, mis. solo leveling"
+            placeholder="Judul, mis. Solo Leveling"
             inputMode="search"
             enterKeyHint="search"
             aria-label="Cari manga"
-            className="min-w-0 flex-1 rounded-full border border-ink-300 bg-ink-900 py-2.5 pl-10 pr-3.5 text-base text-ink-100 placeholder:text-ink-500 focus:border-brand-amber focus:outline-none"
+            className="min-h-11 min-w-0 flex-1 rounded-full border border-ink-300 bg-ink-900 py-2.5 pl-10 pr-10 text-base text-ink-100 placeholder:text-ink-500 focus:border-brand-amber focus:outline-none"
           />
+          {input && (
+            <button
+              type="button"
+              aria-label="Hapus teks"
+              onClick={() => setInput('')}
+              className="absolute right-2 min-h-11 min-w-11 rounded-full text-ink-500 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber active:text-ink-300"
+            >
+              ×
+            </button>
+          )}
         </div>
         <button
           type="submit"
-          className="shrink-0 min-h-11 rounded-full bg-brand-amber px-5 py-2.5 text-sm font-bold text-ink-100 transition-colors hover:bg-brand-amber-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber focus-visible:ring-offset-2"
+          className="shrink-0 min-h-11 rounded-full bg-brand-amber px-5 py-2.5 text-sm font-bold text-white transition-colors active:bg-brand-amber/80 active:scale-[0.97] touch-manipulation focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber focus-visible:ring-offset-2 [@media(hover:hover)]:hover:bg-brand-amber-soft"
         >
           Cari
         </button>
@@ -388,7 +401,7 @@ export default function Search() {
                 key={r}
                 type="button"
                 onClick={() => commitQuery(r)}
-                className="min-h-11 shrink-0 rounded-full border border-ink-800 bg-ink-900 px-3 py-1.5 text-[12px] font-medium text-ink-300 transition-colors hover:border-ink-700"
+                className="min-h-11 shrink-0 rounded-full border border-ink-800 bg-ink-900 px-3 py-1.5 text-[12px] font-medium text-ink-300 transition-colors [@media(hover:hover)]:hover:border-ink-700"
               >
                 {r}
               </button>
@@ -397,9 +410,9 @@ export default function Search() {
               type="button"
               aria-label="Hapus riwayat pencarian"
               onClick={() => setRecent(clearRecent())}
-              className="min-h-11 shrink-0 rounded-full border border-ink-800 px-3 py-1.5 text-[12px] font-medium text-ink-500 transition-colors hover:border-ink-700 hover:text-ink-300"
+              className="min-h-11 shrink-0 rounded-full border border-ink-800 px-3 py-1.5 text-[12px] font-medium text-ink-500 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber [@media(hover:hover)]:hover:border-ink-700 [@media(hover:hover)]:hover:text-ink-300"
             >
-              Hapus
+              Hapus riwayat
             </button>
           </div>
         )}
@@ -411,7 +424,7 @@ export default function Search() {
                 key={k}
                 type="button"
                 onClick={() => commitQuery(k)}
-                className="min-h-11 shrink-0 rounded-full border border-ink-800 bg-ink-900 px-3 py-1.5 text-[12px] font-medium text-ink-300 transition-colors hover:border-ink-700"
+                className="min-h-11 shrink-0 rounded-full border border-ink-800 bg-ink-900 px-3 py-1.5 text-[12px] font-medium text-ink-300 transition-colors [@media(hover:hover)]:hover:border-ink-700"
               >
                 {k}
               </button>
@@ -422,9 +435,20 @@ export default function Search() {
 
       {searching ? (
         <div className="mt-5">
-          {loading && <Spinner label="Mencari…" />}
+          {loading && <SkeletonCards />}
           {/* lane5_microcopy.md:80 (High) — "Pencarian gagal — coba lagi." tanpa error mentah. */}
-          {error && <Empty title="Pencarian gagal" body="Coba lagi." />}
+          {error && (
+            <div className="mx-auto max-w-3xl px-4 py-16 text-center">
+              <Empty title="Pencarian gagal" body="Coba lagi." />
+              <button
+                type="button"
+                onClick={() => search.refresh()}
+                className="mt-4 min-h-11 rounded-full bg-brand-amber px-5 py-2.5 text-[13px] font-bold text-white transition-colors active:scale-[0.97] active:duration-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber focus-visible:ring-offset-2 [@media(hover:hover)]:hover:bg-brand-amber-soft"
+              >
+                Coba lagi
+              </button>
+            </div>
+          )}
           {!loading && !error && (
             <>
               <div className="mb-2 flex flex-wrap items-center gap-2">
@@ -447,10 +471,19 @@ export default function Search() {
                 )}
               </div>
               {results.length === 0 ? (
-                <Empty
-                  title="Tidak ada hasil"
-                  body={`Tidak menemukan apa pun untuk “${query}”.`}
-                />
+                <div className="mx-auto max-w-3xl px-4 py-16 text-center">
+                  <Empty
+                    title="Tidak ada hasil"
+                    body={`Tidak menemukan apa pun untuk “${query}”.`}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => commitQuery('')}
+                    className="mt-4 min-h-11 rounded-full border border-ink-700 px-5 py-2.5 text-[13px] font-semibold text-ink-300 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber focus-visible:ring-offset-2 [@media(hover:hover)]:hover:border-brand-amber [@media(hover:hover)]:hover:text-brand-amber"
+                  >
+                    Bersihkan pencarian
+                  </button>
+                </div>
               ) : (
                 <ResultGrid items={results} />
               )}
@@ -460,7 +493,7 @@ export default function Search() {
                   <button
                     disabled={page <= 1}
                     onClick={() => setPage((p) => Math.max(1, p - 1))}
-                    className="rounded-lg border border-ink-700 px-3.5 py-2 text-[13px] font-medium text-ink-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber disabled:opacity-40"
+                    className="min-h-11 min-w-11 rounded-lg border border-ink-700 px-3.5 py-2 text-[13px] font-medium text-ink-300 transition-colors active:scale-[0.97] active:bg-ink-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber disabled:opacity-40"
                   >
                     Sebelumnya
                   </button>
@@ -468,7 +501,7 @@ export default function Search() {
                   <button
                     disabled={!search.hasMore}
                     onClick={() => setPage((p) => p + 1)}
-                    className="rounded-lg border border-ink-700 px-3.5 py-2 text-[13px] font-medium text-ink-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber disabled:opacity-40"
+                    className="min-h-11 min-w-11 rounded-lg border border-ink-700 px-3.5 py-2 text-[13px] font-medium text-ink-300 transition-colors active:scale-[0.97] active:bg-ink-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber disabled:opacity-40"
                   >
                     Berikutnya
                   </button>
@@ -479,9 +512,20 @@ export default function Search() {
         </div>
       ) : (
         <div className="mt-5">
-          {listLoading && <Spinner label="Memuat daftar…" />}
+          {listLoading && <SkeletonCards />}
           {/* lane5_microcopy.md:81 (High) — "Gagal memuat daftar — coba lagi." tanpa error mentah. */}
-          {listError && <Empty title="Gagal memuat daftar" body="Coba lagi." />}
+          {listError && (
+            <div className="mx-auto max-w-3xl px-4 py-16 text-center">
+              <Empty title="Gagal memuat daftar" body="Coba lagi." />
+              <button
+                type="button"
+                onClick={() => setListReloadKey((k) => k + 1)}
+                className="mt-4 min-h-11 rounded-full bg-brand-amber px-5 py-2.5 text-[13px] font-bold text-white transition-colors active:scale-[0.97] active:duration-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber focus-visible:ring-offset-2 [@media(hover:hover)]:hover:bg-brand-amber-soft"
+              >
+                Coba lagi
+              </button>
+            </div>
+          )}
           {!listLoading && !listError && (
             <>
               <div className="mb-2 flex flex-wrap items-center gap-2">
@@ -491,10 +535,21 @@ export default function Search() {
                 {listFailed > 0 && <FailedSourceChip count={listFailed} total={listSourcesTotal} />}
               </div>
               {items.length === 0 ? (
-                <Empty
-                  title="Tidak ada hasil"
-                  body="Belum ada komik yang cocok dengan filter ini."
-                />
+                <div className="mx-auto max-w-3xl px-4 py-16 text-center">
+                  <Empty
+                    title="Tidak ada hasil"
+                    body="Belum ada komik yang cocok dengan filter ini."
+                  />
+                  {filtered && (
+                    <button
+                      type="button"
+                      onClick={() => setParams(new URLSearchParams())}
+                      className="mt-4 min-h-11 rounded-full border border-ink-700 px-5 py-2.5 text-[13px] font-semibold text-ink-300 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber focus-visible:ring-offset-2 [@media(hover:hover)]:hover:border-brand-amber [@media(hover:hover)]:hover:text-brand-amber"
+                    >
+                      Hapus filter
+                    </button>
+                  )}
+                </div>
               ) : (
                 <ResultGrid items={items} />
               )}
@@ -504,7 +559,7 @@ export default function Search() {
                   <button
                     disabled={more}
                     onClick={loadMore}
-                    className="min-h-11 rounded-full border border-ink-700 px-5 py-2.5 text-[13px] font-medium text-ink-300 transition-colors hover:border-brand-amber hover:text-brand-amber disabled:opacity-40"
+                    className="min-h-11 rounded-full border border-ink-700 px-5 py-2.5 text-[13px] font-medium text-ink-300 transition-colors active:scale-[0.97] active:duration-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber focus-visible:ring-offset-2 [@media(hover:hover)]:hover:border-brand-amber [@media(hover:hover)]:hover:text-brand-amber disabled:opacity-40"
                   >
                     {more ? 'Memuat…' : 'Muat lebih'}
                   </button>
@@ -531,6 +586,19 @@ function ResultGrid({ items }: { items: Manga[] }) {
         <li key={m.id} className="[&_a]:w-full">
           <MangaCard manga={m} />
         </li>
+      ))}
+    </ul>
+  )
+}
+
+/** Kartu skeleton pemuatan (mode cari + eksplorasi): grid 2 kolom + aspect
+ *  sama seperti kartu asli (62/82) supaya daftar tidak melompat saat data
+ *  tiba. */
+function SkeletonCards() {
+  return (
+    <ul className="grid grid-cols-2 gap-x-3 gap-y-4" aria-hidden="true">
+      {Array.from({ length: 6 }).map((_, i) => (
+        <li key={i} className="aspect-[62/82] animate-pulse rounded-xl bg-ink-850" />
       ))}
     </ul>
   )

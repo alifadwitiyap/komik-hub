@@ -82,7 +82,7 @@ export default function NotifPanel({
       <div className="flex items-center gap-2 border-b border-ink-800 px-3.5 py-2.5">
         <h2 className="font-display text-[13px] font-bold text-ink-100">Notifikasi</h2>
         {unread > 0 && (
-          <span className="rounded-full bg-brand-amber px-1.5 py-px text-[10.5px] font-bold text-ink-950">
+          <span className="rounded-full bg-brand-amber px-1.5 py-px text-[10.5px] font-bold text-white">
             {unread} baru
           </span>
         )}
@@ -96,7 +96,7 @@ export default function NotifPanel({
         ) : (
           groups.map((g) => (
             <li key={g.title_key} className="border-b border-ink-800 last:border-0">
-              <div className="flex items-start gap-2.5 px-3 py-2.5">
+              <div className="flex min-h-11 items-start gap-2.5 px-3 py-2.5">
                 <button
                   onClick={() => {
                     navigate(`/manga/${g.latest.handle}`)
@@ -136,7 +136,7 @@ export default function NotifPanel({
                     for (const id of g.ids) onDismiss(id)
                   }}
                   aria-label={`Hapus notifikasi ${g.latest.title}`}
-                  className="-mr-1 shrink-0 rounded-lg p-1.5 text-ink-500 transition-colors hover:bg-ink-850 hover:text-ink-200"
+                  className="grid size-11 shrink-0 place-items-center rounded-lg text-ink-500 transition-colors [@media(hover:hover)]:hover:bg-ink-850 [@media(hover:hover)]:hover:text-ink-200"
                 >
                   <IconXmark className="size-3.5" />
                 </button>
@@ -151,7 +151,7 @@ export default function NotifPanel({
           <button
             onClick={() => onMarkRead('all')}
             disabled={unread === 0}
-            className="min-h-11 flex-1 rounded-xl py-2 text-[12px] font-bold text-brand-amber transition-colors hover:bg-ink-900 disabled:text-ink-500 disabled:hover:bg-transparent"
+            className="min-h-11 flex-1 rounded-xl py-2 text-[12px] font-bold text-brand-amber transition-colors [@media(hover:hover)]:hover:bg-ink-900 disabled:text-ink-500 disabled:[@media(hover:hover)]:hover:bg-transparent"
           >
             Tandai semua dibaca
           </button>
@@ -160,7 +160,7 @@ export default function NotifPanel({
               navigate('/notifikasi')
               onClose()
             }}
-            className="inline-flex min-h-11 shrink-0 items-center rounded-xl py-2 pl-2 pr-1 text-[12px] font-bold text-ink-300 transition-colors hover:text-ink-100"
+            className="inline-flex min-h-11 shrink-0 items-center rounded-xl py-2 pl-2 pr-1 text-[12px] font-bold text-ink-300 transition-colors [@media(hover:hover)]:hover:text-ink-100"
           >
             Lihat semua
           </button>
