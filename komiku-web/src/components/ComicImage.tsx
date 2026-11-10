@@ -275,9 +275,12 @@ export default function ComicImage({
   // dibalik demi fitur offline berfungsi.
   const useProxy = true
   const srcSet = started && useProxy ? imgSrcSet(src, READER_WIDTHS, buster || undefined) : undefined
-  // LQIP: thumbnail kecil tetap dari CDN apa adanya — tidak ada proxy, jadi
-  // placeholder = URL asli (browser yang menskalakan). Server nol biaya.
-  const lqip = ''
+  // LQIP: thumbnail blur kecil dari proxy (96px = min server). Server encode
+  // WebP 96px jauh lebih cepat dari ukuran penuh, jadi placeholder tampil
+  // segera selagi gambar penuh masih di-encode (cold 1.3-3s/gambar). Ini
+  // menghilangkan layar putih polos saat buka chapter. Tanpa proxy (host tak
+  // diizinkan) imgSrc fail-open ke URL asli.
+  const lqip = started ? imgSrc(src, 96, buster || undefined) : ''
 
   // chapter berganti → reset state gambar
   useEffect(() => {

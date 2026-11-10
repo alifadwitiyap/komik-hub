@@ -1376,7 +1376,7 @@ impl Aggregator {
 
             let title = title_hint.clone().unwrap_or_else(|| native.clone());
             let loaded = if handle_sid.as_ref() == Some(&sid) {
-                self.load_series(src, &native, cap).await
+                self.load_series_cached(id, src, &native, cap).await
             } else {
                 self.load_series_by_title(src, &title, cap).await
             };
@@ -1586,6 +1586,18 @@ impl Aggregator {
                     series_title_key: Some(manga.title_key.clone()),
                     series_title: Some(manga.title.clone()),
                 };
+                // Warm cache series untuk saudara chapter lain. Tulis HANYA
+                // saat sumber pelayan = sumber handle (kunci `series:*:{id}:
+                // {native}` valid) dan daftar TIDAK terpotong (cap=2000 di
+                // server; jika terpotong, menulis versi pendek ke cache
+                // series yang dipakai bareng endpoint series akan mencemari
+                // navigasi prev/next-nya).
+                if handle_sid.as_ref() == Some(&sid) && detail.chapters.len() < cap {
+                    self.cache_put(
+                        &self.cache_key("series", None, &format!("{id}:{native}")),
+                        &detail,
+                    );
+                }
                 self.cache_put(&read_key, &outcome);
                 return Ok(outcome);
             }
@@ -1615,6 +1627,40 @@ impl Aggregator {
 
     /// Series dari satu sumber lewat native id langsung (dipakai handle /
     /// sticky). Kegagalan diklasifikasi lewat [`SourceError`].
+    /// Versi cache-aware dari [`Aggregator::load_series`] untuk jalur baca
+    /// chapter. Sumber primary (`handle_sid == sid`) memakai KUNCI cache yang
+    /// SAMA dengan `series_resolve_pref` (`series:*:{id}:{native}`), jadi
+    /// kunjungan series sebelumnya (atau baca chapter lain yang berhasil)
+    /// sudah mengisi disk cache ini; baca chapter berikutnya tidak membayar
+    /// ulang fetch upstream series primary (terukur ~2s) demi murni
+    /// menghitung prev/next. Fix: mempercepat chapter COLD tanpa menambah
+    /// fan-out.
+    ///
+    /// CATATAN: fungsi ini hanya MEMBACA cache; penulisan ke cache series
+    /// dilakukan di `read_chapter_any` HANYA saat chapter berhasil dibaca
+    /// (bukan saat chapter tidak ada — itu akan mencemari cache series yang
+    /// dipakai bareng endpoint series).
+    async fn load_series_cached(
+        &self,
+        id: &str,
+        src: &Arc<dyn Source>,
+        native: &str,
+        cap: usize,
+    ) -> SeriesLoad {
+        // Kunci sama persis dengan `series_resolve_pref` (`series:*:{id}:{native}`
+        // — `source` dibiarkan None supaya ketemu cache yang ditulis endpoint
+        // series). `*-` pada handle/native dipertahankan.
+        let key = self.cache_key("series", None, &format!("{id}:{native}"));
+        if let Some(cache) = &self.cache {
+            if let Some(detail) = cache.fresh_json::<SeriesDetail>(&key) {
+                let mut detail = detail;
+                detail.chapters.truncate(cap);
+                return SeriesLoad::Ok(detail.manga.clone(), detail);
+            }
+        }
+        self.load_series(src, native, cap).await
+    }
+
     async fn load_series(
         &self,
         src: &Arc<dyn Source>,
@@ -2137,6 +2183,106 @@ const CROSS_SOURCE_CHAPTER_LIMIT: u32 = 0;
 /// valid. Jadi "gagal memberi gambar" = tak ada satu pun URL non-kosong.
 fn has_usable_images(pages: &ChapterPages) -> bool {
     pages.images.iter().any(|u| !u.trim().is_empty())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::source::Source;
+    use std::sync::atomic::{AtomicUsize, Ordering};
+
+    /// Stub sumber satu-satunya untuk tes cache series chapter: `series()`
+    /// menghitung berapa kali benar-benar dipanggil (upstream), dan selalu
+    /// mengembalikan daftar 60 chapter.
+    struct StubSource {
+        series_calls: Arc<AtomicUsize>,
+    }
+    #[async_trait::async_trait]
+    impl Source for StubSource {
+        fn id(&self) -> SourceId {
+            SourceId::from("stub")
+        }
+        async fn popular(&self, _p: u32) -> SourceResult<Vec<Manga>> {
+            Ok(vec![])
+        }
+        async fn latest(&self, _p: u32) -> SourceResult<Vec<Manga>> {
+            Ok(vec![])
+        }
+        async fn search(&self, _q: &str, _p: u32) -> SourceResult<Vec<Manga>> {
+            Ok(vec![])
+        }
+        async fn list(&self, _g: Option<&str>, _p: u32) -> SourceResult<Vec<Manga>> {
+            Ok(vec![])
+        }
+        async fn genres(&self) -> SourceResult<Vec<(String, String)>> {
+            Ok(vec![])
+        }
+        async fn series(&self, native_id: &str) -> SourceResult<SeriesDetail> {
+            self.series_calls.fetch_add(1, Ordering::SeqCst);
+            let manga = Manga::new(SourceId::from("stub"), native_id, "Judul Stub");
+            let chapters = (1..=60)
+                .map(|i| Chapter {
+                    source: SourceId::from("stub"),
+                    native_id: format!("ch{i}"),
+                    title: format!("Chapter {i}"),
+                    number: i.to_string(),
+                    updated_at: None,
+                    url: None,
+                })
+                .collect();
+            Ok(SeriesDetail { manga, chapters })
+        }
+        async fn chapter_pages(&self, _m: &Manga, _c: &Chapter) -> SourceResult<ChapterPages> {
+            Ok(ChapterPages {
+                source: SourceId::from("stub"),
+                title: String::new(),
+                number: "0".into(),
+                images: vec![],
+            })
+        }
+    }
+
+    #[tokio::test]
+    async fn load_series_cached_reuses_series_cache() {
+        let calls = Arc::new(AtomicUsize::new(0));
+        let stub = Arc::new(StubSource {
+            series_calls: calls.clone(),
+        });
+        let src: Arc<dyn Source> = stub.clone();
+        let agg = Aggregator::with_cache(
+            vec![src.clone()],
+            Cache::memory(crate::cache::DEFAULT_TTL),
+        )
+        .with_timeout(Duration::from_secs(5));
+
+        // Seb BI cache series dulu — persis seperti yang dilakukan endpoint
+        // series (`series_resolve_pref`) saat ada kunjungan series sebelum
+        // baca chapter. Kunci `series:*:{id}:{native}`.
+        let manga = Manga::new(SourceId::from("stub"), "native1", "Judul Stub");
+        let chapters = (1..=60)
+            .map(|i| Chapter {
+                source: SourceId::from("stub"),
+                native_id: format!("ch{i}"),
+                title: format!("Chapter {i}"),
+                number: i.to_string(),
+                updated_at: None,
+                url: None,
+            })
+            .collect();
+        let detail = SeriesDetail { manga, chapters };
+        agg.cache_put(
+            &agg.cache_key("series", None, &format!("stub:native1:native1")),
+            &detail,
+        );
+
+        // Panggilan kedua: HIT cache -> upstream TIDAK dipanggil.
+        let second = agg.load_series_cached("stub:native1", &src, "native1", 50).await;
+        assert!(matches!(second, SeriesLoad::Ok(_, _)));
+        assert_eq!(calls.load(Ordering::SeqCst), 0, "hit cache, tanpa upstream");
+        // Hasil di-truncate ke cap.
+        let SeriesLoad::Ok(_, detail) = second else { unreachable!() };
+        assert_eq!(detail.chapters.len(), 50);
+    }
 }
 
 /// Tambah sumber ke daftar urutan kalau belum ada (dedup by SourceId).
