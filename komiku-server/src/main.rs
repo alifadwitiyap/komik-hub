@@ -55,6 +55,22 @@ async fn main() -> anyhow::Result<()> {
     let state_warm = state.unified.clone();
     #[allow(clippy::let_underscore_future)]
     let _ = tokio::spawn(async move { unified::warm_up(state_warm).await });
+    // Warm-up homepage memakai jalur yang SAMA dengan handler (homepage_payload)
+    // supaya pengunjung pertama setelah restart tidak membayar 0,75–0,88 s.
+    #[allow(clippy::let_underscore_future)]
+    let _ = tokio::spawn(async move {
+        let t = std::time::Instant::now();
+        match routes::homepage_payload().await {
+            Ok(v) => {
+                let n = v
+                    .as_object()
+                    .map(|o| o.keys().filter(|k| k.as_str() != "success").count())
+                    .unwrap_or(0);
+                tracing::info!("warm-up homepage: {n} seksi dalam {:?}", t.elapsed());
+            }
+            Err(e) => tracing::warn!("warm-up homepage gagal: {e:?}"),
+        }
+    });
     let app = routes::router(state.clone());
     // Route notif favorit lintas sumber (mirror unified::unified_routes()).
     // Handler stateless -> Router<()>, langsung di-merge sebelum fallback SPA.

@@ -631,7 +631,7 @@ async fn u_catalogue(State(state): State<Arc<crate::routes::AppState>>, Query(q)
     )))
 }
 
-async fn u_popular(State(state): State<Arc<crate::routes::AppState>>, Query(q): Query<ListQuery>) -> Res<ListOut> {
+async fn u_popular(State(state): State<Arc<crate::routes::AppState>>, Query(q): Query<ListQuery>, headers: HeaderMap) -> Response {
     let state = &state.unified;
     let source = norm_source(q.source.as_deref());
     let sort = SortMode::parse(q.sort.as_deref());
@@ -644,10 +644,10 @@ async fn u_popular(State(state): State<Arc<crate::routes::AppState>>, Query(q): 
     // halaman berikutnya. `From<Merged>` hardcode false.
     let limit = q.limit.unwrap_or(48) as usize;
     out.has_more = limit > 0 && out.items.len() >= limit;
-    Ok(Json(out))
+    crate::routes::json_with_etag(&out, "public, max-age=15", crate::routes::if_none_match(&headers))
 }
 
-async fn u_latest(State(state): State<Arc<crate::routes::AppState>>, Query(q): Query<ListQuery>) -> Res<ListOut> {
+async fn u_latest(State(state): State<Arc<crate::routes::AppState>>, Query(q): Query<ListQuery>, headers: HeaderMap) -> Response {
     let state = &state.unified;
     let source = norm_source(q.source.as_deref());
     let sort = SortMode::parse(q.sort.as_deref());
@@ -660,7 +660,7 @@ async fn u_latest(State(state): State<Arc<crate::routes::AppState>>, Query(q): Q
     // berikutnya (infinite-scroll butuh ini; `From<Merged>` hardcode false).
     let limit = q.limit.unwrap_or(48) as usize;
     out.has_more = limit > 0 && out.items.len() >= limit;
-    Ok(Json(out))
+    crate::routes::json_with_etag(&out, "public, max-age=15", crate::routes::if_none_match(&headers))
 }
 
 /// Union genre semua sumber: {items:[{slug,name,sources}]}.

@@ -4,8 +4,9 @@
 //! jadi React cukup mengonsumsi JSON bersih (lihat `shape`).
 
 use axum::{
+    body::Body,
     extract::{Path, Query},
-    http::StatusCode,
+    http::{header, HeaderMap, StatusCode},
     response::{IntoResponse, Response},
     routing::get,
     Json, Router,
@@ -236,7 +237,36 @@ fn chapter_list(v: &Value) -> Vec<Value> {
 
 // --- handler ---
 
-async fn homepage() -> Res<Value> {
+/// Cache payload `/api/homepage` (dipakai bagian "Pilihan Komiku" di Home).
+/// Upstream `index.komikid.org` lambat (0,25–1,5 s per hit, tanpa cache di sisi
+/// kita) — TTL pendek cukup: katalog bagian berubah lambat.
+const HOMEPAGE_CACHE_TTL: std::time::Duration = std::time::Duration::from_secs(120);
+static HOMEPAGE_CACHE: once_cell::sync::Lazy<std::sync::Mutex<Option<(std::time::Instant, Value)>>> =
+    once_cell::sync::Lazy::new(|| std::sync::Mutex::new(None));
+/// Single-flight untuk refresh: saat TTL habis, hanya satu request yang
+/// menembak upstream; sisanya menunggu lalu membaca cache yang baru.
+static HOMEPAGE_REFRESH: once_cell::sync::Lazy<tokio::sync::Mutex<()>> =
+    once_cell::sync::Lazy::new(|| tokio::sync::Mutex::new(()));
+
+fn homepage_cached() -> Option<Value> {
+    let guard = HOMEPAGE_CACHE.lock().ok()?;
+    let (at, cached) = guard.as_ref()?;
+    (at.elapsed() < HOMEPAGE_CACHE_TTL).then(|| cached.clone())
+}
+
+/// Payload homepage (cache + single-flight + TTL) — dipisah dari handler
+/// supaya warm-up startup memakai jalur yang SAMA.
+pub(crate) async fn homepage_payload() -> Result<Value, AppError> {
+    if let Some(cached) = homepage_cached() {
+        return Ok(cached);
+    }
+
+    // double-check di dalam gate: yang kalah balapan ikut memakai hasil leader
+    let _gate = HOMEPAGE_REFRESH.lock().await;
+    if let Some(cached) = homepage_cached() {
+        return Ok(cached);
+    }
+
     let raw = api::homepage().await?;
     let mut out = serde_json::Map::new();
     out.insert(
@@ -263,7 +293,62 @@ async fn homepage() -> Res<Value> {
             );
         }
     }
-    Ok(Json(Value::Object(out)))
+    if let Ok(mut guard) = HOMEPAGE_CACHE.lock() {
+        *guard = Some((std::time::Instant::now(), Value::Object(out.clone())));
+    }
+    Ok(Value::Object(out))
+}
+
+/// Ambil nilai header `If-None-Match` sebagai &str (kalau ada & valid).
+pub(crate) fn if_none_match(headers: &HeaderMap) -> Option<&str> {
+    headers.get(header::IF_NONE_MATCH).and_then(|v| v.to_str().ok())
+}
+
+/// Respons JSON dengan ETag lemah (W/"<hash-hex>" dari byte serde_json,
+/// DefaultHasher — bukan crypto) + Cache-Control. Kalau `If-None-Match`
+/// memuat ETag yang sama (atau `*`) -> 304 tanpa body, header tetap ada.
+/// Dipakai untuk payload yang sudah di-cache supaya client bisa revalidasi.
+pub(crate) fn json_with_etag<T: serde::Serialize>(
+    value: &T,
+    cache_control: &str,
+    if_none_match: Option<&str>,
+) -> Response {
+    use std::collections::hash_map::DefaultHasher;
+    use std::hash::{Hash, Hasher};
+
+    let bytes = serde_json::to_vec(value).unwrap_or_else(|_| b"null".to_vec());
+    let mut h = DefaultHasher::new();
+    bytes.hash(&mut h);
+    let etag = format!("W/\"{:016x}\"", h.finish());
+
+    let not_modified = if_none_match
+        .map(|inm| {
+            inm.split(',')
+                .map(str::trim)
+                .any(|s| s == etag || s == "*")
+        })
+        .unwrap_or(false);
+
+    let builder = Response::builder()
+        .header(header::ETAG, &etag)
+        .header(header::CACHE_CONTROL, cache_control);
+    if not_modified {
+        return builder
+            .status(StatusCode::NOT_MODIFIED)
+            .body(Body::empty())
+            .expect("304 response build");
+    }
+    builder
+        .header(header::CONTENT_TYPE, "application/json")
+        .body(Body::from(bytes))
+        .expect("json response build")
+}
+
+async fn homepage(headers: HeaderMap) -> Response {
+    match homepage_payload().await {
+        Ok(v) => json_with_etag(&v, "public, max-age=30", if_none_match(&headers)),
+        Err(e) => e.into_response(),
+    }
 }
 
 async fn search(Query(q): Query<SearchQuery>) -> Res<Value> {
@@ -423,6 +508,52 @@ mod tests {
             f().unwrap_err().into_response().status(),
             StatusCode::BAD_GATEWAY
         );
+    }
+
+    fn etag_of(res: &Response) -> String {
+        res.headers()
+            .get(header::ETAG)
+            .unwrap()
+            .to_str()
+            .unwrap()
+            .to_string()
+    }
+
+    /// ETag stabil untuk payload identik, berbeda untuk payload berbeda;
+    /// If-None-Match yang cocok -> 304 tanpa body.
+    #[tokio::test]
+    async fn etag_stabil_dan_berubah_bersama_payload() {
+        let a = json!({"success": true, "latest": {"data": [1, 2, 3]}});
+        let b = json!({"success": true, "latest": {"data": [1, 2, 4]}});
+
+        let r1 = json_with_etag(&a, "public, max-age=30", None);
+        let r2 = json_with_etag(&a.clone(), "public, max-age=30", None);
+        let r3 = json_with_etag(&b, "public, max-age=30", None);
+        assert_eq!(r1.status(), StatusCode::OK);
+        let e1 = etag_of(&r1);
+        let e2 = etag_of(&r2);
+        let e3 = etag_of(&r3);
+        assert_eq!(e1, e2, "payload identik harus ETag identik");
+        assert_ne!(e1, e3, "payload berbeda harus ETag berbeda");
+        assert_eq!(
+            r1.headers().get(header::CACHE_CONTROL).unwrap(),
+            "public, max-age=30"
+        );
+
+        // If-None-Match cocok -> 304, body kosong, ETag + Cache-Control tetap ada
+        let r4 = json_with_etag(&a, "public, max-age=30", Some(&e1));
+        assert_eq!(r4.status(), StatusCode::NOT_MODIFIED);
+        assert_eq!(etag_of(&r4), e1);
+        assert_eq!(
+            r4.headers().get(header::CACHE_CONTROL).unwrap(),
+            "public, max-age=30"
+        );
+        let bytes = to_bytes(r4.into_body(), usize::MAX).await.unwrap();
+        assert!(bytes.is_empty());
+
+        // If-None-Match tidak cocok -> 200 dengan body
+        let r5 = json_with_etag(&a, "public, max-age=30", Some("W/\"deadbeef\""));
+        assert_eq!(r5.status(), StatusCode::OK);
     }
 
     #[tokio::test]
