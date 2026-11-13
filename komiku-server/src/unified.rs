@@ -49,7 +49,7 @@ use axum::{
     body::Body,
     extract::{Path, Query, State},
     http::{header, HeaderMap},
-    response::Response,
+    response::{IntoResponse, Response},
     routing::{get, post},
     Json, Router,
 };
@@ -228,6 +228,41 @@ pub async fn warm_up(state: std::sync::Arc<UnifiedState>) {
         p.items.len(),
         t2.elapsed()
     );
+
+    // Panaskan subset series top agar request series pertama user = cache hit.
+    // Ambil handle dari hasil latest (segar) → kunci series_key(handle, None).
+    // Ambil N kecil (8) supaya tidak menahan boot; kegagalan satu series
+    // di-toleransi (cache tetap terisi untuk yang sukses).
+    let handles: Vec<String> = m
+        .items
+        .iter()
+        .filter_map(|it| {
+            let h = it.handle();
+            (!h.is_empty()).then(|| h)
+        })
+        .take(8)
+        .collect();
+    let t3 = std::time::Instant::now();
+    let mut warmed = 0usize;
+    for handle in handles {
+        let key = series_key(&handle, None);
+        // Hanya isi kalau belum ada cache segar (jangan timpa/duplikat).
+        if let Some((CacheAge::Fresh, _)) = series_cache_read(&state.series_cache, &key) {
+            continue;
+        }
+        let _permit = match state.series_fanout_permits.acquire().await {
+            Ok(p) => p,
+            Err(_) => break,
+        };
+        match compute_series(&state, &handle, None).await {
+            Ok(out) => {
+                series_cache_put(&state.series_cache, key, out);
+                warmed += 1;
+            }
+            Err(_) => tracing::debug!("warm-up series {handle} gagal, dilewati"),
+        }
+    }
+    tracing::info!("warm-up series: {warmed} handle dalam {:?}", t3.elapsed());
 }
 
 // ------------------------------------------------------------------ DTO
@@ -530,7 +565,11 @@ fn search_cache_put(cache: &SearchCache, key: String, out: ListOut) {
     }
 }
 
-async fn u_search(State(state): State<Arc<crate::routes::AppState>>, Query(q): Query<SearchQuery>) -> Res<ListOut> {
+async fn u_search(
+    State(state): State<Arc<crate::routes::AppState>>,
+    Query(q): Query<SearchQuery>,
+    headers: HeaderMap,
+) -> Result<Response, AppError> {
     let state = &state.unified;
     let query = q.q.unwrap_or_default();
     if query.trim().is_empty() {
@@ -549,13 +588,21 @@ async fn u_search(State(state): State<Arc<crate::routes::AppState>>, Query(q): Q
     let limit = q.limit.unwrap_or(48);
     let key = search_key(&query, genre.as_deref(), page, limit, source, sort);
     if let Some(hit) = search_cache_get(&state.search_cache, &key) {
-        return Ok(Json(hit));
+        return Ok(crate::routes::json_with_etag(
+            &hit,
+            "public, max-age=15",
+            crate::routes::if_none_match(&headers),
+        ));
     }
     // Cache kosong: satu request per key yang menembak upstream, sisanya
     // menunggu gerbang lalu membaca cache.
     let _gate = state.search_gate.lock().await;
     if let Some(hit) = search_cache_get(&state.search_cache, &key) {
-        return Ok(Json(hit));
+        return Ok(crate::routes::json_with_etag(
+            &hit,
+            "public, max-age=15",
+            crate::routes::if_none_match(&headers),
+        ));
     }
     // Over-fetch: rank relevansi + filter tipe/status bekerja pada set yang
     // lebih besar dari `limit` tampilan, supaya "30 hasil" tidak diam-diam
@@ -602,8 +649,16 @@ async fn u_search(State(state): State<Arc<crate::routes::AppState>>, Query(q): Q
     // panggilan berikutnya menyajikan daftar tidak lengkap selama TTL.
     if out.pending.is_empty() {
         search_cache_put(&state.search_cache, key, out.clone());
+        Ok(crate::routes::json_with_etag(
+            &out,
+            "public, max-age=15",
+            crate::routes::if_none_match(&headers),
+        ))
+    } else {
+        // Fase 2 masih jalan: JANGAN beri max-age — browser akan menyimpan
+        // hasil separuh 15 detik dan polling fase-2 klien macet.
+        Ok(Json(out).into_response())
     }
-    Ok(Json(out))
 }
 
 /// Katalog: `Aggregator::list` (katalog LEBIH LUAS dari search) + filter
@@ -611,7 +666,11 @@ async fn u_search(State(state): State<Arc<crate::routes::AppState>>, Query(q): Q
 ///
 /// `genre` (kalau ada) diteruskan ke `list()` — SAMA dengan mode search,
 /// jadi filternya menyaring sungguhan, bukan cuma menyediakan daftar.
-async fn u_catalogue(State(state): State<Arc<crate::routes::AppState>>, Query(q): Query<CatalogueQuery>) -> Res<ListOut> {
+async fn u_catalogue(
+    State(state): State<Arc<crate::routes::AppState>>,
+    Query(q): Query<CatalogueQuery>,
+    headers: HeaderMap,
+) -> Result<Response, AppError> {
     let state = &state.unified;
     let genre = q.genre.as_deref().map(str::trim).filter(|s| !s.is_empty());
     let source = norm_source(q.source.as_deref());
@@ -621,14 +680,18 @@ async fn u_catalogue(State(state): State<Arc<crate::routes::AppState>>, Query(q)
         .list(genre, q.page.unwrap_or(1).max(1), FILTER_FANOUT_CAP, source, sort)
         .await;
     let limit = q.limit.unwrap_or(48);
-    Ok(Json(list_out_filtered(
-        merged,
-        None,
-        q.tipe.as_deref(),
-        q.status.as_deref(),
-        sort,
-        Some(limit as usize),
-    )))
+    Ok(crate::routes::json_with_etag(
+        &list_out_filtered(
+            merged,
+            None,
+            q.tipe.as_deref(),
+            q.status.as_deref(),
+            sort,
+            Some(limit as usize),
+        ),
+        "public, max-age=15",
+        crate::routes::if_none_match(&headers),
+    ))
 }
 
 async fn u_popular(State(state): State<Arc<crate::routes::AppState>>, Query(q): Query<ListQuery>, headers: HeaderMap) -> Response {
@@ -664,13 +727,17 @@ async fn u_latest(State(state): State<Arc<crate::routes::AppState>>, Query(q): Q
 }
 
 /// Union genre semua sumber: {items:[{slug,name,sources}]}.
-async fn u_genres(State(state): State<Arc<crate::routes::AppState>>) -> Res<Value> {
+async fn u_genres(State(state): State<Arc<crate::routes::AppState>>, headers: HeaderMap) -> Result<Response, AppError> {
     let state = &state.unified;
     let merged = state.aggregator.genres(None).await;
-    Ok(Json(json!({
-        "items": merged.items,
-        "failed_sources": merged.failures.iter().map(|(s, _)| s.as_str().to_string()).collect::<Vec<_>>(),
-    })))
+    Ok(crate::routes::json_with_etag(
+        &json!({
+            "items": merged.items,
+            "failed_sources": merged.failures.iter().map(|(s, _)| s.as_str().to_string()).collect::<Vec<_>>(),
+        }),
+        "public, max-age=15",
+        crate::routes::if_none_match(&headers),
+    ))
 }
 
 /// Label tampilan per sumber. PEMETAAN SISI SERVER (kontrak lane web):
@@ -1305,7 +1372,26 @@ fn spawn_series_refresh(state: Arc<UnifiedState>, handle: String, last_source: O
 /// stale seketika + refresh latar (single-flight); ≥ MAX_STALE / kosong →
 /// hitung inline. Ini yang membuat kunjungan ulang series ~milidetik,
 /// bukan 8-12 s (union 4 sumber, ~86% biaya untuk <1% chapter ekstra).
-async fn u_series(State(state): State<Arc<crate::routes::AppState>>, Path(handle): Path<String>, Query(q): Query<SeriesQuery>) -> Res<Value> {
+async fn u_series(
+    State(state): State<Arc<crate::routes::AppState>>,
+    Path(handle): Path<String>,
+    Query(q): Query<SeriesQuery>,
+    headers: HeaderMap,
+) -> Result<Response, AppError> {
+    Ok(crate::routes::json_with_etag(
+        &u_series_inner(state, handle, q).await?.0,
+        "public, max-age=15",
+        crate::routes::if_none_match(&headers),
+    ))
+}
+
+/// Isi penuh `u_series` (SWR + single-flight + fan-out). Dipisah jadi fungsi
+/// dalam supaya handler tipis tinggal menempelkan ETag/Cache-Control.
+async fn u_series_inner(
+    state: Arc<crate::routes::AppState>,
+    handle: String,
+    q: SeriesQuery,
+) -> Res<Value> {
     validate_handle(&handle)?;
     let unified = state.unified.clone();
     let key = series_key(&handle, q.last_source.as_deref());
@@ -1379,16 +1465,22 @@ fn budget_err(op: &str) -> AppError {
 async fn u_chapter(
     State(state): State<Arc<crate::routes::AppState>>,
     Path((handle, number)): Path<(String, String)>,
-) -> Res<Value> {
+    headers: HeaderMap,
+) -> Result<Response, AppError> {
     validate_handle(&handle)?;
     let state = state.unified.clone();
     // Budget total: series_resolve + read_chapter_any berurutan, masing-masing
     // bisa fallback antar sumber. Tanpa batas, dua jalur ini bisa menumpuk
     // timeout jauh melewati 6 s per sumber.
-    match tokio::time::timeout(UNIFIED_REQUEST_BUDGET, u_chapter_inner(state, handle, number)).await {
+    let res = match tokio::time::timeout(UNIFIED_REQUEST_BUDGET, u_chapter_inner(state, handle, number)).await {
         Ok(r) => r,
         Err(_) => Err(budget_err("chapter")),
-    }
+    };
+    Ok(crate::routes::json_with_etag(
+        &res?.0,
+        "public, max-age=15",
+        crate::routes::if_none_match(&headers),
+    ))
 }
 
 

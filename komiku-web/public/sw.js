@@ -260,6 +260,18 @@ async function trimCache(cache) {
   imgBytes = Math.max(0, total)
 }
 
+/**
+ * Pangkas cache API: batas jumlah entri agar tidak tumbuh tanpa batas.
+ * Urutan keys = urutan penyisipan → yang terlama dihapus dulu. Tidak
+ * menunda respons (dipanggil tanpa await di jalur respons).
+ */
+async function trimApiCache() {
+  const cache = await caches.open(API)
+  const keys = await cache.keys()
+  if (keys.length <= 500) return
+  await Promise.all(keys.slice(0, 50).map((k) => cache.delete(k)))
+}
+
 /** Hapus semua entri unduhan lama dari cache API (dipanggil saat DELETE). */
 async function purgeDownloadCache() {
   const cache = await caches.open(API)
@@ -336,7 +348,10 @@ async function staleWhileRevalidate(req, cacheName) {
   const hit = await cache.match(req)
   const network = fetch(req)
     .then((res) => {
-      if (res.ok) cache.put(req, res.clone())
+      if (res.ok) {
+        cache.put(req, res.clone())
+        trimApiCache()
+      }
       return res
     })
     .catch(() => null)
@@ -357,7 +372,10 @@ async function networkFirst(req, cacheName) {
   const cache = await caches.open(cacheName)
   try {
     const res = await fetch(req)
-    if (res.ok) cache.put(req, res.clone())
+    if (res.ok) {
+      cache.put(req, res.clone())
+      trimApiCache()
+    }
     return res
   } catch {
     const hit = await cache.match(req)

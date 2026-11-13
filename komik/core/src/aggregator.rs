@@ -643,7 +643,12 @@ impl Aggregator {
                             if pb <= pc { best } else { cur }
                         }).unwrap(),
                     };
-                    tie_validation_cache().lock().unwrap().insert(cache_key, group[winner_idx].handle());
+                    let mut tvc = tie_validation_cache().lock().unwrap();
+                    // ponytail: cap kasar clear-all; ganti LRU bila validasi tie ulang terukur mahal
+                    if tvc.len() >= 4096 {
+                        tvc.clear();
+                    }
+                    tvc.insert(cache_key, group[winner_idx].handle());
                     winner_idx
                 }
             }
@@ -1126,7 +1131,15 @@ impl Aggregator {
             match loaded {
                 SeriesLoad::Ok(_, mut detail) => {
                     detail.chapters.truncate(limit as usize);
-                    self.cache_put(&key, &detail);
+                    // Anti-pollution: TIDAK menulis cache series bila daftar
+                    // chapter KENA TRUNCATE oleh limit (≈ SERIES_CHAPTER_LIMIT
+                    // 2000) — hanya daftar lengkap yang sah dijadikan otoritatif.
+                    // Sebuah series >2000 chapter akan terpotong di sini; cache
+                    // POTONG itu akan mencemari nav prev/next milik semua pemakai.
+                    let complete = detail.chapters.len() < limit as usize;
+                    if complete {
+                        self.cache_put(&key, &detail);
+                    }
                     return Ok(SeriesOutcome { detail, from_cache: false });
                 }
                 SeriesLoad::Miss => errs.push(format!("{}: tidak ada", src.id())),

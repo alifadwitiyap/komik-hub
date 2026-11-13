@@ -102,7 +102,10 @@ fn write_state(path: &Path, st: &ProgressState) -> anyhow::Result<()> {
 /// GET /api/progress -> {entries:[...]}
 async fn get_progress(headers: HeaderMap) -> Res<Value> {
     let username = require_user(&headers)?;
-    let st = read_state(&progress_file(&username));
+    let path = progress_file(&username);
+    let st = tokio::task::spawn_blocking(move || read_state(&path))
+        .await
+        .map_err(|e| AppError::new(anyhow::anyhow!("task blocking gagal: {e}")))?;
     Ok(Json(json!({ "entries": st.entries })))
 }
 
@@ -137,8 +140,13 @@ async fn put_progress(headers: HeaderMap, Json(req): Json<PutProgressReq>) -> Re
         )));
     }
     let count = st.entries.len();
-    write_state(&progress_file(&username), &st)
-        .map_err(|e| AppError::new(anyhow::anyhow!("gagal simpan progress: {e}")))?;
+    let path = progress_file(&username);
+    tokio::task::spawn_blocking(move || {
+        write_state(&path, &st)
+            .map_err(|e| AppError::new(anyhow::anyhow!("gagal simpan progress: {e}")))
+    })
+    .await
+    .map_err(|e| AppError::new(anyhow::anyhow!("task blocking gagal: {e}")))??;
     Ok(Json(json!({ "ok": true, "count": count })))
 }
 

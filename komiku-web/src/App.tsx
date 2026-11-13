@@ -5,7 +5,7 @@ import Search from './pages/Search'
 import Series from './pages/Series'
 import Rak from './pages/Rak'
 const SeriesUnified = lazy(() => import('./pages/SeriesUnified'))
-import Reader from './pages/Reader'
+const Reader = lazy(() => import('./pages/Reader'))
 const ReaderMarathon = lazy(() => import('./pages/ReaderMarathon'))
 const Akun = lazy(() => import('./pages/Akun'))
 const Notifikasi = lazy(() => import('./pages/Notifikasi'))

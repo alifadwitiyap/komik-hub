@@ -388,7 +388,7 @@ export default function Reader() {
           ? (navigator as Navigator & { connection?: { saveData?: boolean } }).connection
           : undefined
       )
-      if (mode === 'hemat' || conn?.saveData) return
+      if (mode === 'hemat' || conn?.saveData || slowLink()) return
     } catch {
       /* storage tertutup — lanjut default */
     }

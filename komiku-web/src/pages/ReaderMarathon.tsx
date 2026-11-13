@@ -10,7 +10,7 @@ import ReaderMenu from '../components/ReaderMenu'
 import ReaderSettingsSheet from '../components/ReaderSettingsSheet'
 import ReaderToolbar from '../components/ReaderToolbar'
 import SourceBadge from '../components/SourceBadge'
-import { imgSrc, imgUrl, mountAheadPx } from '../imgUrl'
+import { imgSrc, imgUrl, mountAheadPx, slowLink } from '../imgUrl'
 import { tapHitsReaderControl } from '../readerControls'
 import { useReaderSettings } from '../hooks/useReaderSettings'
 import { useChromeOnScroll } from '../hooks/useChromeOnScroll'
@@ -545,7 +545,7 @@ export default function ReaderMarathon() {
         // `prefetchMode` 'hemat' + saveData → jangan pemanasan.
         const im = d.images?.[0]
         const conn = (navigator as Navigator & { connection?: { saveData?: boolean } }).connection
-        if (im && settings.prefetchMode !== 'hemat' && !conn?.saveData) {
+        if (im && settings.prefetchMode !== 'hemat' && !conn?.saveData && !slowLink()) {
           const w = new window.Image()
           w.src = imgSrc(im)
         }

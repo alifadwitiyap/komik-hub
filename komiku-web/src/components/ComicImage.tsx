@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { imgSrc, imgSrcSet, imgUrl, pickWidth, READER_SIZES, READER_WIDTHS } from '../imgUrl'
+import { imgSrc, imgSrcSet, imgUrl, pickWidth, READER_SIZES, READER_WIDTHS, slowLink } from '../imgUrl'
 import { acquireImageSlot, recordImageSettle } from '../imgQueue'
 import { aspectOf, rememberAspect } from '../pageMemory'
 
@@ -280,7 +280,7 @@ export default function ComicImage({
   // segera selagi gambar penuh masih di-encode (cold 1.3-3s/gambar). Ini
   // menghilangkan layar putih polos saat buka chapter. Tanpa proxy (host tak
   // diizinkan) imgSrc fail-open ke URL asli.
-  const lqip = started ? imgSrc(src, 96, buster || undefined) : ''
+  const lqip = started && !slowLink() ? imgSrc(src, 96, buster || undefined) : ''
 
   // chapter berganti → reset state gambar
   useEffect(() => {

@@ -176,7 +176,10 @@ fn total_marks(state: &ReadState) -> usize {
 /// series itu (dipakai halaman series: jangan tarik semua mark setiap buka).
 async fn get_read(headers: HeaderMap, Query(q): Query<ReadQuery>) -> Res<Value> {
     let username = require_user(&headers)?;
-    let state = read_state(&read_file(&username));
+    let path = read_file(&username);
+    let state = tokio::task::spawn_blocking(move || read_state(&path))
+        .await
+        .map_err(|e| AppError::new(anyhow::anyhow!("task blocking gagal: {e}")))?;
     let marks = match q.series.as_deref() {
         Some(series) => match state.marks.get(series) {
             Some(m) => {
@@ -227,15 +230,20 @@ async fn put_read(headers: HeaderMap, body: axum::body::Bytes) -> Res<Value> {
     // `read_state` HARUS di dalam lock — lock hanya_merge tidak berguna.
     // Poisoning (thread panic di dalam lock) diambil dengan `into_inner`:
     // state file sudah atomic, jadi lock yg 'racun' tetap aman dipakai.
-    let _guard = write_lock()
-        .lock()
-        .unwrap_or_else(|poisoned| poisoned.into_inner());
-    let mut state = read_state(&read_file(&username));
-    merge(&mut state, &req.marks);
-    prune(&mut state);
-    let count = total_marks(&state);
-    write_state(&read_file(&username), &state)
-        .map_err(|e| AppError::new(anyhow::anyhow!("gagal simpan state baca: {e}")))?;
+    let count = tokio::task::spawn_blocking(move || {
+        let _guard = write_lock()
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner());
+        let mut state = read_state(&read_file(&username));
+        merge(&mut state, &req.marks);
+        prune(&mut state);
+        let count = total_marks(&state);
+        write_state(&read_file(&username), &state)
+            .map_err(|e| AppError::new(anyhow::anyhow!("gagal simpan state baca: {e}")))?;
+        Ok::<usize, AppError>(count)
+    })
+    .await
+    .map_err(|e| AppError::new(anyhow::anyhow!("task blocking gagal: {e}")))??;
     Ok(Json(json!({ "ok": true, "count": count })))
 }
 

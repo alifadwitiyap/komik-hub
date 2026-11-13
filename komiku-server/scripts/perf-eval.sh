@@ -107,6 +107,8 @@ check P2 "chapter COLD (cross-source nav)" "$c_chap"   "$BUDGET_COLD_CHAPTER"
 check_ratio() {
   local id="$1" name="$2" warm="$3" cold="$4" max_pct="$5"
   local limit=$((cold * max_pct / 100))
+  # lantai 50 ms: saat cold ~2 ms (seri hasil warm-up), budget 60% tak mungkin dipenuhi → false FAIL
+  [ "$limit" -lt 50 ] && limit=50
   local status="PASS"
   if [ "$warm" -gt "$limit" ]; then status="FAIL"; fail=$((fail+1)); else pass=$((pass+1)); fi
   printf "  [%s] %-42s %6s ms  budget %5s ms (<=%s%% cold %s ms)  %s\n" \

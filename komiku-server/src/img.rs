@@ -208,9 +208,13 @@ fn err(status: StatusCode, msg: &str) -> Response {
 }
 
 fn immutable(bytes: Vec<u8>, etag: &str, cache: &str, mime: &'static str) -> Response {
+    let len = bytes.len();
     let body = Body::from(bytes);
     let mut resp = Response::new(body);
     let h = resp.headers_mut();
+    // Eksplisit: tanpa ini respons keluar chunked dan service worker
+    // (sw.js contentLength) menghitung tiap gambar 0 byte → batas 300MB mati.
+    h.insert(header::CONTENT_LENGTH, HeaderValue::from(len));
     h.insert(header::CONTENT_TYPE, HeaderValue::from_static(mime));
     h.insert(
         header::CACHE_CONTROL,
@@ -231,6 +235,18 @@ fn immutable(bytes: Vec<u8>, etag: &str, cache: &str, mime: &'static str) -> Res
 /// (READER_WIDTHS=[480,640,900], LQIP kosong), dan encode AVIF mahal
 /// (1.8–5.3 s/gambar, 24.8 s untuk 8 paralel). Selalu WebP. Jalan encode
 /// AVIF (`resize_encode_avif`) dibiarkan utuh tapi tidak pernah dipicu.
+/// Cocokkan header `If-None-Match` terhadap etag. Daftar dipisah koma,
+/// boleh ber-prefix `W/` (perbandingan lemah), dan `*` cocok dengan apa pun.
+fn etag_matches(if_none_match: &str, etag: &str) -> bool {
+    fn normalize(s: &str) -> &str {
+        s.trim().strip_prefix("W/").unwrap_or(s.trim()).trim_matches('"')
+    }
+    let e = normalize(etag);
+    if_none_match
+        .split(',')
+        .any(|part| part.trim() == "*" || normalize(part) == e)
+}
+
 fn negotiated_format(_accepts_avif: bool, _raw_w: u32) -> ImgFormat {
     ImgFormat::WebP
 }
@@ -322,10 +338,13 @@ fn resize_encode(src: &[u8], target_w: u32, url: &str) -> Result<Vec<u8>, String
         img.thumbnail(w, h)
     } else {
         // Lanczos3 lebih tajam untuk line-art manga; pakai `thumbnail` (box-filter)
-        // untuk gambar besar (>2M px, contoh: banner halaman 720x8300 = 6M px)
-        // karena downscale ekstremnya jauh lebih murah CPU (terukur 3x lebih cepat
-        // dari Triangle di 480px) dan box-filter cukup untuk downscale besar.
-        if (sw as u64 * sh as u64) > 2_000_000 {
+        // hanya saat downscale BENAR-BENAR besar (≥3x per sisi). Gating pada
+        // RASIO, bukan semata jumlah piksel: image >2M px yang cuma diturunkan
+        // ringan (mis. 1500x1400 → 900w ≈ 1.7x) tetap pakai Lanczos supaya
+        // line-art tidak blur; box-filter hanya untuk downscale ekstrem (banner
+        // 720x8300 → 480px rasio 1.5x sebenarnya ringan, tapi 6M px; di sini
+        // kualitas 480px di layar HP toleran + box jauh lebih murah CPU).
+        if (sw as u64) >= (w as u64) * 3 {
             img.thumbnail(w, h)
         } else {
             img.resize_exact(w, h, FilterType::Lanczos3)
@@ -520,6 +539,28 @@ pub async fn img_handler(Query(q): Query<ImgQuery>, headers: HeaderMap) -> Respo
     let path = cache_path_fmt(&key, fmt);
     let etag = format!("\"{key}\"");
 
+    // 304: If-None-Match cocok DAN file varian ada di cache — balas tanpa
+    // membaca byte dari disk. Kalau tidak cocok / file belum ada, lanjut jalur
+    // normal (jangan 304).
+    if path.exists() {
+        if let Some(inm) = headers.get(header::IF_NONE_MATCH).and_then(|v| v.to_str().ok()) {
+            if etag_matches(inm, &etag) {
+                let mut resp = (StatusCode::NOT_MODIFIED, Body::empty()).into_response();
+                let h = resp.headers_mut();
+                h.insert(
+                    header::CACHE_CONTROL,
+                    HeaderValue::from_static("public, max-age=31536000, immutable"),
+                );
+                h.insert("vary", HeaderValue::from_static("Accept"));
+                h.insert("x-img-cache", HeaderValue::from_static("hit"));
+                if let Ok(v) = HeaderValue::from_str(&etag) {
+                    h.insert(header::ETAG, v);
+                }
+                return resp;
+            }
+        }
+    }
+
     if let Ok(bytes) = std::fs::read(&path) {
         return immutable(bytes, &etag, "hit", fmt.mime());
     }
@@ -680,6 +721,24 @@ fn fastrand_u32() -> u32 {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn etag_matches_cocok_persis_dan_lebar() {
+        let etag = "\"abc123\"";
+        // cocok persis
+        assert!(etag_matches("\"abc123\"", etag));
+        // daftar dipisah koma — salah satu cocok
+        assert!(etag_matches("\"zzz\", \"abc123\"", etag));
+        assert!(etag_matches("\"zzz\",\"abc123\"", etag));
+        // prefix W/ (lemah) tetap cocok
+        assert!(etag_matches("W/\"abc123\"", etag));
+        assert!(etag_matches("W/\"zzz\", W/\"abc123\"", etag));
+        // bintang cocok dengan apa pun
+        assert!(etag_matches("*", etag));
+        // tidak cocok
+        assert!(!etag_matches("\"lalala\"", etag));
+        assert!(!etag_matches("W/\"lalala\"", etag));
+    }
 
     #[test]
     fn kunci_cache_beda_per_lebar() {

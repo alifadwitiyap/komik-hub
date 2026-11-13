@@ -74,6 +74,24 @@ pub mod stats {
     /// Total respons gambar 502 dari proxy /img (host mati / diblokir).
     pub static IMG_FAIL: AtomicU64 = AtomicU64::new(0);
 
+    /// Histogram latensi request user (ms), 5 bucket: <5, <50, <500,
+    /// <5000, >=5000. Diisi middleware `count_request` (routes.rs).
+    /// `const Z` + `[Z; 5]` karena AtomicU64 bukan Copy.
+    const Z: AtomicU64 = AtomicU64::new(0);
+    pub static LATENCY: [AtomicU64; 5] = [Z; 5];
+
+    /// Catat latensi satu request (ms) ke bucket histogram.
+    pub fn record_latency(ms: u64) {
+        let i = match ms {
+            0..5 => 0,
+            5..50 => 1,
+            50..500 => 2,
+            500..5000 => 3,
+            _ => 4,
+        };
+        LATENCY[i].fetch_add(1, Ordering::Relaxed);
+    }
+
     pub fn record_call(source: &str, ok: bool, is_timeout: bool) {
         let mut t = table().lock().unwrap_or_else(|e| e.into_inner());
         let c = t.entry(source.to_string()).or_default();
@@ -114,6 +132,11 @@ pub mod stats {
         serde_json::json!({
             "requests": REQUESTS.load(Ordering::Relaxed),
             "img_fail": IMG_FAIL.load(Ordering::Relaxed),
+            "latency_lt5": LATENCY[0].load(Ordering::Relaxed),
+            "latency_lt50": LATENCY[1].load(Ordering::Relaxed),
+            "latency_lt500": LATENCY[2].load(Ordering::Relaxed),
+            "latency_lt5000": LATENCY[3].load(Ordering::Relaxed),
+            "latency_ge5000": LATENCY[4].load(Ordering::Relaxed),
             "sources": per,
         })
     }
@@ -480,5 +503,28 @@ mod tests {
     fn timeout_cukup_untuk_komiku_yang_lambat() {
         assert_eq!(SOURCE_TIMEOUT_SECS, 15);
         assert_eq!(SOURCE_INNER_TIMEOUT, Duration::from_millis(14_500));
+    }
+
+    /// Mapping ms → bucket histogram latensi (0: <5, 1: <50, 2: <500,
+    /// 3: <5000, 4: >=5000).
+    #[test]
+    fn latensi_bucket_mapping() {
+        let before: [u64; 5] = [
+            stats::LATENCY[0].load(Ordering::Relaxed),
+            stats::LATENCY[1].load(Ordering::Relaxed),
+            stats::LATENCY[2].load(Ordering::Relaxed),
+            stats::LATENCY[3].load(Ordering::Relaxed),
+            stats::LATENCY[4].load(Ordering::Relaxed),
+        ];
+        stats::record_latency(1);
+        stats::record_latency(49);
+        stats::record_latency(499);
+        stats::record_latency(4999);
+        stats::record_latency(5000);
+        assert_eq!(stats::LATENCY[0].load(Ordering::Relaxed), before[0] + 1);
+        assert_eq!(stats::LATENCY[1].load(Ordering::Relaxed), before[1] + 1);
+        assert_eq!(stats::LATENCY[2].load(Ordering::Relaxed), before[2] + 1);
+        assert_eq!(stats::LATENCY[3].load(Ordering::Relaxed), before[3] + 1);
+        assert_eq!(stats::LATENCY[4].load(Ordering::Relaxed), before[4] + 1);
     }
 }

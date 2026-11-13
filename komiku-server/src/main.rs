@@ -53,12 +53,10 @@ async fn main() -> anyhow::Result<()> {
     // di SINI (sebelum bind/serve) supaya probe health mulai sedini mungkin
     // dan selesai sebelum request pertama tiba; `spawn` tidak memblokir.
     let state_warm = state.unified.clone();
-    #[allow(clippy::let_underscore_future)]
-    let _ = tokio::spawn(async move { unified::warm_up(state_warm).await });
+    let warm_up_handle = tokio::spawn(async move { unified::warm_up(state_warm).await });
     // Warm-up homepage memakai jalur yang SAMA dengan handler (homepage_payload)
     // supaya pengunjung pertama setelah restart tidak membayar 0,75–0,88 s.
-    #[allow(clippy::let_underscore_future)]
-    let _ = tokio::spawn(async move {
+    let homepage_handle = tokio::spawn(async move {
         let t = std::time::Instant::now();
         match routes::homepage_payload().await {
             Ok(v) => {
@@ -118,6 +116,19 @@ async fn main() -> anyhow::Result<()> {
     if dist.is_dir() {
         tracing::info!("juga menyajikan frontend dari {}", dist.display());
     }
+
+    // Tunggu warm-up selesai (dengan deadline) supaya request pertama user tidak
+    // ikut membayar cold fetch di--> mengkompetisi dengan warm-up. Setelah
+    // deadline (8 s) server tetap jalan dengan cache sebagian hangat — tidak
+    // pernah menahan bind selamanya walau upstream lambat.
+    let warmup_deadline = std::time::Duration::from_secs(8);
+    if tokio::time::timeout(warmup_deadline, warm_up_handle).await.is_err() {
+        tracing::warn!("warm-up series melewati deadline {warmup_deadline:?}, lanjut serve");
+    }
+    if tokio::time::timeout(warmup_deadline, homepage_handle).await.is_err() {
+        tracing::warn!("warm-up homepage melewati deadline {warmup_deadline:?}, lanjut serve");
+    }
+
     axum::serve(listener, app).await?;
     Ok(())
 }

@@ -48,11 +48,14 @@ async fn count_request(
 ) -> axum::response::Response {
     let p = req.uri().path();
     let is_probe = p == "/healthz" || p == "/api/health" || p == "/api/stats";
+    let start = std::time::Instant::now();
+    let resp = next.run(req).await;
     if !is_probe {
         crate::resilience::stats::REQUESTS
             .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+        crate::resilience::stats::record_latency(start.elapsed().as_millis() as u64);
     }
-    next.run(req).await
+    resp
 }
 
 /// `/api/stats` — angka runtime, TERPISAH dari `/healthz`.
@@ -247,6 +250,12 @@ static HOMEPAGE_CACHE: once_cell::sync::Lazy<std::sync::Mutex<Option<(std::time:
 /// menembak upstream; sisanya menunggu lalu membaca cache yang baru.
 static HOMEPAGE_REFRESH: once_cell::sync::Lazy<tokio::sync::Mutex<()>> =
     once_cell::sync::Lazy::new(|| tokio::sync::Mutex::new(()));
+/// Tombstone negatif: waktu kegagalan upstream terakhir. Dalam cooldown
+/// singkat (5 s) request short-circuit tanpa menembak upstream lagi,
+/// sehingga satu kegagalan tidak memicu stampede N fetch berurutan.
+const HOMEPAGE_FAIL_COOLDOWN: std::time::Duration = std::time::Duration::from_secs(5);
+static HOMEPAGE_LAST_FAIL: once_cell::sync::Lazy<std::sync::Mutex<Option<std::time::Instant>>> =
+    once_cell::sync::Lazy::new(|| std::sync::Mutex::new(None));
 
 fn homepage_cached() -> Option<Value> {
     let guard = HOMEPAGE_CACHE.lock().ok()?;
@@ -267,7 +276,26 @@ pub(crate) async fn homepage_payload() -> Result<Value, AppError> {
         return Ok(cached);
     }
 
-    let raw = api::homepage().await?;
+    // Tombstone negatif: kalau upstream baru saja gagal (dalam cooldown),
+    // short-circuit tanpa re-fetch — hindari stampede N fetch berurutan.
+    if let Ok(guard) = HOMEPAGE_LAST_FAIL.lock() {
+        if let Some(at) = guard.as_ref() {
+            if at.elapsed() < HOMEPAGE_FAIL_COOLDOWN {
+                return Err(AppError::new(anyhow::anyhow!(
+                    "upstream homepage baru saja gagal (cooldown)"
+                )));
+            }
+        }
+    }
+
+    let raw = match api::homepage().await {
+        Ok(raw) => raw,
+        Err(e) => {
+            *HOMEPAGE_LAST_FAIL.lock().unwrap_or_else(|p| p.into_inner()) =
+                Some(std::time::Instant::now());
+            return Err(AppError::new(e));
+        }
+    };
     let mut out = serde_json::Map::new();
     out.insert(
         "success".into(),
@@ -323,9 +351,20 @@ pub(crate) fn json_with_etag<T: serde::Serialize>(
 
     let not_modified = if_none_match
         .map(|inm| {
+            let server_opaque = etag.strip_prefix("W/\"").unwrap_or(&etag[1..etag.len() - 1]);
             inm.split(',')
                 .map(str::trim)
-                .any(|s| s == etag || s == "*")
+                .any(|s| {
+                    if s == "*" {
+                        return true;
+                    }
+                    // RFC 7232: If-None-Match pakai WEAK comparison — strip
+                    // prefix "W/" dan kutip dari KEDUA sisi. Kalau tidak,
+                    // client yang mengirim strong tag `"hash"` tak akan match
+                    // server weak `W/"hash"` → 200+body, bukan 304.
+                    let s_opaque = s.strip_prefix("W/\"").unwrap_or(&s[1..s.len() - 1]);
+                    s_opaque == server_opaque
+                })
         })
         .unwrap_or(false);
 
@@ -351,14 +390,62 @@ async fn homepage(headers: HeaderMap) -> Response {
     }
 }
 
+/// Cache pencarian `/api/search` (legacy). Sebelumnya endpoint ini menembak
+/// upstream `index.komikid.org` untuk SETIAP request (baseline warm≈cold
+/// 1515ms). API `api::search` hanya satu sumber — cache TTL pendek + single-flight
+/// cukup: query yang sama berulang (klik chip, back/forward, retry) jadi ~ms.
+const SEARCH_CACHE_TTL: std::time::Duration = std::time::Duration::from_secs(120);
+/// Cap entri — cermin `SEARCH_CACHE_MAX` di unified.rs (128) supaya cache
+/// pencarian legacy tidak tumbuh tanpa batas (HashMap murni, tak ada eviction).
+const SEARCH_CACHE_MAX: usize = 128;
+static SEARCH_CACHE: once_cell::sync::Lazy<
+    std::sync::Mutex<std::collections::HashMap<String, (std::time::Instant, Value)>>,
+> = once_cell::sync::Lazy::new(Default::default);
+/// Single-flight: saat TTL habis hanya satu request yang menembak upstream.
+static SEARCH_REFRESH: once_cell::sync::Lazy<tokio::sync::Mutex<()>> =
+    once_cell::sync::Lazy::new(|| tokio::sync::Mutex::new(()));
+
 async fn search(Query(q): Query<SearchQuery>) -> Res<Value> {
-    let raw = api::search(&q.q, q.page.unwrap_or(1)).await?;
+    let page = q.page.unwrap_or(1);
+    let key = format!("{}:{}", q.q.trim().to_lowercase(), page);
+    if let Ok(guard) = SEARCH_CACHE.lock() {
+        if let Some((at, cached)) = guard.get(&key) {
+            if at.elapsed() < SEARCH_CACHE_TTL {
+                return Ok(Json(cached.clone()));
+            }
+        }
+    }
+    // double-check di dalam gate
+    let _gate = SEARCH_REFRESH.lock().await;
+    if let Ok(guard) = SEARCH_CACHE.lock() {
+        if let Some((at, cached)) = guard.get(&key) {
+            if at.elapsed() < SEARCH_CACHE_TTL {
+                return Ok(Json(cached.clone()));
+            }
+        }
+    }
+    let raw = api::search(&q.q, page).await?;
     let items = manga_list(&raw);
-    Ok(Json(json!({
-        "page": q.page.unwrap_or(1),
+    let out = json!({
+        "page": page,
         "count": items.len(),
         "manga": items.iter().map(slim).collect::<Vec<_>>(),
-    })))
+    });
+    if let Ok(mut guard) = SEARCH_CACHE.lock() {
+        // Cap kasar, cermin search_cache_put di unified.rs: buang satu entri
+        // paling tua kalau penuh dan key belum ada.
+        if guard.len() >= SEARCH_CACHE_MAX && !guard.contains_key(&key) {
+            if let Some(old) = guard
+                .iter()
+                .min_by_key(|(_, (at, _))| *at)
+                .map(|(k, _)| k.clone())
+            {
+                guard.remove(&old);
+            }
+        }
+        guard.insert(key, (std::time::Instant::now(), out.clone()));
+    }
+    Ok(Json(out))
 }
 
 #[derive(Deserialize)]

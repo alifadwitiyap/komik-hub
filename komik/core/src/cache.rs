@@ -27,6 +27,14 @@ pub const DEFAULT_TTL: Duration = Duration::from_secs(10 * 60);
 /// hanya kesimpulan pasti dari sumber yang berhasil diakses.
 pub const NEGATIVE_TTL: Duration = Duration::from_secs(60);
 
+/// Ambang & langkah sweep amortisasi entri kedaluwarsa (lih. `sweep_expired`).
+const SWEEP_THRESHOLD: usize = 4096;
+const SWEEP_STEP: usize = 256;
+/// Grace stale: entri hanya dibuang bila kedaluwarsa LEBIH LAMA dari ini
+/// (1 jam). Pemakai `get`/`lookup` mengandalkan entri stale untuk fallback
+/// saat upstream gagal; tidak ada pemakai yang butuh stale lebih tua.
+const STALE_GRACE_MS: u64 = 3_600_000;
+
 /// Sumber waktu yang bisa diinjeksi (test deterministik; bukan `Instant`
 /// supaya entri disk bisa dipromosikan ke memory tanpa kehilangan sisa umur).
 pub type Clock = std::sync::Arc<dyn Fn() -> u64 + Send + Sync>;
@@ -105,21 +113,46 @@ impl TtlCache {
 
     pub fn set(&self, key: &str, value: Value) {
         let expires_at_ms = (self.clock)().saturating_add(self.ttl_ms);
-        lock(&self.map).insert(key.to_string(), Entry { expires_at_ms, value });
+        let mut map = lock(&self.map);
+        map.insert(key.to_string(), Entry { expires_at_ms, value });
+        self.sweep_expired(&mut map);
     }
 
     /// Set dengan deadline absolut (dipakai saat mempromosikan entri disk).
     pub fn set_expiring_at(&self, key: &str, expires_at_ms: u64, value: Value) {
-        lock(&self.map).insert(
+        let mut map = lock(&self.map);
+        map.insert(
             key.to_string(),
             Entry { expires_at_ms, value },
         );
+        self.sweep_expired(&mut map);
     }
 
     /// Set dengan TTL spesifik per-entri (dipakai negative-cache).
     pub fn set_expiring_in(&self, key: &str, ttl: Duration, value: Value) {
         let expires_at_ms = (self.clock)().saturating_add(ttl.as_millis() as u64);
-        lock(&self.map).insert(key.to_string(), Entry { expires_at_ms, value });
+        let mut map = lock(&self.map);
+        map.insert(key.to_string(), Entry { expires_at_ms, value });
+        self.sweep_expired(&mut map);
+    }
+
+    /// Sweep amortisasi entri kedaluwarsa. Dipanggil dalam lock yang sama
+    /// dengan insert. Hanya dijalankan saat `len` melewati `SWEEP_THRESHOLD`
+    /// DAN `len % SWEEP_STEP == 0` (jadi tidak O(n) di setiap insert — saat
+    /// cache masih segar & normal, sweep jarang berjalan). Hanya entri yang
+    /// kedaluwarsa LEBIH LAMA dari `STALE_GRACE_MS` yang dibuang; entri segar
+    /// dan stale-dalam-grace tidak pernah hilang (ini bukan LRU).
+    ///
+    /// ponytail: batas keras / LRU sengaja TIDAK dibuat — entri segar tidak
+    /// pernah diusir, jadi cache bisa tumbuh melewati ambang bila nyaris semua
+    /// entri segar. Tambahkan LRU/evict kalau TtlCache dipakai menyimpan data
+    /// dengan umur panjang (mis. `remember_title` 30 hari) dalam jumlah besar.
+    fn sweep_expired(&self, map: &mut HashMap<String, Entry>) {
+        if map.len() < SWEEP_THRESHOLD || map.len() % SWEEP_STEP != 0 {
+            return;
+        }
+        let now = (self.clock)();
+        map.retain(|_, e| now < e.expires_at_ms.saturating_add(STALE_GRACE_MS));
     }
 
     pub fn remove(&self, key: &str) {
@@ -486,5 +519,31 @@ mod tests {
         cache.mem.clear();
         assert_eq!(cache.fresh("x"), Some(json!("v")));
         let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn sweep_expired_amortized_preserves_fresh_and_grace() {
+        let (clock, t) = test_clock(1_000);
+        let cache = TtlCache::with_clock(Duration::from_secs(10), clock);
+        // Satu entri stale-dalam-grace: TTL 60s pada t=1000, jadi expires
+        // 61000 ms, dan masih dalam grace (61000 + 1jam = 3661000 ms).
+        cache.set_expiring_in("stale-grace", Duration::from_secs(60), json!("x"));
+        // Isi sampai len = 4351 (di bawah 4352 = ambang+step sehingga tidak
+        // ada sweep selama pengisian; semua segar). k* expires = 11000 ms.
+        for i in 0..4350 {
+            cache.set(&format!("k{i}"), json!(i));
+        }
+        assert_eq!(cache.len(), 4351);
+        // Majukan clock ke 3660000 ms: k* (expires 11000, cutoff 3611000)
+        // melewati grace => harus terbuang. stale-grace (cutoff 3661000)
+        // masih dalam grace => harus tersimpan.
+        t.store(3_660_000, Ordering::SeqCst);
+        // Insert segar ini membuat len = 4352 (kelipatan 256 di atas ambang)
+        // => memicu sweep.
+        cache.set("segar", json!("baru"));
+        assert_eq!(cache.len(), 2, "sweep harus membuang k*");
+        assert!(cache.get("segar").is_some(), "entri segar tidak boleh hilang");
+        assert!(cache.get("stale-grace").is_some(), "stale-dalam-grace tidak boleh hilang");
+        assert!(cache.get("k0").is_none(), "stale melewati grace harus terbuang");
     }
 }
