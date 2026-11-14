@@ -35,5 +35,23 @@ def t_episode_keys():
     assert e["watch_url"] == "https://flystream.net/tv/60625?season=1&episode=1&play=1"
 check("episode fields", t_episode_keys)
 
+# --- provider ---
+import importlib.util
+sys.path.insert(0, os.path.normpath(os.path.join(HERE, "..", "..")))  # filmhub root
+PROVIDER = os.path.join(HERE, "..", "data", "provider.py")
+spec = importlib.util.spec_from_file_location("rick_morty_provider", PROVIDER)
+prov = importlib.util.module_from_spec(spec); spec.loader.exec_module(prov)
+
+class Bogus:
+    def tv_details(self, *a): raise RuntimeError("no network")
+    def tv_season(self, *a): raise RuntimeError("no network")
+
+def t_provider_fallback():
+    p = prov.RickMortyProvider(backend=Bogus())
+    d = p.get_show()
+    assert d["tmdb_id"] == 60625
+    assert len(d["seasons"]) == 9
+check("provider fallback on backend failure", t_provider_fallback)
+
 print(f"\n{passed} passed, {failed} failed")
 sys.exit(1 if failed else 0)
