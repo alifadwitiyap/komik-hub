@@ -1,0 +1,1 @@
+"""HTML rendering + CLI generator."""
