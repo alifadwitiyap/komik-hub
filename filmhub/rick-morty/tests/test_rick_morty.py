@@ -53,5 +53,19 @@ def t_provider_fallback():
     assert len(d["seasons"]) == 9
 check("provider fallback on backend failure", t_provider_fallback)
 
+# --- render ---
+RENDER = os.path.join(HERE, "..", "render", "template.py")
+spec = importlib.util.spec_from_file_location("rick_morty_render", RENDER)
+rend = importlib.util.module_from_spec(spec); spec.loader.exec_module(rend)
+
+def t_render_html():
+    d = json.load(open(DATA, encoding="utf-8"))
+    html = rend.render_show(d)
+    assert "Rick and Morty" in html
+    assert "https://flystream.net/tv/60625?season=1&episode=1&play=1" in html
+    assert html.count("ep-card") >= 91
+    assert "f5b14c" in html  # accent color present
+check("render produces html", t_render_html)
+
 print(f"\n{passed} passed, {failed} failed")
 sys.exit(1 if failed else 0)
