@@ -1,0 +1,687 @@
+{
+  "tmdb_id": 60625,
+  "title": "Rick and Morty",
+  "year": 2013,
+  "genres": [
+    "Animation",
+    "Comedy",
+    "Sci-Fi & Fantasy",
+    "Action & Adventure"
+  ],
+  "rating": 8.7,
+  "seasons_count": 9,
+  "episodes_count": 91,
+  "poster": "https://flystream.net/api/tmdb-image/w500/8BXUZ0nnR3DZsf30DYMFHfuTxxi.jpg",
+  "backdrop": "https://flystream.net/api/tmdb-image/w1280/iFOkrSrJRwE27PwbyQeYLlMJXzw.jpg",
+  "synopsis": "Follows a sociopathic genius scientist who drags his inherently timid grandson on adventures across the universe.",
+  "created_by": "Dan Harmon, Justin Roiland",
+  "network": "Adult Swim",
+  "language": "English",
+  "seasons": [
+    {
+      "season": 1,
+      "episodes": [
+        {
+          "episode": 1,
+          "title": "Pilot",
+          "still": "https://flystream.net/api/tmdb-image/w500/oWaKdUeMOlVZem3v9DWsdDGlTuY.jpg",
+          "watch_url": "https://flystream.net/tv/60625?season=1&episode=1&play=1"
+        },
+        {
+          "episode": 2,
+          "title": "Lawnmower Dog",
+          "still": "https://flystream.net/api/tmdb-image/w500/zsO5ylZLn7ihplZFqPmOz2v87R7.jpg",
+          "watch_url": "https://flystream.net/tv/60625?season=1&episode=2&play=1"
+        },
+        {
+          "episode": 3,
+          "title": "Anatomy Park",
+          "still": "https://flystream.net/api/tmdb-image/w500/2Je8EzKGQo0Iw7GlVsRudz9Yr6h.jpg",
+          "watch_url": "https://flystream.net/tv/60625?season=1&episode=3&play=1"
+        },
+        {
+          "episode": 4,
+          "title": "M. Night Shaym-Aliens!",
+          "still": "https://flystream.net/api/tmdb-image/w500/x03BaaoxUEwYm9OYRqgc0LWGxGo.jpg",
+          "watch_url": "https://flystream.net/tv/60625?season=1&episode=4&play=1"
+        },
+        {
+          "episode": 5,
+          "title": "Meeseeks and Destroy",
+          "still": "https://flystream.net/api/tmdb-image/w500/d8rSvLEROKeA1SKGVQ0ZjjFsDcV.jpg",
+          "watch_url": "https://flystream.net/tv/60625?season=1&episode=5&play=1"
+        },
+        {
+          "episode": 6,
+          "title": "Rick Potion #9",
+          "still": "https://flystream.net/api/tmdb-image/w500/hY750JVvL7K9KQN9lcqPTqcUEkN.jpg",
+          "watch_url": "https://flystream.net/tv/60625?season=1&episode=6&play=1"
+        },
+        {
+          "episode": 7,
+          "title": "Raising Gazorpazorp",
+          "still": "https://flystream.net/api/tmdb-image/w500/kDbvUQXyphvSs9fTBXangBtE8Qu.jpg",
+          "watch_url": "https://flystream.net/tv/60625?season=1&episode=7&play=1"
+        },
+        {
+          "episode": 8,
+          "title": "Rixty Minutes",
+          "still": "https://flystream.net/api/tmdb-image/w500/HaTpHoQw2DWFAtHgGKn4gLOEaX.jpg",
+          "watch_url": "https://flystream.net/tv/60625?season=1&episode=8&play=1"
+        },
+        {
+          "episode": 9,
+          "title": "Something Ricked This Way Comes",
+          "still": "https://flystream.net/api/tmdb-image/w500/daA9q3U3ibIcm5OGuklySeIsQWV.jpg",
+          "watch_url": "https://flystream.net/tv/60625?season=1&episode=9&play=1"
+        },
+        {
+          "episode": 10,
+          "title": "Close Rick-Counters of the Rick Kind",
+          "still": "https://flystream.net/api/tmdb-image/w500/tReg2lQTllqfmrt4xWFMaXWkhpx.jpg",
+          "watch_url": "https://flystream.net/tv/60625?season=1&episode=10&play=1"
+        },
+        {
+          "episode": 11,
+          "title": "Ricksy Business",
+          "still": "https://flystream.net/api/tmdb-image/w500/1lFPbyT7ZSBQeosXmUoLXjXF2UL.jpg",
+          "watch_url": "https://flystream.net/tv/60625?season=1&episode=11&play=1"
+        }
+      ]
+    },
+    {
+      "season": 2,
+      "episodes": [
+        {
+          "episode": 1,
+          "title": "A Rickle in Time",
+          "still": "https://flystream.net/api/tmdb-image/w500/49kPj1L8KkJAnhnqJIftr3fdXHt.jpg",
+          "watch_url": "https://flystream.net/tv/60625?season=2&episode=1&play=1"
+        },
+        {
+          "episode": 2,
+          "title": "Mortynight Run",
+          "still": "https://flystream.net/api/tmdb-image/w500/zsrtewu4jJPh4vB5ZDB9oW36tm8.jpg",
+          "watch_url": "https://flystream.net/tv/60625?season=2&episode=2&play=1"
+        },
+        {
+          "episode": 3,
+          "title": "Auto Erotic Assimilation",
+          "still": "https://flystream.net/api/tmdb-image/w500/6zOHPMTvduupyEDqL8FnLGt6fxq.jpg",
+          "watch_url": "https://flystream.net/tv/60625?season=2&episode=3&play=1"
+        },
+        {
+          "episode": 4,
+          "title": "Total Rickall",
+          "still": "https://flystream.net/api/tmdb-image/w500/zGLFTVfrUrzVSXhIM5iJ5ILmLMV.jpg",
+          "watch_url": "https://flystream.net/tv/60625?season=2&episode=4&play=1"
+        },
+        {
+          "episode": 5,
+          "title": "Get Schwifty",
+          "still": "https://flystream.net/api/tmdb-image/w500/3gqEcSpAaTERNPRThG2N4OlXrw9.jpg",
+          "watch_url": "https://flystream.net/tv/60625?season=2&episode=5&play=1"
+        },
+        {
+          "episode": 6,
+          "title": "The Ricks Must Be Crazy",
+          "still": "https://flystream.net/api/tmdb-image/w500/nK4uwrLAsSTMAi2iK1kzceg51NW.jpg",
+          "watch_url": "https://flystream.net/tv/60625?season=2&episode=6&play=1"
+        },
+        {
+          "episode": 7,
+          "title": "Big Trouble in Little Sanchez",
+          "still": "https://flystream.net/api/tmdb-image/w500/mmGdga7NBsz7CCZNVJrZ7bvzuOe.jpg",
+          "watch_url": "https://flystream.net/tv/60625?season=2&episode=7&play=1"
+        },
+        {
+          "episode": 8,
+          "title": "Interdimensional Cable 2: Tempting Fate",
+          "still": "https://flystream.net/api/tmdb-image/w500/fm5rzPCXTLr1SlSmylBkNkZhF1P.jpg",
+          "watch_url": "https://flystream.net/tv/60625?season=2&episode=8&play=1"
+        },
+        {
+          "episode": 9,
+          "title": "Look Who's Purging Now",
+          "still": "https://flystream.net/api/tmdb-image/w500/uK0bpV9Oc07FfCsPk6BISqKj7bS.jpg",
+          "watch_url": "https://flystream.net/tv/60625?season=2&episode=9&play=1"
+        },
+        {
+          "episode": 10,
+          "title": "The Wedding Squanchers",
+          "still": "https://flystream.net/api/tmdb-image/w500/tdH0b9klzjxUc93J2h4HY7hnWHo.jpg",
+          "watch_url": "https://flystream.net/tv/60625?season=2&episode=10&play=1"
+        }
+      ]
+    },
+    {
+      "season": 3,
+      "episodes": [
+        {
+          "episode": 1,
+          "title": "The Rickshank Rickdemption",
+          "still": "https://flystream.net/api/tmdb-image/w500/xwxRcQRpTpUlWN34mP0SpQCbfvs.jpg",
+          "watch_url": "https://flystream.net/tv/60625?season=3&episode=1&play=1"
+        },
+        {
+          "episode": 2,
+          "title": "Rickmancing the Stone",
+          "still": "https://flystream.net/api/tmdb-image/w500/2uXVtyVMsQ4ju9Ts4Fhnj5IXFdr.jpg",
+          "watch_url": "https://flystream.net/tv/60625?season=3&episode=2&play=1"
+        },
+        {
+          "episode": 3,
+          "title": "Pickle Rick",
+          "still": "https://flystream.net/api/tmdb-image/w500/lzNb4JsebI3JXQ6k73rWddrKkuV.jpg",
+          "watch_url": "https://flystream.net/tv/60625?season=3&episode=3&play=1"
+        },
+        {
+          "episode": 4,
+          "title": "Vindicators 3: The Return of Worldender",
+          "still": "https://flystream.net/api/tmdb-image/w500/c1BdCiPvk13xWalDrm2VT4wFEBw.jpg",
+          "watch_url": "https://flystream.net/tv/60625?season=3&episode=4&play=1"
+        },
+        {
+          "episode": 5,
+          "title": "The Whirly Dirly Conspiracy",
+          "still": "https://flystream.net/api/tmdb-image/w500/sGWF8xQH6OtCk6m7WxBG8kztma9.jpg",
+          "watch_url": "https://flystream.net/tv/60625?season=3&episode=5&play=1"
+        },
+        {
+          "episode": 6,
+          "title": "Rest and Ricklaxation",
+          "still": "https://flystream.net/api/tmdb-image/w500/kBlUIclFyabFCzaubgot6hUyQii.jpg",
+          "watch_url": "https://flystream.net/tv/60625?season=3&episode=6&play=1"
+        },
+        {
+          "episode": 7,
+          "title": "The Ricklantis Mixup",
+          "still": "https://flystream.net/api/tmdb-image/w500/aYP1QS0pjihcR4AYFtq5p9gKYCE.jpg",
+          "watch_url": "https://flystream.net/tv/60625?season=3&episode=7&play=1"
+        },
+        {
+          "episode": 8,
+          "title": "Morty's Mind Blowers",
+          "still": "https://flystream.net/api/tmdb-image/w500/htGYT3DrkEqT1ZB7lgLCEyUH2EF.jpg",
+          "watch_url": "https://flystream.net/tv/60625?season=3&episode=8&play=1"
+        },
+        {
+          "episode": 9,
+          "title": "The ABC's of Beth",
+          "still": "https://flystream.net/api/tmdb-image/w500/qGwRWniPFiFsXE1Y13PxP71tnSW.jpg",
+          "watch_url": "https://flystream.net/tv/60625?season=3&episode=9&play=1"
+        },
+        {
+          "episode": 10,
+          "title": "The Rickchurian Mortydate",
+          "still": "https://flystream.net/api/tmdb-image/w500/ej2Y8gRkOllPF5dRMG0nS7HKy6w.jpg",
+          "watch_url": "https://flystream.net/tv/60625?season=3&episode=10&play=1"
+        }
+      ]
+    },
+    {
+      "season": 4,
+      "episodes": [
+        {
+          "episode": 1,
+          "title": "Edge of Tomorty: Rick Die Rickpeat",
+          "still": "https://flystream.net/api/tmdb-image/w500/z0qw504V0rkLKGviNsBnq1HOnXR.jpg",
+          "watch_url": "https://flystream.net/tv/60625?season=4&episode=1&play=1"
+        },
+        {
+          "episode": 2,
+          "title": "The Old Man and the Seat",
+          "still": "https://flystream.net/api/tmdb-image/w500/hsRrS4E8WaxYPliG4XC2JTsIbwB.jpg",
+          "watch_url": "https://flystream.net/tv/60625?season=4&episode=2&play=1"
+        },
+        {
+          "episode": 3,
+          "title": "One Crew Over the Crewcoo's Morty",
+          "still": "https://flystream.net/api/tmdb-image/w500/etaGJvYnUNN7Hrs5ddNIkKxuXFn.jpg",
+          "watch_url": "https://flystream.net/tv/60625?season=4&episode=3&play=1"
+        },
+        {
+          "episode": 4,
+          "title": "Claw and Hoarder: Special Ricktim's Morty",
+          "still": "https://flystream.net/api/tmdb-image/w500/xG2DlQB8amHLCiiDohheCpjjUrd.jpg",
+          "watch_url": "https://flystream.net/tv/60625?season=4&episode=4&play=1"
+        },
+        {
+          "episode": 5,
+          "title": "Rattlestar Ricklactica",
+          "still": "https://flystream.net/api/tmdb-image/w500/po6Uuzz17eFcGFgiB2f6n7v0chL.jpg",
+          "watch_url": "https://flystream.net/tv/60625?season=4&episode=5&play=1"
+        },
+        {
+          "episode": 6,
+          "title": "Never Ricking Morty",
+          "still": "https://flystream.net/api/tmdb-image/w500/zAUbOurESu3aWQazYkdVbhlKoVp.jpg",
+          "watch_url": "https://flystream.net/tv/60625?season=4&episode=6&play=1"
+        },
+        {
+          "episode": 7,
+          "title": "Promortyus",
+          "still": "https://flystream.net/api/tmdb-image/w500/cgtHF7rqaac6ZhJp94orTFnNHgJ.jpg",
+          "watch_url": "https://flystream.net/tv/60625?season=4&episode=7&play=1"
+        },
+        {
+          "episode": 8,
+          "title": "The Vat of Acid Episode",
+          "still": "https://flystream.net/api/tmdb-image/w500/fN6d00et55OzeVSqq34Ww2wGQxR.jpg",
+          "watch_url": "https://flystream.net/tv/60625?season=4&episode=8&play=1"
+        },
+        {
+          "episode": 9,
+          "title": "Childrick of Mort",
+          "still": "https://flystream.net/api/tmdb-image/w500/h5QkB2nmmBwPhNhPN2FNTj3bm2I.jpg",
+          "watch_url": "https://flystream.net/tv/60625?season=4&episode=9&play=1"
+        },
+        {
+          "episode": 10,
+          "title": "Star Mort Rickturn of the Jerri",
+          "still": "https://flystream.net/api/tmdb-image/w500/6TemRqYYm1JQDEqf2sc6jRD5uXH.jpg",
+          "watch_url": "https://flystream.net/tv/60625?season=4&episode=10&play=1"
+        }
+      ]
+    },
+    {
+      "season": 5,
+      "episodes": [
+        {
+          "episode": 1,
+          "title": "Mort Dinner Rick Andre",
+          "still": "https://flystream.net/api/tmdb-image/w500/w864XNoMFjrR8dP0lfDkH8uYBym.jpg",
+          "watch_url": "https://flystream.net/tv/60625?season=5&episode=1&play=1"
+        },
+        {
+          "episode": 2,
+          "title": "Mortyplicity",
+          "still": "https://flystream.net/api/tmdb-image/w500/wzKkvUbWMso3bceAwJRXDDdMzNI.jpg",
+          "watch_url": "https://flystream.net/tv/60625?season=5&episode=2&play=1"
+        },
+        {
+          "episode": 3,
+          "title": "A Rickconvenient Mort",
+          "still": "https://flystream.net/api/tmdb-image/w500/nUP1i4LregRWkwMZTITmI26NgZA.jpg",
+          "watch_url": "https://flystream.net/tv/60625?season=5&episode=3&play=1"
+        },
+        {
+          "episode": 4,
+          "title": "Rickdependence Spray",
+          "still": "https://flystream.net/api/tmdb-image/w500/kZEv3526Omec597J6NIpP2GAa7n.jpg",
+          "watch_url": "https://flystream.net/tv/60625?season=5&episode=4&play=1"
+        },
+        {
+          "episode": 5,
+          "title": "Amortycan Grickfitti",
+          "still": "https://flystream.net/api/tmdb-image/w500/5nCh9wrr93WdYhquBFEMjZrDgFq.jpg",
+          "watch_url": "https://flystream.net/tv/60625?season=5&episode=5&play=1"
+        },
+        {
+          "episode": 6,
+          "title": "Rick & Morty's Thanksploitation Spectacular",
+          "still": "https://flystream.net/api/tmdb-image/w500/n3U2G3QOrfU3vQTpo42q23OwJKa.jpg",
+          "watch_url": "https://flystream.net/tv/60625?season=5&episode=6&play=1"
+        },
+        {
+          "episode": 7,
+          "title": "Gotron Jerrysis Rickvangelion",
+          "still": "https://flystream.net/api/tmdb-image/w500/yehrEI2y5y1smocmeMNWeWigboA.jpg",
+          "watch_url": "https://flystream.net/tv/60625?season=5&episode=7&play=1"
+        },
+        {
+          "episode": 8,
+          "title": "Rickternal Friendshine of the Spotless Mort",
+          "still": "https://flystream.net/api/tmdb-image/w500/oKf0YQVIQFYVIO2bgsDtxXLYLLJ.jpg",
+          "watch_url": "https://flystream.net/tv/60625?season=5&episode=8&play=1"
+        },
+        {
+          "episode": 9,
+          "title": "Forgetting Sarick Mortshall",
+          "still": "https://flystream.net/api/tmdb-image/w500/4ZU8vX420Tm2yilkmXejf7NKjL6.jpg",
+          "watch_url": "https://flystream.net/tv/60625?season=5&episode=9&play=1"
+        },
+        {
+          "episode": 10,
+          "title": "Rickmurai Jack",
+          "still": "https://flystream.net/api/tmdb-image/w500/6yPSy0ipNQfFUAX3tHSEf75rCdu.jpg",
+          "watch_url": "https://flystream.net/tv/60625?season=5&episode=10&play=1"
+        }
+      ]
+    },
+    {
+      "season": 6,
+      "episodes": [
+        {
+          "episode": 1,
+          "title": "Solaricks",
+          "still": "https://flystream.net/api/tmdb-image/w500/5tiOEjp03nvaGiKT73knretU8e8.jpg",
+          "watch_url": "https://flystream.net/tv/60625?season=6&episode=1&play=1"
+        },
+        {
+          "episode": 2,
+          "title": "Rick: A Mort Well Lived",
+          "still": "https://flystream.net/api/tmdb-image/w500/ezzPXWo8zAKl8eW2FivYRfng0jq.jpg",
+          "watch_url": "https://flystream.net/tv/60625?season=6&episode=2&play=1"
+        },
+        {
+          "episode": 3,
+          "title": "Bethic Twinstinct",
+          "still": "https://flystream.net/api/tmdb-image/w500/8ZCNAxkDo67GtcBJBDIERdywnar.jpg",
+          "watch_url": "https://flystream.net/tv/60625?season=6&episode=3&play=1"
+        },
+        {
+          "episode": 4,
+          "title": "Night Family",
+          "still": "https://flystream.net/api/tmdb-image/w500/d3FSuQC3SKLnVcb4zbyeqYUSM6X.jpg",
+          "watch_url": "https://flystream.net/tv/60625?season=6&episode=4&play=1"
+        },
+        {
+          "episode": 5,
+          "title": "Final DeSmithation",
+          "still": "https://flystream.net/api/tmdb-image/w500/ziMNDO6UMjDAbUV2zbV5TxgH537.jpg",
+          "watch_url": "https://flystream.net/tv/60625?season=6&episode=5&play=1"
+        },
+        {
+          "episode": 6,
+          "title": "JuRicksic Mort",
+          "still": "https://flystream.net/api/tmdb-image/w500/bj56DAGeH3vAMnBDXCObto8KCsK.jpg",
+          "watch_url": "https://flystream.net/tv/60625?season=6&episode=6&play=1"
+        },
+        {
+          "episode": 7,
+          "title": "Full Meta Jackrick",
+          "still": "https://flystream.net/api/tmdb-image/w500/lG890UhNqGtdsq9nJWxI31IQU2t.jpg",
+          "watch_url": "https://flystream.net/tv/60625?season=6&episode=7&play=1"
+        },
+        {
+          "episode": 8,
+          "title": "Analyze Piss",
+          "still": "https://flystream.net/api/tmdb-image/w500/iEz4PBtbs2TU0r4fq3gkZ01Mxl2.jpg",
+          "watch_url": "https://flystream.net/tv/60625?season=6&episode=8&play=1"
+        },
+        {
+          "episode": 9,
+          "title": "A Rick in King Mortur's Mort",
+          "still": "https://flystream.net/api/tmdb-image/w500/xiPSthi7ZF5xosfEqvAp6bl0sFu.jpg",
+          "watch_url": "https://flystream.net/tv/60625?season=6&episode=9&play=1"
+        },
+        {
+          "episode": 10,
+          "title": "Ricktional Mortpoon's Rickmas Mortcation",
+          "still": "https://flystream.net/api/tmdb-image/w500/zoCeFhTwzeO15h5BdhzlprFJzF1.jpg",
+          "watch_url": "https://flystream.net/tv/60625?season=6&episode=10&play=1"
+        }
+      ]
+    },
+    {
+      "season": 7,
+      "episodes": [
+        {
+          "episode": 1,
+          "title": "How Poopy Got His Poop Back",
+          "still": "https://flystream.net/api/tmdb-image/w500/rLrNq2fd4khvwYspPXL5e41QVcK.jpg",
+          "watch_url": "https://flystream.net/tv/60625?season=7&episode=1&play=1"
+        },
+        {
+          "episode": 2,
+          "title": "The Jerrick Trap",
+          "still": "https://flystream.net/api/tmdb-image/w500/nPcoJ8K1TPhFwCDTZRIKBPv8IyH.jpg",
+          "watch_url": "https://flystream.net/tv/60625?season=7&episode=2&play=1"
+        },
+        {
+          "episode": 3,
+          "title": "Air Force Wong",
+          "still": "https://flystream.net/api/tmdb-image/w500/lPTEES0yrLn5RnQRN1k3jFsx0GB.jpg",
+          "watch_url": "https://flystream.net/tv/60625?season=7&episode=3&play=1"
+        },
+        {
+          "episode": 4,
+          "title": "That's Amorte",
+          "still": "https://flystream.net/api/tmdb-image/w500/b5KOiBYZxYnfl4wL2IlvpqtU3tC.jpg",
+          "watch_url": "https://flystream.net/tv/60625?season=7&episode=4&play=1"
+        },
+        {
+          "episode": 5,
+          "title": "Unmortricken",
+          "still": "https://flystream.net/api/tmdb-image/w500/86ARgAvOKFHOvq9Y0wkmiMSJj4o.jpg",
+          "watch_url": "https://flystream.net/tv/60625?season=7&episode=5&play=1"
+        },
+        {
+          "episode": 6,
+          "title": "Rickfending Your Mort",
+          "still": "https://flystream.net/api/tmdb-image/w500/xdsjTPUF6eBf6YJhVbzARkeaXP3.jpg",
+          "watch_url": "https://flystream.net/tv/60625?season=7&episode=6&play=1"
+        },
+        {
+          "episode": 7,
+          "title": "Wet Kuat Amortican Summer",
+          "still": "https://flystream.net/api/tmdb-image/w500/wgfl1QwjxPtng5m02ix26yjCjLM.jpg",
+          "watch_url": "https://flystream.net/tv/60625?season=7&episode=7&play=1"
+        },
+        {
+          "episode": 8,
+          "title": "Rise of the Numbericons: The Movie",
+          "still": "https://flystream.net/api/tmdb-image/w500/8xmc22qIVtn1MSZM5C8pAb94QO8.jpg",
+          "watch_url": "https://flystream.net/tv/60625?season=7&episode=8&play=1"
+        },
+        {
+          "episode": 9,
+          "title": "Mort: Ragnarick",
+          "still": "https://flystream.net/api/tmdb-image/w500/fICBDuGjmSZc5OH8yOwTAKdQgYA.jpg",
+          "watch_url": "https://flystream.net/tv/60625?season=7&episode=9&play=1"
+        },
+        {
+          "episode": 10,
+          "title": "Fear No Mort",
+          "still": "https://flystream.net/api/tmdb-image/w500/4kKiVFbRxAPxcPDi7rPrUJjyMf6.jpg",
+          "watch_url": "https://flystream.net/tv/60625?season=7&episode=10&play=1"
+        }
+      ]
+    },
+    {
+      "season": 8,
+      "episodes": [
+        {
+          "episode": 1,
+          "title": "Summer of All Fears",
+          "still": "https://flystream.net/api/tmdb-image/w500/t7arWMclhZ8Kub48ymLvbDUN5Qg.jpg",
+          "watch_url": "https://flystream.net/tv/60625?season=8&episode=1&play=1"
+        },
+        {
+          "episode": 2,
+          "title": "Valkyrick",
+          "still": "https://flystream.net/api/tmdb-image/w500/wJNBw6mTV38fdMSpqbb4j4DnlMy.jpg",
+          "watch_url": "https://flystream.net/tv/60625?season=8&episode=2&play=1"
+        },
+        {
+          "episode": 3,
+          "title": "The Rick, the Mort & the Ugly",
+          "still": "https://flystream.net/api/tmdb-image/w500/gRPXyICt6nDeHYpIOsezqbx4qid.jpg",
+          "watch_url": "https://flystream.net/tv/60625?season=8&episode=3&play=1"
+        },
+        {
+          "episode": 4,
+          "title": "The Last Temptation of Jerry",
+          "still": "https://flystream.net/api/tmdb-image/w500/bvaJhvaBHHuiMZb80ErCCSuRRDz.jpg",
+          "watch_url": "https://flystream.net/tv/60625?season=8&episode=4&play=1"
+        },
+        {
+          "episode": 5,
+          "title": "Cryo Mort a Rickver",
+          "still": "https://flystream.net/api/tmdb-image/w500/eHkk2VxIKofHESBH1JcahnyAJT1.jpg",
+          "watch_url": "https://flystream.net/tv/60625?season=8&episode=5&play=1"
+        },
+        {
+          "episode": 6,
+          "title": "The CuRicksous Case of Bethjamin Button",
+          "still": "https://flystream.net/api/tmdb-image/w500/9L5sjRTSmV75YRh6IpIdngmYYZF.jpg",
+          "watch_url": "https://flystream.net/tv/60625?season=8&episode=6&play=1"
+        },
+        {
+          "episode": 7,
+          "title": "Ricker than Fiction",
+          "still": "https://flystream.net/api/tmdb-image/w500/A8lJdG8eSdvXRRp8f9kiBoHFktz.jpg",
+          "watch_url": "https://flystream.net/tv/60625?season=8&episode=7&play=1"
+        },
+        {
+          "episode": 8,
+          "title": "Nomortland",
+          "still": "https://flystream.net/api/tmdb-image/w500/8hVPCPuYVRTkG5DV3buLVTRhePU.jpg",
+          "watch_url": "https://flystream.net/tv/60625?season=8&episode=8&play=1"
+        },
+        {
+          "episode": 9,
+          "title": "Morty Daddy",
+          "still": "https://flystream.net/api/tmdb-image/w500/eZEJkJS2vyaIXTeloGvADUsIJs5.jpg",
+          "watch_url": "https://flystream.net/tv/60625?season=8&episode=9&play=1"
+        },
+        {
+          "episode": 10,
+          "title": "Hot Rick",
+          "still": "https://flystream.net/api/tmdb-image/w500/qwfGBFu2QrPm1BrkvSb9TNRXwXm.jpg",
+          "watch_url": "https://flystream.net/tv/60625?season=8&episode=10&play=1"
+        }
+      ]
+    },
+    {
+      "season": 9,
+      "episodes": [
+        {
+          "episode": 1,
+          "title": "There's Something About Morty",
+          "still": "https://flystream.net/api/tmdb-image/w500/yVJFdwfQIDRtHdxXotfT5DFREuE.jpg",
+          "watch_url": "https://flystream.net/tv/60625?season=9&episode=1&play=1"
+        },
+        {
+          "episode": 2,
+          "title": "Ricks Days, Seven Nights",
+          "still": "https://flystream.net/api/tmdb-image/w500/nYIyH5KrAxivpFPDTf87Zlgzpf9.jpg",
+          "watch_url": "https://flystream.net/tv/60625?season=9&episode=2&play=1"
+        },
+        {
+          "episode": 3,
+          "title": "Rick Fu Hustle",
+          "still": "https://flystream.net/api/tmdb-image/w500/pxDUN7AevFa6PXbazCwkykDpQAo.jpg",
+          "watch_url": "https://flystream.net/tv/60625?season=9&episode=3&play=1"
+        },
+        {
+          "episode": 4,
+          "title": "A Ricker Runs Through It",
+          "still": "https://flystream.net/api/tmdb-image/w500/kIjmRbbdZfKw6RCTxUO2zsa74x0.jpg",
+          "watch_url": "https://flystream.net/tv/60625?season=9&episode=4&play=1"
+        },
+        {
+          "episode": 5,
+          "title": "Jer Bud",
+          "still": "https://flystream.net/api/tmdb-image/w500/dQUDeY9qKrERkHwu8sB67XmG6Am.jpg",
+          "watch_url": "https://flystream.net/tv/60625?season=9&episode=5&play=1"
+        },
+        {
+          "episode": 6,
+          "title": "Erickerhead",
+          "still": "https://flystream.net/api/tmdb-image/w500/uye472viIZrJZNf9VgqLO1xwpBk.jpg",
+          "watch_url": "https://flystream.net/tv/60625?season=9&episode=6&play=1"
+        },
+        {
+          "episode": 7,
+          "title": "Mortgully: The Last Rickforest",
+          "still": "https://flystream.net/api/tmdb-image/w500/6UIHqNk9f8BlNsAZb30Jb3N4YBr.jpg",
+          "watch_url": "https://flystream.net/tv/60625?season=9&episode=7&play=1"
+        },
+        {
+          "episode": 8,
+          "title": "Rickuiem Mort a Dream",
+          "still": "https://flystream.net/api/tmdb-image/w500/fo4rjkcVyO4YF30K67a7yy2sKhT.jpg",
+          "watch_url": "https://flystream.net/tv/60625?season=9&episode=8&play=1"
+        },
+        {
+          "episode": 9,
+          "title": "Salute Your Morts",
+          "still": "https://flystream.net/api/tmdb-image/w500/sGtWCfxmJZ3uy35CUKzn0nuHRrS.jpg",
+          "watch_url": "https://flystream.net/tv/60625?season=9&episode=9&play=1"
+        },
+        {
+          "episode": 10,
+          "title": "Field of Dreams",
+          "still": "https://flystream.net/api/tmdb-image/w500/fOaRHSP4uHujzFlgYFA8ufZ9kJN.jpg",
+          "watch_url": "https://flystream.net/tv/60625?season=9&episode=10&play=1"
+        }
+      ]
+    }
+  ],
+  "related": [
+    {
+      "tmdb_id": 97645,
+      "title": "Solar Opposites",
+      "year": 2020,
+      "href": "https://flystream.net/tv/97645"
+    },
+    {
+      "tmdb_id": 202667,
+      "title": "The Second Best Hospital in the Galaxy",
+      "year": 2024,
+      "href": "https://flystream.net/tv/202667"
+    },
+    {
+      "tmdb_id": 73157,
+      "title": "Future Man",
+      "year": 2017,
+      "href": "https://flystream.net/tv/73157"
+    },
+    {
+      "tmdb_id": 135934,
+      "title": "The Legend of Vox Machina",
+      "year": 2022,
+      "href": "https://flystream.net/tv/135934"
+    },
+    {
+      "tmdb_id": 1433,
+      "title": "American Dad!",
+      "year": 2005,
+      "href": "https://flystream.net/tv/1433"
+    },
+    {
+      "tmdb_id": 251,
+      "title": "Aqua Teen Hunger Force",
+      "year": 2000,
+      "href": "https://flystream.net/tv/251"
+    },
+    {
+      "tmdb_id": 4585,
+      "title": "Tripping the Rift",
+      "year": 2004,
+      "href": "https://flystream.net/tv/4585"
+    },
+    {
+      "tmdb_id": 2418,
+      "title": "The Venture Bros.",
+      "year": 2004,
+      "href": "https://flystream.net/tv/2418"
+    },
+    {
+      "tmdb_id": 86831,
+      "title": "Love, Death & Robots",
+      "year": 2019,
+      "href": "https://flystream.net/tv/86831"
+    },
+    {
+      "tmdb_id": 105248,
+      "title": "Cyberpunk: Edgerunners",
+      "year": 2022,
+      "href": "https://flystream.net/tv/105248"
+    },
+    {
+      "tmdb_id": 131033,
+      "title": "Krapopolis",
+      "year": 2023,
+      "href": "https://flystream.net/tv/131033"
+    },
+    {
+      "tmdb_id": 262375,
+      "title": "Long Story Short",
+      "year": 2025,
+      "href": "https://flystream.net/tv/262375"
+    }
+  ]
+}
