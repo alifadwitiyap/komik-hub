@@ -67,5 +67,22 @@ def t_render_html():
     assert "f5b14c" in html  # accent color present
 check("render produces html", t_render_html)
 
+# --- generate (CLI) ---
+GEN = os.path.join(HERE, "..", "render", "generate.py")
+spec = importlib.util.spec_from_file_location("rick_morty_generate", GEN)
+gen = importlib.util.module_from_spec(spec); spec.loader.exec_module(gen)
+
+def t_generate_output(tmp=None):
+    import subprocess, sys
+    out = os.path.join(HERE, "..", "output.html")
+    env = dict(os.environ, PYTHONPATH=os.path.normpath(os.path.join(HERE, "..", "..")))
+    r = subprocess.run([sys.executable, GEN], capture_output=True, text=True, env=env, cwd=os.path.join(HERE, "..", ".."))
+    assert r.returncode == 0, r.stderr
+    assert "wrote" in r.stdout
+    assert os.path.exists(out)
+    html = open(out, encoding="utf-8").read()
+    assert "Rick and Morty" in html
+check("generate produces output.html", t_generate_output)
+
 print(f"\n{passed} passed, {failed} failed")
 sys.exit(1 if failed else 0)
