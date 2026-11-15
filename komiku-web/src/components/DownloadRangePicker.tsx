@@ -3,9 +3,9 @@ import type { ReactNode } from 'react'
 import { BATCH_MAX } from '../downloadBatch'
 
 /**
- * Range picker 2-tap (parity Komiku+ v2.3.0): tap baris pertama = anchor
- * "Awal", tap baris kedua = anchor "Akhir", semua chapter di ANTARA keduanya
- * (inklusif, menurut URUTAN TAMPIL) jadi terpilih. TANPA centang 1-1.
+ * Range picker 2-tap (parity Komiku+ v2.3.0): tap dua baris mana pun —
+ * semua chapter di ANTARA keduanya (inklusif, menurut URUTAN TAMPIL) jadi
+ * terpilih. Urutan tap bebas; yang penting ujung rentangnya. TANPA centang 1-1.
  *
  * Logika murni + hook hidup di file terpisah supaya bisa dipakai halaman lain
  * (Series legacy) dan diuji tanpa React/DOM.
@@ -23,7 +23,7 @@ export interface RangeAnchor {
 
 export const EMPTY_RANGE: RangeAnchor = { start: null, end: null }
 
-/** Tap berikutnya: anchor pertama → "Awal", kedua → "Akhir", ketiga → mulai lagi. */
+/** Tap berikutnya: anchor pertama → anchor kedua → ketiga → mulai lagi. */
 export function rangeTap(state: RangeAnchor, index: number): RangeAnchor {
   if (state.start === null) return { start: index, end: null }
   if (state.end === null) return { start: state.start, end: index }
@@ -44,22 +44,31 @@ export interface RangeSlice {
 }
 
 /**
- * Range lengkap (dua anchor) → slice dari earliest ke latest (inklusif),
- * dipotong ke RANGE_MAX chapter PERTAMA dari range. Belum lengkap → null.
+ * Range lengkap (dua anchor) → slice dari earliest ke latest (inklusif).
+ * Dipotong ke RANGE_MAX chapter PERTAMA dari range. `length` (jumlah chapter
+ * yang benar-benar tersedia) opsional: kalau diberikan, rentang juga
+ * di-clamp ke daftar nyata — indeks di luar daftar tidak pernah lolos
+ * (sesi sebelumnya: 99 dipilih di daftar 5 → 30 diminta, 5 valid).
+ * Belum lengkap / seluruhnya di luar daftar → null.
  */
-export function rangeSlice(state: RangeAnchor): RangeSlice | null {
+export function rangeSlice(state: RangeAnchor, length?: number): RangeSlice | null {
   if (state.start === null || state.end === null) return null
-  const from = Math.min(state.start, state.end)
   const raw = Math.abs(state.end - state.start) + 1
-  const count = Math.min(raw, RANGE_MAX)
-  return { from, to: from + count - 1, raw, count, clamped: raw > RANGE_MAX }
+  const lo = Math.min(state.start, state.end)
+  if (length !== undefined && (!Number.isFinite(length) || lo >= length)) return null
+  const from = Math.max(0, lo)
+  const room = length === undefined ? RANGE_MAX : Math.max(0, length - from)
+  const count = Math.min(raw, RANGE_MAX, room)
+  if (count <= 0) return null
+  return { from, to: from + count - 1, raw, count, clamped: count < raw }
 }
 
-/** Label kecil di baris: "Awal" / "Akhir" / null (bukan anchor). */
-export function anchorLabel(state: RangeAnchor, index: number): string | null {
-  if (state.start !== null && index === state.start) return 'Awal'
-  if (state.end !== null && index === state.end) return 'Akhir'
-  return null
+/** True kalau baris ini salah satu ujung rentang (index anchor). */
+export function isAnchorIndex(state: RangeAnchor, index: number): boolean {
+  return (
+    (state.start !== null && index === state.start) ||
+    (state.end !== null && index === state.end)
+  )
 }
 
 export interface RangeSelection {
@@ -76,20 +85,22 @@ export interface RangeSelection {
   needEnd: boolean
   select: (index: number) => void
   reset: () => void
-  isAnchor: (index: number) => string | null
+  isAnchor: (index: number) => boolean
   inRange: (index: number) => boolean
 }
 
 /**
  * State range untuk daftar baris (urutan tampil). Dipakai dua halaman
- * series (unified + legacy) supaya perilakunya identik.
+ * series (unified + legacy) supaya perilakunya identik. `length` = jumlah
+ * chapter yang tersedia di daftar saat ini (opsional; kalau diisi, seleksi
+ * selalu clamp ke batas nyata).
  */
-export function useRangeSelection(): RangeSelection {
+export function useRangeSelection(length?: number): RangeSelection {
   const [state, setState] = useState<RangeAnchor>(EMPTY_RANGE)
   const select = useCallback((index: number) => setState((s) => rangeTap(s, index)), [])
   const reset = useCallback(() => setState(EMPTY_RANGE), [])
 
-  const slice = rangeSlice(state)
+  const slice = rangeSlice(state, length)
   const indices =
     slice === null ? [] : Array.from({ length: slice.count }, (_, k) => slice.from + k)
 
@@ -102,7 +113,7 @@ export function useRangeSelection(): RangeSelection {
     needEnd: state.start !== null && state.end === null,
     select,
     reset,
-    isAnchor: (index: number) => anchorLabel(state, index),
+    isAnchor: (index: number) => isAnchorIndex(state, index),
     inRange: (index: number) => (slice !== null ? index >= slice.from && index <= slice.to : false),
   }
 }
@@ -113,21 +124,18 @@ interface RangeSelectBarProps {
   needEnd?: boolean
   busy?: boolean
   max?: number
-  /** Kedua aksi unduh (cache offline + PDF). Satu tombol dulu, setelah
-   *  diklik tampil pilihan jenis unduhan. */
+  /** Kedua aksi unduh (cache offline + PDF), langsung terlihat. */
   onDownloadOffline: () => void
   onDownloadPdf: () => void
   children?: ReactNode
 }
 
 /**
- * Bar info seleksi (menggantikan UI centang): "N dipilih · maks 30" +
- * tombol "Unduh (N)". Disabled kalau baru satu anchor (hint "Pilih chapter
- * akhir"); range > 30 → pesan clamp eksplisit. `children` = baris progres.
- *
- * Alur jenis unduhan: klik "Unduh (N)" → dua tombol pilihan (Offline / PDF)
- * muncul di tempatnya; salah satu diklik → aksi dijalankan + bar kembali ke
- * tombol tunggal. `busy` menonaktifkan keduanya.
+ * Dock aksi seleksi (Floating Action Dock): counter "N dipilih · maks 30"
+ * + dua tombol langsung (Offline di perangkat ini / PDF siap diambil).
+ * Disabled kalau baru satu anchor (hint "Tap chapter kedua…"); range > 30 →
+ * pesan clamp eksplisit. `children` = baris progres. `busy` menonaktifkan
+ * keduanya.
  */
 export function RangeSelectBar({
   count,
@@ -139,73 +147,75 @@ export function RangeSelectBar({
   onDownloadPdf,
   children,
 }: RangeSelectBarProps) {
-  const [showType, setShowType] = useState(false)
   const disabled = busy || needEnd || count === 0
   return (
     <div
       role="region"
       aria-label="Pilih range unduhan"
-      className="rounded-xl border border-ink-800 bg-ink-900 p-3"
+      data-range-dock
+      className="range-dock fixed inset-x-3 bottom-[calc(4rem+env(safe-area-inset-bottom))] z-30 rounded-xl border border-ink-800 bg-ink-900/95 p-3 shadow-lg shadow-black/40 backdrop-blur"
     >
-      <div className="flex items-center justify-between gap-2">
-        <p className="text-[12px] font-semibold text-ink-200">
-          {count} dipilih <span className="text-ink-500">· maks {max}</span>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <p className="text-[12px] font-semibold tabular-nums text-ink-200" aria-live="polite" aria-atomic="true">
+          {count > 0 ? (
+            <>{count} chapter dipilih <span className="text-ink-500">· maks {max}</span></>
+          ) : (
+            <span className="text-ink-500">Belum ada chapter dipilih</span>
+          )}
         </p>
-        {!showType ? (
+        <div className="flex flex-wrap gap-1.5" role="group" aria-label="Tipe unduhan">
           <button
             type="button"
-            onClick={() => setShowType(true)}
+            onClick={onDownloadOffline}
             disabled={disabled}
-            title={needEnd ? 'Pilih chapter akhir' : undefined}
-            className="min-h-11 min-w-11 rounded-lg bg-brand-amber px-4 py-2.5 text-[12px] font-bold text-white disabled:opacity-50"
+            aria-busy={busy}
+            aria-label={busy ? 'Mengunduh chapter, mohon tunggu' : `Unduh ${count} chapter untuk baca offline di aplikasi — Offline di perangkat ini`}
+            title={needEnd ? 'Tap chapter kedua untuk menyelesaikan rentang' : undefined}
+            className="min-h-11 min-w-11 rounded-lg bg-brand-amber px-3 py-2.5 text-[11.5px] font-semibold leading-tight text-white transition-[transform,background-color,border-color,color] duration-150 ease-[var(--ease-out)] active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber focus-visible:ring-offset-2 disabled:opacity-45"
           >
-            {busy ? 'Mengunduh…' : `Unduh (${count})`}
+            <span className="block font-bold">{busy ? 'Mengunduh…' : 'Offline di perangkat ini'}</span>
+            <span className="block text-[10px] font-normal opacity-85">baca tanpa internet</span>
           </button>
-        ) : (
-          <div className="flex gap-1.5">
-            <button
-              type="button"
-              onClick={() => {
-                setShowType(false)
-                onDownloadOffline()
-              }}
-              disabled={busy}
-              className="min-h-11 min-w-11 rounded-lg border border-brand-amber-dim bg-brand-amber/10 px-4 py-2.5 text-[12px] font-semibold text-brand-amber disabled:opacity-50"
-            >
-              Offline
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                setShowType(false)
-                onDownloadPdf()
-              }}
-              disabled={busy}
-              className="min-h-11 min-w-11 rounded-lg border border-ink-600 px-4 py-2.5 text-[12px] font-semibold text-ink-200 [@media(hover:hover)]:hover:bg-ink-850 disabled:opacity-50"
-            >
-              PDF
-            </button>
-          </div>
-        )}
+          <button
+            type="button"
+            onClick={onDownloadPdf}
+            disabled={disabled}
+            aria-busy={busy}
+            aria-label={busy ? 'Menyiapkan PDF, mohon tunggu' : `Unduh ${count} chapter sebagai file PDF — PDF siap diambil`}
+            className="min-h-11 min-w-11 rounded-lg border border-ink-600 bg-ink-850 px-3 py-2.5 text-[11.5px] font-semibold leading-tight text-ink-100 transition-[transform,background-color,border-color,color] duration-150 ease-[var(--ease-out)] active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber focus-visible:ring-offset-2 disabled:opacity-45"
+          >
+            <span className="block font-bold">PDF siap diambil</span>
+            <span className="block text-[10px] font-normal text-ink-400">file diunduh</span>
+          </button>
+        </div>
       </div>
 
-      {/* Slot hint TINGGI TETAP. Hint "Pilih chapter akhir" baru muncul
-          setelah tap pertama; kalau bar bertambah tinggi saat itu, seluruh
-          daftar chapter bergeser dan tap kedua mendarat di baris lain
-          (2 tap → 3 chapter terpilih). Slot ini selalu memesan satu baris,
-          jadi tinggi bar sama sebelum & sesudah tap. */}
-      <div className="mt-1.5 min-h-4" aria-live="polite">
-        {needEnd ? (
-          <p className="text-[11px] font-semibold leading-4 text-ink-500">
-            Pilih chapter akhir
-          </p>
-        ) : clamped ? (
-          <p className="text-[11px] font-semibold leading-4 text-brand-amber">
-            Maksimal {max} chapter — {max} pertama yang diambil
-          </p>
-        ) : null}
+      {/* Instruksi tetap terlihat; slot hint tidak menggeser baris saat tap pertama. */}
+      <div className="mt-1.5" aria-live="polite">
+        <p className="text-[11px] leading-4 text-ink-500">
+          Tap dua chapter — semua di antaranya ikut terpilih, urutan bebas. Untuk satu chapter, tap chapter yang sama dua kali.
+        </p>
+        <div className="min-h-4">
+          {needEnd ? (
+            <p className="text-[11px] font-semibold leading-4 text-ink-500">Tap chapter kedua untuk menyelesaikan rentang</p>
+          ) : clamped ? (
+            <p className="text-[11px] font-semibold leading-4 text-brand-amber">Maksimal {max} chapter — {max} pertama yang diambil</p>
+          ) : null}
+        </div>
       </div>
       {children}
     </div>
   )
+}
+/**
+ * Hitung berapa index seleksi rentang yang tidak lagi punya item di daftar
+ * sepanjang `listLength` (daftar chapter menyusut setelah seleksi, atau
+ * indeks di luar batas karena data baru). Murni — dipakai halaman untuk
+ * memperingatkan user alih-alih diam-diam membuang chapter.
+ */
+export function outOfRangeCount(indices: readonly number[], listLength: number): number {
+  if (listLength <= 0) return indices.length
+  let n = 0
+  for (const i of indices) if (i < 0 || i >= listLength) n += 1
+  return n
 }

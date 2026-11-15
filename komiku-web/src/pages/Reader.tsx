@@ -15,6 +15,7 @@ import { imgSrc, imgUrl, mountAheadPx, slowLink } from '../imgUrl'
 import { nextFillFrontier } from '../fillAhead'
 import { tapHitsReaderControl } from '../readerControls'
 import { downloadChapterImages } from '../chapterOffline'
+import { saveGeneratedPdf } from '../downloadBatch'
 import { unifiedApi } from '../api'
 import { getReaderSettings } from '../readerSettings'
 import { useReaderSettings } from '../hooks/useReaderSettings'
@@ -282,6 +283,13 @@ export default function Reader() {
 
   // Ekspor PDF (unified-only): generate server-side, masuk tab Unduhan di Rak.
   const [exportingPdf, setExportingPdf] = useState(false)
+  // Hasil ekspor yang gagal diserahkan ke perangkat — tampilkan blok persisten
+  // di ReaderDownloadActions (tombol Ambil PDF / tautan Rak).
+  const [pdfResult, setPdfResult] = useState<{ id: string; filename: string } | null>(null)
+  // Reset blok PDF persisten saat ganti chapter (Reader tidak remount karena route tanpa key).
+  useEffect(() => {
+    setPdfResult(null)
+  }, [chapterId])
   const onExportPdf = useCallback(async () => {
     const u = parseUnifiedKey(chapterId)
     if (!u || exportingPdf) return
@@ -289,7 +297,14 @@ export default function Reader() {
     setToast('Membuat PDF…')
     try {
       const res = await unifiedApi.downloadPdf(u.handle, u.number)
-      setToast(`PDF siap: ${res.filename}`)
+      const delivered = await saveGeneratedPdf(res.id, res.filename)
+      if (delivered) {
+        setPdfResult(null)
+        setToast(`PDF siap: ${res.filename} — unduhan dimulai`)
+      } else {
+        setPdfResult({ id: res.id, filename: res.filename })
+        setToast('PDF sudah dibuat, tapi unduhan otomatis gagal — ambil lewat tombol di bawah atau di Rak → Unduhan')
+      }
     } catch {
       setToast('Gagal membuat PDF — coba lagi nanti.')
     } finally {
@@ -572,6 +587,7 @@ export default function Reader() {
     ? Math.min(100, Math.round((loadedCount / images.length) * 100))
     : 0
   const nextKey = chapter.next ? String(chapter.next.id) : null
+  const prevKey = chapter.previous ? String(chapter.previous.id) : null
   // id manga legacy (angka) — cuma ada di flow komiku lama. Flow unified
   // menyimpan handle 'sumber:native_id' di `series.id` (string), jadi angka
   // di sini selalu null untuk unified.
@@ -694,6 +710,7 @@ export default function Reader() {
         title={chapter.name}
         subtitle={`${series?.title ?? 'Memuat…'} · ${pct}%`}
         onBack={() => navigate(seriesHref(seriesId) ?? '/')}
+        titleHref={seriesHref(seriesId)}
         onHome={() => navigate('/')}
         onShare={() => setToast('Bagikan: salin URL halaman ini')}
         onMore={() => setMenuOpen(true)}
@@ -707,6 +724,8 @@ export default function Reader() {
         }
       />
       <ReaderFooter
+        prevName={chapter.previous?.name ?? null}
+        prevHref={prevKey ? readerHref(prevKey) : null}
         nextName={chapter.next?.name ?? null}
         nextHref={nextKey ? readerHref(nextKey) : null}
         onPickChapter={() => setChapterPickerOpen(true)}
@@ -845,6 +864,8 @@ export default function Reader() {
             downloading={downloading}
             onExportPdf={parseUnifiedKey(chapterId) ? onExportPdf : undefined}
             onOfflineDownload={onOfflineDownload}
+            pdfResult={pdfResult}
+            onPdfResultDismiss={() => setPdfResult(null)}
           />
         }
       />

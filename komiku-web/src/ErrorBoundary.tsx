@@ -58,7 +58,6 @@ export class ErrorBoundary extends Component<Props, State> {
         >
           Muat ulang
         </button>
-        <p className="mt-3 break-words text-[10.5px] text-ink-600">{error.message}</p>
       </div>
     )
   }

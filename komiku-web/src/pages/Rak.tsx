@@ -1,19 +1,19 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Link, useLocation, useSearchParams } from 'react-router-dom'
 import { imgUrl } from '../imgUrl'
-import { toMangaCard, unifiedApi } from '../api'
+import { accountHeaders, toMangaCard, unifiedApi } from '../api'
 import type { Manga } from '../types'
 import { MangaCard } from './Home'
 import * as rakStore from '../rakStore'
 import { readerHref } from '../readerSource'
 import { Empty, Spinner } from '../App'
 import { IconArrowRight, IconXmark } from '../icons'
-import { humanSize } from '../downloadBatch'
+import { humanSize, saveGeneratedPdf } from '../downloadBatch'
 // Store unduhan: import STATIS (bukan import.meta.glob lazy) — glob-lazy
 // bisa membuat instance modul terpisah dari yang dipakai halaman series,
 // sehingga dua singleton store dan Rak tak pernah melihat run-nya.
 // Seam ini persis yang memicu kartu 'Sedang diunduh' tak muncul di Rak.
-import { cancelRun, getRuns, subscribeRuns } from '../downloadStore'
+import { cancelRun, getRuns, isRunStale, runBusy, runProgress, subscribeRuns, type DlRun } from '../downloadStore'
 import { useNotifCounts } from '../notifCounts'
 import SourceBadge from '../components/SourceBadge'
 import { SourceSortBar, useSortFilter, useSourceFilter } from '../components/SourceSortBar'
@@ -21,11 +21,39 @@ import type { DownloadItem, DownloadsResponse } from '../types'
 
 type TabKey = 'terbaru' | 'sejarah' | 'favorit' | 'unduhan'
 
+/** Urutan tab + label (dl untuk tablist ARIA di atas). */
+const TABS = [
+  ['terbaru', 'Terbaru'],
+  ['sejarah', 'Sejarah'],
+  ['favorit', 'Favorit'],
+  ['unduhan', 'Unduhan'],
+] as const
+
 /** Query ?tab= → tab aktif; nilai tak dikenal jatuh ke 'terbaru'. */
 function tabFromQuery(value: string | null): TabKey {
   return value === 'sejarah' || value === 'favorit' || value === 'unduhan'
     ? value
     : 'terbaru'
+}
+
+/** Minimal shape run untuk teks progres (kompatibel dengan DlRun store). */
+type RunProgressSource = { jobs: readonly { state: 'wait' | 'run' | 'ok' | 'fail' }[] }
+
+/**
+ * SATU definisi progres untuk mode pdf & cache: selesai = ok + fail,
+ * dihitung via `runProgress` dari store.
+ */
+function runProgressText(run: RunProgressSource): string {
+  const total = run.jobs.length
+  const { selesai, ok, fail } = runProgress(run)
+  return `${selesai}/${total} diproses · ${ok} tersimpan · ${fail} gagal`
+}
+
+/** Jumlah run aktif — untuk badge di tab Unduhan. */
+function useActiveRunCount(): number {
+  const [count, setCount] = useState(() => getRuns().filter(runBusy).length)
+  useEffect(() => subscribeRuns((runs) => setCount(runs.filter(runBusy).length)), [])
+  return count
 }
 
 /**
@@ -40,13 +68,24 @@ function tabFromQuery(value: string | null): TabKey {
  * setelah batch unduh selesai.
  */
 export default function Rak() {
-  const [params] = useSearchParams()
+  const [params, setSearchParams] = useSearchParams()
   const location = useLocation()
   const flashFromNav = (location.state as { flash?: string } | null)?.flash ?? null
   const [tab, setTab] = useState<TabKey>(() => tabFromQuery(params.get('tab')))
+  // Selaraskan tab dengan URL: CTA empty-state (?tab=favorit) dan deep-link
+  // harus benar-benar memindahkan panel, bukan cuma mengganti query.
+  const tabQuery = params.get('tab')
+  useEffect(() => {
+    setTab(tabFromQuery(tabQuery))
+  }, [tabQuery])
+  const goTab = (key: TabKey) => {
+    setTab(key)
+    setSearchParams(key === 'terbaru' ? {} : { tab: key }, { replace: true })
+  }
   const [flash, setFlash] = useState<string | null>(flashFromNav)
   const [history, setHistory] = useState(() => rakStore.listHistory())
   const [favorites, setFavorites] = useState(() => rakStore.listFavorites())
+  const activeRuns = useActiveRunCount()
 
   // re-render saat rakStore berubah (heart di series/reader, baca chapter)
   useEffect(() => {
@@ -83,33 +122,57 @@ export default function Rak() {
         </div>
       )}
 
-      <div className="mb-4 grid grid-cols-4 gap-2">
-        {(
-          [
-            ['terbaru', 'Terbaru'],
-            ['sejarah', 'Sejarah'],
-            ['favorit', 'Favorit'],
-            ['unduhan', 'Unduhan'],
-          ] as const
-        ).map(([key, label]) => (
+      {/* Tab = ARIA tablist (bukan grid tombol): panah kiri/kanan pindah tab,
+          aria-selected bawa keadaan aktif ke screen reader (dulu warna saja). */}
+      <div role="tablist" aria-label="Rak" className="mb-4 grid grid-cols-4 gap-2">
+        {TABS.map(([key, label]) => (
           <button
             key={key}
-            onClick={() => setTab(key)}
-            className={`min-h-11 rounded-xl py-2.5 text-[12px] font-bold transition-colors ${
+            role="tab"
+            id={`tab-${key}`}
+            aria-selected={tab === key}
+            aria-controls={`panel-${key}`}
+            tabIndex={tab === key ? 0 : -1}
+            onClick={() => goTab(key)}
+            onKeyDown={(e) => {
+              const step =
+                e.key === 'ArrowRight' ? 1 : e.key === 'ArrowLeft' ? -1 : e.key === 'Home' ? -99 : e.key === 'End' ? 99 : 0
+              if (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft' && e.key !== 'Home' && e.key !== 'End') return
+              e.preventDefault()
+              const next =
+                step === -99 ? 0 : step === 99 ? TABS.length - 1 : (TABS.findIndex(([k]) => k === tab) + step + TABS.length) % TABS.length
+              const nextKey = TABS[next][0]
+              goTab(nextKey)
+              document.getElementById(`tab-${nextKey}`)?.focus()
+            }}
+            className={`min-h-11 rounded-xl py-2.5 text-[12px] font-bold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber focus-visible:ring-offset-2 ${
               tab === key
                 ? 'bg-brand-amber text-white'
                 : 'border border-ink-800 bg-ink-900 text-ink-300'
             }`}
           >
-            {label}
+            <span className="inline-flex items-center justify-center gap-1.5">
+              {label}
+              {key === 'unduhan' && activeRuns > 0 && (
+                <span
+                  aria-hidden="true"
+                  className="grid min-h-5 min-w-5 place-items-center rounded-full bg-white px-1 text-[10px] font-bold leading-none text-ink-900"
+                >
+                  {activeRuns > 9 ? '9+' : activeRuns}
+                </span>
+              )}
+              {key === 'unduhan' && activeRuns > 0 && (
+                <span className="sr-only">, {activeRuns} proses berjalan</span>
+              )}
+            </span>
           </button>
         ))}
       </div>
 
-      {tab === 'terbaru' && <LatestTab />}
-      {tab === 'sejarah' && <HistoryTab entries={history} />}
-      {tab === 'favorit' && <FavoritesTab entries={favorites} />}
-      {tab === 'unduhan' && <DownloadsTab />}
+      {tab === 'terbaru' && <section role="tabpanel" id="panel-terbaru" aria-labelledby="tab-terbaru"><LatestTab /></section>}
+      {tab === 'sejarah' && <section role="tabpanel" id="panel-sejarah" aria-labelledby="tab-sejarah"><HistoryTab entries={history} /></section>}
+      {tab === 'favorit' && <section role="tabpanel" id="panel-favorit" aria-labelledby="tab-favorit"><FavoritesTab entries={favorites} /></section>}
+      {tab === 'unduhan' && <section role="tabpanel" id="panel-unduhan" aria-labelledby="tab-unduhan" aria-label="Unduhan tersimpan"><DownloadsTab /></section>}
     </div>
   )
 }
@@ -270,28 +333,7 @@ function Cover({ src, title }: { src: string | null; title: string }) {
 
 // ---------------------------------------------------------------- Unduhan
 
-/**
- * Kontrak downloadStore (dibuat lane D1). Bentuknya ditiru di sini supaya
- * tab ini TIDAK menuntut file itu ada: modul dimuat opsional (lazy
- * import.meta.glob, bukan import statis). Kalau lane D1 belum mendarat,
- * glob-nya kosong → bagian "proses aktif" tidak dirender dan build tetap
- * hijau; begitu file-nya ada, pancaran aktif langsung menyala tanpa edit.
- */
-interface DlJob {
-  number: string
-  state: 'wait' | 'run' | 'ok' | 'fail'
-  error?: string
-}
-interface DlRun {
-  handle: string
-  seriesTitle: string
-  /** 'pdf' = generate PDF + auto-unduh; 'cache' = simpan gambar offline. */
-  mode?: 'pdf' | 'cache'
-  /** jumlah PDF yang sudah terkirim ke perangkat (mode pdf). */
-  saved?: number
-  jobs: DlJob[]
-  startedAt: number
-}
+// Store unduhan diimpor statis; kontrak run dikonsumsi lewat type import.
 interface DlStoreModule {
   getRuns: () => DlRun[]
   subscribeRuns: (cb: (runs: DlRun[]) => void) => () => void
@@ -307,16 +349,12 @@ function loadStore(): Promise<DlStoreModule> {
   return storePromise
 }
 
-/** Run yang masih punya chapter belum selesai (wait/run). */
-function pendingOf(runs: DlRun[]): DlRun[] {
-  return runs.filter((r) => r.jobs.some((j) => j.state === 'wait' || j.state === 'run'))
-}
-
 /**
- * Proses unduhan AKTIF lintas halaman: unduhan LANJUT walau user pindah
- * tab/halaman (paritas notifikasi sistem "Chapter 64 · Series — 61%").
+ * Proses unduhan lintas halaman (aktif + ringkasan terminal): unduhan
+ * LANJUT walau user pindah tab/halaman (paritas notifikasi sistem
+ * "Chapter 64 · Series — 61%").
  */
-function usePendingRuns(): DlRun[] {
+function useAllRuns(): DlRun[] {
   const [runs, setRuns] = useState<DlRun[]>([])
   useEffect(() => {
     let alive = true
@@ -331,54 +369,121 @@ function usePendingRuns(): DlRun[] {
       unsub?.()
     }
   }, [])
-  return pendingOf(runs)
+  return runs
 }
 
-/** Kartu per SERIES untuk setiap proses yang sedang jalan (+ tombol Batal). */
+/** Kartu per SERIES: proses yang jalan (+ tombol Batal) dan ringkasan run terminal. */
 function ActiveDownloads({ runs }: { runs: DlRun[] }) {
+  // Detak 30 dtk untuk label "macet" (startedAt tua + masih aktif).
+  const [now, setNow] = useState(() => Date.now())
+  // Double-tap Batal: satu permintaan batal per handle, dibuka lagi setelah
+  // 10 dtk (atau Run hilang dari daftar karena selesai/batal).
+  const [cancelling, setCancelling] = useState<ReadonlySet<string>>(() => new Set())
+  const busyRuns = runs.filter(runBusy)
+  const terminalRuns = runs.filter((r) => !runBusy(r))
+  useEffect(() => {
+    if (busyRuns.length === 0) return
+    const t = setInterval(() => setNow(Date.now()), 30_000)
+    return () => clearInterval(t)
+  }, [busyRuns.length])
   if (runs.length === 0) return null
+  const requestCancel = (handle: string) => {
+    setCancelling((prev) => new Set(prev).add(handle))
+    void loadStore().then((s) => s?.cancelRun(handle))
+    window.setTimeout(() => {
+      setCancelling((prev) => {
+        const next = new Set(prev)
+        next.delete(handle)
+        return next
+      })
+    }, 10_000)
+  }
   return (
     <div className="mb-4 space-y-2.5">
-      <p className="text-[11.5px] font-semibold text-ink-400">Sedang diunduh</p>
-      {runs.map((run) => {
+      {busyRuns.length > 0 && (
+        <p className="text-[11.5px] font-semibold text-ink-400">Sedang diunduh</p>
+      )}
+      {busyRuns.map((run) => {
+        const { selesai, fail } = runProgress(run)
         const total = run.jobs.length
-        const done = run.jobs.filter((j) => j.state === 'ok').length
-        const fail = run.jobs.filter((j) => j.state === 'fail').length
         const failMsg = run.jobs.find((j) => j.state === 'fail' && j.error)?.error
-        const pct = total > 0 ? Math.round((done / total) * 100) : 0
+        const pct = total > 0 ? Math.round((selesai / total) * 100) : 0
         const current =
           run.jobs.find((j) => j.state === 'run') ?? run.jobs.find((j) => j.state === 'wait')
+        const isCancelling = cancelling.has(run.handle)
+        const stale = isRunStale(run, now)
         return (
           <div key={run.handle} className="rounded-xl border border-brand-amber-dim bg-ink-900 p-3">
             <div className="flex items-start justify-between gap-2">
               <div className="min-w-0">
                 <p className="truncate text-[13px] font-semibold text-ink-100">{run.seriesTitle}</p>
                 <p className="text-[11.5px] text-ink-400">
-                  {done}/{total} chapter
-                  {current ? ` · Chapter ${current.number}` : ''} · {pct}%
-                  {run.mode === 'pdf' && run.saved ? ` · ${run.saved} PDF terkirim` : ''}
+                  {runProgressText(run)}
+                  {current ? ` · Chapter ${current.number}` : ''}
                 </p>
                 {fail > 0 && (
                   <p className="mt-0.5 truncate text-[11px] text-brand-red">
                     {fail} gagal{failMsg ? ` · ${failMsg}` : ''}
                   </p>
                 )}
+                {stale && (
+                  <p className="mt-0.5 text-[11px] font-semibold text-brand-red">
+                    Unduhan tampak macet (≥15 menit tanpa hasil). Batal lalu coba lagi.
+                  </p>
+                )}
               </div>
               <button
-                onClick={() => void loadStore().then((s) => s?.cancelRun(run.handle))}
-                className="min-h-11 min-w-11 shrink-0 rounded-lg border border-ink-700 px-4 py-2.5 text-[12px] font-semibold text-ink-300"
+                disabled={isCancelling}
+                onClick={() => requestCancel(run.handle)}
+                aria-label={isCancelling ? `Membatalkan unduhan ${run.seriesTitle}` : `Batalkan unduhan ${run.seriesTitle}`}
+                className="min-h-11 min-w-11 shrink-0 rounded-lg border border-ink-700 px-4 py-2.5 text-[12px] font-semibold text-ink-300 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 [@media(hover:hover)]:hover:bg-ink-800"
               >
-                Batal
+                {isCancelling ? 'Membatalkan…' : 'Batal'}
               </button>
             </div>
-            <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-ink-800">
-              <div className="h-full rounded-full bg-brand-amber" style={{ width: `${pct}%` }} />
+            <div
+              className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-ink-800"
+              role="progressbar"
+              aria-label={`Progres unduhan ${run.seriesTitle}`}
+              aria-valuemin={0}
+              aria-valuemax={total}
+              aria-valuenow={selesai}
+              aria-valuetext={`${selesai} dari ${total} diproses`}
+            >
+              <div className="h-full rounded-full bg-brand-amber transition-[width]" style={{ width: `${pct}%` }} />
             </div>
           </div>
         )
       })}
+      {terminalRuns.length > 0 && (
+        <section aria-label="Ringkasan unduhan">
+          <p className="text-[11.5px] font-semibold text-ink-400">Ringkasan unduhan</p>
+          <ul className="mt-1 space-y-1.5">
+            {terminalRuns.map((run) => (
+              <li
+                key={run.handle}
+                className="flex items-center justify-between gap-3 rounded-xl border border-ink-800 bg-ink-900 px-3 py-2 text-[12px]"
+              >
+                <span className="min-w-0 truncate text-ink-200">
+                  {run.seriesTitle}
+                  <span className="text-ink-500"> · {run.mode === 'cache' ? 'Cache' : 'PDF'}</span>
+                </span>
+                <span className="shrink-0 text-ink-400">{runProgressText(run)}</span>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
     </div>
   )
+}
+
+/** Urutkan chapter berdasarkan nomor (numerik bila mungkin), lalu string. */
+const byChapterNumber = (a: DownloadItem, b: DownloadItem) => {
+  const na = parseFloat(a.number)
+  const nb = parseFloat(b.number)
+  if (Number.isFinite(na) && Number.isFinite(nb) && na !== nb) return na - nb
+  return String(a.number).localeCompare(String(b.number), undefined, { numeric: true })
 }
 
 /** Satu kartu series: judul + badge sumber + jumlah chapter + total ukuran. */
@@ -400,6 +505,15 @@ export function groupBySeries(items: DownloadItem[]): SeriesGroup[] {
   const groups: SeriesGroup[] = []
   const byHandle = new Map<string, SeriesGroup>()
   for (const d of items) {
+    // runtime guard: server bisa kirim baris rusak — lewati diam-diam
+    if (!d || typeof d !== 'object') continue
+    if (typeof d.handle !== 'string' || !d.handle.includes(':')) continue
+    if (typeof d.series_title !== 'string') continue
+    const size = Number(d.size_bytes)
+    if (!Number.isFinite(size)) continue
+    const dlRaw = d.downloaded_at
+    const dlNum = dlRaw == null ? null : Number(dlRaw)
+    const downloaded_at = dlNum != null && Number.isFinite(dlNum) ? dlNum : null
     let g = byHandle.get(d.handle)
     if (!g) {
       g = {
@@ -412,8 +526,8 @@ export function groupBySeries(items: DownloadItem[]): SeriesGroup[] {
       byHandle.set(d.handle, g)
       groups.push(g)
     }
-    g.items.push(d)
-    g.bytes += d.size_bytes
+    g.items.push({ ...d, size_bytes: size, downloaded_at })
+    g.bytes += size
   }
   const newestAt = (g: SeriesGroup) =>
     g.items.reduce((a, d) => Math.max(a, d.downloaded_at ?? 0), 0)
@@ -423,10 +537,15 @@ export function groupBySeries(items: DownloadItem[]): SeriesGroup[] {
 function DownloadsTab() {
   const [data, setData] = useState<DownloadsResponse | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [loading, setLoading] = useState(true)
   const [busy, setBusy] = useState(false)
   // buka/tutup kartu series; default terbuka kalau <=3 chapter
   const [openOverride, setOpenOverride] = useState<Record<string, boolean>>({})
-  const pending = usePendingRuns()
+  // chapter tengah tersembunyi per grup (ringkasan endpoint: terkecil+terbesar)
+  const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({})
+  // galat aksi per baris (Baca/Unduh lagi), terpisah dari state error list
+  const [rowError, setRowError] = useState<string | null>(null)
+  const runs = useAllRuns()
 
   const friendlyError = 'Terjadi kendala saat memuat unduhan. Coba lagi.'
 
@@ -439,19 +558,78 @@ function DownloadsTab() {
         console.error('[rak] downloads failed', e)
         setError(friendlyError)
       })
+      .finally(() => setLoading(false))
   }
+
+  const loadRef = useRef(load)
+  loadRef.current = load
 
   useEffect(() => {
     load()
   }, [])
 
-  const items = data?.items ?? []
+  // Re-fetch setelah run transisi ke terminal (done/error), debounced.
+  useEffect(() => {
+    const prev = new Map(getRuns().map((r) => [r.handle, runBusy(r)]))
+    let timer: number | undefined
+    const unsub = subscribeRuns((snapshot) => {
+      let wentTerminal = false
+      for (const run of snapshot) {
+        const was = prev.get(run.handle)
+        const nowBusy = runBusy(run)
+        if (was === true && !nowBusy) wentTerminal = true
+        prev.set(run.handle, nowBusy)
+      }
+      if (!wentTerminal) return
+      if (timer !== undefined) window.clearTimeout(timer)
+      timer = window.setTimeout(() => loadRef.current(), 400)
+    })
+    return () => {
+      unsub()
+      if (timer !== undefined) window.clearTimeout(timer)
+    }
+  }, [])
+
+  // Server mewajibkan header X-Komik-User; anchor top-level tidak bisa
+  // membawanya — fetch + blob saja (pola yang sama dengan saveGeneratedPdf).
+  const openDownloadedPdf = async (d: DownloadItem, mode: 'read' | 'save') => {
+    setRowError(null)
+    if (mode === 'save') {
+      const ok = await saveGeneratedPdf(d.id, d.filename)
+      if (!ok) setRowError('Gagal mengunduh ulang — coba lagi sebentar lagi.')
+      return
+    }
+    try {
+      const res = await fetch(unifiedApi.downloadFileUrl(d.id, d.filename), {
+        headers: accountHeaders(),
+      })
+      if (!res.ok) throw new Error(String(res.status))
+      const blob = await res.blob()
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.target = '_blank'
+      a.rel = 'noopener'
+      a.style.display = 'none'
+      document.body.appendChild(a)
+      a.click()
+      window.setTimeout(() => {
+        a.remove()
+        URL.revokeObjectURL(url)
+      }, 1000)
+    } catch (e) {
+      console.error('[rak] buka PDF gagal', e)
+      setRowError('Gagal membuka PDF — coba Unduh lagi.')
+    }
+  }
+
+  const items = Array.isArray(data?.items) ? data.items : []
   const groups = groupBySeries(items)
 
   return (
     <div>
       {/* proses unduhan yang masih jalan (lintas halaman) */}
-      <ActiveDownloads runs={pending} />
+      <ActiveDownloads runs={runs} />
 
       {error && (
         <div className="mb-3 flex items-center justify-between gap-3 rounded-xl border border-brand-red/40 bg-brand-red/10 px-3 py-2 text-[12px] text-brand-red">
@@ -459,25 +637,59 @@ function DownloadsTab() {
           <button
             type="button"
             onClick={load}
-            className="min-h-11 shrink-0 rounded-lg border border-brand-red/50 px-3 py-2 font-semibold"
+            className="min-h-11 shrink-0 whitespace-nowrap rounded-lg border border-brand-red/50 px-3 py-2 font-semibold"
           >
             Coba lagi
           </button>
         </div>
       )}
 
-      {busy && !data && <Spinner label="Memuat unduhan…" />}
+      {loading && !data && !error && (
+        <div role="status">
+          <Spinner label="Memuat unduhan…" />
+        </div>
+      )}
 
-      {items.length === 0 && !busy && (
+      {!loading && !error && items.length === 0 && (
         <Empty
+          icon="📥"
           title="Belum ada unduhan"
-          body={'Buka halaman series, centang chapter, tekan "Unduh PDF".'}
+          body={'Buka halaman series, pilih chapter yang ingin disimpan, lalu tekan "Unduh Offline" atau "Unduh PDF".'}
+          action={
+            <div className="flex flex-wrap items-center justify-center gap-2">
+              <Link
+                to="/rak?tab=favorit"
+                className="inline-flex min-h-11 items-center rounded-full border border-ink-700 px-5 text-[12px] font-semibold text-ink-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber focus-visible:ring-offset-2"
+              >
+                Favorit
+              </Link>
+              <Link
+                to="/cari"
+                className="inline-flex min-h-11 items-center rounded-full bg-brand-amber px-5 text-[12px] font-bold text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber focus-visible:ring-offset-2"
+              >
+                Cari komik
+              </Link>
+            </div>
+          }
         />
+      )}
+
+      {rowError && (
+        <div
+          role="alert"
+          className="mb-3 rounded-xl border border-brand-red/40 bg-brand-red/10 px-3 py-2 text-[12px] text-brand-red"
+        >
+          {rowError}
+        </div>
       )}
 
       <ul className="space-y-2.5">
         {groups.map((g) => {
           const open = openOverride[g.handle] ?? defaultOpen(g)
+          const expanded = !!expandedGroups[g.handle]
+          const ordered = [...g.items].sort(byChapterNumber)
+          const shown = ordered.length > 2 && !expanded ? [ordered[0], ordered[ordered.length - 1]] : ordered
+          const hiddenCount = ordered.length - shown.length
           return (
             <li key={g.handle} className="rounded-xl border border-ink-800 bg-ink-900">
               <button
@@ -502,54 +714,70 @@ function DownloadsTab() {
               </button>
               {open && (
                 <ul className="divide-y divide-ink-800 border-t border-ink-800">
-                  {g.items.map((d) => (
-                    <li key={d.id} className="flex flex-wrap items-center gap-2 px-3 py-2.5">
-                      <span className="min-w-0 flex-1">
-                        <span className="block truncate text-[12.5px] text-ink-100">
-                          {d.title || `Chapter ${d.number}`}
+                  {shown.map((d) => {
+                    const label = d.title || `Chapter ${d.number}`
+                    return (
+                      <li key={d.id} className="flex flex-wrap items-center gap-2 px-3 py-2.5">
+                        <span className="min-w-0 flex-1">
+                          <span className="block truncate text-[12.5px] text-ink-100">
+                            {label}
+                          </span>
+                          <span className="block text-[11.5px] text-ink-400">
+                            {humanSize(d.size_bytes)}
+                            {d.downloaded_at != null &&
+                              ` · ${new Date(d.downloaded_at).toLocaleDateString('id-ID')}`}
+                          </span>
                         </span>
-                        <span className="block text-[11.5px] text-ink-400">
-                          {humanSize(d.size_bytes)}
-                          {d.downloaded_at != null &&
-                            ` · ${new Date(d.downloaded_at).toLocaleDateString('id-ID')}`}
-                        </span>
-                      </span>
-                      <a
-                        href={unifiedApi.downloadFileUrl(d.id, d.filename)}
-                        target="_blank"
-                        rel="noreferrer noopener"
-                        className="min-h-11 min-w-11 rounded-lg bg-brand-amber px-4 py-2.5 text-[12px] font-bold text-white"
-                      >
-                        Baca
-                      </a>
-                      <a
-                        href={unifiedApi.downloadFileUrl(d.id, d.filename)}
-                        download={d.filename || 'chapter.pdf'}
-                        className="min-h-11 min-w-11 rounded-lg border border-ink-700 px-4 py-2.5 text-[12px] font-semibold text-ink-300"
-                      >
-                        Unduh lagi
-                      </a>
+                        <button
+                          type="button"
+                          onClick={() => void openDownloadedPdf(d, 'read')}
+                          aria-label={`Baca ${label} — ${g.title} (tab baru)`}
+                          className="min-h-11 min-w-11 rounded-lg bg-brand-amber px-4 py-2.5 text-[12px] font-bold text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber focus-visible:ring-offset-2"
+                        >
+                          Baca
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => void openDownloadedPdf(d, 'save')}
+                          aria-label={`Unduh lagi ${label} — ${g.title} sebagai PDF`}
+                          className="min-h-11 min-w-11 rounded-lg border border-ink-700 px-4 py-2.5 text-[12px] font-semibold text-ink-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber focus-visible:ring-offset-2"
+                        >
+                          Unduh lagi
+                        </button>
+                        <button
+                          disabled={busy}
+                          aria-label={`Hapus unduhan ${label} — ${g.title}`}
+                          onClick={() => {
+                            if (!window.confirm(`Hapus unduhan ${g.title} — ${label}?`)) return
+                            setBusy(true)
+                            unifiedApi
+                              .deleteDownload(d.id)
+                              .then(() => load())
+                              .catch((e: unknown) => {
+                                console.error('[rak] downloads failed', e)
+                                setError(friendlyError)
+                              })
+                              .finally(() => setBusy(false))
+                          }}
+                          className="min-h-11 min-w-11 rounded-lg border border-brand-red/50 px-4 py-2.5 text-[12px] font-semibold text-brand-red focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-red focus-visible:ring-offset-2 disabled:opacity-60"
+                        >
+                          Hapus
+                        </button>
+                      </li>
+                    )
+                  })}
+                  {(hiddenCount > 0 || expanded) && ordered.length > 2 && (
+                    <li className="px-2 py-1.5 text-center">
                       <button
-                        disabled={busy}
-                        onClick={() => {
-                          const label = d.title || `Chapter ${d.number}`
-                          if (!window.confirm(`Hapus unduhan ${g.title} — ${label}?`)) return
-                          setBusy(true)
-                          unifiedApi
-                            .deleteDownload(d.id)
-                            .then(() => load())
-                            .catch((e: unknown) => {
-                              console.error('[rak] downloads failed', e)
-                              setError(friendlyError)
-                            })
-                            .finally(() => setBusy(false))
-                        }}
-                        className="min-h-11 min-w-11 rounded-lg border border-brand-red/50 px-4 py-2.5 text-[12px] font-semibold text-brand-red disabled:opacity-60"
+                        type="button"
+                        aria-expanded={expanded}
+                        onClick={() => setExpandedGroups((m) => ({ ...m, [g.handle]: !expanded }))}
+                        className="min-h-11 rounded-lg px-4 text-[11.5px] font-semibold text-ink-400 underline-offset-2 hover:text-ink-200 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber"
                       >
-                        Hapus
+                        {expanded ? 'Sembunyikan chapter lain' : `Tampilkan ${hiddenCount} chapter lainnya`}
                       </button>
                     </li>
-                  ))}
+                  )}
                 </ul>
               )}
             </li>

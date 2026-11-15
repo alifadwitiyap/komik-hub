@@ -38,14 +38,69 @@ interface RakData {
   history: Record<string, HistoryEntry>
 }
 
+function isPlainObject(v: unknown): v is Record<string, unknown> {
+  return !!v && typeof v === 'object' && !Array.isArray(v)
+}
+
+function cleanFavorite(v: unknown): FavoriteEntry | null {
+  if (!isPlainObject(v)) return null
+  if (typeof v.title_key !== 'string' || v.title_key.trim() === '') return null
+  if (typeof v.title !== 'string' || v.title.trim() === '') return null
+  if (typeof v.handle !== 'string' || !v.handle.includes(':')) return null
+  if (typeof v.source !== 'string') return null
+  if (!Number.isFinite(v.loved_at)) return null
+  return {
+    title_key: v.title_key,
+    title: v.title,
+    cover_url: typeof v.cover_url === 'string' ? v.cover_url : null,
+    handle: v.handle,
+    source: v.source,
+    loved_at: v.loved_at as number,
+  }
+}
+
+function cleanHistory(v: unknown): HistoryEntry | null {
+  if (!isPlainObject(v)) return null
+  if (typeof v.title_key !== 'string' || v.title_key.trim() === '') return null
+  if (typeof v.title !== 'string' || v.title.trim() === '') return null
+  if (typeof v.handle !== 'string' || !v.handle.includes(':')) return null
+  if (typeof v.source !== 'string') return null
+  if (!Number.isFinite(v.updated_at)) return null
+  // last_chapter: string apa adanya; number → coerce; lainnya → drop
+  let last_chapter: string
+  if (typeof v.last_chapter === 'string') last_chapter = v.last_chapter
+  else if (typeof v.last_chapter === 'number' && Number.isFinite(v.last_chapter)) last_chapter = String(v.last_chapter)
+  else return null
+  return {
+    title_key: v.title_key,
+    title: v.title,
+    cover_url: typeof v.cover_url === 'string' ? v.cover_url : null,
+    handle: v.handle,
+    source: v.source,
+    last_chapter,
+    updated_at: v.updated_at as number,
+  }
+}
+
+function cleanRecord<T>(v: unknown, clean: (x: unknown) => T | null): Record<string, T> {
+  const out: Record<string, T> = {}
+  if (!isPlainObject(v)) return out
+  for (const [k, x] of Object.entries(v)) {
+    const e = clean(x)
+    if (e) out[k] = e
+  }
+  return out
+}
+
 function load(): RakData {
   try {
     const raw = localStorage.getItem(rakKey())
     if (!raw) return { favorites: {}, history: {} }
-    const parsed = JSON.parse(raw) as Partial<RakData>
+    const parsed: unknown = JSON.parse(raw)
+    if (!isPlainObject(parsed)) return { favorites: {}, history: {} }
     return {
-      favorites: parsed.favorites ?? {},
-      history: parsed.history ?? {},
+      favorites: cleanRecord(parsed.favorites, cleanFavorite),
+      history: cleanRecord(parsed.history, cleanHistory),
     }
   } catch {
     return { favorites: {}, history: {} }

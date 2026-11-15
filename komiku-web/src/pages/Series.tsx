@@ -7,11 +7,15 @@ import {
   cancelRun,
   startRun,
   startRunCache,
+  jobTally,
+  progressPct,
+  runProgress,
 } from '../downloadStore'
 import type { Chapter, SeriesDetail } from '../types'
 import { Empty, Spinner } from '../App'
 import HeartButton from '../components/HeartButton'
-import { useDownloadRun } from '../hooks/useDownloadRun'
+import { useDownloadRun, useOffline, retryRun } from '../hooks/useDownloadRun'
+import { friendlyError } from '../downloadBatch'
 import { useSeriesResume } from '../hooks/useSeriesResume'
 import { chapterNumberOf } from '../readMarks'
 import { useReadMarks } from '../hooks/useReadMarks'
@@ -44,14 +48,14 @@ export default function Series() {
   // server (routes.rs) dan nilainya sama dengan title_key unified untuk
   // judul yang sama → mark nyambung lintas kedua flow.
   const { isRead, count: readTotal } = useReadMarks(data?.series.title_key ?? null)
-  // --- flow unduh range (paritas Komiku+): 2-tap Awal/Akhir ---------------
+  // --- flow unduh range (paritas Komiku+): 2-tap rentang --------------------
   // Handle download legacy: kontrak unified butuh 'sumber:native_id' →
   // 'komiku:<id angka>'. Halaman ini hanya dilayani untuk id angka (App.tsx
   // mengarahkan handle ber-':' ke SeriesUnified).
   const dlHandle = /^\d+$/.test(id) ? `komiku:${id}` : null
   const [pickMode, setPickMode] = useState(false)
   const [showDlType, setShowDlType] = useState(false)
-  /** index tampil anchor "Awal" dan "Akhir" di `chapters` (inklusif). */
+  /** index tampil anchor ujung rentang di `chapters` (inklusif, urutan tap bebas). */
   const [anchor, setAnchor] = useState<number | null>(null)
   const [rangeEnd, setRangeEnd] = useState<number | null>(null)
   const [dlMsg, setDlMsg] = useState<string | null>(null)
@@ -70,11 +74,18 @@ export default function Series() {
     setAnchor(null)
     setRangeEnd(null)
     setDlMsg(null)
+    // Lambat/tanpa respons: abort setelah 15 dtk supaya Spinner
+    // "Memuat manga…" tidak menggantung selamanya.
+    const timer = setTimeout(() => ctrl.abort(new DOMException('Waktu habis', 'TimeoutError')), 15_000)
     api
       .series(id, ctrl.signal)
       .then(setData)
-      .catch((e: Error) => e.name !== 'AbortError' && setError(e.message))
+      .catch((e: Error) => {
+        if (e.name === 'AbortError') return
+        setError(e.name === 'TimeoutError' ? 'Server tidak merespons — coba lagi.' : friendlyError(e))
+      })
     return () => {
+      clearTimeout(timer)
       // Hanya fetch halaman yang dibatalkan saat keluar; unduhan yang masih
       // jalan dibiarkan hidup (hanya tombol Batal yang membatalkannya) —
       // batch jalan di closure-nya sendiri dan hasilnya tetap masuk store.
@@ -100,24 +111,39 @@ export default function Series() {
   // Wiring unduhan batch + resume/maraton — hook bersama (useDownloadRun,
   // useSeriesResume) yang mengabstraksi subscribe downloadStore + transisi
   // run aktif → selesai, dan pemilihan target link reader/maraton.
-  const { run, busy: dlBusy } = useDownloadRun(dlHandle, (finishedRun) => {
+  const { run, busy: dlBusy, slow: dlSlow, stale: dlStale } = useDownloadRun(dlHandle, (finishedRun) => {
     const ok = finishedRun.jobs.filter((j) => j.state === 'ok').length
     const failed = finishedRun.jobs.filter((j) => j.state === 'fail').length
     const cancels = finishedRun.jobs.filter((j) => j.error === 'Dibatalkan').length
+    const realFailed = failed - cancels
+    // PDF = file dihasilkan server + diunduh perangkat; cache = byte gambar
+    // masuk Cache Storage (offline reader). Lokasi akhir JANGAN diklaim —
+    // cuma sebut tempat mengambilnya (Rak → Unduhan / offline reader).
+    const isCache = finishedRun.mode === 'cache'
     const msg =
       cancels > 0 && cancels === failed
         ? 'Unduhan dibatalkan.'
-        : failed > 0
-          ? `${ok} tersimpan, ${failed} gagal`
-          : `${ok} chapter tersimpan offline`
+        : realFailed > 0
+          ? isCache
+            ? `${ok} tersimpan, ${realFailed} gagal`
+            : `${ok} PDF siap diambil, ${realFailed} gagal`
+          : isCache
+            ? `${ok} chapter tersimpan offline`
+            : `${ok} PDF siap diambil — lihat di Rak → Unduhan`
     setDlMsg(msg)
   })
+  const offline = useOffline()
+  /** Retry failed chapters from the last run (clears old summary). */
+  const handleRetry = () => {
+    setDlMsg(null)
+    if (dlHandle) retryRun(dlHandle)
+  }
   const { resume, marathonPos, resumeHref, marathonHref: marathonLink } =
     useSeriesResume(id)
 
   if (error) return (
     <div className="mx-auto max-w-3xl px-4 py-16 text-center">
-      <Empty title="Gagal memuat manga" body={error} />
+      <Empty title="Gagal memuat manga" body={error} icon="📡" />
       <button
         type="button"
         onClick={() => setReloadKey((k) => k + 1)}
@@ -139,6 +165,9 @@ export default function Series() {
   const expanded = showAll || (anchor != null && rangeEnd != null) || dlBusy
   const visible = expanded ? chapters : chapters.slice(0, 40)
 
+  // Indeks yang menunjuk di luar daftar (data menyusut / indeks basi) —
+  // diperingatkan, bukan diam-diam dibuang.
+  const outOfRange = rangeList.filter((i) => chapters[i] === undefined).length
   const pickedChapters = rangeList.map((i) => chapters[i]).filter(Boolean)
   const downloadable = pickedChapters.filter((c) => chapterNumber(c) != null)
   const selCount = anchor == null ? 0 : rangeEnd == null ? 1 : pickedChapters.length
@@ -146,8 +175,8 @@ export default function Series() {
 
   let hint: string | null = null
   if (pickMode) {
-    if (anchor == null) hint = 'Tap chapter awal, lalu chapter akhir.'
-    else if (rangeEnd == null) hint = 'Pilih chapter akhir.'
+    if (anchor == null) hint = 'Tap dua chapter — semua di antaranya ikut terpilih, urutan bebas.'
+    else if (rangeEnd == null) hint = 'Tap chapter kedua untuk menyelesaikan rentang.'
     else if (pickedChapters.length > BATCH_MAX)
       hint = `Maksimal ${BATCH_MAX} chapter — ${BATCH_MAX} pertama yang diambil`
     else hint = `${chapters[anchor].name} → ${chapters[rangeEnd].name}`
@@ -161,7 +190,7 @@ export default function Series() {
     setDlMsg(null)
   }
 
-  /** Tap daftar chapter: pertama = Awal, kedua = Akhir; ketiga = Awal baru. */
+  /** Tap daftar chapter: pertama = satu ujung rentang, kedua = ujung lainnya; ketiga = mulai lagi. */
   const pickRange = (i: number) => {
     setDlMsg(null)
     if (anchor == null) {
@@ -177,6 +206,10 @@ export default function Series() {
 
   const runDownload = (cache: boolean) => {
     if (dlBusy || rangeList.length === 0 || !dlHandle) return
+    if (offline) {
+      setDlMsg('Tidak ada koneksi internet — tidak bisa mengunduh.')
+      return
+    }
     if (getUser() === null) {
       navigate('/akun')
       return
@@ -195,7 +228,13 @@ export default function Series() {
     setPickMode(false)
     setAnchor(null)
     setRangeEnd(null)
-    setDlMsg(skipped > 0 ? `${skipped} chapter dilewati: nomor tak terbaca` : null)
+    setDlMsg(
+      skipped > 0
+        ? `${skipped} chapter dilewati: nomor tak terbaca`
+        : cache
+          ? null
+          : 'Unduhan PDF dimulai — lihat di Rak → Unduhan',
+    )
     if (cache) startRunCache(dlHandle, data?.series.title ?? id, numbers)
     else startRun(dlHandle, data?.series.title ?? id, numbers)
   }
@@ -322,12 +361,13 @@ export default function Series() {
                   Maraton
                 </Link>
               )}
-              {/* unduh PDF: aktifkan mode pilih rentang Awal/Akhir di daftar chapter */}
+              {/* unduh PDF: aktifkan mode pilih rentang di daftar chapter */}
               {dlHandle && (
                 <button
                   type="button"
                   onClick={togglePickMode}
-                  disabled={dlBusy}
+                  disabled={dlBusy || chapters.length === 0}
+                  title={chapters.length === 0 ? 'Tidak ada chapter untuk diunduh' : undefined}
                   aria-pressed={pickMode}
                   aria-label="Unduh chapter"
                   className={`flex min-h-11 items-center gap-1.5 rounded-xl px-3.5 py-2.5 text-[13px] font-bold transition-colors active:scale-[0.97] active:duration-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber focus-visible:ring-offset-2 disabled:opacity-50 ${
@@ -430,8 +470,30 @@ export default function Series() {
                 )}
               </div>
             )}
-            {hint && <p className="mt-1.5 text-[11px] text-ink-400">{hint}</p>}
-            {dlMsg && <p className="mt-1 text-[11px] font-medium text-brand-amber">{dlMsg}</p>}
+            {hint && <p className="mt-1.5 text-[11px] text-ink-400" aria-live="polite">{hint}</p>}
+            {dlMsg && <p role="status" aria-live="polite" className="mt-1 text-[11px] font-medium text-brand-amber">{dlMsg}</p>}
+            {outOfRange > 0 && (
+              <p role="status" aria-live="polite" className="mt-1 text-[11px] font-semibold text-warn">{outOfRange} chapter di luar daftar — akan dilewati saat mengunduh.</p>
+            )}
+            {/* Offline banner */}
+            {offline && (
+              <p
+                role="alert"
+                className="mt-1.5 flex items-center gap-1 text-[11px] font-medium text-warn"
+              >
+                <span aria-hidden>⚠</span> Tidak ada koneksi internet — unduhan akan gagal
+              </p>
+            )}
+            {/* Retry button: show when last run had non-cancel failures */}
+            {!dlBusy && run && run.jobs.some((j) => j.state === 'fail' && j.error !== 'Dibatalkan') && (
+              <button
+                type="button"
+                onClick={handleRetry}
+                className="mt-1.5 inline-flex min-h-11 items-center text-[11px] font-semibold text-brand-amber underline"
+              >
+                Coba lagi chapter gagal
+              </button>
+            )}
             {/* Sedang berjalan: satu kartu ringkas + tombol Batal (tanpa daftar
                 panjang). Data dari downloadStore — tetap tampil walau user
                 sedang di halaman ini; Kalau pindah, progres lanjut di Rak. */}
@@ -439,15 +501,18 @@ export default function Series() {
               <div className="mt-2 rounded-lg border border-ink-800 bg-ink-850 p-2.5">
                 <div className="flex items-start justify-between gap-2">
                   <div className="min-w-0">
-                    <p className="text-[12px] font-semibold text-ink-100">Mengunduh</p>
+                    <p className="flex items-center gap-1.5 text-[12px] font-semibold text-ink-100">
+                      <span className="inline-block size-2 animate-pulse rounded-full bg-brand-amber" />
+                      Mengunduh chapter…
+                    </p>
                     <p className="truncate text-[11px] text-ink-300">
                       {run.jobs.length === 1
                         ? `Chapter ${run.jobs[0].number}`
                         : `Chapter ${run.jobs[0].number}–${run.jobs[run.jobs.length - 1].number}`}
                     </p>
-                    <p className="mt-0.5 text-[10.5px] text-ink-500">
-                      {run.jobs.filter((j) => j.state === 'ok' || j.state === 'fail').length}/
-                      {run.jobs.length} chapter
+                    <p className="mt-0.5 text-[10.5px] tabular-nums text-ink-500">
+                      {runProgress(run).selesai}/
+                      {run.jobs.length} chapter · {progressPct(run)}%
                     </p>
                   </div>
                   <button
@@ -458,17 +523,73 @@ export default function Series() {
                     Batal
                   </button>
                 </div>
-                <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-ink-800">
-                  <div
-                    className="h-full rounded-full bg-brand-amber transition-[width] duration-500"
-                    style={{
-                      width: `${Math.round(
-                        (run.jobs.filter((j) => j.state === 'ok' || j.state === 'fail').length /
-                          run.jobs.length) *
-                          100,
-                      )}%`,
-                    }}
-                  />
+                {dlSlow && !dlStale && (
+                  <p className="mt-1.5 text-[11px] font-semibold text-warn">
+                    Koneksi lambat — sedang mencoba, harap tunggu…
+                  </p>
+                )}
+                {dlStale && (
+                  <p className="mt-1.5 text-[11px] font-semibold text-danger">
+                    Unduhan tampak macet (≥15 menit tanpa hasil). Periksa koneksi, atau Batal lalu coba lagi.
+                  </p>
+                )}
+                {/* Indikator per chapter: satu segmen per job, warna = status */}
+                <div
+                  className="mt-2 flex h-1.5 w-full gap-[2px]"
+                  role="progressbar"
+                  aria-label={`Progres unduhan ${data?.series.title ?? 'chapter'}`}
+                  aria-valuemin={0}
+                  aria-valuemax={run.jobs.length}
+                  aria-valuenow={runProgress(run).selesai}
+                  aria-valuetext={`${runProgress(run).selesai} dari ${run.jobs.length} chapter selesai`}
+                >
+                  {run.jobs.map((j, i) => (
+                    <div
+                      key={i}
+                      title={`Chapter ${j.number} — ${j.state === 'wait' ? 'menunggu' : j.state === 'run' ? 'berjalan' : j.state === 'ok' ? 'selesai' : 'gagal'}`}
+                      className={`h-full flex-1 rounded-full transition-colors ${
+                        j.state === 'ok'
+                          ? 'bg-healthy'
+                          : j.state === 'fail'
+                            ? 'bg-danger'
+                            : j.state === 'run'
+                              ? 'animate-pulse bg-brand-amber'
+                              : 'bg-ink-700/60'
+                      }`}
+                    />
+                  ))}
+                </div>
+                <div className="mt-1.5 flex flex-wrap items-center gap-x-2.5 gap-y-1 text-[10px] tabular-nums">
+                  {(() => {
+                    const t = jobTally(run) // wait/run saja; angka terminal dari runProgress
+                    const pr = runProgress(run)
+                    return (
+                      <>
+                        {t.wait > 0 && (
+                          <span className="flex items-center gap-1 text-ink-400">
+                            <span className="inline-block size-1.5 rounded-full bg-ink-600" />
+                            Menunggu {t.wait}
+                          </span>
+                        )}
+                        {t.run > 0 && (
+                          <span className="flex items-center gap-1 text-brand-amber-soft">
+                            <span className="inline-block size-1.5 animate-pulse rounded-full bg-brand-amber" />
+                            Berjalan {t.run}
+                          </span>
+                        )}
+                        <span className="flex items-center gap-1 text-healthy">
+                          <span className="inline-block size-1.5 rounded-full bg-healthy" />
+                          Tersimpan {pr.ok}
+                        </span>
+                        {pr.fail > 0 && (
+                          <span className="flex items-center gap-1 text-danger">
+                            <span className="inline-block size-1.5 rounded-full bg-danger" />
+                            Gagal {pr.fail}
+                          </span>
+                        )}
+                      </>
+                    )
+                  })()}
                 </div>
               </div>
             )}
@@ -563,11 +684,6 @@ function ChapterRow({
   const body = (
     <>
       <span className={titleCls}>{chapter.name}</span>
-      {isAnchor && (
-        <span className="shrink-0 rounded-full bg-brand-amber px-1.5 py-0.5 text-[9.5px] font-bold text-white">
-          {mark === 'start' ? 'Awal' : 'Akhir'}
-        </span>
-      )}
       <span className="shrink-0 text-[10.5px] font-medium text-ink-500">
         {chapter.date?.trim()}
       </span>

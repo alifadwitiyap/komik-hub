@@ -303,13 +303,16 @@ export function Empty({
   title,
   body,
   action,
+  icon,
 }: {
   title: string
   body: string
   action?: React.ReactNode
+  icon?: string
 }) {
   return (
     <div className="mx-auto max-w-3xl px-4 py-16 text-center">
+      {icon && <span className="mb-2 text-4xl">{icon}</span>}
       <p className="text-base font-semibold text-ink-200">{title}</p>
       <p className="mt-1 text-sm text-ink-400">{body}</p>
       {action && <div className="mt-4">{action}</div>}

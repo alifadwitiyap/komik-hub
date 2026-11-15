@@ -1630,6 +1630,17 @@ const PAGE_CONCURRENCY: usize = 3;
 /// (300/6 batch x 30 s); timeout per gambar tetap ada, ini pagar keseluruhan.
 const DOWNLOAD_PDF_BUDGET: std::time::Duration = std::time::Duration::from_secs(120);
 
+/// Pagar konkurensi generate PDF (disk-exhaustion / DoS): tanpa ini N tab
+/// bisa memicu N generate_pdf paralel (gambar + encode + tulis disk).
+const MAX_CONCURRENT_PDF: usize = 2;
+
+/// Semaphore statis bersama untuk semua unduhan PDF. OnceLock karena
+/// Semaphore tidak bisa const-construct.
+fn pdf_permits() -> &'static tokio::sync::Semaphore {
+    static PERMITS: std::sync::OnceLock<tokio::sync::Semaphore> = std::sync::OnceLock::new();
+    PERMITS.get_or_init(|| tokio::sync::Semaphore::new(MAX_CONCURRENT_PDF))
+}
+
 #[derive(Deserialize)]
 struct DownloadPdfReq {
     handle: String,
@@ -1908,6 +1919,14 @@ async fn u_download_pdf(State(state): State<Arc<crate::routes::AppState>>, heade
     // writable), balas 500 yang jelas SEKARANG - bukan setelah fetch + encode
     // puluhan detik, dan bukan 502 "sumber lambat".
     store(state).map_err(|e| AppError::internal(format!("{e:#}")))?;
+    // Pagar konkurensi (sa-2: disk-exhaustion/DoS): antre di sini SEBELUM
+    // budget 120 detik mulai, jadi budget hanya mengatur waktu generate —
+    // bukan waktu menunggu permit. Permit dipegang sampai generate_pdf
+    // (termasuk store_pdf) selesai.
+    let _pdf_permit = pdf_permits()
+        .acquire()
+        .await
+        .map_err(|_| AppError::internal("gerbang PDF ditutup"))?;
     // Pagar TOTAL (P1-4b): timeout per gambar saja tidak cukup — chapter
     // panjang bisa menumpuk puluhan batch. Batas ini mencakup resolve series,
     // semua gambar, dan encode.
@@ -1922,6 +1941,9 @@ async fn u_download_pdf(State(state): State<Arc<crate::routes::AppState>>, heade
             DOWNLOAD_PDF_BUDGET.as_secs()
         ))
     })??;
+    // generate_pdf (termasuk store_pdf) sudah selesai di titik ini — lepaskan
+    // permit sebelum merakit response.
+    drop(_pdf_permit);
     Ok(Json(json!({
         "id": entry.id,
         "filename": entry.filename,
@@ -2672,5 +2694,16 @@ mod tests {
         )
         .await;
         assert!(second.is_ok(), "gerbang harus dilepas setelah galat, bukan deadlock");
+    }
+
+    /// Pagar konkurensi PDF: `pdf_permits()` harus mengembalikan semaphore
+    /// bersama (bukan instance baru per panggilan) dengan MAX_CONCURRENT_PDF
+    /// permit, dan acquire benar-benar mengurangi sisa permit.
+    #[tokio::test]
+    async fn pdf_permits_gate() {
+        let s = pdf_permits();
+        assert_eq!(s.available_permits(), MAX_CONCURRENT_PDF);
+        let _p = s.acquire().await.expect("semaphore tidak boleh tertutup");
+        assert_eq!(s.available_permits(), MAX_CONCURRENT_PDF - 1);
     }
 }

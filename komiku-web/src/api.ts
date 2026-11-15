@@ -31,6 +31,11 @@ export function accountHeaders(base?: Record<string, string>): Record<string, st
   return { ...(base ?? {}), 'X-Komik-User': u }
 }
 
+/** Error dengan HTTP status terlampir — dipakai circuit breaker & friendlyError. */
+function withStatus(detail: string, status: number): Error & { status: number } {
+  return Object.assign(new Error(detail), { status })
+}
+
 async function get<T>(path: string, signal?: AbortSignal): Promise<T> {
   const res = await fetch(`${BASE}${path}`, { signal, headers: accountHeaders() })
   if (!res.ok) {
@@ -43,7 +48,7 @@ async function get<T>(path: string, signal?: AbortSignal): Promise<T> {
     } catch {
       /* body bukan JSON */
     }
-    throw new Error(detail)
+    throw withStatus(detail, res.status)
   }
   return (await res.json()) as T
 }
@@ -72,10 +77,17 @@ async function send<T>(
     } catch {
       /* body bukan JSON */
     }
-    throw new Error(detail)
+    throw withStatus(detail, res.status)
   }
   const text = await res.text()
-  return (text ? JSON.parse(text) : {}) as T
+  if (!text) return {} as T
+  try {
+    return JSON.parse(text) as T
+  } catch {
+    // Body terpotong (proxy 504 setengah jalan, buffer habis) → SyntaxError
+    // telanjang menyesatkan UI; lempar pesan jelas berbahasa Indonesia.
+    throw new Error('Respons server tidak valid (bukan JSON).')
+  }
 }
 
 /**

@@ -36,6 +36,9 @@ use tokio::sync::Mutex;
 pub const TTL_SECS: i64 = 24 * 60 * 60;
 /// Batas halaman per chapter saat generate PDF (pengaman memori).
 pub const MAX_PAGES: usize = 300;
+/// Kuota default disk untuk direktori unduhan: 1 GiB. Override via env
+/// `KOMIKU_DOWNLOADS_QUOTA_BYTES` (angka byte desimal).
+pub(crate) const MAX_DOWNLOADS_DIR_BYTES_DEFAULT: u64 = 1 << 30;
 
 /// Metadata satu PDF yang akan disimpan. Dikelompokkan supaya `store_pdf`
 /// tidak punya 7 parameter posisional yang mudah tertukar.
@@ -238,11 +241,29 @@ impl DownloadStore {
     /// `downloaded_at` di-reset ke sekarang, jadi TTL 24 jam mulai dari unduhan
     /// terakhir.
     pub async fn store_pdf(&self, meta: PdfMeta<'_>, bytes: Vec<u8>) -> anyhow::Result<DownloadEntry> {
+        let quota = quota_bytes();
+        self.store_pdf_quota(meta, bytes, quota).await
+    }
+
+    /// Inti `store_pdf` dengan kuota eksplisit. Dipisah supaya test bisa
+    /// menyuntik kuota mungil tanpa menyentuh env/OnceLock produksi.
+    async fn store_pdf_quota(
+        &self,
+        meta: PdfMeta<'_>,
+        bytes: Vec<u8>,
+        quota: u64,
+    ) -> anyhow::Result<DownloadEntry> {
         let PdfMeta { username, handle, number, title, series_title, title_key } = meta;
         let id = Self::download_id(handle, number);
         let filename = Self::filename_for(series_title, number);
         let size = bytes.len() as u64;
         let now = now_millis();
+
+        // Kuota disk: tolak SEBELUM mutex/fs::write bila total byte PDF di
+        // direktori + kiriman ini melebihi kuota. Mencegah disk-exhaustion.
+        if dir_bytes(&self.dir).saturating_add(size) > quota {
+            anyhow::bail!("downloads disk quota exceeded");
+        }
 
         let mut st = self.state.lock().await;
         let path = self.pdf_path(&id);
@@ -267,8 +288,10 @@ impl DownloadStore {
     }
 
     /// Sapu entri kedaluwarsa (TTL 24 jam) di SEMUA akun, lalu hapus file fisik
-    /// yang tak lagi ditunjuk akun mana pun. Mengembalikan jumlah entri index
-    /// yang dihapus. Dipanggil task berkala (`unified::store`).
+    /// yang tak lagi ditunjuk akun mana pun, dan hapus file `<id>.pdf` yatim
+    /// (tak ditunjuk index memory/disk mana pun) yang lebih tua dari TTL/2.
+    /// Mengembalikan jumlah entri index kedaluwarsa + file yatim yang dihapus.
+    /// Dipanggil task berkala (`unified::store`).
     pub async fn sweep_expired(&self) -> usize {
         let now = now_millis();
         let ttl_ms = TTL_SECS * 1000;
@@ -300,6 +323,45 @@ impl DownloadStore {
         gone_ids.dedup();
         for id in gone_ids {
             Self::drop_file_if_unheld(&self.dir, &mut st, &id);
+        }
+        // GC yatim: file `<id>.pdf` yang TIDAK ditunjuk index mana pun
+        // (memory maupun disk) dan lebih tua dari TTL/2 dihapus. Batas TTL/2
+        // supaya file in-flight (baru ditulis, index belum tersimpan) yang
+        // kebetulan yatim tidak ikut tersapu.
+        let indexed = all_indexed_ids(&self.dir, &st);
+        let orphan_cutoff = std::time::SystemTime::now()
+            - std::time::Duration::from_secs((TTL_SECS / 2) as u64);
+        if let Ok(rd) = std::fs::read_dir(&self.dir) {
+            for entry in rd.flatten() {
+                let path = entry.path();
+                let is_pdf = path
+                    .extension()
+                    .and_then(|ext| ext.to_str())
+                    .is_some_and(|ext| ext.eq_ignore_ascii_case("pdf"));
+                if !is_pdf {
+                    continue;
+                }
+                let Some(id) = path
+                    .file_stem()
+                    .and_then(|s| s.to_str())
+                    .map(|s| s.to_string())
+                else {
+                    continue;
+                };
+                if indexed.contains(&id) {
+                    continue;
+                }
+                let is_old = entry
+                    .metadata()
+                    .and_then(|m| m.modified())
+                    .is_ok_and(|mtime| mtime < orphan_cutoff);
+                if !is_old {
+                    continue;
+                }
+                if std::fs::remove_file(&path).is_ok() {
+                    removed += 1;
+                }
+            }
         }
         removed
     }
@@ -359,6 +421,62 @@ impl DownloadStore {
 }
 
 // ------------------------------------------------------------------- util
+
+/// Total byte semua file `*.pdf` langsung di `dir`. Tahan terhadap error
+/// (dir hilang, metadata gagal, file berubah/terhapus saat dipindai) —
+/// apa pun yang gagal dibaca diskip, bukan menggagalkan caller.
+pub(crate) fn dir_bytes(dir: &std::path::Path) -> u64 {
+    let mut total = 0u64;
+    let Ok(rd) = std::fs::read_dir(dir) else {
+        return 0;
+    };
+    for entry in rd.flatten() {
+        let is_pdf = entry
+            .path()
+            .extension()
+            .and_then(|ext| ext.to_str())
+            .is_some_and(|ext| ext.eq_ignore_ascii_case("pdf"));
+        if !is_pdf {
+            continue;
+        }
+        if let Ok(meta) = entry.metadata() {
+            total = total.saturating_add(meta.len());
+        }
+    }
+    total
+}
+
+/// Kuota byte direktori unduhan. Dibaca dari env `KOMIKU_DOWNLOADS_QUOTA_BYTES`
+/// SEKALI (OnceLock); tidak diset / tidak bisa diparse -> default 1 GiB.
+fn quota_bytes() -> u64 {
+    static QUOTA: std::sync::OnceLock<u64> = std::sync::OnceLock::new();
+    *QUOTA.get_or_init(|| {
+        std::env::var("KOMIKU_DOWNLOADS_QUOTA_BYTES")
+            .ok()
+            .and_then(|v| v.trim().parse::<u64>().ok())
+            .unwrap_or(MAX_DOWNLOADS_DIR_BYTES_DEFAULT)
+    })
+}
+
+/// Kumpulan id yang ditunjuk SEMUA index: yang sedang di memory + yang hanya
+/// ada di disk (dir/index/*.json). Dipakai GC yatim di sweep_expired;
+/// side-effect free (read_json langsung, tidak ensure_user).
+fn all_indexed_ids(dir: &Path, st: &State) -> std::collections::HashSet<String> {
+    let mut ids = std::collections::HashSet::new();
+    for u in st.users.values() {
+        for e in &u.index.items {
+            ids.insert(e.id.clone());
+        }
+    }
+    for name in index_users(dir) {
+        if let Some(idx) = read_json::<Index>(&index_path(dir, &name)) {
+            for e in &idx.items {
+                ids.insert(e.id.clone());
+            }
+        }
+    }
+    ids
+}
 
 fn now_millis() -> i64 {
     std::time::SystemTime::now()
@@ -788,6 +906,230 @@ mod tests {
 
     /// open() meneruskan galat direktori (tidak ditelan): path yang menunjuk
     /// file biasa tidak bisa dijadikan store.
+    /// DUA TAB, akun yang sama, chapter yang sama: dua request generate-PDF
+    /// berjalan bersamaan. Mutex di State menyerialkan store_pdf; id-nya
+    /// deterministik (fnv1a64 dari "handle|number") sehingga upsert menimpa,
+    /// bukan menggandakan. Yang di-assert: tidak ada entri ganda, index
+    /// konsisten, tepat satu file fisik.
+    #[tokio::test]
+    async fn dua_tab_simpan_chapter_sama_tidak_duplikat() {
+        let dir = temp_dir("concurrent-same-chapter");
+        let store = std::sync::Arc::new(DownloadStore::open(&dir).unwrap());
+        let barrier = std::sync::Arc::new(tokio::sync::Barrier::new(2));
+
+        let s1 = store.clone();
+        let b1 = barrier.clone();
+        let t1 = tokio::spawn(async move {
+            b1.wait().await;
+            s1.store_pdf(
+                PdfMeta {
+                    username: "alif",
+                    handle: "komiku:42",
+                    number: "7",
+                    title: "Ch 7",
+                    series_title: "Seri",
+                    title_key: "seri",
+                },
+                vec![0xAAu8; 64],
+            )
+            .await
+        });
+
+        let s2 = store.clone();
+        let b2 = barrier.clone();
+        let t2 = tokio::spawn(async move {
+            b2.wait().await;
+            s2.store_pdf(
+                PdfMeta {
+                    username: "alif",
+                    handle: "komiku:42",
+                    number: "7",
+                    title: "Ch 7",
+                    series_title: "Seri",
+                    title_key: "seri",
+                },
+                vec![0xBBu8; 64],
+            )
+            .await
+        });
+
+        let e1 = t1.await.unwrap().unwrap();
+        let e2 = t2.await.unwrap().unwrap();
+        assert_eq!(e1.id, e2.id, "handle|number sama harus menghasilkan id sama");
+
+        let (items, total) = store.list("alif").await;
+        assert_eq!(items.len(), 1, "tidak boleh ada dua entri untuk chapter yang sama");
+        assert_eq!(total, 64);
+        assert!(
+            store.pdf_path(&e1.id).exists(),
+            "satu file fisik tetap ada"
+        );
+        // isi file = salah satu dari dua penulis, tapi harus UTUH (bukan interleaved)
+        let bytes = std::fs::read(store.pdf_path(&e1.id)).unwrap();
+        assert_eq!(bytes.len(), 64);
+        assert!(
+            bytes.iter().all(|&b| b == 0xAA) || bytes.iter().all(|&b| b == 0xBB),
+            "file harus utuh, bukan campuran dua penulis"
+        );
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    /// DUA Akun berbeda, chapter yang sama: id identik → file dibagi; tiap akun
+    /// punya entri sendiri yang menunjuk file yang sama. Hapus punya A tidak
+    /// boleh menghapus file B.
+    #[tokio::test]
+    async fn dua_akun_chapter_sama_berbagi_file_tapi_index_terpisah() {
+        let dir = temp_dir("concurrent-cross-account");
+        let store = std::sync::Arc::new(DownloadStore::open(&dir).unwrap());
+        let barrier = std::sync::Arc::new(tokio::sync::Barrier::new(2));
+
+        let s1 = store.clone();
+        let b1 = barrier.clone();
+        let t1 = tokio::spawn(async move {
+            b1.wait().await;
+            s1.store_pdf(
+                PdfMeta {
+                    username: "alif",
+                    handle: "komiku:42",
+                    number: "7",
+                    title: "Ch 7",
+                    series_title: "Seri",
+                    title_key: "seri",
+                },
+                vec![0xCCu8; 32],
+            )
+            .await
+        });
+
+        let s2 = store.clone();
+        let b2 = barrier.clone();
+        let t2 = tokio::spawn(async move {
+            b2.wait().await;
+            s2.store_pdf(
+                PdfMeta {
+                    username: "budi",
+                    handle: "komiku:42",
+                    number: "7",
+                    title: "Ch 7",
+                    series_title: "Seri",
+                    title_key: "seri",
+                },
+                vec![0xDDu8; 32],
+            )
+            .await
+        });
+
+        let ea = t1.await.unwrap().unwrap();
+        let eb = t2.await.unwrap().unwrap();
+        assert_eq!(ea.id, eb.id, "id deterministik lintas akun");
+        assert_eq!(store.list("alif").await.0.len(), 1);
+        assert_eq!(store.list("budi").await.0.len(), 1);
+        assert!(store.pdf_path(&ea.id).exists());
+        // A menghapus miliknya: file dibagi B masih menunjuk id → file HARUS tetap ada
+        assert!(store.delete("alif", &ea.id).await);
+        assert!(
+            store.pdf_path(&ea.id).exists(),
+            "file fisik tidak boleh dihapus selagi akun lain masih menunjuk"
+        );
+        assert_eq!(store.list("budi").await.0.len(), 1);
+        assert!(store.delete("budi", &ea.id).await);
+        assert!(!store.pdf_path(&ea.id).exists());
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    // ---- KUOTA DISK + GC YATIM ----------------------------------------
+
+    #[test]
+    fn dir_bytes_menjumlahkan_pdf_saja() {
+        let dir = temp_dir("dirbytes");
+        std::fs::create_dir_all(&dir).unwrap();
+        std::fs::write(dir.join("a.pdf"), vec![0u8; 100]).unwrap();
+        std::fs::write(dir.join("b.PDF"), vec![0u8; 50]).unwrap();
+        std::fs::write(dir.join("c.txt"), vec![0u8; 9999]).unwrap();
+        assert_eq!(dir_bytes(&dir), 150);
+        // dir hilang -> 0, bukan panic
+        assert_eq!(dir_bytes(&dir.join("nope")), 0);
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[tokio::test]
+    async fn sweep_menghapus_yatim_lama_tetapi_tahan_terindeks_dan_yatim_baru() {
+        let dir = temp_dir("orphan-gc");
+        let store = DownloadStore::open(&dir).unwrap();
+        let now = now_millis();
+        // "held" dipegang index memory akun alif; "diskheld" dipegang index
+        // HANYA DI DISK akun budi (tidak pernah dimuat ke memory).
+        {
+            let mut st = store.state.lock().await;
+            let u = DownloadStore::ensure_user(&store.dir, &mut st, "alif");
+            u.index.items.push(entry("held", 10, now));
+        }
+        std::fs::create_dir_all(dir.join("index")).unwrap();
+        let disk_idx = Index {
+            items: vec![entry("diskheld", 10, now)],
+        };
+        write_json(&index_path(&dir, "budi"), &disk_idx).unwrap();
+
+        let held = store.pdf_path("held");
+        let diskheld = store.pdf_path("diskheld");
+        let orphan_old = store.pdf_path("orphanold");
+        let orphan_new = store.pdf_path("orphannew");
+        std::fs::write(&held, b"held").unwrap();
+        std::fs::write(&diskheld, b"diskheld").unwrap();
+        std::fs::write(&orphan_old, b"orphanold").unwrap();
+        std::fs::write(&orphan_new, b"orphannew").unwrap();
+        // mundurkan mtime orphan_old (dan diskheld) jadi lebih tua dari TTL/2
+        let tua = std::time::SystemTime::now()
+            - std::time::Duration::from_secs((TTL_SECS / 2) as u64 + 3600);
+        for p in [&orphan_old, &diskheld, &held] {
+            let f = std::fs::File::options().write(true).open(p).unwrap();
+            f.set_modified(tua).unwrap();
+        }
+
+        let removed = store.sweep_expired().await;
+        assert!(!orphan_old.exists(), "yatim lama harus dihapus");
+        assert!(held.exists(), "terindeks di memory harus selamat");
+        assert!(diskheld.exists(), "terindeks di disk (file index) harus selamat");
+        assert!(orphan_new.exists(), "yatim baru (< TTL/2) harus selamat");
+        assert_eq!(removed, 1, "hanya 1 file yatim yang dihapus");
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[tokio::test]
+    async fn store_pdf_gagal_saat_kuota_terlampaui_dan_lolos_saat_pas() {
+        let dir = temp_dir("quota");
+        let store = DownloadStore::open(&dir).unwrap();
+        std::fs::write(store.pdf_path("existing"), vec![0u8; 100]).unwrap();
+        // 100 (existing) + 50 (incoming) > 120 -> bail SEBELUM menulis
+        let err = store
+            .store_pdf_quota(
+                PdfMeta { username: "alif", handle: "komiku:9", number: "9", title: "Ch 9", series_title: "Seri", title_key: "seri", },
+                vec![0u8; 50],
+                120,
+            )
+            .await
+            .unwrap_err();
+        assert!(format!("{err:#}").contains("downloads disk quota exceeded"));
+        // hanya file existing yang tersisa
+        let sisa: Vec<_> = std::fs::read_dir(&dir)
+            .unwrap()
+            .flatten()
+            .filter(|e| e.path().extension().is_some_and(|x| x == "pdf"))
+            .collect();
+        assert_eq!(sisa.len(), 1);
+        // 100 + 20 == 120 -> tidak over, boleh masuk
+        store
+            .store_pdf_quota(
+                PdfMeta { username: "alif", handle: "komiku:10", number: "10", title: "Ch 10", series_title: "Seri", title_key: "seri", },
+                vec![0u8; 20],
+                120,
+            )
+            .await
+            .unwrap();
+        assert_eq!(dir_bytes(&dir), 120);
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
     #[test]
     fn open_gagal_jika_direktori_tidak_bisa_dibuat() {
         let dir = temp_dir("open-gagal");

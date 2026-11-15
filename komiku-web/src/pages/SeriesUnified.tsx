@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { SourceStatus } from '../components/SourceStatus'
-import { Link, useNavigate, useParams } from 'react-router-dom'
+import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
 import { imgUrl } from '../imgUrl'
 import { unifiedApi } from '../api'
 import { getUser } from '../account'
@@ -9,7 +9,7 @@ import { Empty, Spinner } from '../App'
 import SourceBadge from '../components/SourceBadge'
 import HeartButton from '../components/HeartButton'
 import { useProgress } from '../hooks/useProgress'
-import { useDownloadRun } from '../hooks/useDownloadRun'
+import { useDownloadRun, useOffline, retryRun } from '../hooks/useDownloadRun'
 import { useSeriesResume } from '../hooks/useSeriesResume'
 import { useReadMarks } from '../hooks/useReadMarks'
 import { rememberSeriesLite, readerHref } from '../readerSource'
@@ -17,9 +17,13 @@ import {
   cancelRun,
   startRun,
   startRunCache,
+  runProgress,
+  progressPct,
   type DlRun,
 } from '../downloadStore'
-import { RangeSelectBar, useRangeSelection } from '../components/DownloadRangePicker'
+import { RangeSelectBar, useRangeSelection, outOfRangeCount } from '../components/DownloadRangePicker'
+import { doneNumbers } from '../downloadHistory'
+import { friendlyError } from '../downloadBatch'
 
 /**
  * Detail manga unified (route /manga/:handle, handle 'sumber:native_id').
@@ -46,9 +50,15 @@ export default function SeriesUnified() {
   const [error, setError] = useState<string | null>(null)
   const [showAll, setShowAll] = useState(false)
   const { recent } = useProgress()
-  // --- unduh PDF mode range (2-tap Awal/Akhir) ------------------------------
+  // --- unduh PDF mode range (2-tap rentang) --------------------------------
   const [pickMode, setPickMode] = useState(false)
   const [dlSummary, setDlSummary] = useState<DlSummary | null>(null)
+  /** Catatan unduhan yang tidak bisa jalan (mis. offline) — tampil di atas daftar chapter. */
+  const [dlNote, setDlNote] = useState<string | null>(null)
+  // Tombol kecil salin tautan series (di header)
+  const [copied, setCopied] = useState(false)
+  const [copyError, setCopyError] = useState<string | null>(null)
+  const offline = useOffline()
   /**
    * Run unduhan milik halaman ini (dari store module-level — hidup lintas
    * halaman). `dlBusy` masih dipakai UI (mode seleksi, tombol Batal) walau
@@ -58,12 +68,23 @@ export default function SeriesUnified() {
   // hook bersama. `dlRun`/`dlBusy` dipakai UI (mode seleksi, kartu progres,
   // tombol Batal); saat batch yang disaksikan instance ini selesai, hasilnya
   // diumumkan sekali lewat `onFinish`.
-  const { run: dlRun, busy: dlBusy } = useDownloadRun(handle, (finishedRun) => {
+  const { run: dlRun, busy: dlBusy, slow: dlSlow, stale: dlStale } = useDownloadRun(handle, (finishedRun) => {
     const summary = announceFinish(finishedRun, { current: true })
     if (summary) setDlSummary(summary)
   })
-  const range = useRangeSelection()
+  const range = useRangeSelection(data?.chapters.length ?? 0)
   const navigate = useNavigate()
+  const location = useLocation()
+  const downloadTriggerRef = useRef<HTMLButtonElement>(null)
+  const wasPickingRef = useRef(false)
+  const selectionKey = `komik:download-selection:${handle}`
+  const resetRange = range.reset
+  const selectRange = range.select
+
+  useEffect(() => {
+    if (wasPickingRef.current && !pickMode) downloadTriggerRef.current?.focus()
+    wasPickingRef.current = pickMode
+  }, [pickMode])
 
   // Sticky B+C — server coba sumber terakhir-dibaca untuk judul ini dulu
   // (kalau ada di riwayat), baru fallback primary. Ref supaya effect tidak
@@ -74,6 +95,9 @@ export default function SeriesUnified() {
   useEffect(() => {
     if (!handle) return
     const ctrl = new AbortController()
+    // Request menggantung (koneksi lambat / HP suspend) dulu = spinner tanpa
+    // akhir. 15 detik lalu batalkan dan tampilkan pesan server bermasalah.
+    const timer = setTimeout(() => ctrl.abort(new DOMException('Waktu habis', 'TimeoutError')), 15_000)
     setData(null)
     setError(null)
     setShowAll(false)
@@ -88,8 +112,14 @@ export default function SeriesUnified() {
         })
         setFailedSources(r.failed_sources ?? [])
       })
-      .catch((e: Error) => e.name !== 'AbortError' && setError(e.message))
-    return () => ctrl.abort()
+      .catch((e: Error) => {
+        if (e.name === 'AbortError') return
+        setError(e.name === 'TimeoutError' ? 'Server tidak merespons — coba lagi.' : friendlyError(e))
+      })
+    return () => {
+      clearTimeout(timer)
+      ctrl.abort()
+    }
   }, [handle, reloadKey])
 
   // urut nomor DESC (terbaru dulu). Nomor bisa "1195", "1.5", "extra-9" —
@@ -104,6 +134,37 @@ export default function SeriesUnified() {
       }),
     [data],
   )
+  // Simpan nomor chapter, bukan indeks: chapter baru dapat muncul selama login.
+  useEffect(() => {
+    if (!data) return
+    try {
+      const stored = sessionStorage.getItem(selectionKey)
+      if (!stored) return
+      sessionStorage.removeItem(selectionKey)
+      const saved: unknown = JSON.parse(stored)
+      if (!saved || typeof saved !== 'object' ||
+          !('start' in saved) || !(saved.start === null || typeof saved.start === 'string') ||
+          !('end' in saved) || !(saved.end === null || typeof saved.end === 'string') ||
+          !('showAll' in saved) || typeof saved.showAll !== 'boolean' ||
+          (saved.start === null && saved.end !== null)) {
+        throw new Error('Seleksi tidak valid')
+      }
+      const start = chapters.findIndex((c) => c.number === saved.start)
+      const end = chapters.findIndex((c) => c.number === saved.end)
+      resetRange()
+      setPickMode(true)
+      setShowAll(saved.showAll || start >= 40 || end >= 40)
+      if ((saved.start !== null && start < 0) || (saved.end !== null && end < 0)) {
+        setDlNote('Daftar chapter berubah — pilih ulang rentang unduhan.')
+        return
+      }
+      if (start >= 0) selectRange(start)
+      if (end >= 0) selectRange(end)
+    } catch {
+      setDlNote('Seleksi sebelumnya tidak bisa dipulihkan — pilih ulang chapter.')
+    }
+  }, [data, chapters, selectionKey, resetRange, selectRange])
+
   const oldest = chapters.length > 0 ? chapters[chapters.length - 1] : null
   // Mark "sudah dibaca" per akun: chapter yang pernah dibuka user jadi abu.
   // Kunci = title_key series + nomor chapter (lihat readMarks.ts).
@@ -125,7 +186,16 @@ export default function SeriesUnified() {
         .map((c) => ({ handle, number: c.number })),
     [range.indices, handle, chapters],
   )
-  const resetRange = range.reset
+  // Chapter terpilih yang sudah tidak ada di daftar (daftar menyusut /
+  // indeks basi) — diperingatkan, bukan diam-diam dibuang.
+  const outOfRange = outOfRangeCount(range.indices, chapters.length)
+  // Chapter terpilih yang sudah tersimpan sebelumnya (ledger tahan tab
+  // ditutup) — diberi tahu supaya user tidak mengunduh ulang tanpa sadar.
+  const alreadyDone = useMemo(() => {
+    if (!pickMode) return 0
+    const done = new Set(doneNumbers(handle))
+    return selectedRefs.filter((r) => done.has(r.number)).length
+  }, [pickMode, handle, selectedRefs])
 
   /** Tap di luar daftar chapter (dan bukan tombol "Unduh") → tutup mode seleksi. */
   useEffect(() => {
@@ -133,7 +203,7 @@ export default function SeriesUnified() {
     if (!pickMode || dlBusy) return
     const onDown = (e: PointerEvent) => {
       const t = e.target as HTMLElement | null
-      if (t?.closest('[data-range-toggle], section[data-series-list]')) return
+      if (t?.closest('[data-range-toggle], [data-range-dock], section[data-series-list]')) return
       setPickMode(false)
       resetRange()
     }
@@ -141,13 +211,45 @@ export default function SeriesUnified() {
     return () => document.removeEventListener('pointerdown', onDown as EventListener)
   }, [pickMode, dlBusy, resetRange])
 
+  /** Escape keluar dari mode pilih. */
+  useEffect(() => {
+    if (!pickMode) return
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') { setPickMode(false); resetRange() }
+    }
+    document.addEventListener('keydown', onKey)
+    return () => document.removeEventListener('keydown', onKey)
+  }, [pickMode, resetRange])
+
+  const signInForDownload = () => {
+    try {
+      sessionStorage.setItem(selectionKey, JSON.stringify({
+        start: range.state.start === null ? null : chapters[range.state.start]?.number ?? null,
+        end: range.state.end === null ? null : chapters[range.state.end]?.number ?? null,
+        showAll,
+      }))
+    } catch {
+      setDlNote('Seleksi belum bisa disimpan. Izinkan penyimpanan browser sebelum masuk agar seleksi tidak hilang.')
+      return
+    }
+    navigate('/akun', { state: { from: location.pathname + location.search + location.hash } })
+  }
+
   const runDownload = (cache: boolean) => {
+    downloadTriggerRef.current?.focus()
     if (dlBusy || selectedRefs.length === 0) return
+    // Tidak ada koneksi → jangan kirim request yang pasti gagal; beri tahu
+    // user lewat catatan inline (bukan alert).
+    if (offline) {
+      setDlNote('Tidak ada koneksi internet — tidak bisa mengunduh.')
+      return
+    }
+    setDlNote(null)
     // Unduhan wajib akun (server menolak 401 tanpa X-Komik-User). Kalau
     // belum login, arahkan ke halaman akun — jangan kirim request yang
     // pasti 401.
     if (getUser() === null) {
-      navigate('/akun')
+      signInForDownload()
       return
     }
     // LANGSUNG keluar dari mode pilih: baris chapter kembali jadi Link ke
@@ -187,7 +289,7 @@ export default function SeriesUnified() {
 
   if (error) return (
     <div className="mx-auto max-w-3xl px-4 py-16 text-center">
-      <Empty title="Gagal memuat manga" body={error} />
+      <Empty title="Gagal memuat manga" body={error} icon="📡" />
       <button
         type="button"
         onClick={() => setReloadKey((k) => k + 1)}
@@ -201,16 +303,30 @@ export default function SeriesUnified() {
 
   const { manga: m } = data
   const visible = showAll ? chapters : chapters.slice(0, 40)
-  // progres dari run store: yang sudah berstatus terminal (ok/fail)
-  const dlDone = dlRun
-    ? dlRun.jobs.filter((j) => j.state === 'ok' || j.state === 'fail').length
-    : 0
-  const dlFail = dlRun ? dlRun.jobs.filter((j) => j.state === 'fail').length : 0
+  // Diproses = semua hasil terminal (tersimpan + gagal), bukan hanya sukses.
+  const dlProg = dlRun ? runProgress(dlRun) : null
+  const dlDone = dlProg?.selesai ?? 0
+  const dlFail = dlProg?.fail ?? 0
+  // Hitungan per-status untuk legenda kartu progres.
+  const dlWait = dlRun ? dlRun.jobs.filter((j) => j.state === 'wait').length : 0
+  const dlRunCount = dlRun ? dlRun.jobs.filter((j) => j.state === 'run').length : 0
   // Pesan kegagalan pertama — dirender supaya user tahu KENAPA gagal, bukan
   // cuma angka. (`job.error` sebelumnya tidak pernah tampil di UI.)
   const dlError = dlRun?.jobs.find((j) => j.state === 'fail' && j.error)?.error ?? null
 
   const chapterLabel = (c: UnifiedChapterOut) => c.title || `Chapter ${c.number}`
+
+  // Salin URL kanonik halaman series (pola Akun.tsx: clipboard + reset 1500ms)
+  async function copySeriesLink() {
+    try {
+      await navigator.clipboard.writeText(window.location.href)
+      setCopied(true)
+      setCopyError(null)
+      setTimeout(() => setCopied(false), 1500)
+    } catch {
+      setCopyError('Gagal menyalin — salin manual dari address bar.')
+    }
+  }
 
   return (
     <div className="mx-auto max-w-3xl">
@@ -225,9 +341,30 @@ export default function SeriesUnified() {
 
         <div className="relative px-4 pb-4 pt-5">
           {/* py-3.5 memperluas area sentuh ke >=44px; padding inline tak mengubah tinggi header. */}
-          <Link to="/" className="py-3.5 text-[12px] font-medium text-ink-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber focus-visible:ring-offset-2 [@media(hover:hover)]:hover:text-ink-200">
-            ← Beranda
-          </Link>
+          <div className="flex items-center justify-between">
+            <Link to="/" className="py-3.5 text-[12px] font-medium text-ink-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber focus-visible:ring-offset-2 [@media(hover:hover)]:hover:text-ink-200">
+              ← Beranda
+            </Link>
+            {/* Ikon inline — icons.tsx (ikon APK asli) tak diubah. -mr-3 menarik glyph sejajar tepi konten 16px. */}
+            <button
+              type="button"
+              onClick={copySeriesLink}
+              aria-label={copied ? 'Tautan tersalin' : 'Salin tautan series'}
+              className="-mr-3 flex h-11 w-11 shrink-0 touch-manipulation items-center justify-center rounded-xl text-ink-400 transition-transform duration-150 [@media(hover:hover)]:hover:text-ink-100 active:scale-[0.97] active:duration-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber focus-visible:ring-offset-2"
+            >
+              {copied ? (
+                <svg viewBox="0 0 24 24" className="size-5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <path d="M20 6 9 17l-5-5" />
+                </svg>
+              ) : (
+                <svg viewBox="0 0 24 24" className="size-5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
+                  <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
+                </svg>
+              )}
+            </button>
+          </div>
+          {copyError && <p className="mt-1 text-right text-[11px] text-brand-red">{copyError}</p>}
 
           <div className="mt-3 flex gap-4">
             <div className="w-28 shrink-0 sm:w-32">
@@ -305,7 +442,7 @@ export default function SeriesUnified() {
 
       {/* Tombol baca / maraton */}
       <div className="sticky top-[calc(3.5rem+env(safe-area-inset-top))] z-30 border-y border-ink-800 bg-ink-950/95 px-4 py-2.5 backdrop-blur">
-        <div className="grid grid-cols-2 gap-2">
+        <div className="grid grid-cols-2 gap-3">
           {oldest && (
             <>
               <Link
@@ -330,21 +467,22 @@ export default function SeriesUnified() {
               >
                 Maraton
               </Link>
-              {/* unduh PDF: aktifkan mode range 2-tap (Awal/Akhir) pada daftar chapter */}
+              {/* unduh PDF: aktifkan mode range 2-tap rentang pada daftar chapter */}
               {chapters.length > 0 && (
                 <button
                   type="button"
                   data-range-toggle
+                  ref={downloadTriggerRef}
                   aria-pressed={pickMode}
                   aria-label={pickMode ? 'Tutup mode pilih chapter' : 'Unduh chapter'}
                   onClick={() => {
                     if (pickMode) range.reset()
                     setPickMode(!pickMode)
                   }}
-                  className={`flex min-h-11 shrink-0 items-center gap-1.5 rounded-xl border px-3 py-2.5 text-center text-[13px] font-semibold transition-colors active:scale-[0.97] active:duration-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber focus-visible:ring-offset-2 ${
+                  className={`flex min-h-11 shrink-0 items-center justify-center gap-1.5 rounded-xl border px-3 py-2.5 text-center text-[13px] font-semibold transition-colors active:scale-[0.97] active:duration-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber focus-visible:ring-offset-2 ${
                     pickMode
                       ? 'border-brand-amber bg-brand-amber/15 text-brand-amber'
-                      : 'border-brand-amber-dim text-brand-amber [@media(hover:hover)]:hover:bg-brand-amber-dim/20'
+                      : 'border-ink-700 text-ink-300 [@media(hover:hover)]:hover:bg-ink-850'
                   }`}
                 >
                   <svg
@@ -399,34 +537,87 @@ export default function SeriesUnified() {
           className="mb-3"
         />
 
-        {/* Mode seleksi range (2-tap Awal/Akhir) → POST /unified/download-pdf.
+        {/* Mode seleksi range (2-tap rentang) → POST /unified/download-pdf.
             Info seleksi + baris progres mengisi ulang tempat UI centang lama. */}
         {!pickMode && dlSummary && (
           <div
-            className={`mb-3 rounded-xl border px-3 py-2 text-[11.5px] ${
+            role="status"
+            aria-live="polite"
+            className={`relative mb-3 rounded-xl border px-3 py-2 pr-11 text-[11.5px] ${
               dlSummary.fail > 0 || dlSummary.errors.length > 0
-                ? 'border-brand-red/40 bg-brand-red/10 text-brand-red'
-                : 'border-ink-800 bg-ink-900 text-ink-300'
+                ? 'border-danger/40 bg-danger/10 text-danger'
+                : 'border-healthy/40 bg-healthy/10 text-healthy'
             }`}
           >
-            <p className="font-semibold">{dlSummaryHeadline(dlSummary)}</p>
-            {dlSummary.mode === 'pdf' && !dlSummary.cancelled && dlSummary.ok > 0 && (
+            <button
+              type="button"
+              aria-label="Tutup ringkasan unduhan"
+              onClick={() => { setDlSummary(null); downloadTriggerRef.current?.focus() }}
+              className="absolute right-1 top-1 grid size-11 place-items-center rounded-full text-current opacity-60 transition-opacity [@media(hover:hover)]:hover:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber"
+            >
+              <span aria-hidden className="text-base leading-none">×</span>
+            </button>
+            <p className="flex items-center gap-1.5 font-semibold">
+              {dlSummary.fail === 0 && dlSummary.errors.length === 0 && (
+                <svg aria-hidden viewBox="0 0 20 20" fill="none" className="animate-heart-pop size-4 shrink-0" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 10.5l4 4L16 5.5" /></svg>
+              )}
+              {dlSummaryHeadline(dlSummary)}
+            </p>
+            {dlSummary.ok > 0 && (
+              <Link
+                to="/rak?tab=unduhan"
+                className="mt-2 inline-flex min-h-11 items-center gap-1.5 rounded-full border border-healthy/50 bg-healthy/15 px-3 text-[11.5px] font-semibold text-healthy transition-[transform,background-color,border-color] duration-150 ease-[var(--ease-out)] active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber"
+              >
+                Buka Rak → Unduhan
+              </Link>
+            )}
+            <p className="mt-0.5 text-[11px] text-ink-400">
+              Chapter {dlSummary.range} · {dlSummary.mode === 'cache' ? 'Offline di perangkat ini' : dlSummary.ok > 0 ? 'PDF siap diambil' : 'Belum ada PDF siap diambil'}
+              {dlSummary.ok < dlSummary.total ? ' · sebagian' : ''}
+            </p>
+            {dlSummary.cancelled && dlSummary.fail > 0 && (
+              <p className="mt-0.5 text-[11px]">{dlSummary.fail} gagal</p>
+            )}
+            {dlSummary.mode === 'pdf' && dlSummary.ok > 0 && (
               <p className="mt-0.5 text-[11px] text-ink-400">
                 {dlSummary.saved} dari {dlSummary.ok} file PDF terkirim ke perangkat
               </p>
             )}
-            {dlSummary.errors.length > 0 && (
-              <ul className="mt-1 space-y-0.5">
-                {dlSummary.errors.slice(0, 3).map((e) => (
-                  <li key={e.number} className="truncate">
-                    Chapter {e.number}: {e.error}
-                  </li>
-                ))}
-                {dlSummary.errors.length > 3 && (
-                  <li>+{dlSummary.errors.length - 3} chapter gagal lainnya</li>
-                )}
-              </ul>
+            {dlSummary.mode === 'pdf' && dlSummary.saveFailed > 0 && (
+              <p className="mt-0.5 text-[11px] text-ink-400">
+                {dlSummary.saveFailed} PDF gagal disimpan ke perangkat (sudah tersimpan di server)
+              </p>
             )}
+            {dlSummary.errors.length > 0 && (
+              <p className="mt-1 text-[11px]">{dlSummary.errors[0].error}</p>
+            )}
+            {dlSummary.fail > 0 && (
+              <button
+                type="button"
+                onClick={() => { setDlSummary(null); retryRun(handle) }}
+                className="mt-2 min-h-11 w-full rounded-lg border border-ink-700 py-1.5 text-[11.5px] font-semibold text-ink-300 transition-colors active:scale-[0.97] active:duration-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber focus-visible:ring-offset-2 [@media(hover:hover)]:hover:border-brand-amber/60 [@media(hover:hover)]:hover:text-brand-amber"
+              >
+                Coba lagi chapter gagal
+              </button>
+            )}
+          </div>
+        )}
+        {offline && (
+          <div
+            role="alert"
+            className="mb-3 flex items-start gap-1.5 rounded-xl border border-warn/40 bg-warn/10 px-3 py-2 text-[11.5px] text-warn"
+          >
+            <span aria-hidden>⚠</span>
+            <span>Tidak ada koneksi internet — unduhan akan gagal</span>
+          </div>
+        )}
+        {dlNote && (
+          <div
+            role="status"
+            className="mb-3 flex items-start gap-1.5 rounded-xl border border-warn/40 bg-warn/10 px-3 py-2 text-[11.5px] text-warn"
+          >
+            <span aria-hidden>⚠</span>
+            <span>{dlNote}</span>
           </div>
         )}
         {/* Ringkasan compact: judul, rentang chapter, n/M, bar progres,
@@ -435,46 +626,119 @@ export default function SeriesUnified() {
             + tombol Batal harus tetap terlihat sampai batch selesai.
             Tanpa daftar per chapter (server generate PDF bisa 30+ baris →
             user tak bisa lihat apa-apa). */}
-        {dlBusy && dlRun && (
+        {dlBusy && dlRun && dlProg && (
           <div className="mb-3 rounded-xl border border-ink-800 bg-ink-900 p-3">
             <div className="rounded-xl border border-ink-800/60 bg-ink-950/60 p-2.5">
               <div className="flex items-center justify-between gap-2">
-                <p className="text-[12px] font-semibold text-ink-100">Mengunduh</p>
-                <p className="text-[11px] text-ink-400">
-                  {dlDone}/{dlRun.jobs.length} chapter
+                <p className="flex items-center gap-1.5 text-[12px] font-semibold text-ink-100">
+                  <span className="inline-block size-2 animate-pulse rounded-full bg-brand-amber" />
+                  Mengunduh chapter…
+                </p>
+                <p className="text-[11px] tabular-nums text-ink-400">
+                  {progressPct(dlRun)}%
                 </p>
               </div>
               <p className="mt-0.5 truncate text-[11.5px] text-ink-300">
-                Chapter {rangeLabel(dlRun.jobs)}
+                Chapter {rangeLabel(dlRun.jobs)} · {dlRun.mode === 'cache' ? 'Offline di perangkat ini' : 'Menyiapkan PDF'}
               </p>
-              <div className="mt-1.5 h-1.5 w-full overflow-hidden rounded-full bg-ink-800">
-                <div
-                  className="h-full rounded-full bg-brand-amber transition-[width]"
-                  style={{
-                    width: `${dlRun.jobs.length === 0 ? 0 : Math.round((dlDone / dlRun.jobs.length) * 100)}%`,
-                  }}
-                />
+              <p className="mt-1 text-[11px] tabular-nums text-ink-400">
+                {dlDone}/{dlRun.jobs.length} diproses · {dlProg.ok} tersimpan · {dlProg.fail} gagal
+              </p>
+              {/* Indikator per chapter: satu segmen per job, warna = status
+                  (menunggu/berjalan/selesai/gagal) */}
+              <div
+                className="mt-2 flex h-1.5 w-full gap-[2px]"
+                role="progressbar"
+                aria-label={`Progres unduhan ${m.title}`}
+                aria-valuemin={0}
+                aria-valuemax={dlRun.jobs.length}
+                aria-valuenow={dlDone}
+                aria-valuetext={`${dlDone}/${dlRun.jobs.length} diproses · ${dlProg.ok} tersimpan · ${dlProg.fail} gagal`}
+              >
+                {dlRun.jobs.map((j, i) => (
+                  <div
+                    key={i}
+                    title={`Chapter ${j.number} — ${j.state === 'wait' ? 'menunggu' : j.state === 'run' ? 'berjalan' : j.state === 'ok' ? 'selesai' : 'gagal'}`}
+                    className={`h-full flex-1 rounded-full transition-colors ${
+                      j.state === 'ok'
+                        ? 'bg-healthy'
+                        : j.state === 'fail'
+                          ? 'bg-danger'
+                          : j.state === 'run'
+                            ? 'bar-shimmer bg-brand-amber'
+                            : 'bg-ink-700/60'
+                    }`}
+                  />
+                ))}
+              </div>
+              {/* Legenda tally — setiap status punya label + jumlah */}
+              <div className="mt-1.5 flex flex-wrap items-center gap-x-2.5 gap-y-1 text-[10.5px] tabular-nums">
+                {dlWait > 0 && (
+                  <span className="flex items-center gap-1 text-ink-400">
+                    <span className="inline-block size-1.5 rounded-full bg-ink-600" />
+                    Menunggu {dlWait}
+                  </span>
+                )}
+                {dlRunCount > 0 && (
+                  <span className="flex items-center gap-1 text-brand-amber-soft">
+                    <span className="inline-block size-1.5 animate-pulse rounded-full bg-brand-amber" />
+                    Berjalan {dlRunCount}
+                  </span>
+                )}
+                <span className="flex items-center gap-1 text-healthy">
+                  <span className="inline-block size-1.5 rounded-full bg-healthy" />
+                  Tersimpan {dlProg?.ok ?? 0}
+                </span>
+                {dlFail > 0 && (
+                  <span className="flex items-center gap-1 text-danger">
+                    <span className="inline-block size-1.5 rounded-full bg-danger" />
+                    Gagal {dlFail}
+                  </span>
+                )}
               </div>
               <p className="mt-1.5 text-[11px] text-ink-500">
                 Berjalan di latar belakang — boleh buka chapter lain.
               </p>
               {dlFail > 0 && (
-                <p className="mt-1 truncate text-[11px] text-brand-red">
+                <p className="mt-1 truncate text-[11px] text-danger">
                   {dlFail} gagal{dlError ? ` · ${dlError}` : ''}
+                </p>
+              )}
+              {dlSlow && !dlStale && (
+                <p className="mt-1 text-[11px] font-semibold text-warn">
+                  Koneksi lambat — sedang mencoba, harap tunggu…
+                </p>
+              )}
+              {dlStale && (
+                <p className="mt-1 text-[11px] font-semibold text-danger">
+                  Unduhan tampak macet (≥15 menit tanpa hasil). Periksa koneksi, atau Batal lalu coba lagi.
                 </p>
               )}
               <button
                 type="button"
                 onClick={() => cancelRun(handle)}
-                className="mt-2 min-h-11 w-full rounded-lg border border-ink-700 py-1.5 text-[11.5px] font-semibold text-ink-300 transition-colors active:scale-[0.97] active:duration-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber focus-visible:ring-offset-2 [@media(hover:hover)]:hover:border-brand-red/60 [@media(hover:hover)]:hover:text-brand-red"
+                className="mt-2 min-h-11 w-full rounded-lg border border-ink-700 py-1.5 text-[11.5px] font-semibold text-ink-300 transition-colors active:scale-[0.97] active:duration-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber focus-visible:ring-offset-2 [@media(hover:hover)]:hover:border-danger/60 [@media(hover:hover)]:hover:text-danger"
               >
-                Batal
+                Batalkan sisa unduhan
               </button>
+              <p className="mt-1 text-[11px] text-ink-500">Yang sudah tersimpan tetap tersedia.</p>
             </div>
           </div>
         )}
+        {getUser() === null && chapters.length > 0 && (
+          <div className="mb-3 text-[11px] text-ink-500">
+            <button
+              type="button"
+              onClick={signInForDownload}
+              className="min-h-11 rounded-lg font-semibold text-brand-amber focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber"
+            >
+              Masuk untuk mengunduh
+            </button>
+            <p>Perlu akun untuk mengunduh. Setelah masuk, kembali ke halaman ini; seleksi chapter dipertahankan.</p>
+          </div>
+        )}
         {pickMode && chapters.length > 0 && (
-          <div className="mb-3">
+          <div>
             <RangeSelectBar
               count={selectedRefs.length}
               clamped={range.clamped}
@@ -482,13 +746,28 @@ export default function SeriesUnified() {
               busy={dlBusy}
               onDownloadOffline={downloadSelectedOffline}
               onDownloadPdf={downloadSelectedPdf}
-            />
+            >
+              {outOfRange > 0 && (
+                <p className="mt-1 text-[11px] font-semibold text-warn">
+                  {outOfRange} chapter di luar daftar — akan dilewati saat mengunduh.
+                </p>
+              )}
+              {alreadyDone > 0 && (
+                <p className="mt-1 text-[11px] font-semibold text-ink-400">
+                  {alreadyDone} chapter yang dipilih sudah terunduh sebelumnya — akan diunduh ulang.
+                </p>
+              )}
+            </RangeSelectBar>
           </div>
         )}
 
         {chapters.length === 0 ? (
           <div className="text-center">
-            <p className="text-[12.5px] text-ink-500">Belum ada chapter.</p>
+            <p className="text-3xl" aria-hidden>📕</p>
+            <p className="mt-2 text-[13px] font-semibold text-ink-200">Belum ada chapter</p>
+            <p className="mt-1 text-[11.5px] text-ink-500">
+              Seri ini belum punya chapter yang bisa dibaca atau diunduh. Coba judul lain dari sumber yang sama.
+            </p>
             <Link
               to="/cari"
               className="mt-3 inline-flex min-h-11 items-center rounded-xl bg-brand-amber px-5 py-2.5 text-[13px] font-bold text-white transition-colors active:scale-[0.97] active:duration-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber focus-visible:ring-offset-2 [@media(hover:hover)]:hover:bg-brand-amber-soft"
@@ -499,8 +778,9 @@ export default function SeriesUnified() {
         ) : (
           <ul className="divide-y divide-ink-800 overflow-hidden rounded-xl border border-ink-800 bg-ink-900">
             {visible.map((c, i) => {
-              // Mode seleksi: tap baris bikin anchor Awal lalu Akhir — tanpa centang 1-1.
-              const anchor = pickMode ? range.isAnchor(i) : null
+              // Mode seleksi: tap dua baris menandai ujung rentang — tanpa centang 1-1.
+              const anchor = pickMode && range.isAnchor(i)
+              const selectedForRow = range.inRange(i) || (range.needEnd && anchor)
               // Chapter yang sudah pernah dibuka user → judul jadi abu (redup),
               // penanda tak hilang lewat aria-label "sudah dibaca".
               const read = isRead(c.number)
@@ -510,32 +790,40 @@ export default function SeriesUnified() {
               return (
                 <li
                   key={c.native_id}
-                  className={`flex items-center ${
+                  className={`relative flex items-center overflow-hidden ${
                     anchor
-                      ? 'border border-brand-amber bg-brand-amber/10'
-                      : pickMode && range.inRange(i)
+                      ? 'bg-brand-amber/10 ring-1 ring-inset ring-brand-amber/50'
+                      : pickMode && selectedForRow
                         ? 'bg-brand-amber/5'
                         : ''
                   }`}
                 >
+                  {pickMode && selectedForRow && (
+                    <span aria-hidden className="range-rail absolute left-0 top-0 h-full w-[3px] bg-brand-amber" />
+                  )}
                   {pickMode ? (
                     <button
                       type="button"
-                      aria-pressed={anchor !== null}
+                      aria-pressed={selectedForRow}
                       aria-label={
                         anchor
-                          ? `Anchor ${anchor} chapter ${c.number}`
-                          : `Pilih chapter ${c.number}`
+                          ? `Ujung rentang — chapter ${c.number}`
+                          : selectedForRow
+                            ? `Dalam rentang terpilih — chapter ${c.number}`
+                            : `Pilih chapter ${c.number}${read ? ' — sudah dibaca' : ''}`
                       }
                       onClick={() => range.select(i)}
-                      className="flex min-h-11 w-full items-center justify-between gap-3 px-3.5 py-3 text-left transition-colors [@media(hover:hover)]:hover:bg-ink-850 active:bg-ink-850"
+                      className="flex min-h-11 w-full items-center gap-3 px-3.5 py-3 text-left transition-colors [@media(hover:hover)]:hover:bg-ink-850 active:bg-ink-850"
                     >
+                      <span
+                        aria-hidden
+                        className={`grid size-5 shrink-0 place-items-center rounded-full border text-[11px] leading-none transition-[transform,background-color,border-color,opacity] duration-150 ease-[var(--ease-out)] ${
+                          selectedForRow ? 'scale-100 border-brand-amber bg-brand-amber text-white opacity-100' : 'scale-95 border-ink-600 text-transparent opacity-60'
+                        }`}
+                      >
+                        ✓
+                      </span>
                       <span className={titleCls}>{chapterLabel(c)}</span>
-                      {anchor && (
-                        <span className="shrink-0 rounded-md bg-brand-amber px-1.5 py-0.5 text-[10px] font-bold text-white">
-                          {anchor}
-                        </span>
-                      )}
                       <span className="shrink-0 text-[10.5px] font-medium text-ink-500">
                         {chapterDate(c)}
                       </span>
@@ -565,6 +853,7 @@ export default function SeriesUnified() {
           </ul>
         )}
 
+        {pickMode && <div aria-hidden className="h-24" />}
         {chapters.length > 40 && (
           <button
             onClick={() => setShowAll((v) => !v)}
@@ -588,9 +877,12 @@ export default function SeriesUnified() {
  * menghitung chapter lalu menyebut semuanya "tersimpan".
  */
 interface DlSummary {
+  total: number
+  range: string
   ok: number
   fail: number
   saved: number
+  saveFailed: number
   mode: 'pdf' | 'cache'
   cancelled: boolean
   errors: { number: string; error: string }[]
@@ -605,9 +897,12 @@ function announceFinish(run: DlRun, mountedRef: { current: boolean }): DlSummary
   // benar-benar gagal (error lain) tetap dilaporkan.
   const realFails = failed.filter((j) => j.error !== 'Dibatalkan')
   return {
+    total: run.jobs.length,
+    range: rangeLabel(run.jobs),
     ok,
     fail: realFails.length,
     saved: run.saved,
+    saveFailed: run.saveFailed,
     mode: run.mode,
     cancelled,
     errors: realFails.map((j) => ({
@@ -618,9 +913,11 @@ function announceFinish(run: DlRun, mountedRef: { current: boolean }): DlSummary
 }
 
 function dlSummaryHeadline(s: DlSummary): string {
-  if (s.cancelled) return `Unduhan dibatalkan${s.ok > 0 ? ` · ${s.ok} tersimpan` : ''}`
-  if (s.fail > 0) return `${s.ok} tersimpan, ${s.fail} gagal`
-  return s.mode === 'pdf' ? `${s.ok} chapter selesai` : `${s.ok} chapter tersimpan offline`
+  if (s.cancelled) {
+    const saved = s.ok > 0 ? ` · ${s.ok} tersimpan` : ''
+    return `Unduhan dibatalkan${saved}${s.fail > 0 ? ` · ${s.fail} gagal` : ''}`
+  }
+  return `${s.ok + s.fail}/${s.total} diproses · ${s.ok} tersimpan${s.fail > 0 ? ` · ${s.fail} gagal` : ''}`
 }
 
 /**

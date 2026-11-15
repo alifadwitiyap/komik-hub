@@ -1,7 +1,10 @@
 import { Link } from 'react-router-dom'
-import { IconArrowRight } from '../icons'
+import { IconArrowLeft, IconArrowRight } from '../icons'
 
 interface ReaderFooterProps {
+  /** chapter sebelumnya (null = chapter pertama) */
+  prevName?: string | null
+  prevHref?: string | null
   /** chapter berikutnya (null = terbaru) */
   nextName?: string | null
   nextHref?: string | null
@@ -12,20 +15,23 @@ interface ReaderFooterProps {
 }
 
 /**
- * Footer reader — pemilih chapter + navigasi maju saja.
+ * Footer reader — pemilih chapter + navigasi chapter.
  *
  * Baris "Tambahkan komentar…" dan baris reaksi (ikon sosial) DIHAPUS: keduanya
- * fitur mati di versi web. Tombol "Sebelumnya" juga DIHAPUS — menggantikan
- * chapter mundur adalah tombol "Pilih Chapter" di atasnya, yang membuka sheet
- * daftar chapter series yang sedang dibaca (lompat ke mana pun, bukan cuma
- * satu langkah mundur).
+ * fitur mati di versi web. Tombol "Sebelumnya" sempat DIHAPUS — digantikan
+ * "Pilih Chapter" di atasnya — lalu DIMINTA KEMBALI oleh pemilik situs lewat
+ * feedback live page ("tambahkan tombol sebelumnya"); keputusan penghapusan
+ * itu dibatalkan. "Pilih Chapter" tetap ada.
  *
  * Jadi isi footer = DUA baris:
- *   1. "Pilih Chapter"  → sheet daftar chapter series ini
- *   2. "Berikutnya"     → chapter berikutnya (atau label "Chapter terbaru")
+ *   1. "Pilih Chapter"    → sheet daftar chapter series ini
+ *   2. "Navigasi chapter" → "Sebelumnya" (sekunder, outline) di KIRI +
+ *      "Berikutnya" (primer, amber) di KANAN (atau label "Chapter terbaru")
  *
  * ERGONOMI MOBILE (390×844):
  * - tiap target sentuh >= 44 px (min-h-11) dan berjarak 8 px satu sama lain;
+ * - kedua target nav sama lebar (grid-cols-2) dan berjarak 8 px (gap-2) — di
+ *   layar 390 px "Sebelumnya" dan "Berikutnya" berukuran identik;
  * - kontainer memakai satu ritme flex (gap 8 px) + padding
  *   max(16 px, env(safe-area-inset-*)) di kiri/kanan dan
  *   pb-[env(safe-area-inset-bottom)] di bawah, jadi tombol tidak menempel ke
@@ -40,6 +46,8 @@ interface ReaderFooterProps {
  * tersembunyi benar-benar tidak bisa difokus saat dibaca.
  */
 export default function ReaderFooter({
+  prevName,
+  prevHref,
   nextName,
   nextHref,
   onPickChapter,
@@ -70,7 +78,25 @@ export default function ReaderFooter({
           <IconChapterList className="size-4 shrink-0" />
           Pilih Chapter
         </button>
-        <nav aria-label="Navigasi chapter" className="pointer-events-auto grid grid-cols-1">
+        <nav aria-label="Navigasi chapter" className={`pointer-events-auto grid gap-2 ${prevHref && nextHref ? 'grid-cols-2' : 'grid-cols-1'}`}>
+          {prevHref ? (
+            <Link
+              to={prevHref}
+              replace
+              aria-label={prevName ? `Baca Chapter Sebelumnya ${prevName}` : 'Baca Chapter Sebelumnya'}
+              className="flex min-h-11 touch-manipulation items-center justify-center gap-2 rounded-xl border border-white/40 bg-black/70 py-3 text-[14px] font-bold text-white backdrop-blur-sm active:bg-black/85 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
+            >
+              <IconArrowLeft className="size-3.5 shrink-0" aria-hidden="true" />
+              Sebelumnya
+              {prevName ? (
+                <span className="hidden truncate font-medium opacity-80 sm:inline">· {prevName}</span>
+              ) : null}
+            </Link>
+          ) : (
+            <p className="flex min-h-11 items-center justify-center rounded-xl border border-white/25 py-3 text-center text-[13px] font-medium text-white/85">
+              Chapter pertama
+            </p>
+          )}
           {nextHref ? (
             <Link
               to={nextHref}

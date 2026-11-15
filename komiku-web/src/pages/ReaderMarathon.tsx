@@ -713,7 +713,8 @@ export default function ReaderMarathon() {
       />
 
       <ReaderToolbar
-        title="Maraton"
+        title={head?.seriesTitle ?? 'Maraton'}
+        titleHref={seriesHref(head?.seriesId)}
         subtitle={`${curBlock?.chapterName ?? ''} · ${readInBlock}/${curLen} halaman`}
         onBack={() => navigate(seriesHref(head?.seriesId) ?? '/')}
         onHome={() => navigate('/')}
@@ -721,9 +722,12 @@ export default function ReaderMarathon() {
         onMore={() => setMenuOpen(true)}
         badge={curSource && curSource !== 'komiku' ? <SourceBadge source={curSource} /> : null}
         visible={chrome.visible}
+        progress={curLen ? Math.min(readInBlock / Math.max(1, curLen), 1) : 0}
       />
 
       <ReaderFooter
+        prevName={tail?.prevName ?? null}
+        prevHref={tail?.prevId ? marathonHref(tail.prevId) : null}
         nextName={tail?.nextName ?? null}
         nextHref={tail?.nextId ? marathonHref(tail.nextId) : null}
         onPickChapter={() => setChapterPickerOpen(true)}
@@ -751,18 +755,6 @@ export default function ReaderMarathon() {
         </p>
       )}
 
-      {/* progres chapter berjalan — update per gambar, transisi halus */}
-      <div
-        className={`fixed inset-x-0 top-[calc(env(safe-area-inset-top)+3rem)] z-30 h-0.5 bg-black/20 transition-opacity duration-200 ${
-          chrome.visible ? 'opacity-100' : 'pointer-events-none opacity-0'
-        }`}
-        aria-hidden={!chrome.visible}
-      >
-        <div
-          className="h-full rounded-full bg-brand-red transition-[width] duration-200 ease-out"
-          style={{ width: `${curLen ? Math.min((readInBlock / curLen) * 100, 100) : 0}%` }}
-        />
-      </div>
 
       {/* banner maraton inline — muncul di dalam alur baca, bukan di chrome.
           Teks 12px + warna reader-muted: kontras aman di tema terang & gelap.
