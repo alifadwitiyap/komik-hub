@@ -873,11 +873,24 @@ function ResultGrid({ items }: { items: Manga[] }) {
     <ul data-search-results className="grid grid-cols-2 gap-x-3 gap-y-4">
       {items.map((m) => (
         <li key={m.id} className="[&_a]:w-full">
-          <MangaCard manga={m} />
+          <MangaCard manga={withChapterLabel(m)} />
         </li>
       ))}
     </ul>
   )
+}
+
+/**
+ * MangaCard (Home.tsx, milik subagent lain) menampilkan `other[0]` apa adanya.
+ * Di sini nomor chapter terakhir diberi label "Terbaru · Ch. …" sebelum kartu
+ * dirender — salinan objek, data asli tidak diubah.
+ */
+function withChapterLabel(m: Manga): Manga {
+  const first = m.other?.[0]
+  if (typeof first !== 'string') return m
+  const number = first.trim().replace(/^Chapter\s+/i, '')
+  if (!/^\d+(?:[.,]\d+)?$/.test(number)) return m
+  return { ...m, other: [`Terbaru · Ch. ${number}`, ...(m.other?.slice(1) ?? [])] }
 }
 
 /** Kartu skeleton pemuatan (mode cari + eksplorasi): grid 2 kolom + aspect
