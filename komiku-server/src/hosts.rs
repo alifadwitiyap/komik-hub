@@ -13,7 +13,8 @@
 /// wildcard — subdomain liar / host user-request langsung ditolak.
 /// Sumber: img.komiku.org (komiku), image2..image11.komiku.to (komiku+mangaku
 /// CDN, semuanya resolve live 2026-10-15), thumbnail.komiku.org (cover
-/// komiku), assets/storage.shngm.id (shinigami), cdnkuma.my.id (mangaku),
+/// komiku), assets/storage.shngm.id + cdn.shinigami.gg (shinigami — host baru
+/// s1.shinigami.mx, terverifikasi 2026-11-18), cdnkuma.my.id (mangaku),
 /// cdn.jsdelivr.net + v2.yuucdn.net + v7.kiryuu.to + cdn.kiryuu.io (kiryuu —
 /// host HTML + CDN gambar halaman; terverifikasi 2026-10-29: chapter kiryuu
 /// mengembalikan gambar dari cdn.kiryuu.io, 200 image/jpeg 690x5620).
@@ -24,7 +25,7 @@
 const ALLOWED_HOSTS: &[&str] = &[
     "img.komiku.org",
     "thumbnail.komiku.org",
-    "thumbnail.komiku.to",
+            "thumbnail.komiku.to",
     "image2.komiku.to",
     "image3.komiku.to",
     "image4.komiku.to",
@@ -37,6 +38,7 @@ const ALLOWED_HOSTS: &[&str] = &[
     "image11.komiku.to",
     "assets.shngm.id",
     "storage.shngm.id",
+    "cdn.shinigami.gg",
     "cdnkuma.my.id",
     "cdn.jsdelivr.net",
     "v2.yuucdn.net",
@@ -78,9 +80,10 @@ mod tests {
         for h in [
             "img.komiku.org",
             "thumbnail.komiku.org",
-    "thumbnail.komiku.to",
+            "thumbnail.komiku.to",
             "image2.komiku.to",
             "image11.komiku.to",
+            "cdn.shinigami.gg",
         ] {
             assert!(
                 host_allowed(&format!("https://{h}/x/1.webp")),
