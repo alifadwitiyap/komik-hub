@@ -24,6 +24,8 @@ import {
 import { RangeSelectBar, useRangeSelection, outOfRangeCount } from '../components/DownloadRangePicker'
 import { doneNumbers } from '../downloadHistory'
 import { friendlyError } from '../downloadBatch'
+import { ensureDownloadReturn } from '../downloadReturn'
+import ChapterJumpSearch from '../components/ChapterJumpSearch'
 
 /**
  * Detail manga unified (route /manga/:handle, handle 'sumber:native_id').
@@ -78,8 +80,12 @@ export default function SeriesUnified() {
   const downloadTriggerRef = useRef<HTMLButtonElement>(null)
   const wasPickingRef = useRef(false)
   const selectionKey = `komik:download-selection:${handle}`
+  const returnKey = `komik:download-return:${handle}`
   const resetRange = range.reset
   const selectRange = range.select
+
+  // Listener modul aktif meski halaman series unmount saat /akun tampil.
+  ensureDownloadReturn()
 
   useEffect(() => {
     if (wasPickingRef.current && !pickMode) downloadTriggerRef.current?.focus()
@@ -228,6 +234,7 @@ export default function SeriesUnified() {
         end: range.state.end === null ? null : chapters[range.state.end]?.number ?? null,
         showAll,
       }))
+      sessionStorage.setItem(returnKey, location.pathname + location.search + location.hash)
     } catch {
       setDlNote('Seleksi belum bisa disimpan. Izinkan penyimpanan browser sebelum masuk agar seleksi tidak hilang.')
       return
@@ -760,6 +767,10 @@ export default function SeriesUnified() {
             </RangeSelectBar>
           </div>
         )}
+
+        {/* Pencarian + lompat nomor chapter (sumber kebenaran dibaca sama dengan
+            daftar di bawah). Dipasang sebelum logika showAll. */}
+        {chapters.length > 0 && <ChapterJumpSearch chapters={chapters} titleKey={titleKey} />}
 
         {chapters.length === 0 ? (
           <div className="text-center">

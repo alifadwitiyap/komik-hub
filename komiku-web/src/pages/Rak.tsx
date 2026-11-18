@@ -5,7 +5,10 @@ import { accountHeaders, toMangaCard, unifiedApi } from '../api'
 import type { Manga } from '../types'
 import { MangaCard } from './Home'
 import * as rakStore from '../rakStore'
-import { readerHref } from '../readerSource'
+import { readerHref, marathonHref } from '../readerSource'
+import { useProgress } from '../hooks/useProgress'
+import { useMarathonMemory } from '../hooks/useMarathonMemory'
+import { getUser } from '../account'
 import { Empty, Spinner } from '../App'
 import { IconArrowRight, IconXmark } from '../icons'
 import { humanSize, saveGeneratedPdf } from '../downloadBatch'
@@ -21,19 +24,22 @@ import type { DownloadItem, DownloadsResponse } from '../types'
 
 type TabKey = 'terbaru' | 'sejarah' | 'favorit' | 'unduhan'
 
-/** Urutan tab + label (dl untuk tablist ARIA di atas). */
+/** Urutan tab + label (dl untuk tablist ARIA di atas). Kunci 'sejarah'
+ *  dipertahankan supaya tautan lama ?tab=sejarah tetap membuka panel ini. */
 const TABS = [
   ['terbaru', 'Terbaru'],
-  ['sejarah', 'Sejarah'],
+  ['sejarah', 'Riwayat baca'],
   ['favorit', 'Favorit'],
   ['unduhan', 'Unduhan'],
 ] as const
 
-/** Query ?tab= → tab aktif; nilai tak dikenal jatuh ke 'terbaru'. */
+/** Query ?tab= → tab aktif. Tanpa query = Riwayat baca (tab awal Rak);
+ *  'terbaru' eksplisit tetap bisa dibuka lewat Beranda/Cari. Tautan lama
+ *  ?tab=sejarah otomatis jatuh ke kunci yang sama. */
 function tabFromQuery(value: string | null): TabKey {
-  return value === 'sejarah' || value === 'favorit' || value === 'unduhan'
+  return value === 'favorit' || value === 'unduhan' || value === 'terbaru'
     ? value
-    : 'terbaru'
+    : 'sejarah'
 }
 
 /** Minimal shape run untuk teks progres (kompatibel dengan DlRun store). */
@@ -244,27 +250,59 @@ function LatestTab() {
   )
 }
 
-// ---------------------------------------------------------------- Sejarah
+// ---------------------------------------------------------------- Riwayat baca
 
 function HistoryTab({ entries }: { entries: rakStore.HistoryEntry[] }) {
-  if (entries.length === 0) {
-    return <Empty title="Belum ada sejarah" body="Buka sebuah chapter, akan muncul di sini." />
+  const { recent } = useProgress()
+  const marathon = useMarathonMemory()
+  const byHandle = new Map<string, rakStore.HistoryEntry>()
+  for (const e of entries) {
+    byHandle.set(String(e.handle), e)
+    const numeric = String(e.handle).split(':').pop()
+    if (numeric) byHandle.set(numeric, e)
+  }
+
+  const rows = recent
+    .map((p) => {
+      const e = byHandle.get(String(p.handle ?? '')) ?? byHandle.get(String(p.seriesId))
+      if (!e) return null
+      const pos = marathon.forHandle(e.handle)
+      const key = String(p.chapterId ?? '')
+      const href = pos ? marathonHref(pos.chapterKey) : key ? readerHref(key) : null
+      if (!href) return null
+      return {
+        key: e.title_key,
+        entry: e,
+        href,
+        chapter: p.chapterName || `Chapter ${key.split(':').pop() ?? ''}`,
+        page: p.page,
+        progress: Math.max(0, Math.min(1, p.progress || 0)),
+      }
+    })
+    .filter((r): r is NonNullable<typeof r> => r !== null)
+
+  if (rows.length === 0) {
+    return <Empty title="Belum ada riwayat baca" body="Buka sebuah chapter, akan muncul di sini." />
   }
   return (
     <ul className="space-y-2.5">
-      {entries.map((e) => (
-        <li key={e.title_key}>
+      {rows.map((r) => (
+        <li key={r.key}>
           <Link
-            to={readerHref(`${e.handle}:${e.last_chapter}`)}
+            to={r.href}
             className="flex items-center gap-3 rounded-xl border border-ink-800 bg-ink-900 p-2.5 transition-colors [@media(hover:hover)]:hover:border-ink-700 active:scale-[0.98]"
           >
-            <Cover src={e.cover_url} title={e.title} />
+            <Cover src={r.entry.cover_url} title={r.entry.title} />
             <div className="min-w-0 flex-1">
-              <p className="truncate text-[13px] font-semibold text-ink-100">{e.title}</p>
+              <p className="truncate text-[13px] font-semibold text-ink-100">{r.entry.title}</p>
               <p className="truncate text-[11.5px] text-ink-400">
-                Chapter {e.last_chapter} · {new Date(e.updated_at).toLocaleDateString('id-ID')}
+                {r.chapter} · Halaman {Number.isFinite(r.page) ? r.page + 1 : 1} · {new Date(r.entry.updated_at).toLocaleDateString('id-ID')}
               </p>
+              <div className="mt-1 h-1 w-full overflow-hidden rounded-full bg-ink-800">
+                <div className="h-full rounded-full bg-brand-amber" style={{ width: `${Math.round(r.progress * 100)}%` }} />
+              </div>
             </div>
+            <span className="shrink-0 text-[11px] font-bold text-brand-amber">Lanjut</span>
           </Link>
         </li>
       ))}
@@ -277,7 +315,20 @@ function HistoryTab({ entries }: { entries: rakStore.HistoryEntry[] }) {
 function FavoritesTab({ entries }: { entries: rakStore.FavoriteEntry[] }) {
   const { unreadByTitle } = useNotifCounts()
   if (entries.length === 0) {
-    return <Empty title="Belum ada favorit" body="Tekan ikon hati di halaman series." />
+    return (
+      <Empty
+        title="Belum ada favorit"
+        body="Tekan ikon hati di halaman series, atau cari komik baru untuk disimpan."
+        action={
+          <Link
+            to="/cari"
+            className="inline-flex min-h-11 items-center rounded-full bg-brand-amber px-5 text-[12px] font-bold text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber focus-visible:ring-offset-2"
+          >
+            Cari komik
+          </Link>
+        }
+      />
+    )
   }
   return (
     <ul className="space-y-2.5">
@@ -631,7 +682,23 @@ function DownloadsTab() {
       {/* proses unduhan yang masih jalan (lintas halaman) */}
       <ActiveDownloads runs={runs} />
 
-      {error && (
+      {getUser() === null && (
+        <Empty
+          icon="🔒"
+          title="Masuk untuk mengunduh"
+          body="Unduhan tersimpan di akunmu. Masuk untuk melihat dan mengelola chapter yang sudah diunduh."
+          action={
+            <Link
+              to="/akun"
+              className="inline-flex min-h-11 items-center rounded-full bg-brand-amber px-5 text-[12px] font-bold text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber focus-visible:ring-offset-2"
+            >
+              Masuk
+            </Link>
+          }
+        />
+      )}
+
+      {getUser() !== null && error && (
         <div className="mb-3 flex items-center justify-between gap-3 rounded-xl border border-brand-red/40 bg-brand-red/10 px-3 py-2 text-[12px] text-brand-red">
           <p>{error}</p>
           <button
@@ -644,13 +711,13 @@ function DownloadsTab() {
         </div>
       )}
 
-      {loading && !data && !error && (
+      {getUser() !== null && loading && !data && !error && (
         <div role="status">
           <Spinner label="Memuat unduhan…" />
         </div>
       )}
 
-      {!loading && !error && items.length === 0 && (
+      {getUser() !== null && !loading && !error && items.length === 0 && (
         <Empty
           icon="📥"
           title="Belum ada unduhan"
