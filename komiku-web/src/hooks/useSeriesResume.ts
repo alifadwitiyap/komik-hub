@@ -1,4 +1,9 @@
-import { readerHref, marathonHref } from '../readerSource'
+import { useMemo } from 'react'
+import { marathonHref } from '../readerSource'
+import {
+  resolveResumeTarget,
+  type ResumeTarget,
+} from '../progressResume'
 import { useMarathonMemory } from './useMarathonMemory'
 import { useProgress } from './useProgress'
 import type { ProgressEntry } from './useProgress'
@@ -15,6 +20,13 @@ export interface SeriesResume {
   resumeHref: string | null
   /** URL maraton untuk sesi tersimpan; null kalau tanpa sesi. */
   marathonHref: string | null
+  /**
+   * Spec §1: satu target kanonik yang dipakai Beranda/Rak/detail. Berisi
+   * chapter (string), mode, page, pageId, offsetRatio, dan sourceChanged.
+   */
+  target: ResumeTarget | null
+  /** URL final ke reader ATAU maraton sesuai `target.mode`. */
+  continueHref: string | null
 }
 
 /**
@@ -36,11 +48,21 @@ export function useSeriesResume(
   const rawKey = resume ? String(resume.chapterId) : null
   const resumeKey = rawKey && (isValidResume?.(rawKey) ?? true) ? rawKey : null
   const marathonPos = seriesId ? marathonMemory.forHandle(String(seriesId)) : null
+  const target = useMemo(
+    () => resolveResumeTarget(resume, marathonPos, isValidResume),
+    [resume, marathonPos, isValidResume],
+  )
+  // `resumeHref` dan `continueHref` SAMA-sama memakai target kanonik: Semua
+  // entry point lama (Series/SeriesUnified yang memakai resumeHref) otomatis
+  // dapat chapter/mode/page yang sama dengan Beranda/Rak tanpa diedit.
+  const href = target ? target.href : null
   return {
     resume,
     marathonPos,
     resumeKey,
-    resumeHref: resumeKey ? readerHref(resumeKey) : null,
+    resumeHref: href,
     marathonHref: marathonPos ? marathonHref(marathonPos.chapterKey) : null,
+    target,
+    continueHref: href,
   }
 }

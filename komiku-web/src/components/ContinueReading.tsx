@@ -2,10 +2,10 @@ import { memo, useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { imgUrl } from '../imgUrl'
 import * as rakStore from '../rakStore'
-import { marathonHref, resumeHref } from '../readerSource'
-import { useProgress } from '../hooks/useProgress'
+import { resumeHref } from '../readerSource'
+import { resolveResumeTarget } from '../progressResume'
+import { findProgress, useProgress } from '../hooks/useProgress'
 import { useMarathonMemory } from '../hooks/useMarathonMemory'
-import type { ProgressEntry } from '../hooks/useProgress'
 
 /**
  * Section "Lanjut membaca" di Home — paritas `item_index_history` app:
@@ -31,12 +31,14 @@ const ContinueReading = memo(function ContinueReading() {
 
   const items = history
     .flatMap((e) => {
-      // Sesi maraton terakhir untuk series ini (kalau ada) menang: kartu harus
-      // mengembalikan pembaca ke RANTAI yang sedang dia baca, bukan melemparnya
-      // ke reader satu chapter yang membuat maraton terasa "hilang".
+      // Satu helper yang sama dengan halaman detail (spec §1): progres + sesi
+      // maraton dipecah jadi satu target (chapter/mode/page), bukan dipilih
+      // terpisah-pisah di tiap entry point.
+      const p = findProgress(recent, e.handle)
       const pos = marathon.forHandle(e.handle)
-      const href = pos ? marathonHref(pos.chapterKey) : resumeHref(e)
-      return href ? [{ entry: e, href }] : []
+      const target = resolveResumeTarget(p, pos)
+      const href = target?.href ?? (!p ? resumeHref(e) : null)
+      return href ? [{ entry: e, href, progress: p }] : []
     })
     .slice(0, MAX_CARDS)
 
@@ -53,12 +55,7 @@ const ContinueReading = memo(function ContinueReading() {
         </Link>
       </div>
       <div className="mt-3 grid grid-cols-2 gap-3 px-4">
-        {items.map(({ entry, href }) => {
-          // progress per series: seriesId = handle (Reader unified);
-          // entri tanpa progress → chapter terakhir dari riwayat
-          const p = recent.find(
-            (r: ProgressEntry) => String(r.seriesId) === String(entry.handle),
-          )
+        {items.map(({ entry, href, progress: p }) => {
           const progress =
             p == null ? null : Math.max(0, Math.min(1, p.progress))
           return (
