@@ -599,7 +599,7 @@ export default function Reader() {
   // turun = sembunyi, naik = tampil, supaya area baca tetap bersih saat
   // membaca. Tombol keluar tetap bisa dijangkau lewat tap tengah (toggle
   // chrome) atau scroll ke atas.
-  const fsInteractive = chrome.visible || fsActive
+  const fsInteractive = chrome.visible
 
   return (
     // overflow-x-clip: jaring pengaman. Kalau satu gambar (mis. spread halaman
