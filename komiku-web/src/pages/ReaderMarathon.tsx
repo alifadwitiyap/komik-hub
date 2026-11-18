@@ -510,6 +510,17 @@ export default function ReaderMarathon() {
   const curBlock = blocks[readBlock] ?? blocks[0]
   const curLen = curBlock?.images.length ?? 0
   const { gotoReader } = useModeSwitch(chapterId, curBlock)
+  // Status muat maraton: belum semua gambar blok aktif selesai. Label ini
+  // terpisah dari "Hal. X dari N" (posisi baca) — jangan pakai persentase
+  // muat sebagai pengganti nomor halaman.
+  const [settledInBlock, setSettledInBlock] = useState<Set<number>>(() => new Set())
+  useEffect(() => {
+    setSettledInBlock(new Set())
+  }, [curBlock?.chapterId])
+  const loadingImages = curLen > 0 && settledInBlock.size < curLen
+  const pageStatus = curLen
+    ? `Hal. ${Math.min(Math.max(1, readInBlock), curLen)} dari ${curLen}`
+    : 'Hal. 0 dari 0'
 
   // Chapter yang SEDANG dibaca → tandai "sudah dibaca" (per akun).
   // Yang ditandai cuma blok yang jadi blok baca aktif — chapter berikutnya
@@ -715,7 +726,8 @@ export default function ReaderMarathon() {
       <ReaderToolbar
         title={head?.seriesTitle ?? 'Maraton'}
         titleHref={seriesHref(head?.seriesId)}
-        subtitle={`${curBlock?.chapterName ?? ''} · ${readInBlock}/${curLen} halaman`}
+        subtitle={pageStatus}
+        loadingLabel={loadingImages ? 'Memuat gambar…' : null}
         onBack={() => navigate(seriesHref(head?.seriesId) ?? '/')}
         onHome={() => navigate('/')}
         onShare={() => setToast('Bagikan: salin URL halaman ini')}
@@ -809,6 +821,20 @@ export default function ReaderMarathon() {
                   onLoad={() =>
                     setTailIdx((n) => (start + i === n ? n + 1 : Math.max(n, start + i)))
                   }
+                  // onSettled dipanggil sukses ATAU gagal — label "Memuat
+                  // gambar…" harus hilang walau satu halaman gagal dan
+                  // menampilkan tombol Coba lagi.
+                  onSettled={() => {
+                    // hanya gambar blok aktif yang dihitung; blok lain yang
+                    // di-preload punya indeks `i` sama dan boleh mengisi set
+                    if (b.chapterId !== curBlock?.chapterId) return
+                    setSettledInBlock((prev) => {
+                      if (prev.has(i)) return prev
+                      const next = new Set(prev)
+                      next.add(i)
+                      return next
+                    })
+                  }}
                   className="manga-img w-full"
                 />
               ))}

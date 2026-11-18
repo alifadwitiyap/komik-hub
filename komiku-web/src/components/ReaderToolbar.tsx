@@ -4,6 +4,8 @@ import { IconAngleLeft, IconHouse, IconShare, IconEllipsisV } from '../icons'
 interface ReaderToolbarProps {
   title: string
   subtitle?: string
+  /** Label terpisah untuk status muat gambar — tidak menggantikan posisi baca. */
+  loadingLabel?: string | null
   onBack: () => void
   /** Kalau diisi, judul jadi link ke halaman detail komik (mis. dari Maraton). */
   titleHref?: string | null
@@ -36,6 +38,7 @@ interface ReaderToolbarProps {
 export default function ReaderToolbar({
   title,
   subtitle,
+  loadingLabel,
   onBack,
   titleHref,
   onHome,
@@ -59,12 +62,22 @@ export default function ReaderToolbar({
     </p>
   )
   const metaNode =
-    subtitle || badge || chip ? (
+    subtitle || loadingLabel || badge || chip ? (
       <div className="flex min-w-0 items-center gap-1.5">
         {subtitle && (
           <p className="min-w-0 truncate text-[11px] tabular-nums leading-tight text-white/85 [text-shadow:0_1px_2px_rgba(0,0,0,0.7)]">
             {subtitle}
           </p>
+        )}
+        {/* Status muat gambar punya node sendiri + role=status: pembaca layar
+            mendengar "Memuat gambar…" tanpa mengganti label posisi baca. */}
+        <p role="status" aria-live="polite" className="sr-only">
+          {loadingLabel ?? ''}
+        </p>
+        {loadingLabel && (
+          <span className="shrink-0 text-[10px] leading-tight text-white/70 [text-shadow:0_1px_2px_rgba(0,0,0,0.7)]">
+            {loadingLabel}
+          </span>
         )}
         {/* badge sumber di baris meta — judul tetap dapat lebar penuh
             di layar 390px (sebelumnya badge memakan ~60px judul) */}

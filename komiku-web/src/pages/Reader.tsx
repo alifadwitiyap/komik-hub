@@ -72,6 +72,9 @@ export default function Reader() {
   // halaman complete — lihat onLoad ComicImage di flow bawah)
   const [loadedPages, setLoadedPages] = useState<Set<number>>(() => new Set())
   const loadedCount = loadedPages.size
+  /** Halaman aktif untuk label "Hal. X dari N" — diisi dari efek anchor yang
+   *  sama dengan penulisan progres (sumber tunggal, bukan hitungan baru). */
+  const [activePage, setActivePage] = useState(1)
   // chrome (toolbar + footer) ikut arah scroll; selama restore anchor
   // (`pending.current`) berjalan scroll programatik TIDAK memicunya
   const chrome = useChromeOnScroll(() => pending.current !== null)
@@ -112,6 +115,7 @@ export default function Reader() {
     pending.current = null
     prefetchedNext.current = false
     setBgFillIdx(0)
+    setActivePage(1)
     // React Router v7 TIDAK reset scroll saat rute berubah → chapter baru
     // akan tampil di posisi scroll chapter lama (bawah). Scroll ke atas
     // SEBELUM fetch; kalau chapter ini punya anchor tersimpan, efek restore
@@ -316,6 +320,9 @@ export default function Reader() {
   const apply = (idx: number, anchor: ReadingAnchor): boolean => {
     const el = flowRef.current?.querySelector<HTMLElement>(`[data-page="${idx}"]`)
     if (!el) return false
+    // Label halaman ikut posisi yang dipulihkan, bukan menunggu scroll event
+    // (scroll programatik sengaja tidak menulis progres saat restore).
+    setActivePage(idx + 1)
     return setScrollToAnchor(el, anchor)
   }
 
@@ -471,6 +478,8 @@ export default function Reader() {
       last.pageId = anchor.pageId
       last.t = now
       const idx = images.findIndex((s) => imgUrl(s) === anchor.pageId)
+      // Satu anchor → satu sumber kebenaran untuk progres DAN label halaman.
+      setActivePage(idx >= 0 ? idx + 1 : 1)
       save({
         seriesId: data.series?.id ?? chapterId,
         seriesTitle: data.series?.title ?? null,
@@ -583,9 +592,13 @@ export default function Reader() {
 
   const { chapter, series } = data
   const seriesId = series?.id
-  const pct = images.length
-    ? Math.min(100, Math.round((loadedCount / images.length) * 100))
-    : 0
+  // Status MEMUAT dipisah dari posisi baca — "Hal. X dari N" tetap akurat
+  // walau sebagian gambar belum dimuat. Pembaca layar mendengar status ini
+  // lewat role=status milik ReaderToolbar.
+  const loadingImages = images.length > 0 && loadedCount < images.length
+  const pageStatus = images.length ? `Hal. ${activePage} dari ${images.length}` : 'Hal. 0 dari 0'
+  // Footer sekarang satu baris (±4.5rem termasuk safe-area), bukan dua baris.
+  const footerSpacer = 'h-[calc(4.5rem+env(safe-area-inset-bottom))]'
   const nextKey = chapter.next ? String(chapter.next.id) : null
   const prevKey = chapter.previous ? String(chapter.previous.id) : null
   // id manga legacy (angka) — cuma ada di flow komiku lama. Flow unified
@@ -708,7 +721,8 @@ export default function Reader() {
 
       <ReaderToolbar
         title={chapter.name}
-        subtitle={`${series?.title ?? 'Memuat…'} · ${pct}%`}
+        subtitle={pageStatus}
+        loadingLabel={loadingImages ? 'Memuat gambar…' : null}
         onBack={() => navigate(seriesHref(seriesId) ?? '/')}
         titleHref={seriesHref(seriesId)}
         onHome={() => navigate('/')}
@@ -759,6 +773,8 @@ export default function Reader() {
         // mengikuti tema app): latar reader selalu putih atau #131313, jadi
         // ink-500 versi tema gelap (#9aa0a8) hanya 2,5:1 di atas putih.
         <p
+          role="status"
+          aria-live="polite"
           className={`mx-auto max-w-3xl px-4 pr-16 pt-[calc(env(safe-area-inset-top)+3.5rem)] text-[12px] leading-relaxed max-sm:text-[12.5px] max-sm:leading-[1.7] ${
             settings.nightShift ? 'text-reader-muted-night' : 'text-reader-muted'
           }`}
@@ -823,13 +839,10 @@ export default function Reader() {
             />
           </div>
         ))}
-        {/* Ruang bawah: footer fixed TIDAK boleh menutupi ekor halaman
-            terakhir saat chrome tampil. Tinggi footer terukur (390 px):
-            10 + 44 + 8 + 44 + 10 = 116 px + safe-area. Dulu spacer-nya
-            h-36 (144 px) — di iPhone (inset 34 px → footer 150 px) sisa
-            6 px ekor halaman tertutup. Sekarang 120 px + safe-area, jadi
-            selalu ≥ tinggi footer di semua perangkat. */}
-        <div className="h-[calc(7.5rem+env(safe-area-inset-bottom))]" />
+        {/* Ruang bawah: footer SATU baris (~64px + safe-area). Spacer lama
+            120px (dua baris) disusutkan supaya ekor halaman terakhir tidak
+            jauh dari footer di layar 639/799. */}
+        <div className={footerSpacer} />
       </div>
 
       <ReaderMenu

@@ -43,19 +43,25 @@ export default function ReaderSettingsSheet({
   marathonActions,
 }: ReaderSettingsSheetProps) {
   const panelRef = useRef<HTMLDivElement>(null)
+  const onCloseRef = useRef(onClose)
+  onCloseRef.current = onClose
 
+  // Escape + focus return ke tombol pembuka. onClose dibaca dari ref supaya
+  // arrow function baru dari induk tidak memicu cleanup (focus return) di
+  // tengah sheet terbuka.
   useEffect(() => {
+    if (!open) return
     const prev = document.activeElement as HTMLElement | null
     panelRef.current?.focus()
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose()
+      if (e.key === 'Escape') onCloseRef.current()
     }
     document.addEventListener('keydown', onKey)
     return () => {
       document.removeEventListener('keydown', onKey)
       prev?.focus()
     }
-  }, [onClose])
+  }, [open])
 
   if (!open) return null
   return (
@@ -65,18 +71,18 @@ export default function ReaderSettingsSheet({
         role="dialog"
         aria-modal="true"
         tabIndex={-1}
-        className="sheet-panel w-full max-w-md rounded-t-2xl bg-ink-900 pb-[calc(1.5rem+env(safe-area-inset-bottom))] outline-none"
+        className="sheet-panel flex max-h-[92dvh] w-full flex-col overflow-hidden rounded-t-2xl bg-ink-900 outline-none"
         onClick={(e) => e.stopPropagation()}
         onKeyDown={trapFocus}
       >
-        <div className="flex items-center justify-between px-4 py-3">
+        <div className="flex shrink-0 items-center justify-between border-b border-ink-800 px-4 py-3">
           <h2 className="font-display text-[15px] font-bold text-ink-100">Preferensi</h2>
-          <button onClick={onClose} aria-label="Tutup" className="grid size-11 place-items-center rounded-xl text-ink-500 active:bg-ink-800 active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber">
+          <button type="button" onClick={onClose} aria-label="Tutup" className="grid size-11 place-items-center rounded-xl text-ink-500 active:bg-ink-800 active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber">
             <IconXmark className="size-4" />
           </button>
         </div>
-        <div className="h-px bg-ink-800" />
 
+        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain pb-[env(safe-area-inset-bottom)]">
         <Row
           icon={<IconBars className="size-4" />}
           label="Mode Baca"
@@ -187,6 +193,7 @@ export default function ReaderSettingsSheet({
           >
             Kembalikan Semula
           </button>
+        </div>
         </div>
       </div>
     </div>
