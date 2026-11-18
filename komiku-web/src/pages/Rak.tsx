@@ -6,6 +6,7 @@ import type { Manga } from '../types'
 import { MangaCard } from './Home'
 import * as rakStore from '../rakStore'
 import { resolveResumeTarget, resumeLabel } from '../progressResume'
+import { readerHref, marathonHref } from '../readerSource'
 import { useProgress } from '../hooks/useProgress'
 import { useMarathonMemory } from '../hooks/useMarathonMemory'
 import { getUser } from '../account'
@@ -279,6 +280,15 @@ function HistoryTab({ entries }: { entries: rakStore.HistoryEntry[] }) {
           chapterName: p.chapterName,
         }),
         page: target.page,
+      const key = String(p.chapterId ?? '')
+      const href = pos ? marathonHref(pos.chapterKey) : key ? readerHref(key) : null
+      if (!href) return null
+      return {
+        key: e.title_key,
+        entry: e,
+        href,
+        chapter: p.chapterName || `Chapter ${key.split(':').pop() ?? ''}`,
+        page: p.page,
         progress: Math.max(0, Math.min(1, p.progress || 0)),
       }
     })
