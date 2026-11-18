@@ -95,9 +95,10 @@ export default function ReaderToolbar({
   return (
     <header
       data-reader-chrome="toolbar"
-      className={`fixed inset-x-0 top-0 z-30 bg-gradient-to-b from-black/90 via-black/70 to-transparent pt-[env(safe-area-inset-top)] pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)] backdrop-blur-[2px] transition-transform duration-200 ${
-        visible ? 'translate-y-0' : '-translate-y-full'
+      className={`fixed inset-x-0 top-0 z-30 bg-gradient-to-b from-black/90 via-black/70 to-transparent pt-[env(safe-area-inset-top)] pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)] backdrop-blur-[2px] reader-chrome-fade ${
+        visible ? 'opacity-100' : 'opacity-0'
       }`}
+      data-hidden={!visible}
       aria-hidden={!visible}
       inert={!visible}
     >

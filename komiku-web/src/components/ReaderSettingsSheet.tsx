@@ -59,7 +59,7 @@ export default function ReaderSettingsSheet({
     document.addEventListener('keydown', onKey)
     return () => {
       document.removeEventListener('keydown', onKey)
-      prev?.focus()
+      prev?.focus({ preventScroll: true })
     }
   }, [open])
 

@@ -40,9 +40,9 @@ export default function NotifPanel({
   useEffect(() => {
     if (!open) return
     const prev = document.activeElement as HTMLElement | null
-    ref.current?.focus()
+    ref.current?.focus({ preventScroll: true })
     return () => {
-      prev?.focus()
+      prev?.focus({ preventScroll: true })
     }
   }, [open])
 
@@ -104,7 +104,8 @@ export default function NotifPanel({
                     onMarkRead(g.ids)
                     onClose()
                   }}
-                  className="min-w-0 flex-1 text-left"
+                  aria-label={`Buka notifikasi ${g.latest.title}`}
+                  className="min-w-0 flex-1 rounded-sm text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber"
                 >
                   <span className="flex items-center gap-1.5">
                     {g.unread > 0 && (
@@ -136,7 +137,7 @@ export default function NotifPanel({
                     for (const id of g.ids) onDismiss(id)
                   }}
                   aria-label={`Hapus notifikasi ${g.latest.title}`}
-                  className="grid size-11 shrink-0 place-items-center rounded-lg text-ink-500 transition-colors [@media(hover:hover)]:hover:bg-ink-850 [@media(hover:hover)]:hover:text-ink-200"
+                  className="grid size-11 shrink-0 place-items-center rounded-lg text-ink-500 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber [@media(hover:hover)]:hover:bg-ink-850 [@media(hover:hover)]:hover:text-ink-200"
                 >
                   <IconXmark className="size-3.5" />
                 </button>
@@ -151,7 +152,7 @@ export default function NotifPanel({
           <button
             onClick={() => onMarkRead('all')}
             disabled={unread === 0}
-            className="min-h-11 flex-1 rounded-xl py-2 text-[12px] font-bold text-brand-amber transition-colors [@media(hover:hover)]:hover:bg-ink-900 disabled:text-ink-500 disabled:[@media(hover:hover)]:hover:bg-transparent"
+            className="min-h-11 flex-1 rounded-xl py-2 text-[12px] font-bold text-brand-amber transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber [@media(hover:hover)]:hover:bg-ink-900 disabled:text-ink-500 disabled:[@media(hover:hover)]:hover:bg-transparent"
           >
             Tandai semua dibaca
           </button>
@@ -160,7 +161,7 @@ export default function NotifPanel({
               navigate('/notifikasi')
               onClose()
             }}
-            className="inline-flex min-h-11 shrink-0 items-center rounded-xl py-2 pl-2 pr-1 text-[12px] font-bold text-ink-300 transition-colors [@media(hover:hover)]:hover:text-ink-100"
+            className="inline-flex min-h-11 shrink-0 items-center rounded-xl py-2 pl-2 pr-1 text-[12px] font-bold text-ink-300 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber [@media(hover:hover)]:hover:text-ink-100"
           >
             Lihat semua
           </button>

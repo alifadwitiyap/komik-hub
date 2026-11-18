@@ -51,7 +51,7 @@ export default function ModeBacaSheet({
     document.addEventListener('keydown', onKey)
     return () => {
       document.removeEventListener('keydown', onKey)
-      prev?.focus()
+      prev?.focus({ preventScroll: true })
     }
   }, [onClose])
 

@@ -408,6 +408,10 @@ export default function ComicImage({
     // jadi tidak ada layout shift.
     <div
       ref={slotRef}
+      // P2 a11y: kunci rasio sejak awal (walaupun gambar belum `shown`)
+      // supaya kotak skeleton memesan tinggi yang sama dengan gambar final
+      // — tidak ada layout-shift saat decode maupun saat retry.
+      style={ratio ? { aspectRatio: String(ratio) } : undefined}
       className={`relative overflow-hidden ${
         shown ? '' : 'animate-pulse motion-reduce:animate-none bg-zinc-200/60 dark:bg-zinc-800/40'
       }`}
