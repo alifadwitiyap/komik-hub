@@ -7,6 +7,7 @@ import { MangaCard } from './Home'
 import { clearRecent, listRecent, rememberSearch } from '../recentSearches'
 import { useUnifiedSearch } from '../hooks/useUnifiedSearch'
 import { SOURCES, SORTS, useSortFilter, useSourceFilter } from '../components/SourceSortBar'
+import '../styles/sheets.css'
 import { IconMagnifyingGlass, IconSliders } from '../icons'
 import {
   clearSearchReturn,
@@ -447,6 +448,7 @@ export default function Search() {
           <IconMagnifyingGlass className="pointer-events-none absolute left-3.5 size-4 text-ink-500" />
           {/* text-base (16px): di bawah 16px iOS Safari auto-zoom saat input difokuskan. */}
           <input
+            autoFocus
             value={input}
             onChange={(e) => {
               setInput(e.target.value)
@@ -513,32 +515,51 @@ export default function Search() {
       </div>
       </div>
 
+      {/* Chip sumber dipindah dari panel filter ke baris ringkas di atas hasil:
+          satu ketukan = satu filter, tanpa buka panel. Hit area 44px, visual
+          chip 28px supaya kartu pertama tetap dekat atas di 320×432. */}
+      <div
+        data-source-chips
+        role="group"
+        aria-label="Filter sumber cepat"
+        className="-mx-3 mt-1 flex gap-0.5 overflow-x-auto px-3 [scrollbar-width:none]"
+      >
+        {SOURCES.map((s) => {
+          const active = srcRaw === s.id
+          return (
+            <button
+              key={s.id}
+              type="button"
+              aria-pressed={active}
+              onClick={() => {
+                setFilter('source', s.id === 'semua' ? null : s.id)
+                setDraft((d) => ({ ...d, source: s.id }))
+              }}
+              className="flex min-h-11 min-w-11 shrink-0 touch-manipulation items-center justify-center rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber"
+            >
+              <span
+                style={{
+                  transition:
+                    'background-color 220ms var(--ease-out-quint), color 220ms var(--ease-out-quint), border-color 220ms var(--ease-out-quint)',
+                }}
+                className={`inline-flex h-7 items-center rounded-full border px-2.5 text-[12px] font-semibold ${
+                  active
+                    ? 'border-brand-amber bg-brand-amber text-white'
+                    : 'border-ink-800 bg-ink-900 text-ink-300'
+                }`}
+              >
+                {s.label}
+              </span>
+            </button>
+          )
+        })}
+      </div>
+
       {filterOpen && (
         <div
           id="panel-filter-cari"
           className="mt-3 space-y-3 rounded-2xl border border-ink-800 bg-ink-900/60 p-3"
         >
-          <fieldset>
-            <legend className="mb-1.5 text-[11.5px] font-bold text-ink-400">Sumber</legend>
-            <div className="flex flex-wrap gap-2" role="group" aria-label="Filter sumber">
-              {SOURCES.map((s) => (
-                <button
-                  key={s.id}
-                  type="button"
-                  aria-pressed={draft.source === s.id}
-                  onClick={() => setDraft((d) => ({ ...d, source: s.id }))}
-                  className={`min-h-11 touch-manipulation rounded-full px-3 py-1.5 text-[13px] font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber ${
-                    draft.source === s.id
-                      ? 'bg-brand-amber text-white'
-                      : 'border border-ink-800 text-ink-300 active:border-brand-amber'
-                  }`}
-                >
-                  {s.label}
-                </button>
-              ))}
-            </div>
-          </fieldset>
-
           <div className="grid grid-cols-2 gap-2">
             <div className="relative flex min-w-0">
               <select
@@ -751,7 +772,9 @@ export default function Search() {
                   </div>
                 </div>
               ) : (
-                <ResultGrid items={results} />
+                <div className="search-results-fade">
+                  <ResultGrid items={results} />
+                </div>
               )}
 
               {results.length > 0 && (
@@ -818,7 +841,9 @@ export default function Search() {
                   )}
                 </div>
               ) : (
-                <ResultGrid items={items} />
+                <div className="search-results-fade">
+                  <ResultGrid items={items} />
+                </div>
               )}
 
               {hasMore && items.length > 0 && (

@@ -1,0 +1,35 @@
+/* Sheet motion contract — Fase 3.4/3.5. index.css dipakai bersama workstream
+   lain dan tidak boleh diedit, jadi override masuk di sini. Selektor digandakan
+   agar menang atas `.sheet-panel` / `.sheet-closing` di index.css terlepas dari
+   urutan bundling CSS. Reduced motion tetap dimatikan oleh !important di
+   index.css — jangan reintroduce di sini. */
+
+.sheet-panel.sheet-panel {
+  transition: transform var(--dur-sheet) var(--ease-out-quint),
+    opacity var(--dur-sheet) var(--ease-out-quint);
+  animation: sheet-interactive var(--dur-sheet) step-end forwards;
+}
+
+/* Exit lebih cepat dari enter (160ms vs 280ms), dan skeleton posisinya diambil
+   dari translateY saat ini — lihat useSheetDrag. */
+.sheet-panel.sheet-panel.sheet-closing {
+  transition-duration: 160ms;
+  transition-timing-function: var(--ease-drawer);
+}
+
+@starting-style {
+  .sheet-panel.sheet-panel {
+    transform: translateY(100%);
+    opacity: 0.4;
+  }
+}
+
+/* Hasil pencarian: fade 120ms sekali muncul, tanpa stagger. */
+.search-results-fade {
+  animation: search-results-fade 120ms var(--ease-out-quint) both;
+}
+
+@keyframes search-results-fade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}

@@ -1,5 +1,7 @@
 import { useEffect, useId, useRef } from 'react'
 import { useSheetPresence } from '../hooks/useSheetPresence'
+import { useSheetDrag } from '../hooks/useSheetDrag'
+import '../styles/sheets.css'
 import {
   IconBars,
   IconPersonRunning,
@@ -49,6 +51,7 @@ export default function ReaderSettingsSheet({
   const openerRef = useRef<HTMLElement | null>(null)
   const onCloseRef = useRef(onClose)
   onCloseRef.current = onClose
+  const drag = useSheetDrag({ panelRef, onClose, enabled: open })
 
   // Escape + focus return ke tombol pembuka. onClose dibaca dari ref supaya
   // arrow function baru dari induk tidak memicu cleanup (focus return) di
@@ -86,7 +89,20 @@ export default function ReaderSettingsSheet({
         onClick={(e) => e.stopPropagation()}
         onKeyDown={trapFocus}
       >
-        <div className="sticky top-0 z-20 flex shrink-0 items-center justify-between bg-ink-900 px-4 py-3">
+        {/* 36×4px handle — 44px hit area; touch-none hanya di sini, body sheet
+            tetap bisa digulir. pointer-events-auto menang atas gate enter
+            supaya drag bisa menginterupsi animasi masuk. */}
+        <div
+          {...drag}
+          aria-hidden="true"
+          className="pointer-events-auto flex h-11 shrink-0 touch-none select-none items-start justify-center pt-2"
+        >
+          <span className="h-1 w-9 rounded-full bg-white/20" />
+        </div>
+        <div
+          {...drag}
+          className="sticky top-0 z-20 flex shrink-0 items-center justify-between bg-ink-900 px-4 py-3 pointer-events-auto touch-none select-none"
+        >
           <h2 className="font-display text-[15px] font-bold text-ink-100">Preferensi</h2>
           <button
             ref={closeRef}

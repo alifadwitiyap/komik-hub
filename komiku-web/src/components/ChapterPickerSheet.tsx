@@ -2,6 +2,8 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { usePickableChapters } from '../hooks/usePickableChapters'
 import { useSheetPresence } from '../hooks/useSheetPresence'
+import { useSheetDrag } from '../hooks/useSheetDrag'
+import '../styles/sheets.css'
 import { sortByChapterNumber, chapterEditionLabel } from '../chapterOrder'
 import { useReadMarks } from '../hooks/useReadMarks'
 import { marathonHref, readerHref } from '../readerSource'
@@ -64,6 +66,7 @@ export default function ChapterPickerSheet({
   const currentRef = useRef<HTMLAnchorElement | null>(null)
   const panelRef = useRef<HTMLDivElement | null>(null)
   const searchRef = useRef<HTMLInputElement | null>(null)
+  const drag = useSheetDrag({ panelRef, onClose, enabled: open })
 
   // chapter aktif → digulir ke tengah daftar (bukan cuma ujung)
   useEffect(() => {
@@ -212,7 +215,18 @@ export default function ChapterPickerSheet({
         className={`sheet-panel flex max-h-[85dvh] w-full max-w-md flex-col overflow-hidden rounded-t-2xl border-t border-white/10 bg-night-dark/97 backdrop-blur ${open ? '' : 'sheet-closing'}`}
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="sticky top-0 z-20 flex shrink-0 items-start gap-3 bg-night-dark/97 px-4 pb-3 pt-3 backdrop-blur">
+        {/* 44px hit area, visual 36×4px; hanya handle + header yang touch-none. */}
+        <div
+          {...drag}
+          aria-hidden="true"
+          className="pointer-events-auto flex h-11 shrink-0 touch-none select-none items-start justify-center bg-night-dark/97 pt-2 backdrop-blur"
+        >
+          <span className="h-1 w-9 rounded-full bg-white/20" />
+        </div>
+        <div
+          {...drag}
+          className="sticky top-0 z-20 flex shrink-0 items-start gap-3 bg-night-dark/97 px-4 pb-3 pt-3 backdrop-blur pointer-events-auto touch-none select-none"
+        >
           <div className="min-w-0 flex-1">
             <h2 id="chapter-picker-title" className="font-display text-[15px] font-bold text-white">
               Pilih Chapter

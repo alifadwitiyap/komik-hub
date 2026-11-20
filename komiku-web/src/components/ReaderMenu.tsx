@@ -1,5 +1,7 @@
 import { useEffect, useRef } from 'react'
 import { useSheetPresence } from '../hooks/useSheetPresence'
+import { useSheetDrag } from '../hooks/useSheetDrag'
+import '../styles/sheets.css'
 import {
   IconBars,
   IconPersonRunning,
@@ -68,6 +70,7 @@ export default function ReaderMenu({
   const panelRef = useRef<HTMLDivElement>(null)
   const prevRef = useRef<HTMLElement | null>(null)
   const mounted = useSheetPresence(open)
+  const drag = useSheetDrag({ panelRef, onClose, enabled: open })
 
   useEffect(() => {
     if (!open) return
@@ -171,8 +174,14 @@ export default function ReaderMenu({
         className={`sheet-panel w-full rounded-t-2xl bg-night-dark/95 px-2 pb-[calc(1.25rem+env(safe-area-inset-bottom))] pt-3 backdrop-blur ${open ? '' : 'sheet-closing'}`}
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="mb-2 flex justify-center">
-          <span className="h-1 w-10 rounded-full bg-white/25" />
+        {/* 44px hit area; 36×4px visual. touch-none hanya di sini supaya grid
+            tombol di bawah tidak ikut terseret. */}
+        <div
+          {...drag}
+          aria-hidden="true"
+          className="pointer-events-auto flex h-11 touch-none select-none items-start justify-center"
+        >
+          <span className="h-1 w-9 rounded-full bg-white/20" />
         </div>
         <div className="grid grid-cols-3 gap-y-2">
           {items.map((it) => (
