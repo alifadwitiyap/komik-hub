@@ -5,9 +5,7 @@ import '../styles/reader.css'
 import ChapterPickerSheet from '../components/ChapterPickerSheet'
 import ComicImage from '../components/ComicImage'
 import ReaderFooter from '../components/ReaderFooter'
-import ReaderFullscreenButton from '../components/ReaderFullscreenButton'
 import ReaderMarathonActions from '../components/ReaderMarathonActions'
-import ReaderMarathonToggle from '../components/ReaderMarathonToggle'
 import ReaderMenu from '../components/ReaderMenu'
 import ReaderSettingsSheet from '../components/ReaderSettingsSheet'
 import ReaderToolbar from '../components/ReaderToolbar'
@@ -544,6 +542,41 @@ export default function ReaderMarathon() {
   }, [activeChapterId])
   const curLen = curBlock?.images.length ?? 0
   const { gotoReader } = useModeSwitch(chapterId, curBlock)
+  // Keluar maraton dari menu/sheet: balik ke reader biasa di chapter yang SEDANG
+  // dibaca (blok aktif, bukan blok pertama rantai), dengan posisi baca maraton
+  // dari sesi tersimpan. Dulunya ada di tombol apung.
+  const exitMarathon = useCallback(() => {
+    const saved = marathon.forChapter(head?.chapterId ?? chapterId)
+    // Blok aktif sebenarnya dari sesi tersimpan (saved.activeKey) — bukan
+    // curBlock yang bisa stale karena scroll ke atas untuk memunculkan chrome.
+    const activeChapterId =
+      saved?.activeKey ?? curBlock?.chapterId ?? head?.chapterId ?? chapterId
+    // Posisi baca: dari sesi tersimpan. `saved.pageId` sudah milik blok aktif;
+    // fallback ke halaman pertama blok aktif.
+    const pageId =
+      saved?.pageId ??
+      (curBlock?.images[readInBlock - 1] ?? curBlock?.images[0])
+    if (pageId) {
+      gotoReader(
+        {
+          seriesId: curBlock?.seriesId ?? head?.seriesId ?? chapterId,
+          seriesTitle: curBlock?.seriesTitle ?? head?.seriesTitle ?? null,
+          chapterId: activeChapterId,
+          chapterName: curBlock?.chapterName ?? head?.chapterName ?? '',
+          page: Math.max(0, readInBlock - 1),
+          progress: readInBlock / Math.max(1, curBlock?.images.length ?? 1),
+          pageId,
+          offsetRatio: saved?.offsetRatio ?? 0,
+          source: curBlock?.source ?? head?.source ?? null,
+          handle: curBlock?.handle ?? head?.handle ?? null,
+        },
+        activeChapterId,
+      )
+    } else {
+      gotoReader()
+    }
+  }, [marathon, head, chapterId, curBlock, readInBlock, gotoReader])
+
   // Status muat maraton: belum semua gambar blok aktif selesai. Label ini
   // terpisah dari "Hal. X dari N" (posisi baca) — jangan pakai persentase
   // muat sebagai pengganti nomor halaman.
@@ -679,7 +712,7 @@ export default function ReaderMarathon() {
   }
 
   return (
-    <div className={`relative min-h-dvh reader-canvas ${settings.nightShift ? 'bg-night-dark' : 'bg-white'}`}>
+    <div className={`relative min-h-dvh ${settings.paperLight ? 'reader-canvas reader-canvas-paper' : settings.nightShift ? 'bg-night-dark' : 'reader-canvas'}`}>
       <div ref={hairlineRef} aria-hidden="true" className="reader-progress-hairline" />
       {/* Tap area baca — div (bukan button) supaya tidak jadi satu tombol
           raksasa di pohon aksesibilitas. Guard tap-vs-drag mencegah toggle
@@ -698,56 +731,6 @@ export default function ReaderMarathon() {
           if (!tap.shouldToggle(e.clientX, e.clientY, performance.now())) return
           // Tap area baca hanya toggle chrome. Fullscreen HANYA lewat tombol.
           chrome.toggle()
-        }}
-      />
-
-      <ReaderFullscreenButton
-        active={fsActive}
-        visible={chrome.visible}
-        interactive
-        onToggle={() => {
-          if (fsActive) {
-            autoFS.reset()
-            chrome.show()
-          } else autoFS.requestEnter()
-        }}
-      />
-      {/* Keluar dari mode maraton → balik ke reader biasa di chapter yang
-          SEDANG dibaca (blok aktif, bukan blok pertama rantai). Posisi baca
-          maraton ditulis ke progress reader supaya reader restore di tempat
-          yang sama. Kiri-atas, berlawanan dengan tombol layar penuh. */}
-      <ReaderMarathonToggle
-        active={true}
-        visible={chrome.visible}
-        interactive
-        onToggle={() => {
-          const saved = marathon.forChapter(head?.chapterId ?? chapterId)
-          // Blok aktif sebenarnya dari sesi tersimpan (saved.activeKey) — bukan
-          // curBlock yang bisa stale karena scroll ke atas untuk memunculkan
-          // chrome mereset readBlock ke 0.
-          const activeChapterId = saved?.activeKey ?? curBlock?.chapterId ?? head?.chapterId ?? chapterId
-          // Posisi baca: dari sesi tersimpan. `saved.pageId` sudah milik blok
-          // aktif; fallback ke halaman pertama blok aktif.
-          const pageId = saved?.pageId ?? (curBlock?.images[readInBlock - 1] ?? curBlock?.images[0])
-          if (pageId) {
-            gotoReader(
-              {
-                seriesId: curBlock?.seriesId ?? head?.seriesId ?? chapterId,
-                seriesTitle: curBlock?.seriesTitle ?? head?.seriesTitle ?? null,
-                chapterId: activeChapterId,
-                chapterName: curBlock?.chapterName ?? head?.chapterName ?? '',
-                page: Math.max(0, readInBlock - 1),
-                progress: readInBlock / Math.max(1, curBlock?.images.length ?? 1),
-                pageId,
-                offsetRatio: saved?.offsetRatio ?? 0,
-                source: curBlock?.source ?? head?.source ?? null,
-                handle: curBlock?.handle ?? head?.handle ?? null,
-              },
-              activeChapterId,
-            )
-          } else {
-            gotoReader()
-          }
         }}
       />
 
@@ -796,7 +779,7 @@ export default function ReaderMarathon() {
       <div className="mx-auto max-w-3xl px-5 pr-16 pt-[calc(env(safe-area-inset-top)+7.5rem)] lg:pr-5">
         <p
           className={`rounded-lg border border-brand-amber-dim/60 bg-brand-amber-dim/10 px-3 py-2 text-center text-[12px] font-medium leading-snug ${
-            settings.nightShift ? 'text-reader-muted-night' : 'text-reader-muted'
+            settings.paperLight ? 'text-reader-muted' : 'text-reader-muted-night'
           }`}
         >
           Chapter berikutnya terbuka otomatis.
@@ -806,7 +789,13 @@ export default function ReaderMarathon() {
       {/* Rantai halaman: semua chapter disambung jadi satu alur */}
       <div
         ref={flowRef}
-        className={`mx-auto flex max-w-3xl flex-col ${settings.nightShift ? '' : 'reader-canvas'}`}
+        className={`mx-auto flex max-w-3xl flex-col ${
+          settings.paperLight
+            ? 'reader-canvas reader-canvas-paper'
+            : settings.nightShift
+              ? ''
+              : 'reader-canvas'
+        }`}
         style={filterStyle}
       >
         {blocks.map((b, bi) => {
@@ -821,7 +810,7 @@ export default function ReaderMarathon() {
                       ? 'marathon-chapter-label-switch '
                       : ''
                   }${
-                    settings.nightShift ? 'text-reader-muted-night' : 'text-reader-muted'
+                    settings.paperLight ? 'text-reader-muted' : 'text-reader-muted-night'
                   }`}
                 >
                   {b.chapterName}
@@ -894,7 +883,7 @@ export default function ReaderMarathon() {
             role="status"
             aria-live="polite"
             className={`pointer-events-none mx-4 mb-24 flex items-center justify-center gap-2 text-[12px] font-medium ${
-              settings.nightShift ? 'text-reader-muted-night' : 'text-reader-muted'
+              settings.paperLight ? 'text-reader-muted' : 'text-reader-muted-night'
             }`}
           >
             <span
@@ -917,7 +906,7 @@ export default function ReaderMarathon() {
         )}
         {chainExhausted && (blocks.length >= MAX_BLOCKS || (tail && !tail.nextId)) && (
           <div className={`mx-4 mt-6 flex flex-col items-center gap-3 pb-28 text-center`}>
-            <p className={`text-[12px] ${settings.nightShift ? 'text-reader-muted-night' : 'text-reader-muted'}`}>
+            <p className={`text-[12px] ${settings.paperLight ? 'text-reader-muted' : 'text-reader-muted-night'}`}>
               {blocks.length >= MAX_BLOCKS
                 ? `Berhenti di ${MAX_BLOCKS} chapter — mulai maraton lagi dari sini.`
                 : 'Semua chapter sudah terbaca.'}
@@ -945,7 +934,7 @@ export default function ReaderMarathon() {
           // matikan marathon dari sini -> balik ke reader biasa chapter ini
           if (patch.marathon === false) {
             setMenuOpen(false)
-            gotoReader()
+            exitMarathon()
             return
           }
           onChange(patch)
@@ -969,7 +958,7 @@ export default function ReaderMarathon() {
         onChange={(patch) => {
           if (patch.marathon === false) {
             setSheetOpen(false)
-            gotoReader()
+            exitMarathon()
             return
           }
           onChange(patch)

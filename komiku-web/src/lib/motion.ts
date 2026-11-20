@@ -17,6 +17,14 @@ export const nativeSpring = {
   mass: 0.85,
 }
 
+// Bottom sheet — spring teredam kritis dari plan (bounce 0).
+export const sheetSpring = {
+  type: 'spring' as const,
+  stiffness: 420,
+  damping: 36,
+  mass: 0.8,
+}
+
 // Spring lebih cepat untuk indikator tab, pill filter, dan toggle
 export const snappySpring = {
   type: 'spring' as const,
@@ -39,9 +47,9 @@ export const pageTransition = {
   },
 }
 
-// Popover / Menu Sortir (Origin-aware, mulai dari scale 0.95 bukan 0)
+// Popover / Menu Sortir (Origin-aware, mulai dari scale 0.96 — bukan 0)
 export const popoverMotion = {
-  initial: { opacity: 0, scale: 0.95, y: -4 },
+  initial: { opacity: 0, scale: 0.96, y: -4 },
   animate: {
     opacity: 1,
     scale: 1,
@@ -51,20 +59,23 @@ export const popoverMotion = {
   exit: {
     opacity: 0,
     scale: 0.96,
-    transition: { duration: 0.11, ease: [0.22, 1, 0.36, 1] },
+    transition: { duration: 0.16, ease: [0.22, 1, 0.36, 1] },
   },
 }
 
 /* Konstanta CSS yang benar-benar dikonsumsi komponen (satu sumber dengan
    token di styles/motion.css). */
 export const EASE_OUT_EXPO = 'cubic-bezier(0.16, 1, 0.3, 1)'
+export const EASE_SNAPPY = 'cubic-bezier(0.16, 1, 0.3, 1)'
+export const EASE_OUT_EMIL = 'cubic-bezier(0.22, 1, 0.36, 1)'
 export const EASE_OUT_QUINT = 'cubic-bezier(0.22, 1, 0.36, 1)'
 export const EASE_IN_OUT_FAST = 'cubic-bezier(0.4, 0, 0.2, 1)'
 
-export const DUR_PRESS_MS = 90
+export const DUR_PRESS_MS = 100
+export const DUR_HUD_MS = 140
 export const DUR_MICRO_MS = 150
 export const DUR_UI_MS = 220
-export const DUR_SHEET_MS = 280
+export const DUR_SHEET_MS = 240
 
 // Drag-to-dismiss peka kecepatan (plan 3.4): flick > 500 px/s atau tarik > 100 px.
 export const SHEET_DISMISS_VELOCITY_PX_S = 500

@@ -5,12 +5,12 @@
    index.css — jangan reintroduce di sini. */
 
 .sheet-panel.sheet-panel {
-  transition: transform var(--dur-sheet) var(--ease-out-quint),
-    opacity var(--dur-sheet) var(--ease-out-quint);
+  transition: transform var(--dur-sheet) var(--ease-out-emil),
+    opacity var(--dur-sheet) var(--ease-out-emil);
   animation: sheet-interactive var(--dur-sheet) step-end forwards;
 }
 
-/* Exit lebih cepat dari enter (160ms vs 280ms), dan skeleton posisinya diambil
+/* Exit lebih cepat dari enter (160ms vs 240ms), dan skeleton posisinya diambil
    dari translateY saat ini — lihat useSheetDrag. */
 .sheet-panel.sheet-panel.sheet-closing {
   transition-duration: 160ms;

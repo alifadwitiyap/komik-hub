@@ -12,6 +12,7 @@ import { isChromeToggleKey } from './readerChromeKeys'
 import footerSrc from './components/ReaderFooter.tsx?raw'
 import toolbarSrc from './components/ReaderToolbar.tsx?raw'
 import sheetSrc from './components/ReaderSettingsSheet.tsx?raw'
+import menuSrc from './components/ReaderMenu.tsx?raw'
 import comicSrc from './components/ComicImage.tsx?raw'
 import readerSrc from './pages/Reader.tsx?raw'
 import marathonSrc from './pages/ReaderMarathon.tsx?raw'
@@ -158,11 +159,25 @@ describe('(7) kartu akhir chapter + toast + kanvas gelap', () => {
     expect(readerCss).toMatch(/reader-toast-in 150ms var\(--ease-out-quint\)/)
     expect(readerCss).toMatch(/reader-toast-out 120ms/)
   })
-  it('kanvas hitam hanya di .dark; night-shift tidak memakai class', () => {
-    expect(readerCss).toMatch(/\.dark \.reader-canvas\s*\{\s*background-color: var\(--color-reader-canvas\)/)
-    expect(readerCss).toMatch(/\.reader-canvas\s*\{\s*background-color: #fff/)
+  it('kanvas default arang #090B0E, kertas terang opt-in, night-shift tetap tersedia', () => {
+    expect(readerCss).toMatch(/\.reader-canvas\s*\{\s*background-color: #090B0E/)
+    expect(readerCss).toMatch(/\.reader-canvas-paper\s*\{\s*background-color: #fff/)
+    expect(sheetSrc).toContain('label="Kertas terang"')
+    expect(sheetSrc).toContain('toggle={settings.paperLight}')
     for (const src of [readerSrc, marathonSrc]) {
-      expect(src).toMatch(/settings\.nightShift \? '' : 'reader-canvas'/)
+      expect(src).toContain("settings.paperLight")
+      expect(src).toContain("'bg-night-dark'")
     }
+  })
+  it('aksi Maraton/Layar penuh hanya di HUD/menu, target 44px, posisi baca dipertahankan', () => {
+    for (const src of [readerSrc, marathonSrc]) {
+      expect(src).not.toContain('<ReaderFullscreenButton')
+      expect(src).not.toContain('<ReaderMarathonToggle')
+    }
+    expect(menuSrc).toContain("key: 'marathon'")
+    expect(menuSrc).toContain("key: 'fullscreen'")
+    expect(menuSrc).toContain('min-h-11')
+    expect(readerSrc).toContain('offsetRatio: prog.offsetRatio ?? 0')
+    expect(marathonSrc).toContain('offsetRatio: saved?.offsetRatio ?? 0')
   })
 })

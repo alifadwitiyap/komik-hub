@@ -26,6 +26,8 @@ export interface ReaderSettings {
   direction: 'ltr' | 'rtl'
   /** Zoom halaman: 1 = lebar penuh, >1 = diperbesar (1..3). */
   zoom: number
+  /** Opt-in kertas terang. Default kanvas reader tetap #090B0E. */
+  paperLight: boolean
 }
 
 export const DEFAULT_SETTINGS: ReaderSettings = {
@@ -40,6 +42,7 @@ export const DEFAULT_SETTINGS: ReaderSettings = {
   prefetchMode: 'seimbang',
   direction: 'ltr',
   zoom: 1,
+  paperLight: false,
 }
 
 interface ReaderMenuProps {
