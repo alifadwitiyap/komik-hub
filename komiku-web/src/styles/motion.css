@@ -1,0 +1,91 @@
+/* ---------------------------------------------------------------------------
+   MOTION SYSTEM — Mobile-First UI/UX & Motion Engineering Plan (Fase 2).
+   Satu-satunya sumber token gerak baru; easing lama (--ease-out dsb.) tetap
+   hidup di index.css untuk komponen yang belum dimigrasi.
+
+   Aturan keras:
+   - hanya animasikan transform / opacity / clip-path (GPU compositor);
+   - dilarang `transition: all`, easing linear, bounce > 0.15;
+   - exit selalu lebih cepat dari enter; semua bisa diinterupsi sentuhan.
+   --------------------------------------------------------------------------- */
+
+:root {
+  --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-out-quint: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-in-out-fast: cubic-bezier(0.4, 0, 0.2, 1);
+
+  --dur-press: 90ms;
+  --dur-micro: 150ms;
+  --dur-ui: 220ms;
+  --dur-sheet: 280ms;
+}
+
+* {
+  -webkit-tap-highlight-color: transparent;
+}
+
+html {
+  touch-action: manipulation;
+  /* ponytail: plan minta scroll-behavior: smooth global, tapi restore posisi
+     baca reader (scrollTo anchor) harus INSTAN — smooth global membuat
+     lompatan halaman ikut beranimasi dan merusak pengukuran progres.
+     Upgrade: pasang smooth per-kontainer katalog bila dibutuhkan. */
+}
+
+/* Tactile Press Universal untuk Tombol & Kartu di HP.
+   ponytail: `will-change: transform` permanen dihapus dari snippet plan —
+   Fase 4.4 plan sendiri (dan skill animation-performance) melarang will-change
+   di semua elemen; pasang hanya saat interaksi aktif. */
+.tactile-press {
+  transition:
+    transform var(--dur-ui) var(--ease-out-quint),
+    background-color var(--dur-micro) ease;
+}
+
+.tactile-press:active {
+  transform: scale(0.97);
+  transition-duration: var(--dur-press);
+}
+
+/* Progressive Image Fade-in agar cover tidak pop-in kasar */
+.cover-fade {
+  opacity: 0;
+  transition: opacity 240ms var(--ease-out-quint);
+}
+.cover-fade[data-loaded='true'] {
+  opacity: 1;
+}
+
+/* Shimmer Skeleton Ringan (GPU Transform, bukan background-position) */
+.skeleton-shimmer {
+  position: relative;
+  overflow: hidden;
+  background: #161a22;
+}
+.skeleton-shimmer::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.05), transparent);
+  animation: shimmer-slide 1.4s infinite var(--ease-in-out-fast);
+}
+
+@keyframes shimmer-slide {
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+/* Hormati Pengaturan Reduced Motion di HP. index.css punya blok yang lebih
+   ketat (animation: none) — keduanya berlaku; yang paling ketat menang. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
