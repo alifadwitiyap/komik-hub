@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useId, useRef } from 'react'
 import {
   IconBars,
   IconPersonRunning,
@@ -43,6 +43,8 @@ export default function ReaderSettingsSheet({
   marathonActions,
 }: ReaderSettingsSheetProps) {
   const panelRef = useRef<HTMLDivElement>(null)
+  const closeRef = useRef<HTMLButtonElement>(null)
+  const openerRef = useRef<HTMLElement | null>(null)
   const onCloseRef = useRef(onClose)
   onCloseRef.current = onClose
 
@@ -51,15 +53,20 @@ export default function ReaderSettingsSheet({
   // tengah sheet terbuka.
   useEffect(() => {
     if (!open) return
-    const prev = document.activeElement as HTMLElement | null
-    panelRef.current?.focus()
+    const active = document.activeElement
+    const opener = active instanceof HTMLElement && active !== document.body ? active : null
+    openerRef.current = opener
+    // Tutup berada DI DALAM header sticky yang tidak ikut ter-scroll — fokus
+    // keyboard tidak boleh berhenti di elemen yang secara visual off-screen.
+    closeRef.current?.focus({ preventScroll: true })
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') onCloseRef.current()
     }
     document.addEventListener('keydown', onKey)
     return () => {
       document.removeEventListener('keydown', onKey)
-      prev?.focus({ preventScroll: true })
+      openerRef.current?.focus({ preventScroll: true })
+      openerRef.current = null
     }
   }, [open])
 
@@ -77,7 +84,13 @@ export default function ReaderSettingsSheet({
       >
         <div className="sticky top-0 z-20 flex shrink-0 items-center justify-between bg-ink-900 px-4 py-3">
           <h2 className="font-display text-[15px] font-bold text-ink-100">Preferensi</h2>
-          <button type="button" onClick={onClose} aria-label="Tutup" className="grid size-11 place-items-center rounded-xl text-ink-500 active:bg-ink-800 active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber">
+          <button
+            ref={closeRef}
+            type="button"
+            onClick={onClose}
+            aria-label="Tutup preferensi"
+            className="grid size-11 place-items-center rounded-xl text-ink-500 active:bg-ink-800 active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber"
+          >
             <IconXmark className="size-4" />
           </button>
         </div>
@@ -243,6 +256,7 @@ export function Row({
   disabled?: boolean
 }) {
   const clickable = onClick !== undefined
+  const generatedLabelId = useId()
   return (
     <div
       role={clickable ? 'button' : undefined}
@@ -253,14 +267,14 @@ export function Row({
       className={`flex items-center gap-3 px-4 py-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70 focus-visible:ring-inset ${clickable ? `${disabled ? 'cursor-not-allowed opacity-50' : 'cursor-pointer select-none active:bg-ink-850'}` : ''}`}
     >
       <span className="grid size-8 place-items-center rounded-full bg-ink-850 text-ink-300">{icon}</span>
-      <span id={labelId} className="min-w-0 flex-1 text-[13px] font-medium text-ink-100">{label}</span>
+      <span id={labelId ?? generatedLabelId} className="min-w-0 flex-1 text-[13px] font-medium text-ink-100">{label}</span>
       {value && <span className="text-[12px] text-ink-500">{value}</span>}
       {toggle !== undefined && (
         <span className="grid min-h-11 min-w-11 shrink-0 place-items-center">
           <button
           role="switch"
           aria-checked={toggle}
-          aria-labelledby={labelId}
+          aria-labelledby={labelId ?? generatedLabelId}
           onClick={() => onToggle?.(!toggle)}
           className={`relative h-6 w-11 shrink-0 rounded-full transition-colors duration-200 ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70 ${
             toggle ? 'bg-brand-amber' : 'bg-ink-700'

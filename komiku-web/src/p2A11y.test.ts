@@ -77,7 +77,7 @@ describe('P2 animasi — durasi & sifat sesuai rentang rencana', () => {
     // fokus dikembalikan ke pembuka tanpa menggulir halaman (preventScroll)
     expect(chapterSheetSrc).toContain('opener?.focus({ preventScroll: true })')
     expect(modeSheetSrc).toContain('prev?.focus({ preventScroll: true })')
-    expect(settingsSheetSrc).toContain('prev?.focus({ preventScroll: true })')
+    expect(settingsSheetSrc).toContain('openerRef.current?.focus({ preventScroll: true })')
   })
 
   it('favorit: isi + satu kali scale 1.08× 150ms + konfirmasi teks', () => {

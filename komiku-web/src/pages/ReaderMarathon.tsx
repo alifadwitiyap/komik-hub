@@ -24,6 +24,7 @@ import { handleOf } from '../marathonMemory'
 import type { ChapterResponse } from '../types'
 import { Empty } from '../App'
 import { useProgress } from '../hooks/useProgress'
+import { useReaderOverlayHistory } from '../hooks/useReaderOverlayHistory'
 import { didOpenChapter } from '../readingEvents'
 import { chapterNumberOf } from '../readMarks'
 import {
@@ -112,6 +113,15 @@ export default function ReaderMarathon() {
   const [menuOpen, setMenuOpen] = useState(false)
   const [sheetOpen, setSheetOpen] = useState(false)
   const [chapterPickerOpen, setChapterPickerOpen] = useState(false)
+  const dismissOverlay = useReaderOverlayHistory(
+    chapterPickerOpen ? 'chapter' : sheetOpen ? 'settings' : menuOpen ? 'menu' : null,
+    () => {
+      setChapterPickerOpen(false)
+      setSheetOpen(false)
+      setMenuOpen(false)
+    },
+  )
+  void dismissOverlay
   const [restartConfirm, setRestartConfirm] = useState(false)
   const [toast, setToast] = useState<string | null>(null)
   const [nextLoadFailed, setNextLoadFailed] = useState(false)
@@ -754,7 +764,7 @@ export default function ReaderMarathon() {
 
       <ChapterPickerSheet
         open={chapterPickerOpen}
-        onClose={() => setChapterPickerOpen(false)}
+        onClose={() => dismissOverlay()}
         chapterKey={head?.chapterId ?? null}
         currentKey={curBlock?.chapterId ?? null}
         legacySeriesId={typeof head?.seriesId === 'number' ? head.seriesId : null}
@@ -923,7 +933,7 @@ export default function ReaderMarathon() {
         open={menuOpen}
         settings={{ ...settings, marathon: true }}
         fullscreenActive={fsActive}
-        onClose={() => setMenuOpen(false)}
+        onClose={() => dismissOverlay()}
         onChange={(patch) => {
           // matikan marathon dari sini -> balik ke reader biasa chapter ini
           if (patch.marathon === false) {
@@ -948,7 +958,7 @@ export default function ReaderMarathon() {
       <ReaderSettingsSheet
         open={sheetOpen}
         settings={{ ...settings, marathon: true }}
-        onClose={() => setSheetOpen(false)}
+        onClose={() => dismissOverlay()}
         onChange={(patch) => {
           if (patch.marathon === false) {
             setSheetOpen(false)

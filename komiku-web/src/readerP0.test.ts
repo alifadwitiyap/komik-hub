@@ -73,8 +73,8 @@ describe('(3) sheet Preferensi: viewport, scroll, sticky, Escape + focus return'
   it('Escape memanggil onCloseRef, cleanup mengembalikan fokus', () => {
     expect(sheetSrc).toContain("e.key === 'Escape'")
     expect(sheetSrc).toContain('onCloseRef.current()')
-    // Boleh memakai options (mis. preventScroll) — yang diuji adalah fokus dikembalikan.
-    expect(sheetSrc).toMatch(/prev\?\.focus\(/)
+    // Fokus kembali ke elemen pembuka (tombol Tutup terlihat/sticky) tanpa menggulir.
+    expect(sheetSrc).toMatch(/(prev|openerRef\.current)\?\.focus\(/)
   })
 })
 

@@ -186,13 +186,11 @@ export default function ReaderMenu({
               >
                 {it.icon}
               </span>
-              <span className="text-center text-[10px] font-medium leading-tight text-white/85">{it.label}</span>
+              <span className="text-center text-[12px] font-medium leading-tight text-white/85">{it.label}</span>
             </button>
           ))}
         </div>
-        <p className="mt-2 text-center text-[10px] font-medium text-white/70">
-          Ketuk — 6 kontrol
-        </p>
+
       </div>
     </div>
   )

@@ -25,6 +25,7 @@ import { useAutoFullscreen } from '../hooks/useAutoFullscreen'
 import type { ChapterResponse } from '../types'
 import { Empty } from '../App'
 import { useProgress } from '../hooks/useProgress'
+import { useReaderOverlayHistory } from '../hooks/useReaderOverlayHistory'
 import { useModeSwitch } from '../hooks/useModeSwitch'
 import { didOpenChapter, rakMangaOf } from '../readingEvents'
 import { readingStatusForPage, visiblePageProgress, type ReadingStatus } from '../readingStatus'
@@ -89,6 +90,15 @@ export default function Reader() {
   const [menuOpen, setMenuOpen] = useState(false)
   const [sheetOpen, setSheetOpen] = useState(false)
   const [chapterPickerOpen, setChapterPickerOpen] = useState(false)
+  const dismissOverlay = useReaderOverlayHistory(
+    chapterPickerOpen ? 'chapter' : sheetOpen ? 'settings' : menuOpen ? 'menu' : null,
+    () => {
+      setChapterPickerOpen(false)
+      setSheetOpen(false)
+      setMenuOpen(false)
+    },
+  )
+  void dismissOverlay
   const [toast, setToast] = useState<string | null>(null)
   const tap = createTapTracker(tapHitsReaderControl)
   const { save, recent } = useProgress()
@@ -771,7 +781,7 @@ export default function Reader() {
 
       <ChapterPickerSheet
         open={chapterPickerOpen}
-        onClose={() => setChapterPickerOpen(false)}
+        onClose={() => dismissOverlay()}
         chapterKey={chapterId}
         legacySeriesId={legacySeriesId}
         seriesTitle={series?.title ?? null}
@@ -874,7 +884,7 @@ export default function Reader() {
         open={menuOpen}
         settings={settings}
         fullscreenActive={fsActive}
-        onClose={() => setMenuOpen(false)}
+        onClose={() => dismissOverlay()}
         onChange={(patch) => {
           // toggle Maraton dari reader: pindah mode marathon chapter ini
           if (patch.marathon === true && !settings.marathon) {
@@ -899,7 +909,7 @@ export default function Reader() {
       <ReaderSettingsSheet
         open={sheetOpen}
         settings={settings}
-        onClose={() => setSheetOpen(false)}
+        onClose={() => dismissOverlay()}
         onChange={onChange}
         onReset={onReset}
         setToast={setToast}
