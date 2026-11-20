@@ -796,7 +796,7 @@ export default function SeriesUnified() {
               return (
                 <li
                   key={c.native_id}
-                  className={`relative flex items-center overflow-hidden ${
+                  className={`reader-chapter-row relative flex items-center overflow-hidden ${
                     anchor
                       ? 'bg-brand-amber/10 ring-1 ring-inset ring-brand-amber/50'
                       : pickMode && selectedForRow

@@ -33,7 +33,7 @@ export default function ReaderFooter({
   return (
     <footer
       data-reader-chrome="footer"
-      className={`pointer-events-none fixed inset-x-0 bottom-0 z-30 bg-gradient-to-t from-black/95 via-black/80 to-transparent pb-[env(safe-area-inset-bottom)] reader-chrome-fade ${
+      className={`pointer-events-none fixed inset-x-0 bottom-0 z-30 bg-gradient-to-t from-black/95 via-black/80 to-transparent pb-[env(safe-area-inset-bottom)] reader-chrome-fade reader-hud-bottom ${
         visible ? 'opacity-100' : 'opacity-0'
       }`}
       data-hidden={!visible}

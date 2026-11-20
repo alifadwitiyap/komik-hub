@@ -1,0 +1,69 @@
+/* Mobile reader chrome — transform-based hide, progress hairline, toast,
+   dark canvas and chapter-row containment. Tidak mengubah index.css. */
+
+.reader-hud-top,
+.reader-hud-bottom {
+  transform: translateY(0);
+  /* opacity 140ms tetap milik .reader-chrome-fade (index.css) untuk a11y. */
+  transition:
+    transform 200ms var(--ease-out-quint),
+    opacity 140ms var(--ease-out);
+}
+.reader-hud-top[data-hidden='true'] {
+  transform: translateY(-100%);
+}
+.reader-hud-bottom[data-hidden='true'] {
+  transform: translateY(100%);
+}
+
+.reader-progress-hairline {
+  position: fixed;
+  top: env(safe-area-inset-top);
+  left: 0;
+  right: 0;
+  height: 2px;
+  z-index: 40;
+  pointer-events: none;
+  background-color: var(--color-brand-amber);
+  transform: scaleX(0);
+  transform-origin: left center;
+}
+
+.reader-toast {
+  animation: reader-toast-in 150ms var(--ease-out-quint) both;
+}
+.reader-toast[data-phase='out'] {
+  animation: reader-toast-out 120ms ease-in both;
+}
+@keyframes reader-toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(12px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+@keyframes reader-toast-out {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+/* Kanvas baca: putih di terang, hitam murni di gelap. Night-shift memakai
+   latar ink-900 dari root dan sengaja TIDAK memakai class ini. */
+.reader-canvas {
+  background-color: #fff;
+}
+.dark .reader-canvas {
+  background-color: var(--color-reader-canvas);
+}
+
+.reader-chapter-row {
+  content-visibility: auto;
+  contain-intrinsic-size: 56px;
+}

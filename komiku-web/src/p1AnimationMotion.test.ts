@@ -104,3 +104,39 @@ describe('P1 source contracts', () => {
     expect(homeSrc).toContain('onPointerDownCapture={() => setAutoplay(false)}')
   })
 })
+
+describe('Fase 3.6 — HUD transform + progress hairline', () => {
+  const readerCss = readFileSync(
+    fileURLToPath(new URL('./styles/reader.css', import.meta.url)),
+    'utf8',
+  )
+
+  it('top/bottom HUD geser 200ms ease-out-quint, opacity 140ms tetap dari index.css', () => {
+    expect(readerCss).toMatch(/transform 200ms var\(--ease-out-quint\)/)
+    expect(readerCss).toMatch(/\.reader-hud-top\[data-hidden='true'\]\s*\{\s*transform: translateY\(-100%\)/)
+    expect(readerCss).toMatch(/\.reader-hud-bottom\[data-hidden='true'\]\s*\{\s*transform: translateY\(100%\)/)
+    expect(readerCss).toMatch(/opacity 140ms var\(--ease-out\)/)
+    // index.css tidak berubah → kontrak lama tetap hijau
+    expect(css).toMatch(/\.reader-chrome-fade\s*\{[^}]*transition:\s*opacity 140ms var\(--ease-out\)/)
+  })
+
+  it('hairline 2px scaleX dari kiri, ditulis lewat ref.style tanpa setState per frame', () => {
+    expect(readerCss).toMatch(/\.reader-progress-hairline\s*\{[^}]*height: 2px/)
+    expect(readerCss).toMatch(/transform: scaleX\(0\)/)
+    expect(readerCss).toMatch(/transform-origin: left center/)
+    expect(readerCss).toMatch(/top: env\(safe-area-inset-top\)/)
+    for (const src of [readerSrc, marathonSrc]) {
+      expect(src).toContain('reader-progress-hairline')
+      expect(src).toContain('hairlineRef.current.style.transform')
+      expect(src).toMatch(/scaleX\(\$\{p\}\)/)
+    }
+  })
+
+  it('auto-hide threshold 24px', () => {
+    const hookSrc = readFileSync(
+      fileURLToPath(new URL('./hooks/useChromeOnScroll.ts', import.meta.url)),
+      'utf8',
+    )
+    expect(hookSrc).toContain('const THRESHOLD_PX = 24')
+  })
+})

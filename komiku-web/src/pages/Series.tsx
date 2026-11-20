@@ -742,7 +742,7 @@ function ChapterRow({
   read?: boolean
 }) {
   const isAnchor = mark === 'start' || mark === 'end'
-  const cls = `flex min-h-11 w-full items-center justify-between gap-3 px-3.5 py-3 text-left transition-colors ${
+  const cls = `reader-chapter-row flex min-h-11 w-full items-center justify-between gap-3 px-3.5 py-3 text-left transition-colors ${
     isAnchor
       ? 'bg-brand-amber/15 ring-1 ring-inset ring-brand-amber/50'
       : mark === 'mid'

@@ -136,3 +136,33 @@ describe('(6) chapter selesai tidak bergantung pada gambar selesai dimuat', () =
     expect(settledUsage).toBeGreaterThan(mark)
   })
 })
+
+describe('(7) kartu akhir chapter + toast + kanvas gelap', () => {
+  const readerCss = readFileSync(
+    fileURLToPath(new URL('./styles/reader.css', import.meta.url)),
+    'utf8',
+  )
+  it('kartu lanjut ada hanya bila nextKey, di luar flow, 56px + tactile', () => {
+    expect(readerSrc).toContain('{nextKey && (')
+    expect(readerSrc).toContain('Lanjut ke Chapter Berikutnya →')
+    expect(readerSrc).toContain('min-h-14')
+    expect(readerSrc).toContain('tactile-press')
+    expect(readerSrc).toContain('to={readerHref(nextKey)}')
+    expect(readerSrc).toContain('Tidak ada chapter selanjutnya')
+  })
+  it('toast menggantikan <p> lama di kedua mode', () => {
+    for (const src of [readerSrc, marathonSrc]) {
+      expect(src).toContain('<Toast />')
+      expect(src).not.toContain('bottom-[calc(9.5rem+env(safe-area-inset-bottom))] left-1/2')
+    }
+    expect(readerCss).toMatch(/reader-toast-in 150ms var\(--ease-out-quint\)/)
+    expect(readerCss).toMatch(/reader-toast-out 120ms/)
+  })
+  it('kanvas hitam hanya di .dark; night-shift tidak memakai class', () => {
+    expect(readerCss).toMatch(/\.dark \.reader-canvas\s*\{\s*background-color: var\(--color-reader-canvas\)/)
+    expect(readerCss).toMatch(/\.reader-canvas\s*\{\s*background-color: #fff/)
+    for (const src of [readerSrc, marathonSrc]) {
+      expect(src).toMatch(/settings\.nightShift \? '' : 'reader-canvas'/)
+    }
+  })
+})

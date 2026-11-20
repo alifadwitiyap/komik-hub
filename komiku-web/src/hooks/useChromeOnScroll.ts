@@ -7,7 +7,8 @@
  * programatik TIDAK memicu apa pun: chapter yang dibuka lagi di tengah tidak
  * boleh langsung kehilangan judul/progresnya.
  *
- * Threshold 40px supaya scroll kecil/inertia tidak bikin chrome kedip.
+ * Threshold 24px supaya scroll kecil/inertia tidak bikin chrome kedip,
+ * tapi cukup responsif saat scroll turun.
  *
  * Akumulasi DISENGAJA, tapi patokan di-reset saat ARAH BERBALIK.
  *
@@ -32,7 +33,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 
 import { isChromeToggleKey } from '../readerChromeKeys'
 
-const THRESHOLD_PX = 40
+const THRESHOLD_PX = 24
 
 export interface ChromeControl {
   visible: boolean
