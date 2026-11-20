@@ -14,6 +14,7 @@ import { useSeriesResume } from '../hooks/useSeriesResume'
 import { sortByChapterNumber } from '../chapterOrder'
 import { useReadMarks } from '../hooks/useReadMarks'
 import { rememberSeriesLite, readerHref } from '../readerSource'
+import { genreHref, resumeCta } from './Series'
 import {
   cancelRun,
   startRun,
@@ -188,8 +189,17 @@ export default function SeriesUnified() {
   // mengikuti identitas series dengan kunci chapter persis; bila sumber halaman
   // berbeda dari sumber progres, label menjelaskannya tanpa jatuh ke chapter
   // lokal paling awal.
-  const { resumeKey, marathonPos, resumeHref, marathonHref: marathonLink, label, sourceNotice } =
-    useSeriesResume(handle, undefined, data?.representative_source ?? handle.split(':')[0] ?? null)
+  const {
+    resume,
+    target,
+    resumeKey,
+    marathonPos,
+    resumeHref,
+    marathonHref: marathonLink,
+    label,
+    sourceNotice,
+  } = useSeriesResume(handle, undefined, data?.representative_source ?? handle.split(':')[0] ?? null)
+  const lanjut = resume && resumeHref ? resumeCta(resume, target?.page) : null
 
   // Range mengikuti URUTAN TAMPIL. Pencarian nomor menyaring daftar yang SAMA
   // sambil mempertahankan index asli → index baris aman dipakai walau daftar
@@ -319,6 +329,9 @@ export default function SeriesUnified() {
   if (!data) return <Spinner label="Memuat manga…" />
 
   const { manga: m } = data
+  // MangaOut belum punya field genre di kontrak API unified. Tampilkan chip
+  // HANYA kalau server suatu hari mengirimnya — jangan mengarang genre.
+  const unifiedGenres = (m as MangaOut & { genre?: { id?: string; name: string }[] }).genre
   // Satu daftar chapter saja; query menyaringnya tanpa mengubah index asli
   // (dipakai range.isAnchor/inRange/select dan resume lintas sumber).
   const chapterRows = filterChapterIndices(chapters, chapterQuery)
@@ -438,6 +451,20 @@ export default function SeriesUnified() {
                 )}
               </dl>
 
+              {unifiedGenres && unifiedGenres.length > 0 && (
+                <div className="mt-2.5 flex flex-wrap gap-1.5">
+                  {unifiedGenres.map((g, i) => (
+                    <Link
+                      key={`${g.id ?? g.name}-${i}`}
+                      to={genreHref(g.id, g.name)}
+                      className="inline-flex min-h-11 items-center rounded-full bg-brand-amber/10 px-2.5 py-1.5 text-[10.5px] font-semibold text-brand-amber transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber [@media(hover:hover)]:hover:bg-brand-amber/20"
+                    >
+                      {g.name}
+                    </Link>
+                  ))}
+                </div>
+              )}
+
               {data.representative_source && (
                 <p className="mt-1.5 inline-flex items-center gap-1 rounded-md border border-ink-700 bg-ink-900 px-1.5 py-0.5 text-[10.5px] font-medium text-ink-400">
                   Terbaru dari {data.representative_source}
@@ -474,7 +501,25 @@ export default function SeriesUnified() {
                 to={resumeHref ?? `/baca/${handle}/${oldest.number}`}
                 className="flex min-h-11 flex-1 items-center justify-center rounded-xl bg-brand-amber py-2.5 text-center text-[13px] font-bold text-white transition-colors active:scale-[0.97] active:duration-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber focus-visible:ring-offset-2 [@media(hover:hover)]:hover:bg-brand-amber-soft"
               >
-                {resumeKey ? `Lanjut · ${label}${sourceNotice ? ` ${sourceNotice}` : ''}` : `Baca ${chapterLabel(oldest)}`}
+                {lanjut ? (
+                  <span className="flex flex-col items-center">
+                    <span>{lanjut.label}</span>
+                    {lanjut.sub && (
+                      <span className="mt-0.5 text-[10.5px] font-medium text-white/85">
+                        {lanjut.sub}
+                      </span>
+                    )}
+                    {sourceNotice && (
+                      <span className="mt-0.5 text-[10px] font-medium text-white/80">
+                        {sourceNotice}
+                      </span>
+                    )}
+                  </span>
+                ) : (
+                  resumeKey
+                    ? `Lanjut · ${label}${sourceNotice ? ` ${sourceNotice}` : ''}`
+                    : `Baca ${chapterLabel(oldest)}`
+                )}
               </Link>
               <Link
                 to={

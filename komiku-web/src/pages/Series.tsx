@@ -37,6 +37,33 @@ type SeriesData = {
 /** Maksimal chapter terpilih per unduhan (spek parity Komiku+). */
 const BATCH_MAX = 30
 
+/**
+ * `genre[].id` dari API sudah berupa slug yang dipakai /api/unified/genres
+ * (`action`, `fantasy`) dan diterima `?genre=` di Search. Fallback slugify nama
+ * hanya kalau id kosong — tetap dari data API, bukan genre rekaan.
+ */
+export function genreHref(id: string | undefined, name: string): string {
+  const fromId = (id ?? '').trim().toLowerCase().split(/[/?#]/).filter(Boolean).pop() ?? ''
+  const fromName = name.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
+  const slug = fromId || fromName
+  return slug ? `/cari?genre=${encodeURIComponent(slug)}` : '/cari'
+}
+
+/** Kunci chapter dipakai apa adanya (1189.2, 811 Fix), bukan dinormalisasi. */
+export function resumeCta(
+  resume: { chapterId: string; page: number; progress: number } | undefined,
+  targetPage?: number | null,
+): { label: string; sub: string | null } | null {
+  if (!resume) return null
+  const key = String(resume.chapterId).split(':').filter(Boolean).pop()
+  if (!key) return null
+  const page = Math.max(0, targetPage ?? resume.page ?? 0) + 1
+  const pct = Number.isFinite(resume.progress)
+    ? Math.round(Math.min(1, Math.max(0, resume.progress)) * 100)
+    : 0
+  return { label: `Lanjut Chapter ${key}`, sub: `Hal. ${page} · ${pct}%` }
+}
+
 // Halaman /akun mengganti halaman series sehingga listener React di komponen
 // tidak lagi hidup saat login selesai. Listener modul (downloadReturn) tetap
 // aktif dan mengembalikan user ke URL yang disimpan sebelum navigasi.
@@ -194,8 +221,14 @@ export default function Series() {
     setDlMsg(null)
     if (dlHandle) retryRun(dlHandle)
   }
-  const { resume, marathonPos, resumeHref, marathonHref: marathonLink, label } =
-    useSeriesResume(id)
+  const {
+    resume,
+    target,
+    marathonPos,
+    resumeHref,
+    marathonHref: marathonLink,
+    label,
+  } = useSeriesResume(id)
 
   if (error) return (
     <div className="mx-auto max-w-3xl px-4 py-16 text-center">
@@ -321,16 +354,18 @@ export default function Series() {
   const startDownloadPdf = () => runDownload(false)
 
   // Tombol baca utama mengikuti riwayat:
-  // - sudah pernah baca  -> "Baca <chapter sebelumnya>" (chapter tepat sebelum
-  //   yang terakhir dibaca = yang belum dibaca berikutnya)
-  // - habis chapter 1     -> "Baca Ulang" chapter itu
+  // - ada progres tersimpan -> "Lanjut Chapter <kunci persis>" + Hal./%
+  // - sudah pernah baca tapi tanpa target sah -> chapter berikutnya / Baca Ulang
   // - belum pernah baca   -> mulai dari Chapter 1 (paling awal)
   const readIdx = resume
     ? chapters.findIndex((c) => String(c.id) === String(resume.chapterId))
     : -1
-  let cta: { label: string; to: string } | null = null
+  const lanjut = resume && resumeHref ? resumeCta(resume, target?.page) : null
+  let cta: { label: string; to: string; sub?: string | null } | null = null
   if (oldest) {
-    if (readIdx >= 0 && readIdx < chapters.length - 1) {
+    if (lanjut && resumeHref) {
+      cta = { label: lanjut.label, to: resumeHref, sub: lanjut.sub }
+    } else if (readIdx >= 0 && readIdx < chapters.length - 1) {
       const prev = chapters[readIdx + 1]
       cta = { label: `Baca ${prev.name}`, to: readerHref(String(prev.id)) }
     } else if (readIdx >= 0) {
@@ -402,12 +437,13 @@ export default function Series() {
               {genres.length > 0 && (
                 <div className="mt-2.5 flex flex-wrap gap-1.5">
                   {genres.map((g) => (
-                    <span
+                    <Link
                       key={g.id}
-                      className="rounded-full bg-brand-amber/10 px-2.5 py-0.5 text-[10.5px] font-semibold text-brand-amber"
+                      to={genreHref(g.id, g.name)}
+                      className="inline-flex min-h-11 items-center rounded-full bg-brand-amber/10 px-2.5 py-1.5 text-[10.5px] font-semibold text-brand-amber transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber [@media(hover:hover)]:hover:bg-brand-amber/20"
                     >
                       {g.name}
-                    </span>
+                    </Link>
                   ))}
                 </div>
               )}
@@ -425,7 +461,14 @@ export default function Series() {
                 to={cta.to}
                 className="flex min-h-11 flex-1 items-center justify-center rounded-xl bg-brand-amber py-2.5 text-center text-[13px] font-bold text-white transition-colors active:scale-[0.97] active:duration-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber focus-visible:ring-offset-2 [@media(hover:hover)]:hover:bg-brand-amber-soft"
               >
-                {cta.label}
+                <span className="flex flex-col items-center">
+                  <span>{cta.label}</span>
+                  {cta.sub && (
+                    <span className="mt-0.5 text-[10.5px] font-medium text-white/85">
+                      {cta.sub}
+                    </span>
+                  )}
+                </span>
               </Link>
               {oldest && (
                 <Link

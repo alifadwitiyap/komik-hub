@@ -1,5 +1,5 @@
 /**
- * Riwayat kata kunci pencarian halaman Cari (localStorage, maksimal 5 entri).
+ * Riwayat kata kunci pencarian halaman Cari (localStorage, maksimal 6 entri).
  * Sengaja TIDAK bergantung pada React/DOM yang bisa mati supaya logikanya bisa
  * diuji langsung dengan node. Semua akses localStorage dibungkus try/catch:
  * storage bisa diblokir (mode privat, kuota penuh) — riwayat cuma kemewahan,
@@ -7,7 +7,7 @@
  */
 
 const RECENT_KEY = 'komik-search-recent'
-export const RECENT_MAX = 5
+export const RECENT_MAX = 6
 
 /** Entri terakhir (terbaru dulu). Data rusak/kosong → []. */
 export function listRecent(): string[] {
@@ -24,7 +24,7 @@ export function listRecent(): string[] {
   }
 }
 
-/** Simpan satu kata kunci di depan; kembalikan daftar baru (maksimal 5). */
+/** Simpan satu kata kunci di depan; kembalikan daftar baru (maksimal 6). */
 export function rememberSearch(q: string): string[] {
   const term = q.trim()
   if (!term) return listRecent()
@@ -48,4 +48,15 @@ export function clearRecent(): string[] {
     /* storage diblokir */
   }
   return []
+}
+
+/** Hapus SATU entri (tombol × per chip); kembalikan daftar baru. */
+export function forgetRecent(q: string): string[] {
+  const next = listRecent().filter((s) => s.toLowerCase() !== q.trim().toLowerCase())
+  try {
+    localStorage.setItem(RECENT_KEY, JSON.stringify(next))
+  } catch {
+    /* storage diblokir — chip tetap hilang dari state komponen */
+  }
+  return next
 }
