@@ -454,8 +454,29 @@ struct SearchQuery {
     page: Option<u32>,
 }
 
-async fn series(Path(id): Path<i64>) -> Res<Value> {
-    let raw = api::series(id).await?;
+/// Cache payload `/api/series/:id` (legacy) — final JSON SETELAH normalisasi
+/// `title_key` + dekripsi chapter. `content.komikid.org` ~1 s per hit walau id
+/// yang sama (baseline repeat median 1036 ms), jadi repeat id jadi ~ms; id baru
+/// tetap membayar upstream (cold tidak bisa di-cache). Cermin pola `SEARCH_CACHE`.
+const SERIES_CACHE_TTL: std::time::Duration = std::time::Duration::from_secs(120);
+const SERIES_CACHE_MAX: usize = 128;
+static SERIES_CACHE: once_cell::sync::Lazy<
+    std::sync::Mutex<std::collections::HashMap<i64, (std::time::Instant, Value)>>,
+> = once_cell::sync::Lazy::new(Default::default);
+/// Single-flight: saat TTL habis hanya satu request yang menembak upstream.
+static SERIES_REFRESH: once_cell::sync::Lazy<tokio::sync::Mutex<()>> =
+    once_cell::sync::Lazy::new(|| tokio::sync::Mutex::new(()));
+
+fn series_cached(id: i64) -> Option<Value> {
+    let guard = SERIES_CACHE.lock().ok()?;
+    let (at, cached) = guard.get(&id)?;
+    (at.elapsed() < SERIES_CACHE_TTL).then(|| cached.clone())
+}
+
+/// Bentuk payload final series dari respons upstream mentah. Dipisah dari
+/// handler supaya cache menyimpan hasil setelah normalisasi + dekripsi (repeat
+/// hit tidak membayar crypto lagi) dan bisa diuji tanpa jaringan.
+fn series_payload(raw: &Value, id: i64) -> Result<Value, AppError> {
     let mut s = raw.get("series").cloned().unwrap_or(Value::Null);
     if s.is_null() {
         return Err(AppError::not_found(format!("manga {id} tidak ditemukan")));
@@ -473,11 +494,39 @@ async fn series(Path(id): Path<i64>) -> Res<Value> {
     // daftar chapter datang sebagai blob base64 -> didekripsi di sini
     let chapters = crypto::maybe_json(raw.get("chapter").cloned().unwrap_or(Value::Null));
     let related = crypto::maybe_json(raw.get("related").cloned().unwrap_or(Value::Null));
-    Ok(Json(json!({
+    Ok(json!({
         "series": s,
         "chapters": chapter_list(&chapters),
         "related": chapter_list(&related),
-    })))
+    }))
+}
+
+async fn series(Path(id): Path<i64>) -> Res<Value> {
+    if let Some(cached) = series_cached(id) {
+        return Ok(Json(cached));
+    }
+    // double-check di dalam gate: yang kalah balapan ikut memakai hasil leader
+    let _gate = SERIES_REFRESH.lock().await;
+    if let Some(cached) = series_cached(id) {
+        return Ok(Json(cached));
+    }
+    let raw = api::series(id).await?;
+    let out = series_payload(&raw, id)?;
+    if let Ok(mut guard) = SERIES_CACHE.lock() {
+        // Cap kasar, cermin search_cache: buang entri paling tua bila penuh dan
+        // key belum ada, supaya cache tidak tumbuh tanpa batas.
+        if guard.len() >= SERIES_CACHE_MAX && !guard.contains_key(&id) {
+            if let Some(old) = guard
+                .iter()
+                .min_by_key(|(_, (at, _))| *at)
+                .map(|(k, _)| *k)
+            {
+                guard.remove(&old);
+            }
+        }
+        guard.insert(id, (std::time::Instant::now(), out.clone()));
+    }
+    Ok(Json(out))
 }
 
 async fn chapter(Path(id): Path<i64>) -> Res<Value> {
@@ -649,5 +698,25 @@ mod tests {
         assert_eq!(res.status(), StatusCode::BAD_REQUEST);
         let v = body_json(res).await;
         assert!(v.get("hint").is_none());
+    }
+
+    /// Payload series dibentuk penuh (title_key + chapter list) tanpa jaringan;
+    /// ini yang disimpan cache, jadi repeat hit tidak mengulang dekripsi.
+    #[test]
+    fn series_payload_final_tanpa_jaringan() {
+        let raw = json!({
+            "series": { "id": 1548, "title": "One Piece" },
+            "chapter": [{ "number": "1" }],
+            "related": []
+        });
+        let out = series_payload(&raw, 1548).unwrap();
+        assert_eq!(out["series"]["title_key"], "one piece");
+        assert_eq!(out["chapters"].as_array().unwrap().len(), 1);
+        assert_eq!(out["related"].as_array().unwrap().len(), 0);
+
+        let missing = series_payload(&json!({}), 42)
+            .unwrap_err()
+            .into_response();
+        assert_eq!(missing.status(), StatusCode::NOT_FOUND);
     }
 }
