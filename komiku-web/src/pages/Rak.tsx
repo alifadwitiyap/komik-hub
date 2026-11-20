@@ -286,9 +286,13 @@ function HistoryTab({ entries }: { entries: rakStore.HistoryEntry[] }) {
       return {
         key: e.title_key,
         entry: e,
-        href,
-        chapter: p.chapterName || `Chapter ${key.split(':').pop() ?? ''}`,
-        page: p.page,
+        href: target.href,
+        chapter: resumeLabel({
+          chapterId: target.chapterId,
+          source: target.source,
+          chapterName: p.chapterName,
+        }),
+        page: target.page,
         progress: Math.max(0, Math.min(1, p.progress || 0)),
       }
     })
