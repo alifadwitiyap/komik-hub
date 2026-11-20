@@ -6,17 +6,14 @@ import type { Homepage, HomeSection, Manga } from '../types'
 import { Empty, Spinner } from '../App'
 import SourceBadge, { sourceLabel } from '../components/SourceBadge'
 import HeartButton from '../components/HeartButton'
-import { IconBolt, IconMagnifyingGlass, IconPlaySolid, IconRectangleHistory } from '../icons'
+import { IconPlaySolid } from '../icons'
 import ContinueReading from '../components/ContinueReading'
 
 /**
  * Beranda: urutan replika Komiku+ v2.3.0 Home (fragment_home) tapi KONTEN
  * gabungan 4 sumber (unified):
  *   (a) backdrop carousel  → unifiedApi.popular(1) (item_index_backdrop)
- *   (b) shortcut menu       → ikon+label horizontal (item_index_menu_top):
- *                            Populer(#populer) · Terbaru(#terbaru) ·
- *                            Cari(/cari — mode eksplorasi penuh)
- *   (c) Lanjut membaca      → ContinueReading (item_index_history)
+ *   (b) Lanjut membaca      → ContinueReading (item_index_history), DI ATAS carousel
  *   (d) Populer (semua sumber)      → unifiedApi.popular(1)
  *   (e) Update terbaru (semua sumber) → unifiedApi.latest(1)
  *   (f) Pilihan Komiku      → seksi komiku lama (api.homepage) diringkas
@@ -165,12 +162,9 @@ export default function Home() {
         </div>
       )}
 
-      {/* (c) "Lanjut membaca" replika item_index_history: bila ada riwayat,
-          tampil langsung di bawah header agar pembaca bisa segera lanjut. */}
+      {/* "Lanjut membaca" tampil langsung di bawah header agar pembaca bisa
+          segera lanjut — lebih dekat daripada carousel atau pintasan. */}
       <ContinueReading />
-
-      {/* (b) shortcut menu replika item_index_menu_top — empat pintu beranda */}
-      <ShortcutMenu />
 
       {featured.length > 0 && <BackdropCarousel items={featured} />}
 
@@ -209,9 +203,9 @@ export default function Home() {
 }
 
 /**
- * Backdrop carousel (item_index_backdrop): kartu rasio 2:1.1, radius 12,
- * sampul center-crop + gradien gelap, judul BR Hendrix putih bershadow,
- * meta + baris bawah. Auto-advance 4s + dots + scroll-snap.
+ * Backdrop carousel (item_index_backdrop): sampul full-bleed di wadah
+ * rounded-xl (tanpa celah abu-abu), scrim gelap 85% di bawah untuk
+ * judul/tipe/chapter. Auto-advance 4s + dots + scroll-snap; target 44px.
  */
 function BackdropCarousel({ items }: { items: Manga[] }) {
   const [idx, setIdx] = useState(0)
@@ -275,13 +269,16 @@ function BackdropCarousel({ items }: { items: Manga[] }) {
       >
         {items.map((m) => {
           const img = coverOf(m)
+          const label = chapterLabel(m)
+          const subtitle = [m.tipe?.[0], label ?? m.other?.[0]].filter(Boolean).join(' · ') || 'Manga'
           return (
             <Link
               key={m.id}
               to={m.handle ? `/manga/${m.handle}` : `/manga/${m.id}`}
               className="relative w-[94%] shrink-0 snap-start overflow-hidden rounded-xl border-[0.8px] border-ink-800 active:scale-[0.97] active:duration-100"
             >
-              <div className="relative aspect-[16/7] max-h-[170px] overflow-hidden">
+              {/* Sampul mengisi seluruh kartu — tidak ada ruang abu-abu. */}
+              <div className="relative aspect-[4/3] overflow-hidden bg-black">
                 {img && (
                   <img referrerPolicy="no-referrer"
                     src={imgUrl(img)}
@@ -293,19 +290,14 @@ function BackdropCarousel({ items }: { items: Manga[] }) {
                     decoding="async"
                   />
                 )}
-                {/* gradien gelap bawaan APK (bg_gradient_shape) */}
-                <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/40 to-transparent" />
-                {m.tipe?.[0] && (
-                  <span className="absolute right-2 top-2 rounded bg-brand-red/90 px-1.5 py-0.5 text-[9.5px] font-semibold text-white">
-                    {m.tipe[0]}
-                  </span>
-                )}
-                <div className="absolute inset-x-0 bottom-0 px-2 pb-2">
-                  <p className="line-clamp-1 font-display text-[15px] font-medium text-white [text-shadow:_0_1px_4px_rgb(0_0_0_/_80%)]">
+                {/* scrim bawah ~85% untuk judul, tipe, dan chapter */}
+                <div className="absolute inset-x-0 bottom-0 h-3/4 bg-gradient-to-t from-black/85 via-black/60 to-transparent" />
+                <div className="absolute inset-x-0 bottom-0 px-3 pb-3">
+                  <p className="line-clamp-2 font-display text-[16px] font-semibold text-white [text-shadow:_0_1px_4px_rgb(0_0_0_/_80%)]">
                     {m.title}
                   </p>
                   <p className="mt-0.5 line-clamp-1 text-[11.5px] font-bold text-white/90 [text-shadow:_0_1px_4px_rgb(0_0_0_/_80%)]">
-                    {m.other?.slice(0, 2).join(' · ') || 'Manga'}
+                    {subtitle}
                   </p>
                   {m.update_date && (
                     <p className="mt-0.5 line-clamp-1 text-[10.5px] text-white/70 [text-shadow:_0_1px_4px_rgb(0_0_0_/_80%)]">
@@ -399,47 +391,6 @@ export function Section({
   )
 }
 
-/**
- * Shortcut menu replika item_index_menu_top: barisan menegak ikon+label,
- * 5 kolom sama lebar (weightSum=5 di app). Ikon diambil dari src/icons.tsx
- * supaya gaya sama dengan ikon lain di app web.
- */
-const SHORTCUTS: { label: string; to: string; Icon: typeof IconBolt }[] = [
-  { label: 'Populer', to: '/#populer', Icon: IconBolt },
-  { label: 'Terbaru', to: '/#terbaru', Icon: IconRectangleHistory },
-  { label: 'Cari', to: '/cari', Icon: IconMagnifyingGlass },
-]
-
-function ShortcutMenu() {
-  // react-router (BrowserRouter) tidak scroll ke hash seperti router data —
-  // scroll manual supaya pintu "#populer"/"#terbaru" benar-benar membawa
-  // user ke seksi itu di halaman yang sama.
-  const go = (e: React.MouseEvent, to: string) => {
-    if (!to.startsWith('/#')) return
-    e.preventDefault()
-    document.getElementById(to.slice(2))?.scrollIntoView({ behavior: 'smooth' })
-  }
-
-  return (
-    <nav aria-label="Pintasan beranda" className="mx-auto max-w-3xl px-4 pt-4">
-      <ul className="flex items-stretch gap-2">
-        {SHORTCUTS.map(({ label, to, Icon }) => (
-          <li key={label} className="flex-1">
-            <Link
-              to={to}
-              onClick={(e) => go(e, to)}
-              className="flex flex-col items-center gap-1.5 rounded-xl border border-ink-800 bg-ink-900 px-1 py-2.5 transition-colors active:bg-ink-850 active:scale-[0.97] active:transition-transform active:duration-100"
-            >
-              <Icon className="size-5 text-brand-amber" />
-              <span className="text-[11px] font-semibold text-ink-200">{label}</span>
-            </Link>
-          </li>
-        ))}
-      </ul>
-    </nav>
-  )
-}
-
 /** Kartu katalog: cover + judul 2 baris + label chapter eksplisit "Ch. N".
  *  Dipakai Home dan Search; label dibentuk di sini (bukan di Search) supaya
  *  formatnya konsisten. `other[0]` dari API biasanya last_chapter mentah. */
@@ -452,7 +403,14 @@ export function chapterLabel(manga: Manga): string | null {
   return `Ch. ${number}`
 }
 
-export const MangaCard = memo(function MangaCard({ manga }: { manga: Manga }) {
+export const MangaCard = memo(function MangaCard({
+  manga,
+  compact = false,
+}: {
+  manga: Manga
+  /** Baris hasil pencarian: cover 2:3 kecil, 4–6 judul per layar. */
+  compact?: boolean
+}) {
   const [failed, setFailed] = useState(false)
   const img = coverOf(manga)
   // kartu unified (handle 'sumber:id') → route handle; kartu komiku → id lama.
@@ -467,59 +425,88 @@ export const MangaCard = memo(function MangaCard({ manga }: { manga: Manga }) {
     .join(' · ')
   const canFavorite = Boolean(manga.title_key && (manga.handle || manga.id != null))
 
-  return (
-    <Link to={to} className="tactile-press group block w-[132px] shrink-0 snap-start sm:w-[150px]">
-      {/* Satu sudut saja: chapter terbaru. Sumber/tipe/waktu jadi teks metadata. */}
-      <div className="relative aspect-[3/4] overflow-hidden rounded-xl border border-ink-800 bg-ink-850">
-        {img && !failed ? (
-          <img referrerPolicy="no-referrer"
-            src={imgUrl(img)}
-            alt={manga.title}
-            loading="lazy"
-            decoding="async"
-            onError={() => setFailed(true)}
-            className="size-full object-cover card-cover"
-          />
-        ) : (
-          <span className="grid size-full place-items-center px-2 text-center text-[11px] text-ink-500">
-            {manga.title}
-          </span>
-        )}
-        {label && (
-          <span className="absolute right-1 top-1 max-w-[calc(100%-0.5rem)] truncate rounded bg-black/70 px-1.5 py-0.5 text-[10px] font-bold tabular-nums text-white">
-            {label}
-          </span>
-        )}
-      </div>
-
-      <p className="mt-2 line-clamp-2 font-display text-[12.5px] font-medium leading-snug text-ink-100">
-        {manga.title}
-      </p>
-      {label ? (
-        <p className="mt-0.5 line-clamp-1 text-[11px] font-bold leading-snug tabular-nums text-ink-200">
+  // Cover dipakai dua layout: rail Home (132px) dan baris Search (72px).
+  // HeartButton sudah preventDefault + stopPropagation, jadi tidak membuka
+  // series meski tombolnya bersarang di Link.
+  const cover = (
+    <div
+      className={`relative aspect-[2/3] overflow-hidden rounded-xl border border-ink-800 bg-ink-850 ${
+        compact ? 'w-[72px] shrink-0' : ''
+      }`}
+    >
+      {img && !failed ? (
+        <img referrerPolicy="no-referrer"
+          src={imgUrl(img)}
+          alt={manga.title}
+          loading="lazy"
+          decoding="async"
+          onError={() => setFailed(true)}
+          className="size-full object-cover card-cover"
+        />
+      ) : (
+        <span className="grid size-full place-items-center px-2 text-center text-[11px] text-ink-500">
+          {manga.title}
+        </span>
+      )}
+      {label && !compact && (
+        <span className="absolute right-1 top-1 max-w-[calc(100%-0.5rem)] truncate rounded bg-black/70 px-1.5 py-0.5 text-[10px] font-bold tabular-nums text-white">
           {label}
-        </p>
-      ) : manga.other?.[0] ? (
-        <p className="mt-0.5 line-clamp-1 text-[11px] font-bold leading-snug tabular-nums text-ink-200">
-          {manga.other[0]}
-        </p>
-      ) : null}
-      {meta && (
-        <p className="mt-0.5 line-clamp-2 text-[11px] leading-snug text-ink-600">{meta}</p>
+        </span>
       )}
       {canFavorite && (
-        <div className="-ml-3 mt-0.5 flex items-center">
-          <HeartButton
-            manga={{
-              title_key: manga.title_key!,
-              title: manga.title,
-              cover_url: img ?? null,
-              handle: manga.handle ?? String(manga.id),
-              source: manga.source ?? 'komiku',
-            }}
-            className="bg-ink-850 text-ink-200 ring-1 ring-hairline [@media(hover:hover)_and_(pointer:fine)]:hover:bg-ink-800"
-          />
+        <HeartButton
+          manga={{
+            title_key: manga.title_key!,
+            title: manga.title,
+            cover_url: img ?? null,
+            handle: manga.handle ?? String(manga.id),
+            source: manga.source ?? 'komiku',
+          }}
+          className="absolute left-0 top-0 z-10 bg-black/55 text-white backdrop-blur-sm"
+        />
+      )}
+    </div>
+  )
+
+  const chapter = label ? (
+    <p className="mt-0.5 line-clamp-1 text-[11px] font-bold leading-snug tabular-nums text-ink-200">
+      {label}
+    </p>
+  ) : manga.other?.[0] ? (
+    <p className="mt-0.5 line-clamp-1 text-[11px] font-bold leading-snug tabular-nums text-ink-200">
+      {manga.other[0]}
+    </p>
+  ) : null
+
+  if (compact) {
+    return (
+      <Link
+        to={to}
+        className="tactile-press flex w-full items-start gap-3 rounded-xl border border-ink-800 bg-ink-900 p-2 active:scale-[0.99] active:duration-100"
+      >
+        {cover}
+        <div className="min-w-0 flex-1 py-0.5">
+          <p className="line-clamp-2 min-h-[2.6em] font-display text-[13px] font-medium leading-snug text-ink-100">
+            {manga.title}
+          </p>
+          {chapter}
+          {meta && (
+            <p className="mt-0.5 line-clamp-1 text-[11px] leading-snug text-ink-300">{meta}</p>
+          )}
         </div>
+      </Link>
+    )
+  }
+
+  return (
+    <Link to={to} className="tactile-press group block w-[132px] shrink-0 snap-start sm:w-[150px]">
+      {cover}
+      <p className="mt-2 line-clamp-2 min-h-[2.6em] font-display text-[12.5px] font-medium leading-snug text-ink-100">
+        {manga.title}
+      </p>
+      {chapter}
+      {meta && (
+        <p className="mt-0.5 line-clamp-1 text-[11px] leading-snug text-ink-300">{meta}</p>
       )}
     </Link>
   )

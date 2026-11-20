@@ -162,15 +162,20 @@ function TopBar({
           />
         </Link>
         <div className="ml-auto flex items-center gap-1.5">
-          <SourceHealthBadge />
-          <ThemeToggle />
-          <CircleButton label="Cari" to="/cari" className="hidden sm:grid">
+          {/* HP: hanya logo + dua ikon (Cari, Notifikasi). Desktop tetap lengkap. */}
+          <div className="hidden sm:flex">
+            <SourceHealthBadge />
+          </div>
+          <div className="hidden sm:flex">
+            <ThemeToggle />
+          </div>
+          <CircleButton label="Cari" to="/cari">
             <IconMagnifyingGlass className="size-4" />
           </CircleButton>
           <CircleButton label="Rak buku" to="/rak" className="hidden sm:grid">
             <IconBookHeart className="size-4" />
           </CircleButton>
-          <CircleButton label="Akun" to="/akun">
+          <CircleButton label="Akun" to="/akun" className="hidden sm:grid">
             <IconUser className="size-4" />
           </CircleButton>
           <div className="relative" ref={bellWrap}>
