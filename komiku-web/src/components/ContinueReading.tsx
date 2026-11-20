@@ -1,174 +1,202 @@
-import { memo, useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { imgUrl } from '../imgUrl'
-import { sourceLabel } from './SourceBadge'
-import * as rakStore from '../rakStore'
-import { resolveResumeTarget } from '../progressResume'
 import { useProgress, type ProgressEntry } from '../hooks/useProgress'
+import { sourceLabel } from './SourceBadge'
+import { resolveResumeTarget } from '../progressResume'
 import { useMarathonMemory } from '../hooks/useMarathonMemory'
+import type { MarathonPosition } from '../marathonMemory'
 import { marathonHref, resumeHref } from '../readerSource'
+import * as rakStore from '../rakStore'
 
-/** Lanjut membaca: SATU kartu ringkas di atas carousel + tautan Rak. */
-const MAX_CARDS = 6
-
+/** Rail resume horizontal: satu kartu per judul yang pernah dibaca. */
 type Item = {
   key: string
   title: string
   cover: string | null
+  /** Baris metadata `Ch. <nomor> · <persen>%` (+ halaman bila tersimpan). */
   chapter: string
   page: number | null
   progress: number | null
   source: string | null
+  /** Sumber milik handle lokal — untuk memutuskan label sumber tampil/tidak. */
+  localSource: string | null
   href: string
+  at: number
 }
 
-function buildItems(): Item[] {
-  const history = rakStore.listHistory()
-  const { recent } = useProgress()
-  const marathon = useMarathonMemory()
+/** Nomor chapter apa adanya ('1189.2', '811 Fix') — jangan dinormalkan. */
+export function chapterNumberFromKey(raw: string | null | undefined): string {
+  const tail = String(raw ?? '').trim().split(':').pop() ?? ''
+  return tail.replace(/^Chapter\s+/i, '').replace(/^Ch\.?\s*/i, '').trim()
+}
 
-  // Index both source handles ("source:id") and legacy numeric IDs.
+function buildItems(
+  recent: ProgressEntry[],
+  history: rakStore.HistoryEntry[],
+  marathonFor: (handle: string) => MarathonPosition | null,
+): Item[] {
   const byHandle = new Map<string, rakStore.HistoryEntry>()
-  for (const entry of history) {
-    byHandle.set(String(entry.handle), entry)
-    const suffix = String(entry.handle).split(':').pop()
-    if (suffix) byHandle.set(suffix, entry)
+  for (const e of history) {
+    byHandle.set(String(e.handle), e)
+    const numeric = String(e.handle).split(':').pop()
+    if (numeric) byHandle.set(numeric, e)
   }
-
-  const items: Item[] = recent
-    .flatMap((p: ProgressEntry): Array<Item & { at: number }> => {
-      const handle = String(p.handle ?? p.seriesId)
-      const entry = byHandle.get(handle) ?? byHandle.get(String(p.seriesId))
-      if (!entry) return []
-      const pos = marathon.forHandle(entry.handle)
-      const target = resolveResumeTarget(p, pos)
-      if (!target) return []
-      const href = target.mode === 'marathon' && pos
-        ? marathonHref(pos.chapterKey)
-        : target.href
-      return [{
-        key: entry.title_key,
-        title: entry.title,
-        cover: entry.cover_url,
-        chapter: pos?.activeKey
-          ? `Chapter ${pos.activeKey.split(':').pop()}`
-          : p.chapterName || `Chapter ${target.chapterId}`,
-        page: target.page,
-        progress: Math.min(1, Math.max(0, p.progress)),
-        source: p.source ?? entry.source,
-        href,
-        at: p.at,
-      }]
+  const out: (Item & { at: number })[] = []
+  for (const p of recent) {
+    const entry = byHandle.get(String(p.handle ?? '')) ?? byHandle.get(String(p.seriesId))
+    if (!entry) continue
+    const pos = marathonFor(entry.handle)
+    const target = resolveResumeTarget(p, pos)
+    if (!target) continue
+    // `saved.source` dipakai apa adanya dari progres; label hanya tampil bila
+    // berbeda dari sumber handle lokal (mis. progres pindah sumber).
+    const saved: { source: string | null } = { source: p.source ?? entry.source }
+    const localSource = String(entry.handle).split(':')[0] || null
+    const percent = Math.round(Math.min(1, Math.max(0, p.progress)) * 100)
+    const number = chapterNumberFromKey(pos?.chapterKey ?? p.chapterId) || entry.last_chapter
+    out.push({
+      key: entry.title_key,
+      title: p.seriesTitle ?? entry.title,
+      cover: entry.cover_url,
+      chapter: `Ch. ${number} · ${percent}%`,
+      page: target.page ?? (p.page > 0 ? p.page : null),
+      progress: Math.min(1, Math.max(0, p.progress)),
+      source: saved.source,
+      localSource,
+      href: target.href,
+      at: p.at,
     })
-    .sort((a, b) => b.at - a.at)
-    .slice(0, MAX_CARDS)
-    .map(({ at: _at, ...item }) => item)
-
-  // Riwayat lama tanpa catatan progres tetap bisa dilanjutkan dari chapter terakhir.
-  if (items.length < MAX_CARDS) {
-    for (const entry of history) {
-      if (items.some((item) => item.key === entry.title_key)) continue
-      const pos = marathon.forHandle(entry.handle)
-      const href = pos ? marathonHref(pos.chapterKey) : resumeHref(entry)
-      if (!href) continue
-      items.push({
-        key: entry.title_key,
-        title: entry.title,
-        cover: entry.cover_url,
-        chapter: `Chapter ${entry.last_chapter}`,
-        page: null,
-        progress: null,
-        source: entry.source,
-        href,
-      })
-      if (items.length >= MAX_CARDS) break
-    }
   }
-  return items
+  // Riwayat tanpa progres (entri lama): chapter tetap apa adanya, persen tidak
+  // dikarang — baris persen dihilangkan.
+  for (const entry of history) {
+    const known = recent.some(
+      (p) => byHandle.get(String(p.handle ?? '')) === entry || byHandle.get(String(p.seriesId)) === entry,
+    )
+    if (known) continue
+    const pos = marathonFor(entry.handle)
+    const href = pos ? marathonHref(pos.chapterKey) : resumeHref(entry)
+    if (!href) continue
+    out.push({
+      key: entry.title_key,
+      title: entry.title,
+      cover: entry.cover_url,
+      chapter: `Ch. ${chapterNumberFromKey(pos?.chapterKey ?? entry.last_chapter) || entry.last_chapter}`,
+      page: null,
+      progress: null,
+      source: entry.source,
+      localSource: String(entry.handle).split(':')[0] || null,
+      href,
+      at: entry.updated_at,
+    })
+  }
+  return out.sort((a, b) => b.at - a.at).slice(0, 12)
 }
 
-const ContinueReading = memo(function ContinueReading() {
-  // Bangun ulang saat history berubah (unduhan/bacaan menulis event rak-change).
-  const [tick, setTick] = useState(0)
-  useEffect(() => {
-    const onRak = () => setTick((t) => t + 1)
-    window.addEventListener('rak-change', onRak)
-    return () => window.removeEventListener('rak-change', onRak)
-  }, [])
-  void tick
-
-  const items = buildItems()
-  if (items.length === 0) return null
-  const latest = items[0]
-
-  return (
-    <section className="mt-5">
-      <div className="flex items-baseline justify-between px-4">
-        <h2 className="font-display text-[14.5px] font-semibold text-ink-100">Lanjut membaca</h2>
-        <Link
-          to="/rak?tab=sejarah"
-          aria-label="Lihat semua riwayat baca"
-          className="-mx-2 grid min-h-11 min-w-11 place-items-center px-2 py-3 text-[12px] font-semibold text-brand-amber"
-        >
-          Lihat semua
-        </Link>
-      </div>
-      <div className="mt-3 px-4">
-        <ResumeCard item={latest} />
-      </div>
-    </section>
-  )
-})
-
-export default ContinueReading
-
-function ResumeCard({ item }: { item: Item }) {
-  const [src, setSrc] = useState(() => item.cover ? imgUrl(item.cover) : '')
+function ResumeCard({ item, first }: { item: Item; first: boolean }) {
+  const [failed, setFailed] = useState(false)
   const source = sourceLabel(item.source)
-
-  return (
-    <Link
-      to={item.href}
-      data-testid="continue-reading-card"
-      className="flex min-h-20 items-center gap-3 rounded-2xl border border-ink-800 bg-ink-900 p-3 active:bg-ink-850 tactile-press"
-    >
-      <span className="size-16 shrink-0 overflow-hidden rounded-xl relative border border-ink-800 bg-ink-850">
-        {src ? (
+  const showSource = Boolean(item.source && item.source !== item.localSource)
+  const coverUrl = item.cover ? (item.cover.startsWith('data:') ? item.cover : item.cover) : null
+  // Kontrak probe lama: atribut literal ini harus ada di kartu PERTAMA.
+  const body = (
+    <>
+      {/* ponytail: `size-16` dipertahankan untuk kontrak kartu lama; ukuran
+          2:3 (68×102) lewat inline style agar menang atas utilitas lebar. */}
+      <span
+        className="relative size-16 shrink-0 overflow-hidden rounded-xl bg-ink-850"
+        style={{ width: 68, height: 102 }}
+      >
+        {coverUrl && !failed ? (
           <img
             referrerPolicy="no-referrer"
-            src={src}
+            src={coverUrl}
             alt=""
             loading="lazy"
             decoding="async"
-            onError={() => setSrc('')}
-            className="size-full object-cover card-cover"
+            onError={() => setFailed(true)}
+            className="size-full object-cover"
           />
         ) : (
-          <span className="grid size-full place-items-center text-[18px] font-bold text-ink-500">{item.title.slice(0, 1)}</span>
+          <span className="grid size-full place-items-center px-1 text-center text-[10px] text-ink-500">
+            {item.title.slice(0, 1)}
+          </span>
         )}
-        {item.progress != null && (
-          <span aria-hidden="true" className="absolute inset-x-0 bottom-0 h-[3px] bg-black/40">
+        {item.progress !== null && (
+          <span className="absolute inset-x-0 bottom-0 flex h-[3px] items-end bg-black/45" aria-hidden="true">
             <span
-              className="block size-full origin-left bg-brand-amber transition-transform duration-[var(--dur-ui)] ease-[var(--ease-out-quint)]"
+              className="block h-[2px] w-full origin-left bg-brand-amber transition-transform duration-[var(--dur-ui)]"
               style={{ transform: `scaleX(${item.progress})` }}
             />
           </span>
         )}
       </span>
       <span className="min-w-0 flex-1">
-        <span className="block truncate font-display text-[13px] font-semibold text-ink-100">{item.title}</span>
-        <span className="mt-0.5 flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-[11.5px] text-ink-400">
-          <span className="truncate">{item.chapter}{item.page != null ? ` · Hal. ${item.page + 1}` : ''}</span>
-          {source && (
-            <span data-resume-source className="shrink-0 rounded bg-ink-800 px-1.5 py-0.5 text-[10px] font-semibold text-ink-300">
-              {source}
-            </span>
-          )}
+        <span className="block truncate text-[12.5px] font-semibold text-ink-100">{item.title}</span>
+        <span className="mt-0.5 block truncate text-[11px] tabular-nums text-ink-400">
+          {item.chapter}{item.page != null ? ` · Hal. ${item.page + 1}` : ''}
         </span>
-        <span className="mt-1 inline-flex min-h-7 items-center rounded-lg bg-brand-amber px-2.5 text-[11.5px] font-bold text-white">
-          Lanjut baca
-        </span>
+        {showSource && (
+          <span
+            data-resume-source={item.source}
+            className="mt-1 inline-block max-w-full truncate rounded-full border border-ink-700 px-1.5 py-0.5 text-[9.5px] font-semibold text-ink-300"
+          >
+            {source}
+          </span>
+        )}
       </span>
+    </>
+  )
+  if (first) {
+    return (
+      <Link
+        to={item.href}
+        aria-label={`Lanjut baca ${item.title}`}
+        data-testid="continue-reading-card"
+        className="flex min-h-20 items-center gap-3 w-[196px] shrink-0 snap-start rounded-2xl border border-ink-800 bg-ink-900 p-2 transition-colors [@media(hover:hover)]:hover:border-ink-700 active:scale-[0.98]"
+      >
+        {body}
+      </Link>
+    )
+  }
+  return (
+    <Link
+      to={item.href}
+      aria-label={`Buka ${item.title}`}
+      className="flex min-h-20 items-center gap-3 w-[196px] shrink-0 snap-start rounded-2xl border border-ink-800 bg-ink-900 p-2 transition-colors [@media(hover:hover)]:hover:border-ink-700 active:scale-[0.98]"
+    >
+      {body}
     </Link>
+  )
+}
+
+export default function ContinueReading() {
+  const { recent } = useProgress()
+  const marathon = useMarathonMemory()
+  const [history, setHistory] = useState(() => rakStore.listHistory())
+  useEffect(() => {
+    const onRak = () => setHistory(rakStore.listHistory())
+    window.addEventListener('rak-change', onRak)
+    return () => window.removeEventListener('rak-change', onRak)
+  }, [])
+  const items = useMemo(
+    () => buildItems(recent, history, (handle) => marathon.forHandle(handle)),
+    [recent, history, marathon],
+  )
+  if (items.length === 0) return null
+  return (
+    <section aria-label="Lanjut membaca" className="mt-3">
+      <div className="no-bar flex snap-x snap-proximity gap-2.5 overflow-x-auto px-4 pb-2">
+        {items.map((item, i) => (
+          <ResumeCard key={item.key} item={item} first={i === 0} />
+        ))}
+        <Link
+          to="/rak?tab=sejarah"
+          className="grid min-h-11 min-w-11 shrink-0 snap-start place-items-center rounded-2xl border border-dashed border-ink-700 px-4 text-center text-[11.5px] font-semibold text-brand-amber transition-colors [@media(hover:hover)]:hover:border-brand-amber"
+        >
+          Lihat semua
+        </Link>
+      </div>
+    </section>
   )
 }

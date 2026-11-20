@@ -1,12 +1,10 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link, useLocation, useSearchParams } from 'react-router-dom'
 import { imgUrl } from '../imgUrl'
-import { accountHeaders, toMangaCard, unifiedApi } from '../api'
-import type { Manga } from '../types'
-import { MangaCard } from './Home'
+import { accountHeaders, unifiedApi } from '../api'
 import * as rakStore from '../rakStore'
 import { resolveResumeTarget, resumeLabel } from '../progressResume'
-import { readerHref, marathonHref } from '../readerSource'
+import { readerHref, marathonHref } from '../readerSource' (feat(web): add mobile resume rail, quick actions, and rak status tabs)
 import { useProgress } from '../hooks/useProgress'
 import { useMarathonMemory } from '../hooks/useMarathonMemory'
 import { getUser } from '../account'
@@ -20,27 +18,31 @@ import { humanSize, saveGeneratedPdf } from '../downloadBatch'
 import { cancelRun, getRuns, isRunStale, runBusy, runProgress, subscribeRuns, type DlRun } from '../downloadStore'
 import { useNotifCounts } from '../notifCounts'
 import SourceBadge from '../components/SourceBadge'
-import { SourceSortBar, useSortFilter, useSourceFilter } from '../components/SourceSortBar'
 import type { DownloadItem, DownloadsResponse } from '../types'
 
-type TabKey = 'terbaru' | 'sejarah' | 'favorit' | 'unduhan'
+type TabKey = rakStore.RakTab
 
-/** Urutan tab + label (dl untuk tablist ARIA di atas). Kunci 'sejarah'
- *  dipertahankan supaya tautan lama ?tab=sejarah tetap membuka panel ini. */
+/** Urutan tab + label (dl untuk tablist ARIA di atas). Kunci lama tetap
+ *  diterima sebagai alias URL; tampilan memakai 5 status dari plan UX. */
 const TABS = [
-  ['terbaru', 'Terbaru'],
-  ['sejarah', 'Riwayat baca'],
-  ['favorit', 'Favorit'],
+  ['semua', 'Semua'],
+  ['sedang', 'Sedang Dibaca'],
+  ['ingin', 'Ingin Dibaca'],
+  ['selesai', 'Selesai'],
   ['unduhan', 'Unduhan'],
-] as const
+] as const satisfies readonly (readonly [TabKey, string])[]
 
-/** Query ?tab= → tab aktif. Tanpa query = Riwayat baca (tab awal Rak);
- *  'terbaru' eksplisit tetap bisa dibuka lewat Beranda/Cari. Tautan lama
- *  ?tab=sejarah otomatis jatuh ke kunci yang sama. */
+/** ?tab= lama (terbaru/sejarah/favorit) → status baru. Tanpa query = Semua. */
 function tabFromQuery(value: string | null): TabKey {
-  return value === 'favorit' || value === 'unduhan' || value === 'terbaru'
-    ? value
-    : 'sejarah'
+  return rakStore.normalizeRakTab(value)
+}
+
+/** ID DOM lama dipertahankan supaya probe/tautan lama tidak putus. */
+function tabDomId(key: TabKey): string {
+  if (key === 'semua') return 'tab-terbaru'
+  if (key === 'sedang') return 'tab-sejarah'
+  if (key === 'ingin') return 'tab-favorit'
+  return `tab-${key}`
 }
 
 /** Minimal shape run untuk teks progres (kompatibel dengan DlRun store). */
@@ -87,7 +89,7 @@ export default function Rak() {
   }, [tabQuery])
   const goTab = (key: TabKey) => {
     setTab(key)
-    setSearchParams(key === 'terbaru' ? {} : { tab: key }, { replace: true })
+    setSearchParams(rakStore.rakTabQuery(key), { replace: true })
   }
   const [flash, setFlash] = useState<string | null>(flashFromNav)
   const [history, setHistory] = useState(() => rakStore.listHistory())
@@ -131,12 +133,17 @@ export default function Rak() {
 
       {/* Tab = ARIA tablist (bukan grid tombol): panah kiri/kanan pindah tab,
           aria-selected bawa keadaan aktif ke screen reader (dulu warna saja). */}
-      <div role="tablist" aria-label="Rak" className="mb-4 grid grid-cols-4 gap-2">
+      <div
+        role="tablist"
+        aria-label="Rak"
+        className="no-bar mb-4 flex gap-2 overflow-x-auto pb-1"
+      >
         {TABS.map(([key, label]) => (
           <button
             key={key}
             role="tab"
-            id={`tab-${key}`}
+            id={tabDomId(key)}
+            data-testid={`tab-${key}`}
             aria-selected={tab === key}
             aria-controls={`panel-${key}`}
             tabIndex={tab === key ? 0 : -1}
@@ -146,13 +153,14 @@ export default function Rak() {
                 e.key === 'ArrowRight' ? 1 : e.key === 'ArrowLeft' ? -1 : e.key === 'Home' ? -99 : e.key === 'End' ? 99 : 0
               if (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft' && e.key !== 'Home' && e.key !== 'End') return
               e.preventDefault()
+              const current = TABS.findIndex(([k]) => k === tab)
               const next =
-                step === -99 ? 0 : step === 99 ? TABS.length - 1 : (TABS.findIndex(([k]) => k === tab) + step + TABS.length) % TABS.length
+                step === -99 ? 0 : step === 99 ? TABS.length - 1 : (current + step + TABS.length) % TABS.length
               const nextKey = TABS[next][0]
               goTab(nextKey)
-              document.getElementById(`tab-${nextKey}`)?.focus()
+              document.getElementById(tabDomId(nextKey))?.focus()
             }}
-            className={`min-h-11 rounded-xl py-2.5 text-[12px] font-bold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber focus-visible:ring-offset-2 ${
+            className={`min-h-11 shrink-0 rounded-xl px-3.5 py-2.5 text-[12px] font-bold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber focus-visible:ring-offset-2 ${
               tab === key
                 ? 'bg-brand-amber text-white'
                 : 'border border-ink-800 bg-ink-900 text-ink-300'
@@ -176,77 +184,146 @@ export default function Rak() {
         ))}
       </div>
 
-      {tab === 'terbaru' && <section role="tabpanel" id="panel-terbaru" aria-labelledby="tab-terbaru"><LatestTab /></section>}
-      {tab === 'sejarah' && <section role="tabpanel" id="panel-sejarah" aria-labelledby="tab-sejarah"><HistoryTab entries={history} /></section>}
-      {tab === 'favorit' && <section role="tabpanel" id="panel-favorit" aria-labelledby="tab-favorit"><FavoritesTab entries={favorites} /></section>}
+      {tab === 'semua' && (
+        <section role="tabpanel" id="panel-semua" aria-labelledby="tab-terbaru">
+          <LibraryTab mode="semua" history={history} favorites={favorites} />
+        </section>
+      )}
+      {tab === 'sedang' && <section role="tabpanel" id="panel-sedang" aria-labelledby="tab-sejarah"><HistoryTab entries={history} /></section>}
+      {tab === 'ingin' && <section role="tabpanel" id="panel-ingin" aria-labelledby="tab-favorit"><FavoritesTab entries={favorites} /></section>}
+      {tab === 'selesai' && (
+        <section role="tabpanel" id="panel-selesai" aria-labelledby="tab-selesai">
+          <LibraryTab mode="selesai" history={history} favorites={favorites} />
+        </section>
+      )}
       {tab === 'unduhan' && <section role="tabpanel" id="panel-unduhan" aria-labelledby="tab-unduhan" aria-label="Unduhan tersimpan"><DownloadsTab /></section>}
     </div>
   )
 }
 
-// ---------------------------------------------------------------- Terbaru
+// ---------------------------------------------------------------- Rak status
 
-/** Feed `latest` gabungan sumber + filter sumber/urutan (state di URL). */
-function LatestTab() {
-  const [items, setItems] = useState<Manga[] | null>(null)
-  const [error, setError] = useState<string | null>(null)
-  const [attempt, setAttempt] = useState(0)
-  const srcRaw = useSourceFilter()
-  const srtRaw = useSortFilter()
-  const src = srcRaw === 'semua' ? null : srcRaw
-  const srt = srtRaw === 'terbaru' ? null : srtRaw
+type LibraryMode = 'semua' | 'selesai'
+type LibraryRow = {
+  key: string
+  title: string
+  cover: string | null
+  source: string
+  handle: string
+  href: string
+  chapter: string | null
+  at: number
+  updates: number
+}
 
-  useEffect(() => {
-    const ctrl = new AbortController()
-    setItems(null)
-    setError(null)
-    unifiedApi
-      .latest(1, ctrl.signal, { source: src, sort: srt })
-      .then((r) => setItems(r.items.map(toMangaCard)))
-      .catch((e: Error) => {
-        if (e.name === 'AbortError') return
-        console.error('[rak] latest failed', e)
-        setError('Terjadi kendala saat memuat daftar terbaru. Coba lagi.')
-      })
-    return () => ctrl.abort()
-  }, [src, srt, attempt])
+/** Gabungan riwayat + favorit menjadi 5 status Rak. `updates` dan urutan
+ *  "terbaru" berasal dari data notifikasi/progres yang sudah ada — tidak
+ *  ada angka yang direkayasa kalau datanya kosong. */
+function LibraryTab({
+  mode,
+  history,
+  favorites,
+}: {
+  mode: LibraryMode
+  history: rakStore.HistoryEntry[]
+  favorites: rakStore.FavoriteEntry[]
+}) {
+  const { recent } = useProgress()
+  const marathon = useMarathonMemory()
+  const { unreadByTitle, latestByTitle } = useNotifCounts()
+  const [onlyUpdates, setOnlyUpdates] = useState(false)
+
+  const progressByHandle = new Map<string, (typeof recent)[number]>()
+  for (const p of recent) {
+    for (const key of [p.handle, p.seriesId, String(p.handle ?? '').split(':').pop()]) {
+      if (key != null && key !== '') progressByHandle.set(String(key), p)
+    }
+  }
+
+  const seen = new Set<string>()
+  const rows: LibraryRow[] = []
+  for (const entry of [...history, ...favorites]) {
+    if (seen.has(entry.title_key)) continue
+    seen.add(entry.title_key)
+
+    const p = progressByHandle.get(String(entry.handle)) ?? progressByHandle.get(String(entry.handle).split(':').pop() ?? '')
+    const done = p?.status === 'Selesai' || (p?.progress ?? 0) >= 1
+    const status = done ? 'selesai' : p ? 'sedang' : 'ingin'
+    if (mode !== 'semua' && status !== mode) continue
+
+    const target = p ? resolveResumeTarget(p, marathon.forHandle(String(p.handle ?? p.seriesId))) : null
+    const fallback = 'last_chapter' in entry ? resumeHref(entry) : null
+    const updates = unreadByTitle[entry.title_key] ?? 0
+    const notifAt = latestByTitle[entry.title_key]?.at ?? 0
+    rows.push({
+      key: entry.title_key,
+      title: entry.title,
+      cover: entry.cover_url,
+      source: entry.source,
+      handle: entry.handle,
+      href: target?.href ?? fallback ?? `/manga/${entry.handle}`,
+      chapter: target
+        ? resumeLabel({ chapterId: target.chapterId, source: target.source, chapterName: p?.chapterName })
+        : null,
+      at: Math.max(
+        'updated_at' in entry ? entry.updated_at : entry.loved_at,
+        p?.at ?? 0,
+        notifAt,
+      ),
+      updates,
+    })
+  }
+  rows.sort((a, b) => b.at - a.at)
+  const hasUpdates = rows.some((r) => r.updates > 0)
+  const visible = hasUpdates && onlyUpdates ? rows.filter((r) => r.updates > 0) : rows
+
+  if (rows.length === 0) {
+    return (
+      <Empty
+        title={mode === 'selesai' ? 'Belum ada komik selesai' : 'Rak masih kosong'}
+        body={mode === 'selesai' ? 'Tandai komik sebagai selesai dari halaman series.' : 'Simpan komik dari halaman series atau Cari.'}
+      />
+    )
+  }
 
   return (
     <div>
-      <SourceSortBar />
-      {error && (
-        <div className="mt-3 rounded-xl border border-brand-red/40 bg-brand-red/10 px-3 py-2 text-[12px] text-brand-red">
-          <p>{error}</p>
-          <button
-            type="button"
-            onClick={() => setAttempt((a) => a + 1)}
-            className="mt-2 min-h-11 rounded-full bg-brand-amber px-5 py-2.5 text-[13px] font-bold text-white transition-colors active:scale-[0.97] active:duration-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber focus-visible:ring-offset-2 [@media(hover:hover)]:hover:bg-brand-amber-soft"
-          >
-            Coba lagi
-          </button>
-        </div>
+      {hasUpdates && (
+        <button
+          type="button"
+          aria-pressed={onlyUpdates}
+          onClick={() => setOnlyUpdates((v) => !v)}
+          className="mb-3 min-h-11 rounded-full border border-ink-800 bg-ink-900 px-4 text-[12px] font-bold text-ink-300 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber"
+        >
+          Hanya yang ada update
+        </button>
       )}
-      {items === null && !error && (
-        <ul className="mt-5 grid grid-cols-2 gap-x-3 gap-y-4" aria-hidden="true">
-          {Array.from({ length: 6 }).map((_, i) => (
-            <li key={i} className="aspect-[62/82] animate-pulse rounded-xl bg-ink-850" />
-          ))}
-        </ul>
-      )}
-      {items !== null && items.length === 0 && !error && (
-        <div className="mt-5">
-          <Empty title="Tidak ada hasil" body="Belum ada komik yang cocok dengan filter ini." />
-        </div>
-      )}
-      {items !== null && items.length > 0 && (
-        <ul className="mt-4 grid grid-cols-2 gap-x-3 gap-y-4">
-          {items.map((m) => (
-            <li key={m.id} className="[&_a]:w-full">
-              <MangaCard manga={m} />
-            </li>
-          ))}
-        </ul>
-      )}
+      <ul className="space-y-2.5">
+        {visible.map((r) => (
+          <li key={r.key}>
+            <Link
+              to={r.href}
+              className="relative flex items-center gap-3 rounded-xl border border-ink-800 bg-ink-900 p-2.5 transition-colors [@media(hover:hover)]:hover:border-ink-700 active:scale-[0.98]"
+            >
+              <Cover src={r.cover} title={r.title} />
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-[13px] font-semibold text-ink-100">{r.title}</p>
+                <p className="truncate text-[11px] text-ink-500">
+                  {r.source} · {r.chapter ?? 'Belum dibaca'} · {new Date(r.at).toLocaleDateString('id-ID')}
+                </p>
+              </div>
+              {r.updates > 0 && (
+                <span
+                  aria-label={`${r.updates} chapter update belum dibaca`}
+                  className="shrink-0 rounded-full bg-brand-amber px-2 py-0.5 text-[10px] font-bold text-white"
+                >
+                  +{r.updates} Ch.
+                </span>
+              )}
+            </Link>
+          </li>
+        ))}
+      </ul>
     </div>
   )
 }

@@ -1,5 +1,5 @@
 import { imgUrl } from '../imgUrl'
-import { memo, useEffect, useRef, useState } from 'react'
+import { memo, useEffect, useRef, useState, type MouseEvent as ReactMouseEvent, type PointerEvent as ReactPointerEvent } from 'react'
 import { Link } from 'react-router-dom'
 import { api, coverOf, thumbOf, toMangaCard, unifiedApi } from '../api'
 import type { Homepage, HomeSection, Manga } from '../types'
@@ -8,6 +8,8 @@ import SourceBadge, { sourceLabel } from '../components/SourceBadge'
 import HeartButton from '../components/HeartButton'
 import { IconPlaySolid } from '../icons'
 import ContinueReading from '../components/ContinueReading'
+import QuickActionSheet, { LONG_PRESS_MS, LONG_PRESS_SLOP_PX } from '../components/QuickActionSheet'
+import { useProgress } from '../hooks/useProgress'
 
 /**
  * Beranda: urutan replika Komiku+ v2.3.0 Home (fragment_home) tapi KONTEN
@@ -424,6 +426,87 @@ export const MangaCard = memo(function MangaCard({
     .filter(Boolean)
     .join(' · ')
   const canFavorite = Boolean(manga.title_key && (manga.handle || manga.id != null))
+  const { recent } = useProgress()
+  const handle = manga.handle ?? String(manga.id)
+  const progress = recent.find((p) =>
+    [p.handle, p.seriesId, String(p.handle ?? '').split(':').pop()]
+      .some((key) => key != null && (String(key) === handle || String(key) === String(manga.id))),
+  ) ?? null
+
+  // Long-press 350ms → sheet; geser >10px / pointercancel / lepas lebih awal
+  // membatalkan. Klik setelah long-press ditelan supaya kartu tak navigasi.
+  const [sheetOpen, setSheetOpen] = useState(false)
+  const [pressing, setPressing] = useState(false)
+  const openerRef = useRef<HTMLElement | null>(null)
+  const press = useRef<{ x: number; y: number; timer: number | null } | null>(null)
+  const suppressClick = useRef(false)
+  const clearPress = () => {
+    if (press.current?.timer != null) window.clearTimeout(press.current.timer)
+    press.current = null
+    setPressing(false)
+  }
+  const onPointerDown = (e: ReactPointerEvent<HTMLAnchorElement>) => {
+    if (e.button !== 0 || !e.isPrimary) return
+    if ((e.target as HTMLElement).closest('button')) return
+    openerRef.current = e.currentTarget
+    setPressing(true)
+    const timer = window.setTimeout(() => {
+      press.current = null
+      setPressing(false)
+      suppressClick.current = true
+      setSheetOpen(true)
+      try {
+        navigator.vibrate?.(10)
+      } catch {
+        /* getar tidak didukung (jsdom / browser lama) */
+      }
+      window.setTimeout(() => { suppressClick.current = false }, 800)
+    }, LONG_PRESS_MS)
+    press.current = { x: e.clientX, y: e.clientY, timer }
+  }
+  const onPointerMove = (e: ReactPointerEvent<HTMLAnchorElement>) => {
+    const state = press.current
+    if (state && Math.hypot(e.clientX - state.x, e.clientY - state.y) > LONG_PRESS_SLOP_PX) clearPress()
+  }
+  const onClickCapture = (e: ReactMouseEvent<HTMLAnchorElement>) => {
+    if (!suppressClick.current) return
+    e.preventDefault()
+    e.stopPropagation()
+    suppressClick.current = false
+  }
+  const pressHandlers = {
+    onPointerDown,
+    onPointerMove,
+    onPointerUp: clearPress,
+    onPointerCancel: clearPress,
+    onClickCapture,
+  }
+  const moreButton = (
+    <button
+      type="button"
+      aria-label={`Aksi cepat ${manga.title}`}
+      data-quick-action=""
+      onPointerDown={(e) => e.stopPropagation()}
+      onClick={(e) => {
+        e.preventDefault()
+        e.stopPropagation()
+        openerRef.current = e.currentTarget
+        setSheetOpen(true)
+      }}
+      className="absolute right-0 top-0 z-10 grid min-h-11 min-w-11 place-items-center rounded-lg bg-black/55 text-[16px] font-bold text-white backdrop-blur-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber"
+    >
+      ⋮
+    </button>
+  )
+  const sheet = (
+    <QuickActionSheet
+      open={sheetOpen}
+      onClose={() => setSheetOpen(false)}
+      manga={manga}
+      progress={progress}
+      openerRef={openerRef}
+    />
+  )
 
   // Cover dipakai dua layout: rail Home (132px) dan baris Search (72px).
   // HeartButton sudah preventDefault + stopPropagation, jadi tidak membuka
@@ -465,6 +548,7 @@ export const MangaCard = memo(function MangaCard({
           className="absolute left-0 top-0 z-10 bg-black/55 text-white backdrop-blur-sm"
         />
       )}
+      {moreButton}
     </div>
   )
 
@@ -480,35 +564,43 @@ export const MangaCard = memo(function MangaCard({
 
   if (compact) {
     return (
-      <Link
-        to={to}
-        className="tactile-press flex w-full items-start gap-3 rounded-xl border border-ink-800 bg-ink-900 p-2 active:scale-[0.99] active:duration-100"
-      >
-        {cover}
-        <div className="min-w-0 flex-1 py-0.5">
-          <p className="line-clamp-2 min-h-[2.6em] font-display text-[13px] font-medium leading-snug text-ink-100">
-            {manga.title}
-          </p>
-          {chapter}
-          {meta && (
-            <p className="mt-0.5 line-clamp-1 text-[11px] leading-snug text-ink-300">{meta}</p>
-          )}
-        </div>
-      </Link>
+      <>
+        <Link
+          to={to}
+          {...pressHandlers}
+          style={pressing ? { transform: 'scale(0.97)' } : undefined}
+          className="tactile-press flex w-full items-start gap-3 rounded-xl border border-ink-800 bg-ink-900 p-2 active:scale-[0.99] active:duration-100"
+        >
+          {cover}
+          <div className="min-w-0 flex-1 py-0.5">
+            <p className="line-clamp-2 min-h-[2.6em] font-display text-[13px] font-medium leading-snug text-ink-100">
+              {manga.title}
+            </p>
+            {chapter}
+            {meta && (
+              <p className="mt-0.5 line-clamp-1 text-[11px] leading-snug text-ink-300">{meta}</p>
+            )}
+          </div>
+        </Link>
+        {sheet}
+      </>
     )
   }
 
   return (
-    <Link to={to} className="tactile-press group block w-[132px] shrink-0 snap-start sm:w-[150px]">
-      {cover}
-      <p className="mt-2 line-clamp-2 min-h-[2.6em] font-display text-[12.5px] font-medium leading-snug text-ink-100">
-        {manga.title}
-      </p>
-      {chapter}
-      {meta && (
-        <p className="mt-0.5 line-clamp-1 text-[11px] leading-snug text-ink-300">{meta}</p>
-      )}
-    </Link>
+    <>
+      <Link to={to} {...pressHandlers} style={pressing ? { transform: 'scale(0.97)' } : undefined} className="tactile-press group block w-[132px] shrink-0 snap-start sm:w-[150px]">
+        {cover}
+        <p className="mt-2 line-clamp-2 min-h-[2.6em] font-display text-[12.5px] font-medium leading-snug text-ink-100">
+          {manga.title}
+        </p>
+        {chapter}
+        {meta && (
+          <p className="mt-0.5 line-clamp-1 text-[11px] leading-snug text-ink-300">{meta}</p>
+        )}
+      </Link>
+      {sheet}
+    </>
   )
 })
 
