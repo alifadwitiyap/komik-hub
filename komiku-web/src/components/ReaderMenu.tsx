@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react'
+import { useSheetPresence } from '../hooks/useSheetPresence'
 import {
   IconBars,
   IconPersonRunning,
@@ -66,6 +67,7 @@ export default function ReaderMenu({
 }: ReaderMenuProps) {
   const panelRef = useRef<HTMLDivElement>(null)
   const prevRef = useRef<HTMLElement | null>(null)
+  const mounted = useSheetPresence(open)
 
   useEffect(() => {
     if (!open) return
@@ -101,7 +103,7 @@ export default function ReaderMenu({
     }
   }, [open, onClose])
 
-  if (!open) return null
+  if (!mounted) return null
   const items = [
     {
       key: 'read_mode',
@@ -158,13 +160,15 @@ export default function ReaderMenu({
   // menang atas #root pada z-index yang sama — tanpa ini tombol melingkar
   // itu melayang DI ATAS backdrop menu yang sedang terbuka.
   return (
-    <div className="fixed inset-0 z-50 flex items-end bg-black/40" onClick={onClose}>
+    <div className={`fixed inset-0 z-50 flex items-end bg-black/40 ${open ? 'sheet-backdrop' : 'sheet-backdrop-closing'}`} onClick={onClose}>
       <div
         ref={panelRef}
         role="dialog"
         aria-modal="true"
         aria-label="Menu reader"
-        className="sheet-panel w-full rounded-t-2xl bg-night-dark/95 px-2 pb-[calc(1.25rem+env(safe-area-inset-bottom))] pt-3 backdrop-blur"
+        aria-hidden={!open}
+        inert={!open}
+        className={`sheet-panel w-full rounded-t-2xl bg-night-dark/95 px-2 pb-[calc(1.25rem+env(safe-area-inset-bottom))] pt-3 backdrop-blur ${open ? '' : 'sheet-closing'}`}
         onClick={(e) => e.stopPropagation()}
       >
         <div className="mb-2 flex justify-center">

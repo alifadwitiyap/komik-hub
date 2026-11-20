@@ -66,8 +66,10 @@ describe('P2 animasi — durasi & sifat sesuai rentang rencana', () => {
     }
   })
 
-  it('sheet slide-up 200ms ease-drawer (dalam rentang 180–220ms), sticky header, tanpa touch-through', () => {
-    expect(css).toMatch(/\.sheet-panel\s*\{[^}]*transition:\s*transform 200ms var\(--ease-drawer\), opacity 200ms var\(--ease-out\)/)
+  it('sheet masuk 240ms ease-out, keluar 160ms ease-drawer, sticky header, tanpa touch-through', () => {
+    expect(css).toMatch(/\.sheet-panel\s*\{[^}]*transition:\s*transform 240ms var\(--ease-out\), opacity 240ms var\(--ease-out\)/)
+    expect(css).toMatch(/\.sheet-panel\.sheet-closing\s*\{[^}]*transition-duration:\s*160ms/)
+    expect(css).toMatch(/\.sheet-panel\.sheet-closing\s*\{[^}]*transition-timing-function:\s*var\(--ease-drawer\)/)
     expect(css).toContain('@starting-style')
     expect(css).toMatch(/\.sheet-panel\s*\{[^}]*pointer-events:\s*none/)
     expect(css).toMatch(/@keyframes sheet-interactive\s*\{[^}]*to\s*\{\s*pointer-events:\s*auto/)

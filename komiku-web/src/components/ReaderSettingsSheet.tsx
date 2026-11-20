@@ -1,4 +1,5 @@
 import { useEffect, useId, useRef } from 'react'
+import { useSheetPresence } from '../hooks/useSheetPresence'
 import {
   IconBars,
   IconPersonRunning,
@@ -43,6 +44,7 @@ export default function ReaderSettingsSheet({
   marathonActions,
 }: ReaderSettingsSheetProps) {
   const panelRef = useRef<HTMLDivElement>(null)
+  const mounted = useSheetPresence(open)
   const closeRef = useRef<HTMLButtonElement>(null)
   const openerRef = useRef<HTMLElement | null>(null)
   const onCloseRef = useRef(onClose)
@@ -70,15 +72,17 @@ export default function ReaderSettingsSheet({
     }
   }, [open])
 
-  if (!open) return null
+  if (!mounted) return null
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/50" onClick={onClose}>
+    <div className={`fixed inset-0 z-50 flex items-end justify-center bg-black/50 ${open ? 'sheet-backdrop' : 'sheet-backdrop-closing'}`} onClick={onClose}>
       <div
         ref={panelRef}
         role="dialog"
         aria-modal="true"
+        aria-hidden={!open}
+        inert={!open}
         tabIndex={-1}
-        className="sheet-panel flex max-h-[92dvh] w-full flex-col overflow-hidden rounded-t-2xl bg-ink-900 outline-none"
+        className={`sheet-panel flex max-h-[92dvh] w-full flex-col overflow-hidden rounded-t-2xl bg-ink-900 outline-none ${open ? '' : 'sheet-closing'}`}
         onClick={(e) => e.stopPropagation()}
         onKeyDown={trapFocus}
       >

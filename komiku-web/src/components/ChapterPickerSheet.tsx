@@ -1,6 +1,7 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { usePickableChapters } from '../hooks/usePickableChapters'
+import { useSheetPresence } from '../hooks/useSheetPresence'
 import { sortByChapterNumber, chapterEditionLabel } from '../chapterOrder'
 import { useReadMarks } from '../hooks/useReadMarks'
 import { marathonHref, readerHref } from '../readerSource'
@@ -50,6 +51,7 @@ export default function ChapterPickerSheet({
   mode = 'reader',
 }: ChapterPickerSheetProps) {
   const [q, setQ] = useState('')
+  const mounted = useSheetPresence(open)
   const { chapters, loading, error } = usePickableChapters({
     enabled: open,
     chapterKey,
@@ -187,7 +189,7 @@ export default function ChapterPickerSheet({
     [chapters],
   )
 
-  if (!open) return null
+  if (!mounted) return null
 
   const hrefFor = (key: string) => (mode === 'marathon' ? marathonHref(key) : readerHref(key))
 
@@ -205,7 +207,9 @@ export default function ChapterPickerSheet({
         aria-labelledby="chapter-picker-title"
         aria-describedby="chapter-picker-desc"
         data-chapter-picker
-        className="sheet-panel flex max-h-[85dvh] w-full max-w-md flex-col overflow-hidden rounded-t-2xl border-t border-white/10 bg-night-dark/97 backdrop-blur"
+        aria-hidden={!open}
+        inert={!open}
+        className={`sheet-panel flex max-h-[85dvh] w-full max-w-md flex-col overflow-hidden rounded-t-2xl border-t border-white/10 bg-night-dark/97 backdrop-blur ${open ? '' : 'sheet-closing'}`}
         onClick={(e) => e.stopPropagation()}
       >
         <div className="sticky top-0 z-20 flex shrink-0 items-start gap-3 bg-night-dark/97 px-4 pb-3 pt-3 backdrop-blur">
