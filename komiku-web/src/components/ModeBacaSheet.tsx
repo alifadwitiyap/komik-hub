@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useSheetDrag } from '../hooks/useSheetDrag'
+import '../styles/sheets.css'
 import { api } from '../api'
 import { marathonHref } from '../readerSource'
 import { useMarathonMemory } from '../hooks/useMarathonMemory'
@@ -41,6 +43,7 @@ export default function ModeBacaSheet({
   const [preparing, setPreparing] = useState(false)
   const marathon = useMarathonMemory()
   const panelRef = useRef<HTMLDivElement>(null)
+  const drag = useSheetDrag({ panelRef, onClose, enabled: true })
 
   useEffect(() => {
     const prev = document.activeElement as HTMLElement | null
@@ -100,7 +103,18 @@ export default function ModeBacaSheet({
         className="sheet-panel w-full max-w-md rounded-t-2xl border-t border-ink-700 bg-ink-900 pb-[calc(1.5rem+env(safe-area-inset-bottom))] outline-none"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="sticky top-0 z-20 flex items-center justify-between bg-ink-900 px-4 py-3">
+        {/* 44px hit area; 36×4px visual. */}
+        <div
+          {...drag}
+          aria-hidden="true"
+          className="pointer-events-auto flex h-11 touch-none select-none items-start justify-center"
+        >
+          <span className="h-1 w-9 rounded-full bg-white/20" />
+        </div>
+        <div
+          {...drag}
+          className="sticky top-0 z-20 flex items-center justify-between bg-ink-900 px-4 py-3 pointer-events-auto touch-none select-none"
+        >
           <h2 className="font-display text-[15px] font-semibold text-ink-100">Pilih Mode Baca</h2>
           <button
             onClick={onClose}

@@ -23,8 +23,7 @@ import modeSheetSrc from './components/ModeBacaSheet.tsx?raw'
 import settingsSheetSrc from './components/ReaderSettingsSheet.tsx?raw'
 import homeSrc from './pages/Home.tsx?raw'
 
-// Tailwind memproses `?raw` index.css menjadi CSS terompres (token di-inline),
-// jadi baca source .css langsung dari disk untuk menguji nilai token asli.
+const sheetsCssSrc = readFileSync(fileURLToPath(new URL('./styles/sheets.css', import.meta.url)), 'utf8')
 const css = readFileSync(fileURLToPath(new URL('./index.css', import.meta.url)), 'utf8')
 
 describe('P2 kontras teks', () => {
@@ -66,15 +65,28 @@ describe('P2 animasi — durasi & sifat sesuai rentang rencana', () => {
     }
   })
 
-  it('sheet masuk 240ms ease-out, keluar 160ms ease-drawer, sticky header, tanpa touch-through', () => {
-    expect(css).toMatch(/\.sheet-panel\s*\{[^}]*transition:\s*transform 240ms var\(--ease-out\), opacity 240ms var\(--ease-out\)/)
-    expect(css).toMatch(/\.sheet-panel\.sheet-closing\s*\{[^}]*transition-duration:\s*160ms/)
-    expect(css).toMatch(/\.sheet-panel\.sheet-closing\s*\{[^}]*transition-timing-function:\s*var\(--ease-drawer\)/)
-    expect(css).toContain('@starting-style')
+  it('sheet masuk 280ms ease-out-quint, keluar 160ms, sticky header, tanpa touch-through', () => {
+    // Kontrak baru: durasi enter dari token --dur-sheet (280ms) di sheets.css.
+    // Normalisasi whitespace dulu: aturan CSS dibarisan agar mudah dibaca.
+    const sheetCss = sheetsCssSrc.replace(/\s+/g, ' ')
+    expect(sheetCss).toContain(
+      '.sheet-panel.sheet-panel { transition: transform var(--dur-sheet) var(--ease-out-quint), opacity var(--dur-sheet) var(--ease-out-quint); animation: sheet-interactive var(--dur-sheet) step-end forwards; }',
+    )
+    expect(sheetCss).toContain(
+      '.sheet-panel.sheet-panel.sheet-closing { transition-duration: 160ms; transition-timing-function: var(--ease-drawer); }',
+    )
+    expect(sheetCss).toContain('@starting-style')
+    // Token asalnya tetap di motion.css (milik workstream lain) = 280ms.
+    const motionCss = readFileSync(fileURLToPath(new URL('./styles/motion.css', import.meta.url)), 'utf8')
+    expect(motionCss).toMatch(/--dur-sheet:\s*280ms/)
+    // Gate pointer-events tetap dari index.css (tidak diedit workstream ini).
     expect(css).toMatch(/\.sheet-panel\s*\{[^}]*pointer-events:\s*none/)
     expect(css).toMatch(/@keyframes sheet-interactive\s*\{[^}]*to\s*\{\s*pointer-events:\s*auto/)
     for (const src of [chapterSheetSrc, modeSheetSrc, settingsSheetSrc]) {
       expect(src).toContain('sticky top-0')
+      expect(src).toContain('useSheetDrag')
+      expect(src).toContain('h-11')
+      expect(src).toContain('h-1 w-9')
     }
     // fokus dikembalikan ke pembuka tanpa menggulir halaman (preventScroll)
     expect(chapterSheetSrc).toContain('opener?.focus({ preventScroll: true })')
