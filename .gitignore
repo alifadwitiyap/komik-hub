@@ -62,3 +62,8 @@ bot-discord.txt
 
 # --- deploy scratch ---
 deploy/seed/.seeded
+
+# --- QA evidence (screenshots/log lokal, tidak ikut clone) ---
+.audit-after/
+.audit-baseline/
+.audit-mobile/
