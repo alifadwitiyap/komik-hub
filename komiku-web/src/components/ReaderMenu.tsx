@@ -11,6 +11,8 @@ import {
   IconExpand,
 } from '../icons'
 
+export type CanvasTheme = 'oled' | 'arang' | 'sepia' | 'terang'
+
 export interface ReaderSettings {
   readMode: 'scroll' | 'webtoon'
   marathon: boolean
@@ -28,6 +30,12 @@ export interface ReaderSettings {
   zoom: number
   /** Opt-in kertas terang. Default kanvas reader tetap #090B0E. */
   paperLight: boolean
+  /** Tema kanvas reader, terpisah dari tema aplikasi. Default Arang #090B0E. */
+  canvasTheme: CanvasTheme
+  /** Tap kiri/kanan untuk geser halaman (default OFF). */
+  tapScroll: boolean
+  /** 0..100 — overlay hangat di atas kanvas (bukan filter per gambar). */
+  warmth: number
 }
 
 export const DEFAULT_SETTINGS: ReaderSettings = {
@@ -43,6 +51,9 @@ export const DEFAULT_SETTINGS: ReaderSettings = {
   direction: 'ltr',
   zoom: 1,
   paperLight: false,
+  canvasTheme: 'arang',
+  tapScroll: false,
+  warmth: 0,
 }
 
 interface ReaderMenuProps {

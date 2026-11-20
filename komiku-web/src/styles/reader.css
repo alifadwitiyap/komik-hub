@@ -77,3 +77,127 @@
   content-visibility: auto;
   contain-intrinsic-size: 56px;
 }
+
+/* Tema kanvas reader — terpisah dari tema aplikasi. Arang #090B0E tetap
+   default supaya kontrak QA lama tidak berubah. */
+.reader-canvas-oled {
+  background-color: #000000;
+}
+.reader-canvas-sepia {
+  background-color: #1a1612;
+}
+.reader-canvas-terang {
+  background-color: #f6f7f9;
+}
+.reader-canvas-terang .skeleton-shimmer {
+  background: #e6e8ec;
+}
+.reader-canvas-terang .skeleton-shimmer::after {
+  background: linear-gradient(90deg, transparent, rgba(0, 0, 0, 0.05), transparent);
+}
+
+/* Perisai malam: overlay tetap, bukan filter di setiap gambar. z-40 =
+   setara hairline progres; pointer-events-none jadi tap tetap tembus. */
+.reader-night-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  pointer-events: none;
+}
+
+/* Zoom double-tap: transform saja (tanpa layout shift / scroll jump). */
+.reader-zoom-flow {
+  transform-origin: 50% 50%;
+  transition: transform var(--dur-hud) var(--ease-snappy);
+}
+@media (prefers-reduced-motion: reduce) {
+  .reader-zoom-flow {
+    transition: none;
+  }
+}
+
+/* Scrubber footer: target sentuh 44px tanpa menaikkan nav 44px. */
+.reader-scrubber {
+  appearance: none;
+  height: 44px;
+  background: transparent;
+  touch-action: none;
+}
+.reader-scrubber::-webkit-slider-runnable-track {
+  height: 6px;
+  border-radius: 9999px;
+  background: rgba(255, 255, 255, 0.35);
+}
+.reader-scrubber::-webkit-slider-thumb {
+  appearance: none;
+  width: 24px;
+  height: 24px;
+  margin-top: -9px;
+  border-radius: 9999px;
+  background: #ffb020;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.6);
+}
+.reader-scrubber::-moz-range-track {
+  height: 6px;
+  border-radius: 9999px;
+  background: rgba(255, 255, 255, 0.35);
+}
+.reader-scrubber::-moz-range-thumb {
+  width: 24px;
+  height: 24px;
+  border: 0;
+  border-radius: 9999px;
+  background: #ffb020;
+}
+
+/* Panel: skeleton sebelum rasio diketahui; slot gagal tetap seluar halaman. */
+.reader-panel-skeleton {
+  position: relative;
+  display: flex;
+  min-height: 65vh;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  background: #141820;
+}
+.reader-panel-skeleton .skeleton-shimmer {
+  position: absolute;
+  inset: 0;
+  background: #141820;
+}
+.reader-panel-skeleton .skeleton-shimmer::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, transparent, #1d2330, transparent);
+  animation: reader-panel-shimmer 1.2s linear infinite;
+}
+@keyframes reader-panel-shimmer {
+  from { transform: translateX(-100%); }
+  to { transform: translateX(100%); }
+}
+.reader-panel-skeleton-label {
+  position: relative;
+  z-index: 1;
+  padding: 6px 12px;
+  border-radius: 9999px;
+  background: rgba(0, 0, 0, 0.55);
+  color: rgba(255, 255, 255, 0.75);
+  font-size: 12px;
+  font-weight: 600;
+}
+.reader-panel-failed {
+  display: flex;
+  min-height: 160px;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  background: #141820;
+  color: rgba(255, 255, 255, 0.8);
+}
+@media (prefers-reduced-motion: reduce) {
+  .reader-panel-skeleton .skeleton-shimmer::after {
+    animation: none;
+  }
+}

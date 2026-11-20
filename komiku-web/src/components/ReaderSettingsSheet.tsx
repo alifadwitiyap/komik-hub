@@ -14,7 +14,17 @@ import {
   IconXmark,
   IconBolt,
 } from '../icons'
-import type { ReaderSettings } from './ReaderMenu'
+import type { CanvasTheme, ReaderSettings } from './ReaderMenu'
+
+const CANVAS_THEMES: { value: CanvasTheme; label: string }[] = [
+  { value: 'oled', label: 'OLED' },
+  { value: 'arang', label: 'Arang' },
+  { value: 'sepia', label: 'Sepia Gelap' },
+  { value: 'terang', label: 'Terang' },
+]
+
+const canvasLabel = (value: CanvasTheme) =>
+  CANVAS_THEMES.find((t) => t.value === value)?.label ?? 'Arang'
 
 interface ReaderSettingsSheetProps {
   open: boolean
@@ -187,6 +197,39 @@ export default function ReaderSettingsSheet({
           toggle={settings.paperLight}
           onToggle={(v) => onChange({ paperLight: v })}
         />
+        <Row
+          icon={<IconBars className="size-4" />}
+          label="Tema Kanvas"
+          value={settings.paperLight ? 'Terang' : canvasLabel(settings.canvasTheme)}
+          onClick={() => {
+            const i = CANVAS_THEMES.findIndex((t) => t.value === settings.canvasTheme)
+            const next = CANVAS_THEMES[(i + 1) % CANVAS_THEMES.length]
+            onChange({ canvasTheme: next.value })
+          }}
+        />
+        <Row
+          icon={<IconBars className="size-4" />}
+          label="Tap tepi"
+          toggle={settings.tapScroll}
+          onToggle={(v) => onChange({ tapScroll: v })}
+        />
+        <Row
+          icon={<IconBrightness className="size-4" />}
+          label="Tint Hangat"
+          value={`${settings.warmth}%`}
+        />
+        <div className="grid min-h-11 place-items-center px-4 pb-2">
+          <input
+            type="range"
+            min={0}
+            max={100}
+            value={settings.warmth}
+            aria-label="Tint Hangat"
+            aria-valuetext={`${settings.warmth}%`}
+            onChange={(e) => onChange({ warmth: Number(e.target.value) })}
+            className="w-full py-2 accent-brand-amber [&::-webkit-slider-thumb]:size-6 [&::-moz-range-thumb]:size-6 [&::-moz-range-track]:h-1.5"
+          />
+        </div>
         <Row
           icon={<IconLightbulb className="size-4" />}
           label="Layar Tetap Menyala"

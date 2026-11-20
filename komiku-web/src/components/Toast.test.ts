@@ -4,7 +4,11 @@ import {
   TOAST_EXIT_MS,
   initialToastState,
   reduceToast,
+  getToastSnapshot,
+  showToast,
+  showToastWithAction,
 } from './Toast'
+import toastSrc from './Toast.tsx?raw'
 
 describe('toast store — satu pesan, replace, auto-dismiss', () => {
   it('show menggantikan pesan lama dan menaikkan id', () => {
@@ -35,5 +39,27 @@ describe('toast store — satu pesan, replace, auto-dismiss', () => {
     expect(TOAST_AUTO_DISMISS_MS).toBe(2500)
     expect(TOAST_EXIT_MS).toBe(120)
     expect(TOAST_EXIT_MS).toBeLessThan(150)
+  })
+
+  it('showToast lama tetap tanpa aksi; showToastWithAction membawa aksi', () => {
+    showToast('Tanpa aksi')
+    expect(getToastSnapshot().action).toBeUndefined()
+    let clicked = 0
+    showToastWithAction('Melanjutkan dari Hal. 5', 'Ke awal', () => {
+      clicked += 1
+    })
+    const { action, message } = getToastSnapshot()
+    expect(message).toBe('Melanjutkan dari Hal. 5')
+    expect(action?.label).toBe('Ke awal')
+    action?.onClick()
+    expect(clicked).toBe(1)
+  })
+
+  it('toast di atas bottom bar dan tombol aksi memenuhi Target 44px', () => {
+    expect(toastSrc).toContain('bottom-[calc(11rem+env(safe-area-inset-bottom))]')
+    expect(toastSrc).toContain('aria-live="polite"')
+    expect(toastSrc).toContain('data-reader-toast-action')
+    expect(toastSrc).toContain('min-h-11')
+    expect(toastSrc).not.toContain('bg-black/60')
   })
 })

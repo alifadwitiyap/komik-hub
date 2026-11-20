@@ -117,8 +117,8 @@ function FixedRetry({
   pageNumber: number | undefined
   onRetry: () => void
 }) {
-  const label = pageNumber ? `Halaman ${pageNumber} gagal dimuat` : 'Halaman gagal dimuat'
-  const inlineLabel = `${label} · Coba lagi`
+  const label = pageNumber ? `Panel ${pageNumber} gagal dimuat` : 'Panel gagal dimuat'
+  const inlineLabel = `${label} · Muat ulang`
   return (
     <PageControlLayer
       targetRef={targetRef}
@@ -140,7 +140,7 @@ function FixedRetry({
           onClick={onRetry}
           className="pointer-events-auto inline-flex min-h-11 items-center justify-center rounded-xl border border-brand-amber-dim bg-white/90 px-4 text-[13px] font-bold text-brand-amber shadow-md transition-colors active:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber"
         >
-          Coba lagi
+          Muat ulang
         </button>
       </div>
     </PageControlLayer>
@@ -196,6 +196,8 @@ interface ComicImageProps {
    * ini supaya satu gambar rusak tidak menahan rantai selamanya.
    */
   onSettled?: (ok: boolean) => void
+  /** Dipanggil saat decode/error menandakan panel gagal (untuk fallback sumber). */
+  onFailed?: () => void
 }
 
 /**
@@ -239,6 +241,7 @@ export default function ComicImage({
   className,
   onLoad,
   onSettled,
+  onFailed,
 }: ComicImageProps) {
   // `url` = IDENTITAS halaman (URL CDN asli) — dipakai pageMemory/anchor.
   const url = imgUrl(src)
@@ -268,6 +271,8 @@ export default function ComicImage({
   onLoadRef.current = onLoad
   const settledRef = useRef(onSettled)
   settledRef.current = onSettled
+  const failedCallbackRef = useRef(onFailed)
+  failedCallbackRef.current = onFailed
 
   // rasio w/h: hasil decode terbaru → memori kunjungan lalu → dimensi yang
   // dibaca server (header, sebelum decode) → cadangan. Semakin kiri, semakin
@@ -277,6 +282,9 @@ export default function ComicImage({
     aspectOf(url) ??
     knownRatio ??
     fallbackRatio
+  const ratioKnown = measured?.url === url || aspectOf(url) != null || knownRatio != null
+  const panelNumber = pageIndex === undefined ? undefined : pageIndex + 1
+  const loadingLabel = panelNumber ? `Memuat panel ${panelNumber}...` : 'Memuat panel...'
   // Reader ambil gambar lewat proxy `/img` (same-origin). Ini membuat r
   // display = URL cache offline (`downloadChapterImages` juga menyimpan via
   // `imgSrc`), jadi byte yang di-unduh offline benar-benar dipakai saat baca
@@ -397,7 +405,7 @@ export default function ComicImage({
     return (
       <div
         ref={slotRef}
-        className="relative overflow-hidden bg-zinc-200/60 dark:bg-zinc-800/40"
+        className="reader-panel-failed relative overflow-hidden bg-zinc-200/60 dark:bg-zinc-800/40"
         style={ratio ? { aspectRatio: String(ratio) } : undefined}
       >
         {createPortal(
@@ -432,6 +440,8 @@ export default function ComicImage({
       // — tidak ada layout-shift saat decode maupun saat retry.
       style={ratio ? { aspectRatio: String(ratio) } : undefined}
       className={`relative overflow-hidden ${
+        !shown && !ratioKnown ? 'reader-panel-skeleton' : ''
+      } ${
         shown ? '' : 'animate-pulse motion-reduce:animate-none bg-zinc-200/60 dark:bg-zinc-800/40'
       }`}
     >
@@ -445,6 +455,11 @@ export default function ComicImage({
           shown ? 'opacity-0' : 'opacity-100'
         }`}
       />
+      {!shown && !ratioKnown && (
+        <span className="reader-panel-skeleton-label" role="status">
+          {loadingLabel}
+        </span>
+      )}
       {/** LQIP: thumbnail blur sebagai placeholder selama gambar penuh belum `shown`.
           Crossfade halus via opacity; tidak menangkap pointer. */}
       {started && lqip && (
@@ -534,6 +549,7 @@ export default function ComicImage({
       onError={() => {
         setStuck(false)
         setFailed(true)
+        failedCallbackRef.current?.()
         settledRef.current?.(false)
         settle()
       }}

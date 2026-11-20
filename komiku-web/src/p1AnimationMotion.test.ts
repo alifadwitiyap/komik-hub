@@ -77,7 +77,9 @@ describe('P1 source contracts', () => {
       expect(src).toContain('createTapTracker(tapHitsReaderControl)')
       expect(src).toContain('reader-tap-layer fixed inset-0')
       expect(src).toContain('onPointerCancel={(e) => tap.cancel(e.pointerId)}')
-      expect(src).toContain('if (!tap.shouldToggle(e.clientX, e.clientY, performance.now())) return')
+      // B1: zone-aware resolve replaces HUD-only shouldToggle.
+      expect(src).toContain('const action = tap.resolve(')
+      expect(src).toContain('action.type')
     }
     expect(css).toMatch(/\.reader-tap-layer\s*\{\s*touch-action:\s*pan-y/)
     expect(css).toMatch(/\.reader-chrome-fade\s*\{[^}]*transition:\s*opacity 140ms var\(--ease-out\)/)
