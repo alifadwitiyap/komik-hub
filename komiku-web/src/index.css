@@ -1,4 +1,5 @@
 @import 'tailwindcss';
+@import './styles/motion.css';
 
 /* ---------------------------------------------------------------------------
    Tema Komiku+ v2.3.0 — nilai diekstrak dari APK (resources.arsc):
@@ -31,6 +32,14 @@
   font-family: 'BR Hendrix';
   src: url('/fonts/BRHendrix-Bold.woff2') format('woff2');
   font-weight: 700;
+  font-display: swap;
+}
+/* Display mobile-first (plan Fase 1.2): Plus Jakarta Sans 600–700, subset
+   latin variabel 27KB di-host lokal — bukan tautan luar. */
+@font-face {
+  font-family: 'Plus Jakarta Sans';
+  src: url('/fonts/PlusJakartaSans-Latin.woff2') format('woff2');
+  font-weight: 600 700;
   font-display: swap;
 }
 
@@ -83,7 +92,20 @@
   --color-danger-ink: #f87171;
 
   --font-sans: 'Nunito Sans', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
-  --font-display: 'BR Hendrix', 'Nunito Sans', ui-sans-serif, system-ui, sans-serif;
+  --font-display: 'Plus Jakarta Sans', 'BR Hendrix', 'Nunito Sans', ui-sans-serif, system-ui, sans-serif;
+
+  /* Hairline border permukaan elevated (plan Fase 1.1): 1px rgba putih 7%
+     di gelap, rgba navy 8% di terang. Pakai `border-hairline`. */
+  --color-hairline: rgba(15, 23, 42, 0.08);
+  /* Kanvas reader pure black (plan Fase 1.1) — dipakai HANYA di tema gelap;
+     mode siang reader tetap putih. */
+  --color-reader-canvas: #000000;
+}
+
+/* Judul/display: letter-spacing rapat editorial (plan Fase 1.2). Utility
+   font-display Tailwind menyetel family; aturan ini menambah tracking. */
+.font-display {
+  letter-spacing: -0.02em;
 }
 
 :root {
@@ -104,17 +126,21 @@
   --color-brand-amber-text: #7dc1e6; /* 8.73:1 on ink-950, 7.58:1 on ink-900 */
   --color-brand-red-text: #c792e0;   /* 7.07:1 on ink-950, 6.14:1 on ink-900 */
 
-  --color-ink-950: #1a1b1e;  /* Page background - warm charcoal */
-  --color-ink-900: #25272b;  /* Card surfaces - subtle depth */
-  --color-ink-850: #2e3036;  /* Elevated cards/modals */
-  --color-ink-800: #3a3d44;  /* Borders - visible but elegant */
-  --color-ink-700: #4a4d57;  /* Muted highlights */
-  --color-ink-600: #8f939b;  /* Secondary text - readable (AA on card) */
-  --color-ink-500: #9aa0a8;  /* Tertiary text - AA on card */
-  --color-ink-400: #a6aab1;  /* Hints */
-  --color-ink-300: #b5b8be;  /* Accents */
-  --color-ink-200: #ffffff;  /* PRIMARY TEXT - PURE WHITE for MAXIMUM readability! */
+  /* Palet mobile-first plan Fase 1.1 (AMOLED-friendly): kanvas deep ink,
+     surface elevated #13161C, pressed #1B2029, teks #F4F6F8, metadata #8E97A4.
+     Nilai light theme di @theme tidak disentuh. */
+  --color-ink-950: #0a0c0f;  /* Page background - deep ink charcoal */
+  --color-ink-900: #13161c;  /* Card / bottom sheet / bottom nav surface */
+  --color-ink-850: #1b2029;  /* Active/pressed surface & kontrol elevated */
+  --color-ink-800: #262c37;  /* Borders - hairline terlihat, tidak keras */
+  --color-ink-700: #39414f;  /* Muted highlights */
+  --color-ink-600: #8e97a4;  /* Metadata chapter/waktu/sumber (plan) */
+  --color-ink-500: #9aa3b1;  /* Tertiary text - AA on card */
+  --color-ink-400: #a7afbc;  /* Hints */
+  --color-ink-300: #c3cad5;  /* Accents */
+  --color-ink-200: #f4f6f8;  /* PRIMARY TEXT (plan) */
   --color-ink-100: #ffffff;  /* Maximum emphasis */
+  --color-hairline: rgba(255, 255, 255, 0.07);
   
   /* Status colors enhanced for visibility */
   --color-healthy: #4ade80;      /* Bright green */
