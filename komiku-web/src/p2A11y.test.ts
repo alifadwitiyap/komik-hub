@@ -65,20 +65,21 @@ describe('P2 animasi — durasi & sifat sesuai rentang rencana', () => {
     }
   })
 
-  it('sheet masuk 280ms ease-out-quint, keluar 160ms, sticky header, tanpa touch-through', () => {
-    // Kontrak baru: durasi enter dari token --dur-sheet (280ms) di sheets.css.
+  it('sheet masuk 240ms ease-out-emil, keluar 160ms, sticky header, tanpa touch-through', () => {
+    // Kontrak baru: durasi enter dari token --dur-sheet (240ms) di sheets.css.
     // Normalisasi whitespace dulu: aturan CSS dibarisan agar mudah dibaca.
     const sheetCss = sheetsCssSrc.replace(/\s+/g, ' ')
     expect(sheetCss).toContain(
-      '.sheet-panel.sheet-panel { transition: transform var(--dur-sheet) var(--ease-out-quint), opacity var(--dur-sheet) var(--ease-out-quint); animation: sheet-interactive var(--dur-sheet) step-end forwards; }',
+      '.sheet-panel.sheet-panel { transition: transform var(--dur-sheet) var(--ease-out-emil), opacity var(--dur-sheet) var(--ease-out-emil); animation: sheet-interactive var(--dur-sheet) step-end forwards; }',
     )
     expect(sheetCss).toContain(
       '.sheet-panel.sheet-panel.sheet-closing { transition-duration: 160ms; transition-timing-function: var(--ease-drawer); }',
     )
     expect(sheetCss).toContain('@starting-style')
-    // Token asalnya tetap di motion.css (milik workstream lain) = 280ms.
+    // Token di motion.css (milik workstream ini) = 240ms, press 100ms.
     const motionCss = readFileSync(fileURLToPath(new URL('./styles/motion.css', import.meta.url)), 'utf8')
-    expect(motionCss).toMatch(/--dur-sheet:\s*280ms/)
+    expect(motionCss).toMatch(/--dur-sheet:\s*240ms/)
+    expect(motionCss).toMatch(/--dur-press:\s*100ms/)
     // Gate pointer-events tetap dari index.css (tidak diedit workstream ini).
     expect(css).toMatch(/\.sheet-panel\s*\{[^}]*pointer-events:\s*none/)
     expect(css).toMatch(/@keyframes sheet-interactive\s*\{[^}]*to\s*\{\s*pointer-events:\s*auto/)
@@ -111,6 +112,11 @@ describe('P2 animasi — durasi & sifat sesuai rentang rencana', () => {
     const matches = comicImgSrc.match(/style=\{ratio \? \{ aspectRatio: String\(ratio\) \} : undefined\}/g) ?? []
     expect(matches.length).toBe(2)
     expect(comicImgSrc).toContain('motion-reduce:animate-none')
+    // Skeleton anti-CLS mengisi slot yang sama, fade 100–140ms saat decode.
+    expect(comicImgSrc).toContain('data-reader-skeleton=""')
+    expect(comicImgSrc).toContain('skeleton-shimmer comic-image-fade')
+    const readerCss = readFileSync(fileURLToPath(new URL('./styles/reader.css', import.meta.url)), 'utf8')
+    expect(readerCss).toMatch(/\.reader-canvas-paper \.skeleton-shimmer/)
     // P1: holder gagal tidak menghapus kotaknya — retry mengganti src gambar
     // yang sama, jadi tinggi halaman tidak berubah.
     expect(comicImgSrc).toContain('key={attempt}')

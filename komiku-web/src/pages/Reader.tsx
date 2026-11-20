@@ -7,8 +7,6 @@ import ComicImage from '../components/ComicImage'
 import HeartButton from '../components/HeartButton'
 import ReaderFooter from '../components/ReaderFooter'
 import ReaderDownloadActions from '../components/ReaderDownloadActions'
-import ReaderFullscreenButton from '../components/ReaderFullscreenButton'
-import ReaderMarathonToggle from '../components/ReaderMarathonToggle'
 import ReaderMenu from '../components/ReaderMenu'
 import ReaderSettingsSheet from '../components/ReaderSettingsSheet'
 import ReaderToolbar from '../components/ReaderToolbar'
@@ -26,7 +24,7 @@ import { useChromeOnScroll } from '../hooks/useChromeOnScroll'
 import { useAutoFullscreen } from '../hooks/useAutoFullscreen'
 import type { ChapterResponse } from '../types'
 import { Empty } from '../App'
-import { useProgress } from '../hooks/useProgress'
+import { useProgress, type ProgressEntry } from '../hooks/useProgress'
 import { useReaderOverlayHistory } from '../hooks/useReaderOverlayHistory'
 import { useModeSwitch } from '../hooks/useModeSwitch'
 import { didOpenChapter, rakMangaOf } from '../readingEvents'
@@ -328,6 +326,30 @@ export default function Reader() {
   const activeHandle =
     parseUnifiedKey(chapterId)?.handle ??
     (typeof data?.series?.id === 'string' ? data.series.id : null)
+
+  // Masuk maraton dari menu/sheet: wariskan posisi baca reader (halaman +
+  // offset) supaya tidak balik ke awal rantai. Dulunya ada di tombol apung.
+  const enterMarathon = useCallback(() => {
+    const seriesKey = activeHandle ?? String(data?.series?.id ?? chapterId)
+    const prog = recent.find(
+      (r: ProgressEntry) =>
+        String(r.chapterId) === chapterId &&
+        String(r.seriesId) === seriesKey,
+    )
+    gotoMarathon(
+      prog?.pageId
+        ? {
+            chapterKey: chapterId,
+            seriesKey,
+            activeKey: chapterId,
+            pageId: prog.pageId,
+            offsetRatio: prog.offsetRatio ?? 0,
+            blocks: 1,
+            chapterIdx: 0,
+          }
+        : undefined,
+    )
+  }, [activeHandle, data?.series?.id, chapterId, recent, gotoMarathon])
 
   // Ekspor PDF (unified-only): generate server-side, masuk tab Unduhan di Rak.
   const [exportingPdf, setExportingPdf] = useState(false)
@@ -677,11 +699,6 @@ export default function Reader() {
 
   const chromeHidden = !chrome.visible || autoFS.active || autoFS.nativeActive
   const fsActive = autoFS.active || autoFS.nativeActive
-  // Tombol manual ikut arah scroll di SEMUA keadaan (termasuk fullscreen):
-  // turun = sembunyi, naik = tampil, supaya area baca tetap bersih saat
-  // membaca. Tombol keluar tetap bisa dijangkau lewat tap tengah (toggle
-  // chrome) atau scroll ke atas.
-  const fsInteractive = chrome.visible
 
   return (
     // overflow-x-clip: jaring pengaman. Kalau satu gambar (mis. spread halaman
@@ -691,7 +708,11 @@ export default function Reader() {
     // overflow-hidden) dan tanpa memengaruhi elemen fixed.
     <div
       className={`relative min-h-dvh overflow-x-clip ${
-        settings.nightShift ? 'bg-night-dark' : 'bg-white reader-canvas'
+        settings.paperLight
+          ? 'reader-canvas reader-canvas-paper'
+          : settings.nightShift
+            ? 'bg-night-dark'
+            : 'reader-canvas'
       }`}
     >
       {/* Progres baca 2px di pinggir atas. Transform ditulis rAF dari efek
@@ -728,56 +749,6 @@ export default function Reader() {
           // Tap area baca hanya toggle chrome (toolbar/footer). Fullscreen
           // HANYA lewat tombol layar penuh — bukan dari tap.
           chrome.toggle()
-        }}
-      />
-      {/**
-       * Tombol layar penuh manual — jalur eksplisit (fallback iOS / saat
-       * pending hangus). Komponen bersama Reader & Marathon: kotak 44×44 ikon
-       * saja saat idle (tidak menutupi kredit pojok halaman), melebar jadi pil
-       * berteks saat niat aktif/layar penuh. Lihat ReaderFullscreenButton.
-       */}
-      <ReaderFullscreenButton
-        active={fsActive}
-        visible={fsInteractive}
-        interactive={fsInteractive}
-        onToggle={() => {
-          if (fsActive) {
-            autoFS.reset()
-            chrome.show()
-          } else autoFS.requestEnter()
-        }}
-      />
-      {/* Tombol masuk mode maraton — kiri-atas, berlawanan dengan tombol
-          layar penuh supaya tidak salah pencet. Klik = masuk maraton dari
-          chapter saat ini, MEWARISI posisi baca reader (halaman + offset)
-          supaya tidak balik ke awal rantai. */}
-      <ReaderMarathonToggle
-        active={false}
-        visible={chrome.visible}
-        interactive
-        onToggle={() => {
-          // calon identitas series untuk sesi maraton
-          const seriesKey =
-            activeHandle ?? String(data?.series?.id ?? chapterId)
-          // posisi baca reader saat ini (kalau sudah ada) → wariskan
-          const prog = recent.find(
-            (r) =>
-              String(r.chapterId) === chapterId &&
-              String(r.seriesId) === seriesKey,
-          )
-          gotoMarathon(
-            prog?.pageId
-              ? {
-                  chapterKey: chapterId,
-                  seriesKey,
-                  activeKey: chapterId,
-                  pageId: prog.pageId,
-                  offsetRatio: prog.offsetRatio ?? 0,
-                  blocks: 1,
-                  chapterIdx: 0,
-                }
-              : undefined,
-          )
         }}
       />
       {/* Pengumuman untuk pembaca layar: status fullscreen adalah perilaku yang
@@ -837,7 +808,7 @@ export default function Reader() {
           role="status"
           aria-live="polite"
           className={`mx-auto max-w-3xl px-4 pr-16 pt-[calc(env(safe-area-inset-top)+3.5rem)] text-[12px] leading-relaxed max-sm:text-[12.5px] max-sm:leading-[1.7] ${
-            settings.nightShift ? 'text-reader-muted-night' : 'text-reader-muted'
+            settings.paperLight ? 'text-reader-muted' : 'text-reader-muted-night'
           }`}
         >
           {data.note}
@@ -870,7 +841,13 @@ export default function Reader() {
         ref={flowRef}
         className={`reader-flow mx-auto flex w-full flex-col ${
           settings.readMode === 'webtoon' ? '' : 'max-w-3xl'
-        } ${settings.nightShift ? '' : 'reader-canvas'}`}
+        } ${
+          settings.paperLight
+            ? 'reader-canvas reader-canvas-paper'
+            : settings.nightShift
+              ? ''
+              : 'reader-canvas'
+        }`}
         style={filterStyle}
       >
       {images.map((src, i) => (
@@ -928,7 +905,7 @@ export default function Reader() {
           // toggle Maraton dari reader: pindah mode marathon chapter ini
           if (patch.marathon === true && !settings.marathon) {
             setMenuOpen(false)
-            gotoMarathon()
+            enterMarathon()
             return
           }
           onChange(patch)
@@ -949,7 +926,14 @@ export default function Reader() {
         open={sheetOpen}
         settings={settings}
         onClose={() => dismissOverlay()}
-        onChange={onChange}
+        onChange={(patch) => {
+          if (patch.marathon === true && !settings.marathon) {
+            setSheetOpen(false)
+            enterMarathon()
+            return
+          }
+          onChange(patch)
+        }}
         onReset={onReset}
         setToast={setToast}
         downloadActions={

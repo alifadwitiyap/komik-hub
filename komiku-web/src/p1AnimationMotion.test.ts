@@ -111,13 +111,35 @@ describe('Fase 3.6 — HUD transform + progress hairline', () => {
     'utf8',
   )
 
-  it('top/bottom HUD geser 200ms ease-out-quint, opacity 140ms tetap dari index.css', () => {
-    expect(readerCss).toMatch(/transform 200ms var\(--ease-out-quint\)/)
+  it('top/bottom HUD geser 140ms ease-snappy, opacity 140ms', () => {
+    expect(readerCss).toMatch(/transform var\(--dur-hud\) var\(--ease-snappy\)/)
+    expect(readerCss).toMatch(/opacity var\(--dur-hud\) var\(--ease-out\)/)
     expect(readerCss).toMatch(/\.reader-hud-top\[data-hidden='true'\]\s*\{\s*transform: translateY\(-100%\)/)
     expect(readerCss).toMatch(/\.reader-hud-bottom\[data-hidden='true'\]\s*\{\s*transform: translateY\(100%\)/)
-    expect(readerCss).toMatch(/opacity 140ms var\(--ease-out\)/)
     // index.css tidak berubah → kontrak lama tetap hijau
     expect(css).toMatch(/\.reader-chrome-fade\s*\{[^}]*transition:\s*opacity 140ms var\(--ease-out\)/)
+    const motionCss = readFileSync(
+      fileURLToPath(new URL('./styles/motion.css', import.meta.url)),
+      'utf8',
+    )
+    expect(motionCss).toMatch(/--dur-hud:\s*140ms/)
+    expect(motionCss).toMatch(/--ease-snappy:\s*cubic-bezier\(0\.16, 1, 0\.3, 1\)/)
+    expect(motionCss).toMatch(/--ease-out-emil:\s*cubic-bezier\(0\.22, 1, 0\.36, 1\)/)
+    expect(motionCss).toMatch(/--dur-press:\s*100ms/)
+    expect(motionCss).toMatch(/--dur-sheet:\s*240ms/)
+  })
+
+  it('preset JS selaras: sheetSpring 420/36/0.8, popover 0.96→1 160ms', () => {
+    const motionTs = readFileSync(
+      fileURLToPath(new URL('./lib/motion.ts', import.meta.url)),
+      'utf8',
+    )
+    expect(motionTs).toMatch(/stiffness: 420,\s*damping: 36,\s*mass: 0\.8/)
+    expect(motionTs).toContain('scale: 0.96')
+    expect(motionTs).toMatch(/duration: 0\.16/)
+    expect(motionTs).toContain('export const DUR_PRESS_MS = 100')
+    expect(motionTs).toContain('export const DUR_HUD_MS = 140')
+    expect(motionTs).toContain('export const DUR_SHEET_MS = 240')
   })
 
   it('hairline 2px scaleX dari kiri, ditulis lewat ref.style tanpa setState per frame', () => {

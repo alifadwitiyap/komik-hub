@@ -8,6 +8,7 @@ import {
   IconPlaySolid,
   IconBrightness,
   IconMoonOverSun,
+  IconSun,
   IconExpand,
   IconLightbulb,
   IconXmark,
@@ -179,6 +180,12 @@ export default function ReaderSettingsSheet({
           label="Perisai Malam"
           toggle={settings.nightShift}
           onToggle={(v) => onChange({ nightShift: v })}
+        />
+        <Row
+          icon={<IconSun className="size-4" />}
+          label="Kertas terang"
+          toggle={settings.paperLight}
+          onToggle={(v) => onChange({ paperLight: v })}
         />
         <Row
           icon={<IconLightbulb className="size-4" />}

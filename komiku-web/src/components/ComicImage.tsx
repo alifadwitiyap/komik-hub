@@ -435,6 +435,16 @@ export default function ComicImage({
         shown ? '' : 'animate-pulse motion-reduce:animate-none bg-zinc-200/60 dark:bg-zinc-800/40'
       }`}
     >
+      {/** Skeleton anti-CLS: isi slot yang sudah memesan rasio ini dengan
+          shimmer gelap sampai gambar decode. `comic-image-fade` memakai
+          transisi opacity 120ms dari index.css (0ms saat reduced-motion). */}
+      <div
+        aria-hidden="true"
+        data-reader-skeleton=""
+        className={`skeleton-shimmer comic-image-fade pointer-events-none absolute inset-0 ${
+          shown ? 'opacity-0' : 'opacity-100'
+        }`}
+      />
       {/** LQIP: thumbnail blur sebagai placeholder selama gambar penuh belum `shown`.
           Crossfade halus via opacity; tidak menangkap pointer. */}
       {started && lqip && (

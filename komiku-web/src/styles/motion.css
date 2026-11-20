@@ -10,14 +10,19 @@
    --------------------------------------------------------------------------- */
 
 :root {
+  /* Token baru dari plan Emil Kowalski; alias lama tetap hidup untuk
+     komponen yang belum dimigrasi. */
+  --ease-out-emil: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-snappy: cubic-bezier(0.16, 1, 0.3, 1);
   --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
   --ease-out-quint: cubic-bezier(0.22, 1, 0.36, 1);
   --ease-in-out-fast: cubic-bezier(0.4, 0, 0.2, 1);
 
-  --dur-press: 90ms;
+  --dur-press: 100ms;
+  --dur-hud: 140ms;
   --dur-micro: 150ms;
   --dur-ui: 220ms;
-  --dur-sheet: 280ms;
+  --dur-sheet: 240ms;
 }
 
 * {

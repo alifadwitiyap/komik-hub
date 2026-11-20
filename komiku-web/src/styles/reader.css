@@ -4,10 +4,11 @@
 .reader-hud-top,
 .reader-hud-bottom {
   transform: translateY(0);
-  /* opacity 140ms tetap milik .reader-chrome-fade (index.css) untuk a11y. */
+  /* HUD muncul 140ms (token plan); opacity ikut durasi yang sama supaya
+     teks tidak tertinggal saat bar bergeser. */
   transition:
-    transform 200ms var(--ease-out-quint),
-    opacity 140ms var(--ease-out);
+    transform var(--dur-hud) var(--ease-snappy),
+    opacity var(--dur-hud) var(--ease-out);
 }
 .reader-hud-top[data-hidden='true'] {
   transform: translateY(-100%);
@@ -54,13 +55,22 @@
   }
 }
 
-/* Kanvas baca: putih di terang, hitam murni di gelap. Night-shift memakai
-   latar ink-900 dari root dan sengaja TIDAK memakai class ini. */
+/* Kanvas baca selalu arang gelap #090B0E — terlepas dari tema app terang.
+   Night-shift memakai bg-night-dark dari root dan sengaja TIDAK memakai
+   class ini; kertas terang hanya lewat opt-in paperLight di pengaturan. */
 .reader-canvas {
+  background-color: #090B0E;
+}
+.reader-canvas-paper {
   background-color: #fff;
 }
-.dark .reader-canvas {
-  background-color: var(--color-reader-canvas);
+/* Skeleton mengikuti kertas saat opsi terang dipilih: jangan sampai pita
+   gelap terbaca sebagai artifact di tengah halaman putih. */
+.reader-canvas-paper .skeleton-shimmer {
+  background: #e6e8ec;
+}
+.reader-canvas-paper .skeleton-shimmer::after {
+  background: linear-gradient(90deg, transparent, rgba(0, 0, 0, 0.05), transparent);
 }
 
 .reader-chapter-row {
