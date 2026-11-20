@@ -6,9 +6,11 @@ import { Empty } from '../App'
 import { MangaCard } from './Home'
 import { clearRecent, listRecent, rememberSearch } from '../recentSearches'
 import { useUnifiedSearch } from '../hooks/useUnifiedSearch'
+import { useSheetDrag } from '../hooks/useSheetDrag'
+import { useSheetPresence } from '../hooks/useSheetPresence'
 import { SOURCES, SORTS, useSortFilter, useSourceFilter } from '../components/SourceSortBar'
 import '../styles/sheets.css'
-import { IconMagnifyingGlass, IconSliders } from '../icons'
+import { IconMagnifyingGlass, IconSliders, IconXmark } from '../icons'
 import {
   clearSearchReturn,
   readSearchReturn,
@@ -101,6 +103,30 @@ export default function Search() {
   const [page, setPage] = useState(1)
   const [recent, setRecent] = useState<string[]>(() => listRecent())
   const [filterOpen, setFilterOpen] = useState(false)
+  // Filter bukan panel inline: bottom sheet fixed, tetap digeser (drag) dan
+  // bisa ditutup dengan geser/pill, Escape, atau klik backdrop.
+  const filterMounted = useSheetPresence(filterOpen)
+  const filterPanelRef = useRef<HTMLDivElement>(null)
+  const filterCloseRef = useRef<HTMLButtonElement>(null)
+  const drag = useSheetDrag({
+    panelRef: filterPanelRef,
+    onClose: () => setFilterOpen(false),
+    enabled: filterOpen,
+  })
+  useEffect(() => {
+    if (!filterOpen) return
+    const active = document.activeElement
+    const opener = active instanceof HTMLElement && active !== document.body ? active : null
+    filterCloseRef.current?.focus({ preventScroll: true })
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setFilterOpen(false)
+    }
+    document.addEventListener('keydown', onKey)
+    return () => {
+      document.removeEventListener('keydown', onKey)
+      opener?.focus({ preventScroll: true })
+    }
+  }, [filterOpen])
   // Riwayat hanya muncul saat kolom benar-benar aktif dan belum ada submit.
   const [inputActive, setInputActive] = useState(false)
   const [riwayatDimatikan, setRiwayatDimatikan] = useState(false)
@@ -555,80 +581,130 @@ export default function Search() {
         })}
       </div>
 
-      {filterOpen && (
+      {/* Filter type/status/genre/source jadi bottom sheet draggable — tidak
+          lagi mendorong hasil ke bawah. Chip sumber cepat di atas tetap 44px. */}
+      {filterMounted && (
         <div
-          id="panel-filter-cari"
-          className="mt-3 space-y-3 rounded-2xl border border-ink-800 bg-ink-900/60 p-3"
+          className={`fixed inset-0 z-50 flex items-end justify-center bg-black/60 ${filterOpen ? 'sheet-backdrop' : 'sheet-backdrop-closing'}`}
+          onClick={() => setFilterOpen(false)}
         >
-          <div className="grid grid-cols-2 gap-2">
-            <div className="relative flex min-w-0">
-              <select
-                aria-label="Filter tipe"
-                value={draft.tipe}
-                onChange={(e) => setDraft((d) => ({ ...d, tipe: e.target.value }))}
-                className={selectBase}
-              >
-                <option value="">Semua tipe</option>
-                {TIPE.map((t) => (
-                  <option key={t} value={t}>
-                    {t}
-                  </option>
-                ))}
-              </select>
-              <SelectChevron />
-            </div>
-            <div className="relative flex min-w-0">
-              <select
-                aria-label="Filter status"
-                value={draft.status}
-                onChange={(e) => setDraft((d) => ({ ...d, status: e.target.value }))}
-                className={selectBase}
-              >
-                <option value="">Semua status</option>
-                {STATUS.map((s) => (
-                  <option key={s} value={s}>
-                    {s}
-                  </option>
-                ))}
-              </select>
-              <SelectChevron />
-            </div>
-            <div className="relative flex min-w-0">
-              <select
-                aria-label="Filter genre"
-                value={draft.genre}
-                onChange={(e) => setDraft((d) => ({ ...d, genre: e.target.value }))}
-                className={selectBase}
-              >
-                <option value="">Semua genre</option>
-                {genreList.map((g) => (
-                  <option key={g.slug} value={g.slug}>
-                    {g.name}
-                    {sourcesTotal > 0 && g.sources.length < sourcesTotal
-                      ? ` (${g.sources.length}/${sourcesTotal})`
-                      : ''}
-                  </option>
-                ))}
-              </select>
-              <SelectChevron />
-            </div>
-          </div>
-
-          <div className="flex gap-2">
-            <button
-              type="button"
-              onClick={applyFilters}
-              className="min-h-11 flex-1 rounded-full bg-brand-amber px-5 py-2.5 text-[13px] font-bold text-white transition-colors active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber focus-visible:ring-offset-2"
+          <div
+            ref={filterPanelRef}
+            id="panel-filter-cari"
+            role="dialog"
+            aria-modal="true"
+            aria-label="Filter pencarian"
+            aria-hidden={!filterOpen}
+            inert={!filterOpen}
+            tabIndex={-1}
+            onKeyDown={trapFocus}
+            onClick={(e) => e.stopPropagation()}
+            className={`sheet-panel flex max-h-[88dvh] w-full max-w-md flex-col overflow-y-auto rounded-t-2xl border-t border-ink-700 bg-ink-900 pb-[calc(1.5rem+env(safe-area-inset-bottom))] outline-none ${
+              filterOpen ? '' : 'sheet-closing'
+            }`}
+          >
+            <div
+              {...drag}
+              aria-hidden="true"
+              className="pointer-events-auto flex h-11 shrink-0 touch-none select-none items-start justify-center pt-2"
             >
-              Terapkan
-            </button>
-            <button
-              type="button"
-              onClick={() => setDraft(defaults)}
-              className="min-h-11 flex-1 rounded-full border border-ink-700 px-5 py-2.5 text-[13px] font-semibold text-ink-300 transition-colors active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber focus-visible:ring-offset-2"
+              <span className="h-1 w-9 rounded-full bg-white/20" />
+            </div>
+            <div
+              {...drag}
+              className="pointer-events-auto sticky top-0 z-20 flex shrink-0 items-center justify-between bg-ink-900 px-4 py-2 touch-none select-none"
             >
-              Reset
-            </button>
+              <h2 className="font-display text-[15px] font-bold text-ink-100">Filter</h2>
+              <button
+                ref={filterCloseRef}
+                type="button"
+                aria-label="Tutup filter"
+                onClick={() => setFilterOpen(false)}
+                className="grid size-11 place-items-center rounded-full text-ink-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber"
+              >
+                <IconXmark className="size-5" />
+              </button>
+            </div>
+            <div className="space-y-3 px-4 pt-3">
+              <div className="grid grid-cols-2 gap-2">
+                <div className="relative flex min-w-0">
+                  <select
+                    aria-label="Filter tipe"
+                    value={draft.tipe}
+                    onChange={(e) => setDraft((d) => ({ ...d, tipe: e.target.value }))}
+                    className={selectBase}
+                  >
+                    <option value="">Semua tipe</option>
+                    {TIPE.map((t) => (
+                      <option key={t} value={t}>{t}</option>
+                    ))}
+                  </select>
+                  <SelectChevron />
+                </div>
+                <div className="relative flex min-w-0">
+                  <select
+                    aria-label="Filter status"
+                    value={draft.status}
+                    onChange={(e) => setDraft((d) => ({ ...d, status: e.target.value }))}
+                    className={selectBase}
+                  >
+                    <option value="">Semua status</option>
+                    {STATUS.map((s) => (
+                      <option key={s} value={s}>{s}</option>
+                    ))}
+                  </select>
+                  <SelectChevron />
+                </div>
+                <div className="relative flex min-w-0">
+                  <select
+                    aria-label="Filter genre"
+                    value={draft.genre}
+                    onChange={(e) => setDraft((d) => ({ ...d, genre: e.target.value }))}
+                    className={selectBase}
+                  >
+                    <option value="">Semua genre</option>
+                    {genreList.map((g) => (
+                      <option key={g.slug} value={g.slug}>
+                        {g.name}
+                        {sourcesTotal > 0 && g.sources.length < sourcesTotal
+                          ? ` (${g.sources.length}/${sourcesTotal})`
+                          : ''}
+                      </option>
+                    ))}
+                  </select>
+                  <SelectChevron />
+                </div>
+                <div className="relative col-span-2 flex min-w-0">
+                  <select
+                    aria-label="Filter sumber"
+                    value={draft.source}
+                    onChange={(e) => setDraft((d) => ({ ...d, source: e.target.value }))}
+                    className={selectBase}
+                  >
+                    {SOURCES.map((s) => (
+                      <option key={s.id} value={s.id}>{s.label}</option>
+                    ))}
+                  </select>
+                  <SelectChevron />
+                </div>
+              </div>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={applyFilters}
+                  className="min-h-11 flex-1 rounded-full bg-brand-amber px-5 py-2.5 text-[13px] font-bold text-white transition-colors active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber focus-visible:ring-offset-2"
+                >
+                  Terapkan
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setDraft(defaults)}
+                  className="min-h-11 flex-1 rounded-full border border-ink-700 px-5 py-2.5 text-[13px] font-semibold text-ink-300 transition-colors active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber focus-visible:ring-offset-2"
+                >
+                  Reset
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}
@@ -888,31 +964,37 @@ function filtersEqual(a: SearchReturnState['filter'], b: SearchReturnState['filt
 }
 
 /**
- * Grid 2 kolom kartu (kedua mode). MangaCard dipakai apa adanya — kelas
- * `[&_a]:w-full` menimpa lebar tetap kartu (132px) supaya mengisi kolom;
- * selector turunan lebih spesifik daripada `.w-[132px]`, jadi urutan CSS
- * tidak menentukan hasil.
+ * Hasil pencarian = daftar kartu kompak satu kolom. Grid 2 kolom dengan
+ * cover 2:3 hanya memuat ~2 judul di layar 390×844; baris ~124px memuat
+ * 4–6 judul sekali lihat. `data-search-results` dipakai delegasi "Kembali".
  */
 function ResultGrid({ items }: { items: Manga[] }) {
   return (
-    <ul data-search-results className="grid grid-cols-2 gap-x-3 gap-y-4">
+    <ul data-search-results className="flex flex-col gap-2">
       {items.map((m) => (
-        <li key={m.id} className="[&_a]:w-full">
-          <MangaCard manga={m} />
+        <li key={m.id}>
+          <MangaCard manga={m} compact />
         </li>
       ))}
     </ul>
   )
 }
 
-/** Kartu skeleton pemuatan (mode cari + eksplorasi): grid 2 kolom + aspect
- *  sama seperti kartu asli (62/82) supaya daftar tidak melompat saat data
- *  tiba. */
+/** Skeleton mengikuti tinggi baris kompak supaya daftar tidak melompat. */
 function SkeletonCards() {
   return (
-    <ul className="grid grid-cols-2 gap-x-3 gap-y-4" aria-hidden="true">
+    <ul className="flex flex-col gap-2" aria-hidden="true">
       {Array.from({ length: 6 }).map((_, i) => (
-        <li key={i} className="aspect-[62/82] animate-pulse rounded-xl bg-ink-850" />
+        <li
+          key={i}
+          className="flex h-[124px] animate-pulse items-center gap-3 rounded-xl border border-ink-800 bg-ink-900 p-2"
+        >
+          <span className="aspect-[2/3] w-[72px] shrink-0 rounded-xl bg-ink-850" />
+          <span className="flex-1 space-y-2">
+            <span className="block h-3 w-3/4 rounded bg-ink-850" />
+            <span className="block h-3 w-1/2 rounded bg-ink-850" />
+          </span>
+        </li>
       ))}
     </ul>
   )
@@ -939,4 +1021,28 @@ function FailedSourceChip({ count, total }: { count: number; total: number }) {
       {total > 0 ? `${count}/${total}` : count} sumber gagal
     </span>
   )
+}
+
+/** Fokus tidak keluar dari sheet filter saat Tab/Shift+Tab. */
+function trapFocus(e: React.KeyboardEvent<HTMLElement>) {
+  if (e.key !== 'Tab') return
+  const root = e.currentTarget
+  const focusables = Array.from(
+    root.querySelectorAll<HTMLElement>(
+      'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+    )
+  ).filter((el) => !el.hasAttribute('disabled') && el.offsetParent !== null)
+  if (focusables.length === 0) {
+    e.preventDefault()
+    return
+  }
+  const first = focusables[0]
+  const last = focusables[focusables.length - 1]
+  if (e.shiftKey && (document.activeElement === first || document.activeElement === root)) {
+    e.preventDefault()
+    last.focus()
+  } else if (!e.shiftKey && document.activeElement === last) {
+    e.preventDefault()
+    first.focus()
+  }
 }

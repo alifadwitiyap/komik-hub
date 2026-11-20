@@ -58,9 +58,10 @@ describe('Kartu dan rail anti-clutter', () => {
     expect(homeSrc).not.toContain('snap-mandatory')
     expect(homeSrc).toContain('relative px-4 pt-3')
     expect(homeSrc).toContain('tactile-press group block w-[132px]')
-    expect(homeSrc).toContain('aspect-[3/4] overflow-hidden rounded-xl')
+    expect(homeSrc).toContain('aspect-[2/3] overflow-hidden rounded-xl')
     expect(homeSrc).not.toContain('aspect-[62/82]')
-    expect(homeSrc).toContain('text-ink-600')
+    expect(homeSrc).toContain('text-ink-300')
+    expect(homeSrc).not.toContain('text-ink-600')
   })
 
   it('referrerPolicy tetap ada di semua img sampul Home', () => {

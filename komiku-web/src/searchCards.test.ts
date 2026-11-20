@@ -54,17 +54,19 @@ describe('Kartu katalog: cover + judul 2 baris + label Ch.', () => {
     expect(homeSrc).toContain("const number = raw.replace(/^Ch\\.\\s*/i, '')")
     expect(homeSrc).toContain('return `Ch. ${number}`')
     expect(homeSrc).toContain('const label = chapterLabel(manga)')
-    expect(homeSrc).toContain('aspect-[3/4] overflow-hidden rounded-xl')
-    expect(homeSrc).toContain('line-clamp-2 font-display text-[12.5px] font-medium')
+    expect(homeSrc).toContain('aspect-[2/3] overflow-hidden rounded-xl')
+    expect(homeSrc).toContain('line-clamp-2 min-h-[2.6em] font-display text-[12.5px] font-medium')
     expect(homeSrc).toContain('{label}')
-    expect(searchSrc).toContain('<MangaCard manga={m} />')
+    expect(searchSrc).toContain('<MangaCard manga={m} compact />')
     expect(searchSrc).not.toContain('withChapterLabel')
     expect(searchSrc).not.toContain('Terbaru · Ch.')
   })
 
   it('carousel, heart, dan Rak tab tidak berubah (target 44px)', () => {
-    // ContinueReading tetap di atas carousel di Home.
-    expect(homeSrc).toMatch(/<ContinueReading \/>\s*\{?\s*\/\*[\s\S]*?shortcut menu[\s\S]*?\{\/\*[\s\S]*?BackdropCarousel/)
+    // ContinueReading tetap di atas carousel; pintasan ganda sudah dihapus.
+    expect(homeSrc).toMatch(/<ContinueReading \/>([\s\S]*?)<BackdropCarousel items=\{featured\} \/>/)
+    expect(homeSrc).not.toContain('ShortcutMenu')
+    expect(homeSrc).not.toContain('Pintasan beranda')
     expect(homeSrc).toContain('aria-label={`Menuju slide ${i + 1}`}')
     expect(homeSrc).toContain("aria-current={i === idx ? 'true' : undefined}")
     expect(homeSrc).toContain('aria-label={autoplay ? \'Jeda putar otomatis\' : \'Lanjutkan putar otomatis\'}')
