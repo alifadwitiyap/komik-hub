@@ -22,7 +22,11 @@ import { sortByChapterNumber } from '../chapterOrder'
 import { chapterNumberOf } from '../readMarks'
 import { useReadMarks } from '../hooks/useReadMarks'
 import { marathonHref, readerHref } from '../readerSource'
-import ChapterJumpSearch from '../components/ChapterJumpSearch'
+import {
+  canGoBack,
+  filterChapterIndices,
+  resolveBackTarget,
+} from '../components/ChapterJumpSearch'
 
 type SeriesData = {
   series: SeriesDetail
@@ -51,6 +55,8 @@ export default function Series() {
   const [data, setData] = useState<SeriesData | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [showAll, setShowAll] = useState(false)
+  const [chapterQuery, setChapterQuery] = useState('')
+  const [synopsisOpen, setSynopsisOpen] = useState(false)
   // Mark "sudah dibaca" per akun: chapter yang pernah dibuka user jadi abu.
   // Kunci = title_key series + nomor chapter. title_key legacy di-suntik
   // server (routes.rs) dan nilainya sama dengan title_key unified untuk
@@ -72,6 +78,15 @@ export default function Series() {
   const [coverFailed, setCoverFailed] = useState(false)
   const [reloadKey, setReloadKey] = useState(0)
   const location = useLocation()
+  /** Kembali ke asal (state.from / history), bukan selalu Beranda. */
+  const goBack = () => {
+    const target = resolveBackTarget(
+      (location.state as { from?: unknown } | null)?.from,
+      canGoBack(window.history.state),
+    )
+    if (target.back) navigate(-1)
+    else navigate(target.to)
+  }
   const selectionKey = `komik:download-selection:${dlHandle}`
   const returnKey = `komik:download-return:${dlHandle}`
 
@@ -201,7 +216,12 @@ export default function Series() {
   // terpilih benar-benar terlihat (bukan cuma sebagian). Tetap terpancar
   // selama unduhan berjalan walau mode pilih sudah keluar.
   const expanded = showAll || (anchor != null && rangeEnd != null) || dlBusy
-  const visible = expanded ? chapters : chapters.slice(0, 40)
+  // Satu daftar chapter saja: pencarian nomor menyaring daftar yang SAMA.
+  // Indeks asli dipertahankan supaya markOf/pickRange/range dan resume
+  // lintas-sumber tetap menunjuk ke chapter yang benar (1189.2, "811 Fix", …).
+  const chapterRows = filterChapterIndices(chapters, chapterQuery)
+  const visibleRows =
+    expanded || chapterQuery.trim() ? chapterRows : chapterRows.slice(0, 40)
 
   // Indeks yang menunjuk di luar daftar (data menyusut / indeks basi) —
   // diperingatkan, bukan diam-diam dibuang.
@@ -344,9 +364,13 @@ export default function Series() {
 
         <div className="relative px-4 pb-4 pt-5">
           {/* py-3.5 memperluas area sentuh ke >=44px; font 13px agar setara halaman unified. */}
-          <Link to="/" className="py-3.5 text-[13px] font-medium text-ink-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber focus-visible:ring-offset-2 [@media(hover:hover)]:hover:text-ink-200">
-            ← Beranda
-          </Link>
+          <button
+            type="button"
+            onClick={goBack}
+            className="inline-flex min-h-11 items-center py-3.5 text-[13px] font-medium text-ink-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber focus-visible:ring-offset-2 [@media(hover:hover)]:hover:text-ink-200"
+          >
+            ← Kembali
+          </button>
 
           <div className="mt-3 flex gap-4">
             <div className="w-28 shrink-0 sm:w-32">
@@ -468,7 +492,21 @@ export default function Series() {
       {s.synopsis && (
         <section className="px-4 py-4">
           <h2 className="mb-1.5 text-[13px] font-semibold text-ink-100">Sinopsis</h2>
-          <p className="text-[12.5px] leading-relaxed text-ink-300">{s.synopsis}</p>
+          <p
+            className={`text-[12.5px] leading-relaxed text-ink-300 ${
+              synopsisOpen ? '' : 'line-clamp-3'
+            }`}
+          >
+            {s.synopsis}
+          </p>
+          <button
+            type="button"
+            aria-expanded={synopsisOpen}
+            onClick={() => setSynopsisOpen((open) => !open)}
+            className="mt-0.5 inline-flex min-h-11 items-center text-[12px] font-semibold text-brand-amber focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber focus-visible:ring-offset-2"
+          >
+            {synopsisOpen ? 'Tutup sinopsis' : 'Baca sinopsis'}
+          </button>
         </section>
       )}
 
@@ -482,6 +520,27 @@ export default function Series() {
             </span>
           )}
         </h2>
+
+        {/* Pencarian nomor chapter — menyaring SATU daftar di bawah, tanpa panel scroll tersendiri. */}
+        <div className="mb-2 flex items-center gap-2">
+          <input
+            type="search"
+            aria-label="Cari nomor chapter"
+            placeholder="Cari nomor chapter…"
+            value={chapterQuery}
+            onChange={(e) => setChapterQuery(e.target.value)}
+            className="min-h-11 min-w-0 flex-1 rounded-xl border border-ink-700 bg-ink-900 px-3 text-[12.5px] text-ink-100 placeholder:text-ink-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber"
+          />
+          {chapterQuery.trim() && (
+            <button
+              type="button"
+              onClick={() => setChapterQuery('')}
+              className="min-h-11 shrink-0 px-2 text-[12px] font-semibold text-ink-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber"
+            >
+              Hapus
+            </button>
+          )}
+        </div>
 
         {/* Info seleksi + progres unduh (tetap tampil setelah run selesai) */}
         {dlHandle && getUser() === null && (
@@ -663,9 +722,6 @@ export default function Series() {
           </div>
         )}
 
-        {/* Search + lompat chapter, sebelum daftar yang dipotong showAll. */}
-        {chapters.length > 0 && <ChapterJumpSearch chapters={chapters} titleKey={s.title_key} />}
-
         {chapters.length === 0 ? (
           <div className="text-center">
             <p className="text-[12.5px] text-ink-500">Belum ada chapter.</p>
@@ -676,9 +732,13 @@ export default function Series() {
               Cari judul lain
             </Link>
           </div>
+        ) : visibleRows.length === 0 ? (
+          <p className="py-6 text-center text-[12.5px] text-ink-500">
+            Tidak ada chapter yang cocok.
+          </p>
         ) : (
           <ul className="divide-y divide-ink-800 overflow-hidden rounded-xl border border-ink-800 bg-ink-900">
-            {visible.map((c, i) => (
+            {visibleRows.map(({ chapter: c, index: i }) => (
               <ChapterRow
                 key={c.id}
                 chapter={c}
@@ -690,8 +750,9 @@ export default function Series() {
           </ul>
         )}
 
-        {chapters.length > 40 && (
+        {!chapterQuery.trim() && chapters.length > 40 && (
           <button
+            type="button"
             onClick={() => setShowAll((v) => !v)}
             className="mt-3 min-h-11 w-full rounded-xl border border-ink-700 py-2.5 text-[13px] font-medium text-ink-300"
           >

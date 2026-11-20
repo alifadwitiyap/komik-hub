@@ -67,19 +67,60 @@ export function useDownloadRun(
   return { run, busy, slow, stale }
 }
 
+/** Endpoint ringan untuk membuktikan server benar-benar bisa dijangkau. */
+const REACHABILITY_URL = '/api/health'
+const REACHABILITY_TIMEOUT_MS = 2_500
+
 /**
- * Offline status hook — detect network connectivity changes.
+ * Apakah server masih bisa dijangkau? `navigator.onLine` saja sering basi
+ * (WiFi putus / proxy mati tapi browser masih lapor "online") — probe kecil
+ * dengan cache `no-store` dan timeout ±2,5 detik jadi bukti nyata.
+ */
+export async function isReachable(signal?: AbortSignal): Promise<boolean> {
+  if (typeof fetch === 'undefined') {
+    return typeof navigator !== 'undefined' ? navigator.onLine : false
+  }
+  const ctrl = new AbortController()
+  const onAbort = () => ctrl.abort()
+  if (signal?.aborted) ctrl.abort()
+  else signal?.addEventListener('abort', onAbort, { once: true })
+  const timer = setTimeout(
+    () => ctrl.abort(new DOMException('Waktu habis', 'TimeoutError')),
+    REACHABILITY_TIMEOUT_MS,
+  )
+  try {
+    const res = await fetch(REACHABILITY_URL, { cache: 'no-store', signal: ctrl.signal })
+    return res.ok
+  } catch {
+    return false
+  } finally {
+    clearTimeout(timer)
+    signal?.removeEventListener('abort', onAbort)
+  }
+}
+
+/**
+ * Offline status hook — `navigator.onLine` diverifikasi dengan probe nyata
+ * sebelum peringatan ditampilkan, supaya status basi tidak memblokir unduhan
+ * yang sebenarnya masih bisa jalan.
  */
 export function useOffline(): boolean {
-  const [offline, setOffline] = useState(
-    typeof navigator !== 'undefined' ? !navigator.onLine : false
-  )
+  // Jangan langsung percaya `navigator.onLine`: nilai basi sering bikin
+  // peringatan offline palsu. Status menunggu hasil probe di effect.
+  const [offline, setOffline] = useState(false)
   useEffect(() => {
+    let alive = true
+    const verify = async () => {
+      const reachable = await isReachable()
+      if (alive) setOffline(!reachable)
+    }
+    void verify()
     const onOffline = () => setOffline(true)
-    const onOnline = () => setOffline(false)
+    const onOnline = () => void verify()
     window.addEventListener('offline', onOffline)
     window.addEventListener('online', onOnline)
     return () => {
+      alive = false
       window.removeEventListener('offline', onOffline)
       window.removeEventListener('online', onOnline)
     }
