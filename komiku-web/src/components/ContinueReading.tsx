@@ -17,6 +17,7 @@ type Item = {
   cover: string | null
   chapter: string
   page: number | null
+  progress: number | null
   source: string | null
   href: string
 }
@@ -53,6 +54,7 @@ function buildItems(): Item[] {
           ? `Chapter ${pos.activeKey.split(':').pop()}`
           : p.chapterName || `Chapter ${target.chapterId}`,
         page: target.page,
+        progress: Math.min(1, Math.max(0, p.progress)),
         source: p.source ?? entry.source,
         href,
         at: p.at,
@@ -75,6 +77,7 @@ function buildItems(): Item[] {
         cover: entry.cover_url,
         chapter: `Chapter ${entry.last_chapter}`,
         page: null,
+        progress: null,
         source: entry.source,
         href,
       })
@@ -127,9 +130,9 @@ function ResumeCard({ item }: { item: Item }) {
     <Link
       to={item.href}
       data-testid="continue-reading-card"
-      className="flex min-h-20 items-center gap-3 rounded-2xl border border-ink-800 bg-ink-900 p-3 active:bg-ink-850"
+      className="flex min-h-20 items-center gap-3 rounded-2xl border border-ink-800 bg-ink-900 p-3 active:bg-ink-850 tactile-press"
     >
-      <span className="size-16 shrink-0 overflow-hidden rounded-xl border border-ink-800 bg-ink-850">
+      <span className="size-16 shrink-0 overflow-hidden rounded-xl relative border border-ink-800 bg-ink-850">
         {src ? (
           <img
             referrerPolicy="no-referrer"
@@ -142,6 +145,14 @@ function ResumeCard({ item }: { item: Item }) {
           />
         ) : (
           <span className="grid size-full place-items-center text-[18px] font-bold text-ink-500">{item.title.slice(0, 1)}</span>
+        )}
+        {item.progress != null && (
+          <span aria-hidden="true" className="absolute inset-x-0 bottom-0 h-[3px] bg-black/40">
+            <span
+              className="block size-full origin-left bg-brand-amber transition-transform duration-[var(--dur-ui)] ease-[var(--ease-out-quint)]"
+              style={{ transform: `scaleX(${item.progress})` }}
+            />
+          </span>
         )}
       </span>
       <span className="min-w-0 flex-1">

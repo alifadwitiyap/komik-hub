@@ -27,49 +27,73 @@
     -->
     <link rel="preload" as="font" type="font/woff2" href="/fonts/NunitoSans-Regular.woff2" crossorigin />
     <!--
-      SKELETON BOOT — kenapa ada di sini dan bukan di React:
+      SKELETON BOOT — structural, CSS-only, dan DI LUAR #root:
 
       Di 400 kbps, bundle (react-vendor + app + css ≈ 122 KB gzip) butuh ~5 detik
-      sebelum React bisa menggambar apa pun. Selama itu layar KOSONG — itu
-      keluhan "lemot" yang sebenarnya, walau byte halaman sudah dipotong.
-      Skeleton + CSS kritis inline ini tidak butuh request tambahan, jadi
-      frame aplikasi tampil begitu HTML tiba (~1 round-trip), lalu React
-      menggantinya (`createRoot` membersihkan isi #root saat mount).
+      sebelum React bisa menggambar apa pun. Skeleton ini menyerupai geometri
+      home mobile (topbar 56px, px-4, hero 16/7, grid 3 kolom 3/4) supaya
+      transisi ke React tidak menggeser konten. React melakukan fade-out 180ms
+      lalu menghapus node ini (~220ms); #root tetap kosong saat mount.
 
-      Aturan: JANGAN menaruh URL aset apa pun di sini (logo pun ditulis
-      sebagai teks) — satu request tambahan merusak seluruh gunanya.
+      ATURAN KERAS:
+      - JANGAN menaruh URL aset apa pun di skeleton (CSS inline semua).
+      - JANGAN ubah script bootstrap tema di bawah ini (localStorage
+        'komik-theme' → html.dark) dan preload NunitoSans di atas.
+      - Skeleton HARUS sibling #root, bukan anak #root: createRoot akan
+        membersihkan anak #root saat mount.
     -->
     <style>
       :root {
         --kb-bg: #f1f4f7; --kb-surface: #ffffff; --kb-line: #e3e7ec;
-        --kb-muted: #6f7681; --kb-text: #161c26;
+        --kb-muted: #6f7681; --kb-shine: rgba(255, 255, 255, .8);
+        --ease-out-quint: cubic-bezier(0.22, 1, 0.36, 1);
+        --ease-in-out-fast: cubic-bezier(0.4, 0, 0.2, 1);
       }
       html.dark {
-        --kb-bg: #0d1117; --kb-surface: #161c26; --kb-line: #2b3546;
-        --kb-muted: #8794a6; --kb-text: #f2f5f9;
+        --kb-bg: #0a0c0f; --kb-surface: #13161c; --kb-line: #1b2029;
+        --kb-muted: #8e97a4; --kb-shine: rgba(255, 255, 255, .075);
       }
       html { background: var(--kb-bg); }
-      body { margin: 0; background: var(--kb-bg); color: var(--kb-text);
+      body { margin: 0; background: var(--kb-bg); color: var(--kb-muted);
         font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif; }
+      #boot-skeleton {
+        position: fixed; inset: 0; z-index: 45; overflow: hidden;
+        background: var(--kb-bg); pointer-events: none;
+        transition: opacity 180ms var(--ease-out-quint);
+      }
+      #boot-skeleton[data-fading='true'] { opacity: 0; }
       .kb-boot-bar {
-        position: fixed; inset: 0 0 auto 0; z-index: 40; height: 56px;
-        display: flex; align-items: center; padding: 0 12px;
+        position: fixed; inset: 0 0 auto 0; z-index: 1; height: 56px;
+        display: flex; align-items: center; justify-content: space-between;
+        box-sizing: border-box; padding: 0 16px; padding-top: env(safe-area-inset-top);
         background: var(--kb-bg); border-bottom: 1px solid var(--kb-line);
       }
-      .kb-boot-logo { font-size: 17px; font-weight: 700; letter-spacing: .2px; }
+      .kb-boot-logo { width: 96px; height: 20px; border-radius: 6px; }
+      .kb-boot-actions { display: flex; gap: 8px; }
+      .kb-boot-dot { width: 30px; height: 30px; border-radius: 999px; }
       .kb-boot-body {
-        box-sizing: border-box; padding: 72px 12px 24px;
-        display: flex; flex-direction: column; align-items: center; gap: 10px;
+        box-sizing: border-box; height: 100%; max-width: 768px; margin: 0 auto;
+        padding: calc(56px + env(safe-area-inset-top) + 12px) 16px
+                 calc(88px + env(safe-area-inset-bottom));
+        overflow: hidden;
       }
-      .kb-boot-page {
-        width: 100%; max-width: 768px; aspect-ratio: .685;
+      .kb-boot-hero { aspect-ratio: 16 / 7; max-height: 170px; border-radius: 12px; }
+      .kb-boot-line { height: 14px; margin: 20px 0 12px; border-radius: 5px; width: 42%; }
+      .kb-boot-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+      .kb-boot-tile { aspect-ratio: 3 / 4; border-radius: 12px; }
+      .kb-boot-line, .kb-boot-dot, .kb-boot-hero, .kb-boot-tile, .kb-boot-logo {
         background: var(--kb-surface); border: 1px solid var(--kb-line);
-        border-radius: 8px; animation: kb-pulse 1.4s ease-in-out infinite;
       }
-      .kb-boot-label { font-size: 12px; color: var(--kb-muted); }
-      @keyframes kb-pulse { 0%, 100% { opacity: 1 } 50% { opacity: .55 } }
+      .kb-boot-shimmer { position: relative; overflow: hidden; }
+      .kb-boot-shimmer::after {
+        content: ''; position: absolute; inset: 0; transform: translateX(-100%);
+        background: linear-gradient(90deg, transparent, var(--kb-shine), transparent);
+        animation: kb-shimmer 1.4s var(--ease-in-out-fast) infinite;
+      }
+      @keyframes kb-shimmer { to { transform: translateX(100%) } }
       @media (prefers-reduced-motion: reduce) {
-        .kb-boot-page { animation: none }
+        .kb-boot-shimmer::after { animation: none; }
+        #boot-skeleton { transition: none; }
       }
     </style>
     <script>
@@ -87,12 +111,26 @@
     </script>
   </head>
   <body>
-    <div id="root">
-      <div class="kb-boot">
-        <div class="kb-boot-bar"><span class="kb-boot-logo">Komik Hub</span></div>
-        <div class="kb-boot-body">
-          <div class="kb-boot-page"></div>
-          <p class="kb-boot-label">Memuat…</p>
+    <div id="root"></div>
+    <div id="boot-skeleton" aria-hidden="true">
+      <div class="kb-boot-bar">
+        <span class="kb-boot-logo kb-boot-shimmer"></span>
+        <span class="kb-boot-actions">
+          <span class="kb-boot-dot kb-boot-shimmer"></span>
+          <span class="kb-boot-dot kb-boot-shimmer"></span>
+          <span class="kb-boot-dot kb-boot-shimmer"></span>
+        </span>
+      </div>
+      <div class="kb-boot-body">
+        <div class="kb-boot-hero kb-boot-shimmer"></div>
+        <div class="kb-boot-line kb-boot-shimmer"></div>
+        <div class="kb-boot-grid">
+          <div class="kb-boot-tile kb-boot-shimmer"></div>
+          <div class="kb-boot-tile kb-boot-shimmer"></div>
+          <div class="kb-boot-tile kb-boot-shimmer"></div>
+          <div class="kb-boot-tile kb-boot-shimmer"></div>
+          <div class="kb-boot-tile kb-boot-shimmer"></div>
+          <div class="kb-boot-tile kb-boot-shimmer"></div>
         </div>
       </div>
     </div>

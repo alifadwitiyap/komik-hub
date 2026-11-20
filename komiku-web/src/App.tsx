@@ -45,6 +45,21 @@ export default function App() {
   useState(() => startReadMarksSync())
   const [bellOpen, setBellOpen] = useState(false)
 
+  // Boot skeleton hidup di LUAR #root: fade setelah React mount, hapus setelahnya.
+  useEffect(() => {
+    const boot = document.getElementById('boot-skeleton')
+    if (!boot) return
+    let removeTimer: ReturnType<typeof setTimeout> | undefined
+    const raf = requestAnimationFrame(() => {
+      boot.dataset.fading = 'true'
+      removeTimer = setTimeout(() => boot.remove(), 220)
+    })
+    return () => {
+      cancelAnimationFrame(raf)
+      if (removeTimer) clearTimeout(removeTimer)
+    }
+  }, [])
+
   return (
     <NotifCountsProvider>
       <div className="min-h-full bg-ink-950">
@@ -127,7 +142,7 @@ function TopBar({
   const bellWrap = useRef<HTMLDivElement>(null)
 
   return (
-    <header className="fixed inset-x-0 top-0 z-40 border-b border-ink-800 bg-ink-950/95 backdrop-blur">
+    <header className="fixed inset-x-0 top-0 z-40 border-b border-ink-800 bg-ink-950/95">
       <div className="mx-auto flex h-[calc(3.5rem+env(safe-area-inset-top))] max-w-3xl items-center gap-1 px-3 pr-[max(0.75rem,env(safe-area-inset-right))]">
         <Link to="/" className="flex min-h-11 items-center py-2.5" aria-label="Komik Hub">
           <img
@@ -257,36 +272,43 @@ function CircleButton({
   )
 }
 
-/** BottomNav replica layout_navigation_main: ikon 16sdp + caption. */
+/** BottomNav replica layout_navigation_main: ikon 16sdp + caption, pill geser. */
 function BottomNav() {
+  const { pathname } = useLocation()
+  const activeIndex = Math.max(
+    0,
+    NAV.findIndex(({ to }) =>
+      to === '/' ? pathname === '/' : pathname === to || pathname.startsWith(`${to}/`),
+    ),
+  )
+
   return (
-    <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-ink-800 bg-ink-950/95 pb-[env(safe-area-inset-bottom)] backdrop-blur">
-      <ul className="flex w-full">
+    <nav
+      aria-label="Navigasi utama"
+      className="fixed inset-x-3 bottom-3 z-40 mx-auto max-w-3xl rounded-2xl border border-hairline bg-ink-900/88 pb-[env(safe-area-inset-bottom)] backdrop-blur-[16px]"
+    >
+      <ul className="relative flex p-1">
+        {/* SATU pill persisten — posisi berubah via transform, tidak remount. */}
+        <span
+          aria-hidden="true"
+          className="pointer-events-none absolute bottom-1 left-1 top-1 w-[calc((100%-0.5rem)/3)] rounded-xl bg-ink-850 transition-transform duration-[var(--dur-ui)] ease-[var(--ease-out-quint)]"
+          style={{ transform: `translateX(${activeIndex * 100}%)` }}
+        />
         {NAV.map(({ to, label, icon: Icon }) => (
-          <li key={to} className="flex-1">
+          <li key={to} className="relative z-10 flex-1">
             <NavLink
               to={to}
               end={to === '/'}
               className={({ isActive }) =>
-                `relative flex min-h-11 min-w-11 flex-col items-center justify-center gap-[3px] py-2 text-[11px] font-medium transition-colors active:scale-[0.97] active:duration-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber focus-visible:ring-inset ${
-                  isActive ? 'text-brand-amber' : 'text-ink-500 [@media(hover:hover)]:hover:text-ink-200'
+                `group relative flex min-h-11 min-w-11 flex-col items-center justify-center gap-[3px] py-2 text-[11px] font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber focus-visible:ring-inset ${
+                  isActive ? 'text-brand-amber' : 'text-ink-500 [@media(hover:hover)_and_(pointer:fine)]:hover:text-ink-200'
                 }`
               }
             >
-              {({ isActive }) => (
-                <>
-                  {isActive && (
-                    <span
-                      aria-hidden="true"
-                      className="nav-indicator absolute top-0 h-0.5 w-8 rounded-b-full bg-brand-amber"
-                    />
-                  )}
-                  <span className="grid size-4 place-items-center">
-                    <Icon className="size-4" />
-                  </span>
-                  {label}
-                </>
-              )}
+              <span className="grid size-4 place-items-center transition-transform duration-[var(--dur-press)] ease-[var(--ease-out-quint)] group-active:scale-[0.88]">
+                <Icon className="size-4" />
+              </span>
+              {label}
             </NavLink>
           </li>
         ))}

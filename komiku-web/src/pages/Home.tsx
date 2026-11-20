@@ -4,7 +4,7 @@ import { Link } from 'react-router-dom'
 import { api, coverOf, thumbOf, toMangaCard, unifiedApi } from '../api'
 import type { Homepage, HomeSection, Manga } from '../types'
 import { Empty, Spinner } from '../App'
-import SourceBadge from '../components/SourceBadge'
+import SourceBadge, { sourceLabel } from '../components/SourceBadge'
 import HeartButton from '../components/HeartButton'
 import { IconBolt, IconMagnifyingGlass, IconPlaySolid, IconRectangleHistory } from '../icons'
 import ContinueReading from '../components/ContinueReading'
@@ -257,7 +257,7 @@ function BackdropCarousel({ items }: { items: Manga[] }) {
   return (
     <div
       ref={wrapperRef}
-      className="relative px-2.5 pt-3"
+      className="relative px-4 pt-3"
       onFocusCapture={() => setFocusInside(true)}
       onBlurCapture={(e) => {
         if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setFocusInside(false)
@@ -265,7 +265,7 @@ function BackdropCarousel({ items }: { items: Manga[] }) {
     >
       <div
         ref={scrollRef}
-        className="no-bar flex snap-x snap-mandatory gap-2.5 overflow-x-auto rounded-xl px-2.5"
+        className="no-bar flex snap-x snap-proximity gap-2.5 overflow-x-auto rounded-xl"
         onPointerDownCapture={() => setAutoplay(false)}
         onScroll={(e) => {
           const el = e.currentTarget
@@ -392,7 +392,7 @@ export function Section({
           </Link>
         )}
       </div>
-      <div className="no-bar mt-3 flex snap-x snap-mandatory gap-3 overflow-x-auto px-4 pb-1">
+      <div className="no-bar mt-3 flex snap-x snap-proximity gap-3 overflow-x-auto px-4 pb-1">
         {children}
       </div>
     </section>
@@ -458,14 +458,19 @@ export const MangaCard = memo(function MangaCard({ manga }: { manga: Manga }) {
   // kartu unified (handle 'sumber:id') → route handle; kartu komiku → id lama.
   const to = manga.handle ? `/manga/${manga.handle}` : `/manga/${manga.id}`
   const label = chapterLabel(manga)
+  const meta = [
+    sourceLabel(manga.source),
+    manga.tipe?.[0],
+    manga.update_date?.trim() ? `Update ${manga.update_date.trim()}` : null,
+  ]
+    .filter(Boolean)
+    .join(' · ')
+  const canFavorite = Boolean(manga.title_key && (manga.handle || manga.id != null))
 
   return (
-    <Link
-      to={to}
-      className="group w-[132px] shrink-0 snap-start active:scale-[0.97] active:duration-100 sm:w-[150px]"
-    >
-      {/* cover replika item_trend: radius 6, badge tipe di kanan bawah */}
-      <div className="relative aspect-[62/82] overflow-hidden rounded-xl border border-ink-800 bg-ink-850">
+    <Link to={to} className="tactile-press group block w-[132px] shrink-0 snap-start sm:w-[150px]">
+      {/* Satu sudut saja: chapter terbaru. Sumber/tipe/waktu jadi teks metadata. */}
+      <div className="relative aspect-[3/4] overflow-hidden rounded-xl border border-ink-800 bg-ink-850">
         {img && !failed ? (
           <img referrerPolicy="no-referrer"
             src={imgUrl(img)}
@@ -480,57 +485,42 @@ export const MangaCard = memo(function MangaCard({ manga }: { manga: Manga }) {
             {manga.title}
           </span>
         )}
-
-        {/* Info (rating + sumber) di kiri-atas, aksi love di kanan-atas.
-            Dua kolom terpisah: posisi love identik di SEMUA kartu -- badge
-            sumber tak lagi menumpuk / menggeser tombol ke bawah. */}
-        <div className="absolute left-1 top-1 flex max-w-[70%] flex-col items-start gap-1">
-          {manga.score && manga.score !== '-' && (
-            <span className="w-fit rounded bg-black/70 px-1.5 py-0.5 text-[10px] font-bold text-white">
-              ★ {manga.score}
-            </span>
-          )}
-          {manga.source && manga.source !== 'komiku' && (
-            <SourceBadge source={manga.source} className="max-w-full" />
-          )}
-        </div>
-
-        {/* Aksi love selalu di kanan-atas, posisi identik di semua kartu.
-            Kartu Komiku lama (handle kosong) memakai id numerik sebagai handle rak. */}
-        {manga.title_key && (manga.handle || manga.id != null) && (
-          <div className="absolute right-1 top-1">
-            <HeartButton
-              manga={{
-                title_key: manga.title_key,
-                title: manga.title,
-                cover_url: img ?? null,
-                handle: manga.handle ?? String(manga.id),
-                source: manga.source ?? 'komiku',
-              }}
-              className="bg-black/60 text-white ring-1 ring-white/15 backdrop-blur [@media(hover:hover)]:hover:bg-black/75"
-            />
-          </div>
-        )}
-        {manga.tipe?.[0] && (
-          <span className="absolute bottom-1 right-1 w-fit max-w-[90%] truncate rounded bg-brand-red/90 px-1.5 py-0.5 text-[9.5px] font-semibold text-white">
-            {manga.tipe[0]}
+        {label && (
+          <span className="absolute right-1 top-1 max-w-[calc(100%-0.5rem)] truncate rounded bg-black/70 px-1.5 py-0.5 text-[10px] font-bold tabular-nums text-white">
+            {label}
           </span>
         )}
       </div>
 
-      {/* judul BR Hendrix (brhendrix_medium), meta nunito bold, baris aksen */}
       <p className="mt-2 line-clamp-2 font-display text-[12.5px] font-medium leading-snug text-ink-100">
         {manga.title}
       </p>
       {label ? (
-        <p className="mt-0.5 line-clamp-1 text-[11px] font-bold leading-snug text-ink-500">
+        <p className="mt-0.5 line-clamp-1 text-[11px] font-bold leading-snug tabular-nums text-ink-200">
           {label}
         </p>
-      ) : manga.other && manga.other.length > 0 ? (
-        <p className="mt-0.5 line-clamp-1 text-[11px] font-bold leading-snug text-ink-500">
+      ) : manga.other?.[0] ? (
+        <p className="mt-0.5 line-clamp-1 text-[11px] font-bold leading-snug tabular-nums text-ink-200">
           {manga.other[0]}
         </p>
       ) : null}
+      {meta && (
+        <p className="mt-0.5 line-clamp-2 text-[11px] leading-snug text-ink-600">{meta}</p>
+      )}
+      {canFavorite && (
+        <div className="-ml-3 mt-0.5 flex items-center">
+          <HeartButton
+            manga={{
+              title_key: manga.title_key!,
+              title: manga.title,
+              cover_url: img ?? null,
+              handle: manga.handle ?? String(manga.id),
+              source: manga.source ?? 'komiku',
+            }}
+            className="bg-ink-850 text-ink-200 ring-1 ring-hairline [@media(hover:hover)_and_(pointer:fine)]:hover:bg-ink-800"
+          />
+        </div>
+      )}
     </Link>
   )
 })
