@@ -71,6 +71,36 @@ export const EASE_OUT_EMIL = 'cubic-bezier(0.22, 1, 0.36, 1)'
 export const EASE_OUT_QUINT = 'cubic-bezier(0.22, 1, 0.36, 1)'
 export const EASE_IN_OUT_FAST = 'cubic-bezier(0.4, 0, 0.2, 1)'
 
+/* Plan D2 aliases — framer-motion tuple form of the curves above (same values
+   as EASE_OUT_EMIL / EASE_SNAPPY, no new deps). Defined before popoverVariants
+   so the object initializer does not hit the temporal dead zone. */
+export const EMIL_EASE = [0.22, 1, 0.36, 1] as const
+export const SNAPPY_EASE = [0.16, 1, 0.3, 1] as const
+
+/* BottomNav shared pill — critically damped (bounce 0), plan D2/D3. */
+export const tabPillSpring = {
+  type: 'spring' as const,
+  stiffness: 500,
+  damping: 40,
+  mass: 1,
+}
+
+/* Plan D2 popover variants: scale 0.96→1, 160ms in / 120ms out. popoverMotion
+   above stays untouched so existing imports/contracts are unchanged. */
+export const popoverVariants = {
+  initial: { opacity: 0, scale: 0.96 },
+  animate: {
+    opacity: 1,
+    scale: 1,
+    transition: { duration: 0.16, ease: EMIL_EASE },
+  },
+  exit: {
+    opacity: 0,
+    scale: 0.96,
+    transition: { duration: 0.12, ease: EMIL_EASE },
+  },
+}
+
 export const DUR_PRESS_MS = 100
 export const DUR_HUD_MS = 140
 export const DUR_MICRO_MS = 150

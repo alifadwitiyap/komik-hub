@@ -25,6 +25,22 @@
   --dur-sheet: 240ms;
 }
 
+/* Dark-first surface aliases (plan D2): new names only — the light-theme
+   @theme tokens in index.css are untouched. Declared for :root and .dark so
+   the aliases resolve regardless of which theme class sits on <html>. */
+:root,
+.dark {
+  --bg-canvas: #0E1014;
+  --bg-reader: #090B0E;
+  --bg-surface: #161920;
+  --bg-surface-elevated: #1E232D;
+  --border-subtle: rgba(255, 255, 255, 0.08);
+  --ink-primary: #F4F6FA;
+  --ink-secondary: #A8B1C2;
+  --accent-primary: #3B82F6;
+  --dur-popover: 160ms;
+}
+
 * {
   -webkit-tap-highlight-color: transparent;
 }
@@ -50,6 +66,21 @@ html {
 .tactile-press:active {
   transform: scale(0.97);
   transition-duration: var(--dur-press);
+}
+
+/* Opt-in 44px touch target (plan D2). Applied per interactive element only —
+   never a global selector, so existing controls are unaffected. */
+.tap-target {
+  min-width: 44px;
+  min-height: 44px;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  transition:
+    transform var(--dur-press) ease-out,
+    opacity var(--dur-press) ease-out;
+}
+.tap-target:active {
+  transform: scale(0.97);
 }
 
 /* Progressive Image Fade-in agar cover tidak pop-in kasar */
