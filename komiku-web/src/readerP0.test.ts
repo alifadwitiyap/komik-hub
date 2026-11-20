@@ -91,6 +91,13 @@ describe('(4) progres halaman terpisah dari loading gambar; retry tanpa geser', 
     expect(comicSrc).toContain('aspectRatio: String(ratio)')
     expect(comicSrc).toContain('data-reader-control="page-retry"')
     expect(comicSrc).toContain('Coba lagi')
+    // P1: pesan inline memakai nomor halaman (1-based) dan menyertakan aksi
+    // dalam satu status yang sama, tepat di tempat halaman gagal.
+    expect(comicSrc).toContain('`Halaman ${pageNumber} gagal dimuat`')
+    expect(comicSrc).toContain('`${label} · Coba lagi`')
+    expect(comicSrc).toContain('pageNumber={pageIndex === undefined ? undefined : pageIndex + 1}')
+    // retry hanya gambar ini: cache-buster unik, tanpa reload chapter.
+    expect(comicSrc).toContain('setBuster(Date.now())')
   })
 })
 

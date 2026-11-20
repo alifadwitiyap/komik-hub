@@ -51,8 +51,8 @@ describe('P2 kontras teks', () => {
 })
 
 describe('P2 animasi — durasi & sifat sesuai rentang rencana', () => {
-  it('toolbar reader fade opacity 160ms, tanpa transform (tidak geser scroll)', () => {
-    expect(css).toMatch(/\.reader-chrome-fade\s*\{[^}]*transition:\s*opacity 160ms var\(--ease-out\)/)
+  it('toolbar reader fade opacity 140ms, tanpa transform (tidak geser scroll)', () => {
+    expect(css).toMatch(/\.reader-chrome-fade\s*\{[^}]*transition:\s*opacity 140ms var\(--ease-out\)/)
     expect(css).toContain(".reader-chrome-fade[data-hidden='true']")
     for (const src of [toolbarSrc, footerSrc]) {
       expect(src).toContain('reader-chrome-fade')
@@ -66,9 +66,14 @@ describe('P2 animasi — durasi & sifat sesuai rentang rencana', () => {
     }
   })
 
-  it('sheet slide-up 240ms ease-out (dalam rentang 200–240ms)', () => {
-    expect(css).toMatch(/\.sheet-panel\s*\{[^}]*transition:\s*transform 240ms var\(--ease-out\), opacity 240ms var\(--ease-out\)/)
+  it('sheet slide-up 200ms ease-drawer (dalam rentang 180–220ms), sticky header, tanpa touch-through', () => {
+    expect(css).toMatch(/\.sheet-panel\s*\{[^}]*transition:\s*transform 200ms var\(--ease-drawer\), opacity 200ms var\(--ease-out\)/)
     expect(css).toContain('@starting-style')
+    expect(css).toMatch(/\.sheet-panel\s*\{[^}]*pointer-events:\s*none/)
+    expect(css).toMatch(/@keyframes sheet-interactive\s*\{[^}]*to\s*\{\s*pointer-events:\s*auto/)
+    for (const src of [chapterSheetSrc, modeSheetSrc, settingsSheetSrc]) {
+      expect(src).toContain('sticky top-0')
+    }
     // fokus dikembalikan ke pembuka tanpa menggulir halaman (preventScroll)
     expect(chapterSheetSrc).toContain('opener?.focus({ preventScroll: true })')
     expect(modeSheetSrc).toContain('prev?.focus({ preventScroll: true })')
@@ -92,13 +97,27 @@ describe('P2 animasi — durasi & sifat sesuai rentang rencana', () => {
     const matches = comicImgSrc.match(/style=\{ratio \? \{ aspectRatio: String\(ratio\) \} : undefined\}/g) ?? []
     expect(matches.length).toBe(2)
     expect(comicImgSrc).toContain('motion-reduce:animate-none')
+    // P1: holder gagal tidak menghapus kotaknya — retry mengganti src gambar
+    // yang sama, jadi tinggi halaman tidak berubah.
+    expect(comicImgSrc).toContain('key={attempt}')
   })
 
-  it('reduced motion: semua animasi/transform dimatikan, transisi jadi 120ms', () => {
+  it('placeholder→gambar fade 120ms (100–140ms), cache instan, tanpa layout shift', () => {
+    expect(css).toMatch(/\.comic-image-fade\s*\{[^}]*transition:\s*opacity 120ms var\(--ease-out\)/)
+    expect(css).toMatch(/\.comic-image-fade\[data-instant='true'\]\s*\{[^}]*transition:\s*none/)
+    expect(comicImgSrc).toContain('comic-image-fade')
+    expect(comicImgSrc).toContain("data-instant={instantRef.current ? 'true' : undefined}")
+    expect(comicImgSrc).toContain('instantRef.current = true')
+    expect(comicImgSrc).toContain('el.complete && el.naturalWidth > 0')
+  })
+
+  it('reduced motion: semua motion jadi INSTAN (0ms), carousel autoplay stop via JS', () => {
     expect(css).toContain('@media (prefers-reduced-motion: reduce)')
     expect(css).toMatch(/animation:\s*none !important/)
-    expect(css).toMatch(/transition-duration:\s*120ms !important/)
+    expect(css).toMatch(/transition-property:\s*none !important/)
+    expect(css).toMatch(/transition-duration:\s*0ms !important/)
     expect(css).toMatch(/scroll-behavior:\s*auto !important/)
+    expect(css).toMatch(/\.sheet-panel\s*\{\s*pointer-events:\s*auto !important/)
   })
 })
 

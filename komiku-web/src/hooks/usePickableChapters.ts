@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { api, unifiedApi } from '../api'
 import { parseUnifiedKey } from '../readerSource'
+import { sortByChapterNumber } from '../chapterOrder'
 import type { Chapter } from '../types'
 
 /**
@@ -130,14 +131,5 @@ function legacyNumber(c: Chapter): string {
  * menaruhnya di paling atas daftar — jelas salah.
  */
 function sortAscending(list: PickableChapter[]): PickableChapter[] {
-  return [...list].sort((a, b) => {
-    const aEmpty = a.number.trim() === ''
-    const bEmpty = b.number.trim() === ''
-    if (aEmpty !== bEmpty) return aEmpty ? 1 : -1
-    if (aEmpty && bEmpty) return a.title.localeCompare(b.title)
-    const na = Number(a.number)
-    const nb = Number(b.number)
-    if (Number.isFinite(na) && Number.isFinite(nb) && na !== nb) return na - nb
-    return a.number.localeCompare(b.number, undefined, { numeric: true })
-  })
+  return sortByChapterNumber(list, (c) => c.number, 'lama')
 }

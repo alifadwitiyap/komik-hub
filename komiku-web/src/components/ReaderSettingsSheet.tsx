@@ -75,7 +75,7 @@ export default function ReaderSettingsSheet({
         onClick={(e) => e.stopPropagation()}
         onKeyDown={trapFocus}
       >
-        <div className="flex shrink-0 items-center justify-between border-b border-ink-800 px-4 py-3">
+        <div className="sticky top-0 z-20 flex shrink-0 items-center justify-between bg-ink-900 px-4 py-3">
           <h2 className="font-display text-[15px] font-bold text-ink-100">Preferensi</h2>
           <button type="button" onClick={onClose} aria-label="Tutup" className="grid size-11 place-items-center rounded-xl text-ink-500 active:bg-ink-800 active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber">
             <IconXmark className="size-4" />

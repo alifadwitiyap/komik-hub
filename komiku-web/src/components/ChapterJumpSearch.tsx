@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { useReadMarks } from '../hooks/useReadMarks'
 import { chapterNumberOf } from '../readMarks'
 import { readerHref, unifiedKey } from '../readerSource'
+import { sortByChapterNumber } from '../chapterOrder'
 import type { Chapter, UnifiedChapterOut } from '../types'
 import { sourceLabel } from './SourceBadge'
 
@@ -69,16 +70,7 @@ export function matchChapterNumber(number: string, query: string): boolean {
  * di awal untuk 'terbaru' sebelum entri bernomor.
  */
 export function sortChapterRows<T extends { number: string }>(rows: T[], order: 'lama' | 'terbaru'): T[] {
-  const sign = order === 'lama' ? 1 : -1
-  return [...rows].sort((a, b) => {
-    const an = Number(a.number)
-    const bn = Number(b.number)
-    const aNum = Number.isFinite(an) && a.number.trim() !== ''
-    const bNum = Number.isFinite(bn) && b.number.trim() !== ''
-    if (aNum !== bNum) return sign * (aNum ? -1 : 1)
-    if (aNum && bNum && an !== bn) return sign * (an - bn)
-    return sign * a.number.localeCompare(b.number, 'id', { numeric: true })
-  })
+  return sortByChapterNumber(rows, (r) => r.number, order)
 }
 
 /** Bangun baris + href reader. Nomor tidak pernah diparse. */

@@ -11,6 +11,7 @@ import HeartButton from '../components/HeartButton'
 import { useProgress } from '../hooks/useProgress'
 import { useDownloadRun, useOffline, retryRun } from '../hooks/useDownloadRun'
 import { useSeriesResume } from '../hooks/useSeriesResume'
+import { sortByChapterNumber } from '../chapterOrder'
 import { useReadMarks } from '../hooks/useReadMarks'
 import { rememberSeriesLite, readerHref } from '../readerSource'
 import {
@@ -128,16 +129,9 @@ export default function SeriesUnified() {
     }
   }, [handle, reloadKey])
 
-  // urut nomor DESC (terbaru dulu). Nomor bisa "1195", "1.5", "extra-9" —
-  // bandingkan numerik kalau bisa, jatuh ke string supaya tidak pernah NaN.
+  // Satu aturan urutan dipakai daftar, tombol mulai, dan lanjut/next.
   const chapters = useMemo(
-    () =>
-      [...(data?.chapters ?? [])].sort((a, b) => {
-        const na = Number(a.number)
-        const nb = Number(b.number)
-        if (Number.isFinite(na) && Number.isFinite(nb) && na !== nb) return nb - na
-        return a.number.localeCompare(b.number)
-      }),
+    () => sortByChapterNumber(data?.chapters ?? [], (c) => c.number, 'terbaru'),
     [data],
   )
   // Simpan nomor chapter, bukan indeks: chapter baru dapat muncul selama login.

@@ -199,18 +199,22 @@ body {
   display: none;
 }
 
-/* Reduced motion SELEKTIF: animasi/gerak (transform, translate) dimatikan,
-   tapi feedback warna & opacity jangan ikut mati supaya state masih terbaca.
-   !important hanya dipakai di blok ini untuk menimpa utilitas Tailwind. */
+/* Reduced motion: everything motion-related becomes INSTANT. Carousel
+   autoplay is stopped in Home.tsx via matchMedia; CSS only has to kill
+   transitions/animations and smooth scrolling. !important is confined to
+   this block so utility classes cannot reintroduce motion. */
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
   *::after {
     animation: none !important;
-    transition-property: color, background-color, border-color, opacity,
-      box-shadow !important;
-    transition-duration: 120ms !important;
+    transition-property: none !important;
+    transition-duration: 0ms !important;
     scroll-behavior: auto !important;
+  }
+  /* animation:none would otherwise leave the sheet permanently non-interactive. */
+  .sheet-panel {
+    pointer-events: auto !important;
   }
 }
 
@@ -309,16 +313,27 @@ body {
   }
 }
 
-/* Fade toolbar reader — opacity SAJA (140–180 ms), tanpa transform/translate
-   supaya posisi gulir & panel yang terlihat tidak bergeser. Pakai kelas ini
-   sebagai pengganti `transition-transform duration-200` pada chrome reader.
-   aria-hidden/inert tetap dikendalikan komponen seperti sebelumnya. */
+/* Image placeholder→loaded: opacity SAJA 120ms (100–140ms), tanpa layout
+   shift — rasio sudah dikunci holder. Gambar cache memakai data-instant. */
+.comic-image-fade {
+  transition: opacity 120ms var(--ease-out);
+}
+.comic-image-fade[data-instant='true'] {
+  transition: none;
+}
+
+/* Reader chrome: opacity SAJA, 140ms (rentang 120–160ms), tanpa transform/
+   translate supaya posisi gulir & gambar tidak bergeser saat tap. */
 .reader-chrome-fade {
   opacity: 1;
-  transition: opacity 160ms var(--ease-out);
+  transition: opacity 140ms var(--ease-out);
 }
 .reader-chrome-fade[data-hidden='true'] {
   opacity: 0;
+}
+/* Tap layer tidak boleh ikut berpindah/tergeser saat chrome fade. */
+.reader-tap-layer {
+  touch-action: pan-y;
 }
 
 /* Konfirmasi favorit: isi + satu kali pembesaran ~1,08× selama 150 ms.
@@ -334,12 +349,20 @@ body {
 }
 
 /* Bottom-sheet: panel naik dari bawah layar + fade saat mount. Overlay
-   sengaja tidak dianimasi (langsung muncul). @starting-style memberi nilai
-   awal tanpa JS/state; saat komponen di-unmount tidak ada animasi keluar.
-   240 ms = batas atas rentang 200–240 ms dari rencana, ease-out di akhir. */
+   langsung muncul; @starting-style memberi nilai awal tanpa JS/state. Tutup
+   via Back/escape langsung unmount (tanpa animasi keluar). Panel tidak
+   menerima input selama 200ms masuk supaya tap tidak menembus ke konten
+   yang masih bergeser; backdrop tetap memblokir area di luar panel. */
 .sheet-panel {
   transform: translateY(0);
-  transition: transform 240ms var(--ease-out), opacity 240ms var(--ease-out);
+  opacity: 1;
+  transition: transform 200ms var(--ease-drawer), opacity 200ms var(--ease-out);
+  pointer-events: none;
+  animation: sheet-interactive 200ms step-end forwards;
+}
+
+@keyframes sheet-interactive {
+  to { pointer-events: auto; }
 }
 
 @starting-style {
@@ -347,6 +370,16 @@ body {
     transform: translateY(100%);
     opacity: 0.4;
   }
+}
+
+/* Marathon: crossfade label chapter saat boundary aktif berubah. Hanya
+   opacity (120ms); tidak ada transform supaya posisi gambar tidak bergeser. */
+@keyframes chapter-label-fade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+.marathon-chapter-label-switch {
+  animation: chapter-label-fade 120ms var(--ease-out) both;
 }
 
 /* Floating download-range dock: non-modal action dock tepat di atas

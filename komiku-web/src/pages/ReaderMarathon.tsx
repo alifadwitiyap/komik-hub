@@ -12,6 +12,7 @@ import ReaderToolbar from '../components/ReaderToolbar'
 import SourceBadge from '../components/SourceBadge'
 import { imgSrc, imgUrl, mountAheadPx, slowLink } from '../imgUrl'
 import { tapHitsReaderControl } from '../readerControls'
+import { createTapTracker } from '../tapTracker'
 import { useReaderSettings } from '../hooks/useReaderSettings'
 import { useChromeOnScroll } from '../hooks/useChromeOnScroll'
 import { useAutoFullscreen } from '../hooks/useAutoFullscreen'
@@ -116,8 +117,7 @@ export default function ReaderMarathon() {
   const [nextLoadFailed, setNextLoadFailed] = useState(false)
   /** sedang mengambil chapter berikutnya — untuk status "memuat" di dasar */
   const [loadingNext, setLoadingNext] = useState(false)
-  /** awal gesture tap — membedakan tap dari scroll (sama seperti Reader) */
-  const tapStart = useRef<{ x: number; y: number; t: number } | null>(null)
+  const tap = createTapTracker(tapHitsReaderControl)
   const bottomRef = useRef<HTMLDivElement | null>(null)
   /** chapterId yang sudah/sedang di-fetch — cegah fetch ganda & loop abort */
   const fetchedRef = useRef<Set<string>>(new Set())
@@ -509,6 +509,18 @@ export default function ReaderMarathon() {
   }, [blocks])
 
   const curBlock = blocks[readBlock] ?? blocks[0]
+  // Crossfade HANYA saat blok aktif berganti chapter (reader melintasi
+  // boundary), bukan saat `pushBlock` menambah chapter di latar belakang.
+  const activeChapterId = curBlock?.chapterId ?? null
+  const prevActiveChapterRef = useRef(activeChapterId)
+  const [crossedChapter, setCrossedChapter] = useState(false)
+  useEffect(() => {
+    if (prevActiveChapterRef.current === activeChapterId) return
+    prevActiveChapterRef.current = activeChapterId
+    setCrossedChapter(true)
+    const t = setTimeout(() => setCrossedChapter(false), 120)
+    return () => clearTimeout(t)
+  }, [activeChapterId])
   const curLen = curBlock?.images.length ?? 0
   const { gotoReader } = useModeSwitch(chapterId, curBlock)
   // Status muat maraton: belum semua gambar blok aktif selesai. Label ini
@@ -654,24 +666,17 @@ export default function ReaderMarathon() {
       <div
         aria-hidden="true"
         data-testid="marathon-tap-layer"
+        className="reader-tap-layer fixed inset-0 z-10 touch-manipulation"
         onPointerDown={(e) => {
-          tapStart.current = { x: e.clientX, y: e.clientY, t: performance.now() }
+          tap.down(e.pointerId, e.pointerType, e.clientX, e.clientY, performance.now())
         }}
-        onPointerCancel={() => {
-          tapStart.current = null
-        }}
+        onPointerUp={(e) => tap.up(e.pointerId)}
+        onPointerCancel={(e) => tap.cancel(e.pointerId)}
         onClick={(e) => {
-          const start = tapStart.current
-          tapStart.current = null
-          if (start) {
-            const moved = Math.hypot(e.clientX - start.x, e.clientY - start.y)
-            if (moved > 12 || performance.now() - start.t > 900) return
-          }
-          if (tapHitsReaderControl(e.clientX, e.clientY)) return
+          if (!tap.shouldToggle(e.clientX, e.clientY, performance.now())) return
           // Tap area baca hanya toggle chrome. Fullscreen HANYA lewat tombol.
           chrome.toggle()
         }}
-        className="fixed inset-0 z-10 touch-manipulation"
       />
 
       <ReaderFullscreenButton
@@ -792,7 +797,12 @@ export default function ReaderMarathon() {
             <div key={b.chapterId}>
               {bi > 0 && (
                 <p
+                  data-marathon-chapter-label={b.chapterId}
                   className={`my-4 text-center text-[12px] font-medium ${
+                    crossedChapter && bi === readBlock
+                      ? 'marathon-chapter-label-switch '
+                      : ''
+                  }${
                     settings.nightShift ? 'text-reader-muted-night' : 'text-reader-muted'
                   }`}
                 >
@@ -811,13 +821,17 @@ export default function ReaderMarathon() {
                   pageIndex={i}
                   // reserve tinggi sebelum decode: dimensi asli dari server
                   knownRatio={
-                    b.imageSizes?.[i] && b.imageSizes[i][1] > 0
+                    b.imageSizes?.[i] && b.imageSizes[i][0] > 0 && b.imageSizes[i][1] > 0
                       ? b.imageSizes[i][0] / b.imageSizes[i][1]
                       : undefined
                   }
                   // hanya halaman pertama blok PERTAMA yang langsung diminta;
                   // sisanya menunggu dekat layar (lihat ComicImage.mountAhead)
                   eager={bi === 0 && i === 0}
+                  // Marathon punya banyak chapter dalam satu DOM: halaman di
+                  // chapter berikutnya yang ikut mount tidak boleh menyita slot
+                  // antrean dari panel yang sedang dibaca.
+                  nearViewport={bi === readBlock && Math.abs(i + 1 - readInBlock) <= 2}
                   mountAhead={mountAhead}
                   onLoad={() =>
                     setTailIdx((n) => (start + i === n ? n + 1 : Math.max(n, start + i)))

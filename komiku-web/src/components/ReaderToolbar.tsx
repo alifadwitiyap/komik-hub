@@ -18,6 +18,8 @@ interface ReaderToolbarProps {
   /** 0..1 — kalau diisi, garis progres 2px ditempel di tepi bawah header
    *  (bukan elemen fixed terpisah yang bisa menimpa baris meta). */
   progress?: number | null
+  /** Status baca eksplisit (diperlihatkan di baris meta). */
+  status?: string | null
   /** badge sumber (muncul hanya untuk manga non-komiku) */
   badge?: React.ReactNode
   /**
@@ -49,6 +51,7 @@ export default function ReaderToolbar({
   heart,
   visible = true,
   progress,
+  status,
 }: ReaderToolbarProps) {
   // Sama node buat dua render-mode (link aktif / tidak). Judul + baris meta
   // duduk dalam satu target sentuh supaya seluruh area bisa dipencet untuk
@@ -68,6 +71,11 @@ export default function ReaderToolbar({
           <p className="min-w-0 truncate text-[11px] tabular-nums leading-tight text-white/85 [text-shadow:0_1px_2px_rgba(0,0,0,0.7)]">
             {subtitle}
           </p>
+        )}
+        {status && (
+          <span className="shrink-0 rounded-[5px] bg-white/15 px-1.5 py-[2px] text-[10px] font-semibold leading-tight text-white/90 [text-shadow:0_1px_2px_rgba(0,0,0,0.7)]">
+            {status}
+          </span>
         )}
         {/* Status muat gambar punya node sendiri + role=status: pembaca layar
             mendengar "Memuat gambar…" tanpa mengganti label posisi baca. */}

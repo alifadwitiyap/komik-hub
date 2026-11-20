@@ -3,6 +3,7 @@ import { getUser } from '../account'
 import { progressApi } from '../api'
 import { toChapterId } from '../readerSource'
 import { usePerAccountLocalStorage } from './usePerAccountLocalStorage'
+import type { ReadingStatus } from '../readingStatus'
 
 export interface ProgressEntry {
   seriesId: number | string
@@ -34,6 +35,8 @@ export interface ProgressEntry {
   offsetRatio?: number
   /** Mode baca sesi terakhir. Entri lama tanpa mode dianggap 'normal'. */
   mode?: 'normal' | 'marathon'
+  /** Status baca eksplisit. Entri lama tanpa status dianggap dibuka. */
+  status?: ReadingStatus
   at: number
 }
 

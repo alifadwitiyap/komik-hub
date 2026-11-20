@@ -110,31 +110,39 @@ function PageControlLayer({
 
 function FixedRetry({
   targetRef,
+  pageNumber,
   onRetry,
 }: {
   targetRef: React.RefObject<HTMLDivElement | null>
+  pageNumber: number | undefined
   onRetry: () => void
 }) {
+  const label = pageNumber ? `Halaman ${pageNumber} gagal dimuat` : 'Halaman gagal dimuat'
+  const inlineLabel = `${label} · Coba lagi`
   return (
     <PageControlLayer
       targetRef={targetRef}
       minVisible={190}
       className="flex-col gap-3 px-4 text-center"
     >
-      <p
+      <div
         role="status"
-        className="rounded-lg bg-black/70 px-3 py-1.5 text-[13px] font-medium text-white"
+        aria-label={inlineLabel}
+        className="flex flex-wrap items-center justify-center gap-1"
       >
-        Halaman gagal dimuat.
-      </p>
-      <button
-        type="button"
-        data-reader-control="page-retry"
-        onClick={onRetry}
-        className="pointer-events-auto inline-flex min-h-11 items-center justify-center rounded-xl border border-brand-amber-dim bg-white/90 px-4 text-[13px] font-bold text-brand-amber shadow-md transition-colors active:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber"
-      >
-        Coba lagi
-      </button>
+        <p className="rounded-lg bg-black/70 px-3 py-1.5 text-[13px] font-medium text-white">
+          {label}
+        </p>
+        <span aria-hidden="true">{' · '}</span>
+        <button
+          type="button"
+          data-reader-control="page-retry"
+          onClick={onRetry}
+          className="pointer-events-auto inline-flex min-h-11 items-center justify-center rounded-xl border border-brand-amber-dim bg-white/90 px-4 text-[13px] font-bold text-brand-amber shadow-md transition-colors active:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber"
+        >
+          Coba lagi
+        </button>
+      </div>
     </PageControlLayer>
   )
 }
@@ -236,6 +244,8 @@ export default function ComicImage({
   const url = imgUrl(src)
   const [failed, setFailed] = useState(false)
   const [shown, setShown] = useState(false)
+  /** cached decode → tampil instan (tanpa fade 120ms). */
+  const instantRef = useRef(false)
   const [attempt, setAttempt] = useState(0)
   // `stuck` = gambar belum settle dalam `STUCK_MS` sejak byte mulai diminta,
   // padahal bukan gagal. Memunculkan tombol refresh manual per-halaman.
@@ -286,6 +296,7 @@ export default function ComicImage({
   useEffect(() => {
     setFailed(false)
     setShown(false)
+    instantRef.current = false
     setStuck(false)
     setBuster(0)
     setMounted(!!eager)
@@ -335,7 +346,7 @@ export default function ComicImage({
   // halaman yang sedang dibaca selesai. Lihat `imgQueue.ts` untuk angkanya.
   useEffect(() => {
     if (!mounted) return
-    const release = acquireImageSlot(eager ? 0 : 1, () => {
+    const release = acquireImageSlot(eager ? 0 : nearViewport ? 2 : 1, () => {
       startedAtRef.current = performance.now()
       setStarted(true)
     })
@@ -345,7 +356,9 @@ export default function ComicImage({
       release()
     }
     // `started` sengaja BUKAN dependensi: kalau ikut, cleanup-nya akan
-    // melepas slot tepat setelah slot itu diberikan.
+    // melepas slot tepat setelah slot itu diberikan. `nearViewport` juga sengaja
+    // tidak ikut: prioritas dinilai saat slot diminta (scroll berikutnya sudah
+    // punya anchor halaman sendiri).
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mounted, eager, attempt])
 
@@ -365,6 +378,7 @@ export default function ComicImage({
     if (failed || !started) return
     const el = ref.current
     if (el && el.complete && el.naturalWidth > 0) {
+      instantRef.current = true // sudah ter-decode dari cache → cepat, tanpa fade
       rememberAspect(url, el.naturalWidth, el.naturalHeight)
       setMeasured({ url, ratio: el.naturalWidth / el.naturalHeight })
       setShown(true)
@@ -389,8 +403,13 @@ export default function ComicImage({
         {createPortal(
           <FixedRetry
             targetRef={slotRef}
+            pageNumber={pageIndex === undefined ? undefined : pageIndex + 1}
             onRetry={() => {
+              // Retry HANYA gambar ini: keluar dari tampilan gagal, ganti
+              // kunci <img> + buster cache, dan minta slot baru. Tidak
+              // menyentuh state chapter/scroll/pages.
               setFailed(false)
+              setBuster(Date.now())
               setAttempt((a) => a + 1)
             }}
           />,
@@ -421,7 +440,7 @@ export default function ComicImage({
       {started && lqip && (
         <div
           aria-hidden="true"
-          className="pointer-events-none absolute inset-0 bg-cover bg-center blur-md transition-opacity duration-200"
+          className="comic-image-fade pointer-events-none absolute inset-0 bg-cover bg-center blur-md"
           style={{ backgroundImage: `url(${lqip})`, opacity: shown ? 0 : 1 }}
         />
       )}
@@ -508,11 +527,10 @@ export default function ComicImage({
         settledRef.current?.(false)
         settle()
       }}
-      // Tanpa latar: selama gambar belum decode, yang terlihat adalah
-      // permukaan baca (putih / #131313 saat night shift) — bukan pita abu.
-      // Tanpa `duration-200`: gambar yang sudah ter-decode langsung
-      // `opacity-100` (TTVI tidak menunggu fade 200ms yang sia-sia).
-      className={`select-none ${shown ? 'opacity-100' : 'opacity-0'} ${className ?? ''}`}
+      // Fade 120ms (`comic-image-fade`) HANYA untuk decode jaringan; cache
+      // (instantRef) lewat transisi. Rasio di-kunci holder → tanpa layout shift.
+      data-instant={instantRef.current ? 'true' : undefined}
+      className={`comic-image-fade select-none ${shown ? 'opacity-100' : 'opacity-0'} ${className ?? ''}`}
       draggable={false}
     />
     </div>

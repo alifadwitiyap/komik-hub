@@ -1,6 +1,7 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { usePickableChapters, type PickableChapter } from '../hooks/usePickableChapters'
+import { usePickableChapters } from '../hooks/usePickableChapters'
+import { sortByChapterNumber } from '../chapterOrder'
 import { useReadMarks } from '../hooks/useReadMarks'
 import { marathonHref, readerHref } from '../readerSource'
 
@@ -181,19 +182,10 @@ export default function ChapterPickerSheet({
   // "terbaru" = chapter dengan nomor TERBESAR dari daftar PENUH (bukan hasil
   // filter, bukan sekadar elemen terakhir — chapter tanpa nomor di-sort ke
   // akhir, jadi elemen terakhir belum tentu yang terbaru).
-  const latest = useMemo(() => {
-    let best: PickableChapter | null = null
-    let bestN = -Infinity
-    for (const c of chapters) {
-      const n = Number(c.number)
-      if (!Number.isFinite(n)) continue
-      if (n > bestN) {
-        bestN = n
-        best = c
-      }
-    }
-    return best
-  }, [chapters])
+  const latest = useMemo(
+    () => sortByChapterNumber(chapters, (c) => c.number, 'terbaru')[0] ?? null,
+    [chapters],
+  )
 
   if (!open) return null
 
@@ -216,7 +208,7 @@ export default function ChapterPickerSheet({
         className="sheet-panel flex max-h-[85dvh] w-full max-w-md flex-col overflow-hidden rounded-t-2xl border-t border-white/10 bg-night-dark/97 backdrop-blur"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex shrink-0 items-start gap-3 px-4 pb-3 pt-3">
+        <div className="sticky top-0 z-20 flex shrink-0 items-start gap-3 bg-night-dark/97 px-4 pb-3 pt-3 backdrop-blur">
           <div className="min-w-0 flex-1">
             <h2 id="chapter-picker-title" className="font-display text-[15px] font-bold text-white">
               Pilih Chapter

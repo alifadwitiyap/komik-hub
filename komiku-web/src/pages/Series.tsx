@@ -18,6 +18,7 @@ import HeartButton from '../components/HeartButton'
 import { useDownloadRun, useOffline, retryRun } from '../hooks/useDownloadRun'
 import { friendlyError } from '../downloadBatch'
 import { useSeriesResume } from '../hooks/useSeriesResume'
+import { sortByChapterNumber } from '../chapterOrder'
 import { chapterNumberOf } from '../readMarks'
 import { useReadMarks } from '../hooks/useReadMarks'
 import { marathonHref, readerHref } from '../readerSource'
@@ -187,9 +188,14 @@ export default function Series() {
   )
   if (!data) return <Spinner label="Memuat manga…" />
 
-  const { series: s, chapters } = data
-  // chapters terurut TERBARU -> TERLAMA. Untuk maraton kita mulai dari paling awal
-  // supaya auto-advance benar-benar berjalan, bukan langsung ketemu "Tuntas".
+  const { series: s, chapters: rawChapters } = data
+  // chapters terurut TERBARU -> TERLAMA. Satu aturan yang sama dipakai tombol
+  // mulai, daftar, dan lanjut/next. Maraton mulai dari paling awal supaya
+  // auto-advance benar-benar berjalan, bukan langsung ketemu "Tuntas".
+  const chapters = useMemo(
+    () => sortByChapterNumber(rawChapters, (c) => chapterNumberOf(c) ?? '', 'terbaru'),
+    [rawChapters],
+  )
   const oldest = chapters.length > 0 ? chapters[chapters.length - 1] : null
   // rentang terpilih membentang > 40 chapter: perluas daftar supaya yang
   // terpilih benar-benar terlihat (bukan cuma sebagian). Tetap terpancar

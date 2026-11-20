@@ -14,6 +14,7 @@ import SourceBadge from '../components/SourceBadge'
 import { imgSrc, imgUrl, mountAheadPx, slowLink } from '../imgUrl'
 import { nextFillFrontier } from '../fillAhead'
 import { tapHitsReaderControl } from '../readerControls'
+import { createTapTracker } from '../tapTracker'
 import { downloadChapterImages } from '../chapterOffline'
 import { saveGeneratedPdf } from '../downloadBatch'
 import { unifiedApi } from '../api'
@@ -26,6 +27,7 @@ import { Empty } from '../App'
 import { useProgress } from '../hooks/useProgress'
 import { useModeSwitch } from '../hooks/useModeSwitch'
 import { didOpenChapter, rakMangaOf } from '../readingEvents'
+import { readingStatusForPage, visiblePageProgress, type ReadingStatus } from '../readingStatus'
 export { rakMangaOf }
 import { anchorFrom, usableAnchor } from '../pageMemory'
 import type { ReadingAnchor } from '../pageMemory'
@@ -75,6 +77,10 @@ export default function Reader() {
   /** Halaman aktif untuk label "Hal. X dari N" — diisi dari efek anchor yang
    *  sama dengan penulisan progres (sumber tunggal, bukan hitungan baru). */
   const [activePage, setActivePage] = useState(1)
+  /** Status baca eksplisit — tidak pernah ditebak dari gambar termuat. */
+  const [readingStatus, setReadingStatus] = useState<ReadingStatus>('Sedang dibaca')
+  /** true kalau viewport sudah menyentuh bawah halaman terakhir. */
+  const atChapterEnd = useRef(false)
   // chrome (toolbar + footer) ikut arah scroll; selama restore anchor
   // (`pending.current`) berjalan scroll programatik TIDAK memicunya
   const chrome = useChromeOnScroll(() => pending.current !== null)
@@ -84,8 +90,7 @@ export default function Reader() {
   const [sheetOpen, setSheetOpen] = useState(false)
   const [chapterPickerOpen, setChapterPickerOpen] = useState(false)
   const [toast, setToast] = useState<string | null>(null)
-  /** awal gesture tap di area baca — dipakai membedakan tap dari scroll/drag */
-  const tapStart = useRef<{ x: number; y: number; t: number } | null>(null)
+  const tap = createTapTracker(tapHitsReaderControl)
   const { save, recent } = useProgress()
   const { gotoMarathon } = useModeSwitch(chapterId)
   const navigate = useNavigate()
@@ -116,6 +121,8 @@ export default function Reader() {
     prefetchedNext.current = false
     setBgFillIdx(0)
     setActivePage(1)
+    setReadingStatus('Sedang dibaca')
+    atChapterEnd.current = false
     // React Router v7 TIDAK reset scroll saat rute berubah → chapter baru
     // akan tampil di posisi scroll chapter lama (bawah). Scroll ke atas
     // SEBELUM fetch; kalau chapter ini punya anchor tersimpan, efek restore
@@ -170,7 +177,7 @@ export default function Reader() {
   const knownRatios = useMemo(
     () =>
       (data?.image_sizes ?? []).map((s) =>
-        s && s[1] > 0 ? s[0] / s[1] : undefined,
+        s && s[0] > 0 && s[1] > 0 ? s[0] / s[1] : undefined,
       ),
     [data],
   )
@@ -463,6 +470,14 @@ export default function Reader() {
       const pageIds = geometry.map((g) => g.pageId)
       const pageTops = geometry.map((g) => g.top)
       const pageHeights = geometry.map((g) => g.height)
+      // Bawah halaman terakhir = chapter benar-benar habis (bukan sekadar
+      // gambar terakhir termuat / halaman terakhir terlihat).
+      const lastBottom = pageTops.length
+        ? pageTops[pageTops.length - 1] + pageHeights[pageHeights.length - 1]
+        : Number.POSITIVE_INFINITY
+      atChapterEnd.current =
+        pageIds.length > 0 &&
+        window.scrollY + window.innerHeight >= lastBottom - 2
       const anchor = anchorFrom(
         chapterId,
         pageIds,
@@ -480,19 +495,23 @@ export default function Reader() {
       const idx = images.findIndex((s) => imgUrl(s) === anchor.pageId)
       // Satu anchor → satu sumber kebenaran untuk progres DAN label halaman.
       setActivePage(idx >= 0 ? idx + 1 : 1)
+      setReadingStatus(readingStatusForPage(idx + 1, images.length, atChapterEnd.current))
       save({
         seriesId: data.series?.id ?? chapterId,
         seriesTitle: data.series?.title ?? null,
         chapterId,
         chapterName: data.chapter.name,
         page: idx >= 0 ? idx : 0,
-        progress: idx >= 0 ? (idx + 1) / images.length : 0,
+        progress: visiblePageProgress(idx + 1, images.length),
         pageId: anchor.pageId,
         offsetRatio: anchor.offsetRatio,
         // A2 — sumber & handle pelayan supaya series page bisa kirim
         // last_source, dan reader tahu kalau sumber pindah.
         source: activeSource,
         handle: activeHandle,
+        // Status baca eksplisit: dibuka = "Sedang dibaca"; hanya "Selesai"
+        // kalau halaman terakhir benar-benar habis digulir.
+        status: readingStatusForPage(idx + 1, images.length, atChapterEnd.current),
         // Mode baca ikut disimpan supaya Beranda/Rak membuka kembali reader
         // yang sama (normal vs maraton) dengan posisi halaman yang sama.
         mode: 'normal',
@@ -644,27 +663,18 @@ export default function Reader() {
       <div
         aria-hidden="true"
         data-testid="reader-tap-layer"
+        className="reader-tap-layer fixed inset-0 z-10 touch-manipulation"
         onPointerDown={(e) => {
-          tapStart.current = { x: e.clientX, y: e.clientY, t: performance.now() }
+          tap.down(e.pointerId, e.pointerType, e.clientX, e.clientY, performance.now())
         }}
-        onPointerCancel={() => {
-          tapStart.current = null
-        }}
+        onPointerUp={(e) => tap.up(e.pointerId)}
+        onPointerCancel={(e) => tap.cancel(e.pointerId)}
         onClick={(e) => {
-          const start = tapStart.current
-          tapStart.current = null
-          if (start) {
-            const moved = Math.hypot(e.clientX - start.x, e.clientY - start.y)
-            if (moved > 12 || performance.now() - start.t > 900) return
-          }
-          // Tap pada kontrol halaman (lingkaran "Muat ulang"/"Coba lagi")
-          // BUKAN tap area baca: jangan toggle chrome.
-          if (tapHitsReaderControl(e.clientX, e.clientY)) return
+          if (!tap.shouldToggle(e.clientX, e.clientY, performance.now())) return
           // Tap area baca hanya toggle chrome (toolbar/footer). Fullscreen
           // HANYA lewat tombol layar penuh — bukan dari tap.
           chrome.toggle()
         }}
-        className="fixed inset-0 z-10 touch-manipulation"
       />
       {/**
        * Tombol layar penuh manual — jalur eksplisit (fallback iOS / saat
@@ -726,6 +736,8 @@ export default function Reader() {
         title={chapter.name}
         subtitle={pageStatus}
         loadingLabel={loadingImages ? 'Memuat gambar…' : null}
+        progress={visiblePageProgress(activePage, images.length)}
+        status={readingStatus}
         onBack={() => navigate(seriesHref(seriesId) ?? '/')}
         titleHref={seriesHref(seriesId)}
         onHome={() => navigate('/')}
@@ -827,8 +839,10 @@ export default function Reader() {
               // eager + margin lazy bawaan Chrome membuat 9 gambar / 1,7 MB
               // berebut, dan halaman yang sedang dibaca kalah (53 detik di 3G).
               eager={i < 2}
-              // TODO(FE-A): kirim prop nearViewport={Math.abs(i - currentVisibleIndex) <= 2}
-              // ke ComicImage untuk halaman dekat layar — belum terdefinisi di ComicImage.tsx.
+              // Halaman aktif (anchor progres) adalah halaman yang sedang
+              // dibaca. Tandai ±2 halaman sebagai dekat viewport supaya
+              // imgQueue mendahulukannya dari halaman fill-ahead (B4).
+              nearViewport={Math.abs(i + 1 - activePage) <= 2}
               // B2: horizon adaptif saat scroll (mountAhead tumbuh 3x).
               // B4: halaman di belakang frontier fill-ahead dipaksa mount dengan
               // mountAhead raksasa → antre di imgQueue (satu-satu) hingga memuat.
