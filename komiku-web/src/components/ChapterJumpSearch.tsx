@@ -90,6 +90,41 @@ export function toChapterRows(chapters: ChapterJumpItem[]): Row[] {
   })
 }
 
+/**
+ * Filter chapter mentah untuk daftar DATAR di halaman detail.
+ *
+ * Index asli dikembalikan supaya seleksi unduhan (yang memakai index array
+ * `chapters`) tetap menunjuk baris yang benar walau query menyembunyikan
+ * sebagian baris. Nomor TIDAK dinormalisasi: `1189.2` dan `811 Fix` dicocokkan
+ * apa adanya lewat `matchChapterNumber`.
+ */
+export function filterChapterIndices<T extends ChapterJumpItem>(
+  chapters: readonly T[],
+  query: string,
+): { chapter: T; index: number }[] {
+  const rows = chapters.map((chapter, index) => ({ chapter, index }))
+  const needle = query.trim()
+  if (!needle) return rows
+  return rows.filter(({ chapter }) => matchChapterNumber(chapterNumberRaw(chapter), needle))
+}
+
+/** History browser punya `idx > 0` hanya kalau benar-benar ada halaman sebelumnya. */
+export function canGoBack(historyState: unknown): boolean {
+  const idx = (historyState as { idx?: unknown } | null)?.idx
+  return typeof idx === 'number' && idx > 0
+}
+
+/** Tujuan tombol "Kembali": state.from → history lokal → Beranda. */
+export function resolveBackTarget(
+  from: unknown,
+  hasHistory: boolean,
+): { back: true } | { back: false; to: string } {
+  if (typeof from === 'string' && from.startsWith('/') && !from.startsWith('//')) {
+    return { back: false, to: from }
+  }
+  return hasHistory ? { back: true } : { back: false, to: '/' }
+}
+
 export default function ChapterJumpSearch({
   chapters,
   titleKey,

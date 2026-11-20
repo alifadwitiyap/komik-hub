@@ -26,7 +26,11 @@ import { RangeSelectBar, useRangeSelection, outOfRangeCount } from '../component
 import { doneNumbers } from '../downloadHistory'
 import { friendlyError } from '../downloadBatch'
 import { ensureDownloadReturn } from '../downloadReturn'
-import ChapterJumpSearch from '../components/ChapterJumpSearch'
+import {
+  canGoBack,
+  filterChapterIndices,
+  resolveBackTarget,
+} from '../components/ChapterJumpSearch'
 
 /**
  * Detail manga unified (route /manga/:handle, handle 'sumber:native_id').
@@ -52,6 +56,7 @@ export default function SeriesUnified() {
   const [reloadKey, setReloadKey] = useState(0)
   const [error, setError] = useState<string | null>(null)
   const [showAll, setShowAll] = useState(false)
+  const [chapterQuery, setChapterQuery] = useState('')
   const { recent } = useProgress()
   // --- unduh PDF mode range (2-tap rentang) --------------------------------
   const [pickMode, setPickMode] = useState(false)
@@ -78,6 +83,15 @@ export default function SeriesUnified() {
   const range = useRangeSelection(data?.chapters.length ?? 0)
   const navigate = useNavigate()
   const location = useLocation()
+  /** Kembali ke asal (state.from / history), bukan selalu Beranda. */
+  const goBack = () => {
+    const target = resolveBackTarget(
+      (location.state as { from?: unknown } | null)?.from,
+      canGoBack(window.history.state),
+    )
+    if (target.back) navigate(-1)
+    else navigate(target.to)
+  }
   const downloadTriggerRef = useRef<HTMLButtonElement>(null)
   const wasPickingRef = useRef(false)
   const selectionKey = `komik:download-selection:${handle}`
@@ -177,8 +191,9 @@ export default function SeriesUnified() {
   const { resumeKey, marathonPos, resumeHref, marathonHref: marathonLink, label, sourceNotice } =
     useSeriesResume(handle, undefined, data?.representative_source ?? handle.split(':')[0] ?? null)
 
-  // Range mengikuti URUTAN TAMPIL, dan `visible` selalu potongan awal `chapters`
-  // → index baris aman dipakai walau daftar dipotong 40.
+  // Range mengikuti URUTAN TAMPIL. Pencarian nomor menyaring daftar yang SAMA
+  // sambil mempertahankan index asli → index baris aman dipakai walau daftar
+  // dipotong 40 atau sebagian chapter disembunyikan query.
   const selectedRefs = useMemo(
     () =>
       range.indices
@@ -304,7 +319,11 @@ export default function SeriesUnified() {
   if (!data) return <Spinner label="Memuat manga…" />
 
   const { manga: m } = data
-  const visible = showAll ? chapters : chapters.slice(0, 40)
+  // Satu daftar chapter saja; query menyaringnya tanpa mengubah index asli
+  // (dipakai range.isAnchor/inRange/select dan resume lintas sumber).
+  const chapterRows = filterChapterIndices(chapters, chapterQuery)
+  const visibleRows =
+    showAll || chapterQuery.trim() ? chapterRows : chapterRows.slice(0, 40)
   // Diproses = semua hasil terminal (tersimpan + gagal), bukan hanya sukses.
   const dlProg = dlRun ? runProgress(dlRun) : null
   const dlDone = dlProg?.selesai ?? 0
@@ -344,9 +363,13 @@ export default function SeriesUnified() {
         <div className="relative px-4 pb-4 pt-5">
           {/* py-3.5 memperluas area sentuh ke >=44px; padding inline tak mengubah tinggi header. */}
           <div className="flex items-center justify-between">
-            <Link to="/" className="py-3.5 text-[12px] font-medium text-ink-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber focus-visible:ring-offset-2 [@media(hover:hover)]:hover:text-ink-200">
-              ← Beranda
-            </Link>
+            <button
+              type="button"
+              onClick={goBack}
+              className="inline-flex min-h-11 items-center py-3.5 text-[12px] font-medium text-ink-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber focus-visible:ring-offset-2 [@media(hover:hover)]:hover:text-ink-200"
+            >
+              ← Kembali
+            </button>
             {/* Ikon inline — icons.tsx (ikon APK asli) tak diubah. -mr-3 menarik glyph sejajar tepi konten 16px. */}
             <button
               type="button"
@@ -529,6 +552,27 @@ export default function SeriesUnified() {
             </span>
           )}
         </h2>
+
+        {/* Pencarian nomor chapter — menyaring SATU daftar di bawah, tanpa panel scroll tersendiri. */}
+        <div className="mb-2 flex items-center gap-2">
+          <input
+            type="search"
+            aria-label="Cari nomor chapter"
+            placeholder="Cari nomor chapter…"
+            value={chapterQuery}
+            onChange={(e) => setChapterQuery(e.target.value)}
+            className="min-h-11 min-w-0 flex-1 rounded-xl border border-ink-700 bg-ink-900 px-3 text-[12.5px] text-ink-100 placeholder:text-ink-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber"
+          />
+          {chapterQuery.trim() && (
+            <button
+              type="button"
+              onClick={() => setChapterQuery('')}
+              className="min-h-11 shrink-0 px-2 text-[12px] font-semibold text-ink-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber"
+            >
+              Hapus
+            </button>
+          )}
+        </div>
 
         {/* Kalau ada sumber yang gagal, katakan SEBELUM daftar chapter:
             user harus tahu daftar ini lebih tipis dari seharusnya, bukan
@@ -763,10 +807,6 @@ export default function SeriesUnified() {
           </div>
         )}
 
-        {/* Pencarian + lompat nomor chapter (sumber kebenaran dibaca sama dengan
-            daftar di bawah). Dipasang sebelum logika showAll. */}
-        {chapters.length > 0 && <ChapterJumpSearch chapters={chapters} titleKey={titleKey} />}
-
         {chapters.length === 0 ? (
           <div className="text-center">
             <p className="text-3xl" aria-hidden>📕</p>
@@ -781,9 +821,13 @@ export default function SeriesUnified() {
               Cari judul lain
             </Link>
           </div>
+        ) : visibleRows.length === 0 ? (
+          <p className="py-6 text-center text-[12.5px] text-ink-500">
+            Tidak ada chapter yang cocok.
+          </p>
         ) : (
           <ul className="divide-y divide-ink-800 overflow-hidden rounded-xl border border-ink-800 bg-ink-900">
-            {visible.map((c, i) => {
+            {visibleRows.map(({ chapter: c, index: i }) => {
               // Mode seleksi: tap dua baris menandai ujung rentang — tanpa centang 1-1.
               const anchor = pickMode && range.isAnchor(i)
               const selectedForRow = range.inRange(i) || (range.needEnd && anchor)
@@ -860,8 +904,9 @@ export default function SeriesUnified() {
         )}
 
         {pickMode && <div aria-hidden className="h-24" />}
-        {chapters.length > 40 && (
+        {!chapterQuery.trim() && chapters.length > 40 && (
           <button
+            type="button"
             onClick={() => setShowAll((v) => !v)}
             className="mt-3 min-h-11 w-full rounded-xl border border-ink-700 py-2.5 text-[13px] font-medium text-ink-300 transition-colors active:scale-[0.97] active:duration-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber focus-visible:ring-offset-2"
           >
