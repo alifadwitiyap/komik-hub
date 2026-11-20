@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { api, unifiedApi } from '../api'
 import { parseUnifiedKey } from '../readerSource'
+import { sortByChapterNumber } from '../chapterOrder'
 import type { Chapter } from '../types'
 
 /**
@@ -17,6 +18,8 @@ export interface PickableChapter {
   key: string
   /** nomor chapter (string: "1195", "1.5", "extra-9") */
   number: string
+  /** sumber/channel chapter (unified) — dipakai label edisi, bukan link */
+  source?: string | null
   /** judul chapter */
   title: string
 }
@@ -77,6 +80,7 @@ export function usePickableChapters({
           (r.chapters ?? []).map((c) => ({
             key: `${c.handle || unified.handle}:${c.number}`,
             number: c.number,
+            source: c.source || (c.handle || unified.handle).split(':')[0],
             title: c.title || `Chapter ${c.number}`,
           })),
         )
@@ -130,14 +134,5 @@ function legacyNumber(c: Chapter): string {
  * menaruhnya di paling atas daftar — jelas salah.
  */
 function sortAscending(list: PickableChapter[]): PickableChapter[] {
-  return [...list].sort((a, b) => {
-    const aEmpty = a.number.trim() === ''
-    const bEmpty = b.number.trim() === ''
-    if (aEmpty !== bEmpty) return aEmpty ? 1 : -1
-    if (aEmpty && bEmpty) return a.title.localeCompare(b.title)
-    const na = Number(a.number)
-    const nb = Number(b.number)
-    if (Number.isFinite(na) && Number.isFinite(nb) && na !== nb) return na - nb
-    return a.number.localeCompare(b.number, undefined, { numeric: true })
-  })
+  return sortByChapterNumber(list, (c) => c.number, 'lama')
 }

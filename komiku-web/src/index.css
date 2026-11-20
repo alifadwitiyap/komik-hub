@@ -44,7 +44,7 @@
   --color-ink-700: #c6ccd4;
   --color-ink-600: #9aa2ac;
   --color-ink-500: #5f6670; /* secondary text (AA 5.25:1 on ink-950) */
-  --color-ink-400: #8a929d;
+  --color-ink-400: #6c6e73;  /* secondary text (4.62:1 on ink-950, 5.1:1 on white) */
   --color-ink-300: #4b5563;
   --color-ink-200: #2b3340;
   --color-ink-100: #161c26;
@@ -95,6 +95,15 @@
    prefers-color-scheme DI SINI karena akan merusak mode siang ketika OS
    user itu dark. */
 .dark {
+  /* === SMART TEXT CONTRAST OVERRIDES (P2 a11y) ============================
+     Token brand dipakai dua cara: sebagai FILL (bg-brand-amber + text-white,
+     sudah 5.68:1) dan sebagai TEXT (text-brand-amber). Di tema gelap nilai
+     asli #006ca6 cuma 3.03:1 di atas ink-950 — gagal AA 4.5:1 untuk teks
+     normal (mis. tautan "Lihat rak"). Override ini HANYA menaikkan kontras
+     pemakaian sebagai teks; fill & border tidak disentuh. ================== */
+  --color-brand-amber-text: #7dc1e6; /* 8.73:1 on ink-950, 7.58:1 on ink-900 */
+  --color-brand-red-text: #c792e0;   /* 7.07:1 on ink-950, 6.14:1 on ink-900 */
+
   --color-ink-950: #1a1b1e;  /* Page background - warm charcoal */
   --color-ink-900: #25272b;  /* Card surfaces - subtle depth */
   --color-ink-850: #2e3036;  /* Elevated cards/modals */
@@ -111,6 +120,25 @@
   --color-healthy: #4ade80;      /* Bright green */
   --color-warn: #fbbf24;         /* Amber yellow */
   --color-danger: #f87171;       /* Soft red */
+}
+
+/* === P2 TEXT CONTRAST (dark theme) ======================================
+   Di .dark, token brand dipakai dua cara: sebagai FILL (bg-brand-amber +
+   text-white = 5.68:1, sudah AA) dan sebagai TEXT (text-brand-amber).
+   Nilai asli #006ca6 cuma 3.03:1 di ink-950 — gagal AA 4.5:1. Karena class
+   Tailwind text-brand-* menghasilkan `color: var(--color-brand-*)`, aturan
+   di bawah menimpa warna teks SAJA; fill/border tidak berubah.
+   Di terang token asli sudah AA (amber 5.15:1, red 4.40:1 → dibump ke
+   5.16:1), jadi tidak perlu override. ==================================== */
+.dark .text-brand-amber {
+  color: var(--color-brand-amber-text);
+}
+.dark .text-brand-red {
+  color: var(--color-brand-red-text);
+}
+/* Di light, brand-red asli 4.40:1 di ink-950 — sedikit di bawah 4.5:1. */
+:root:not(.dark) .text-brand-red {
+  color: #7c3aed; /* 5.16:1 on ink-950, 5.7:1 on white */
 }
 
 /* Transisi warna halus saat tema ditukar (200ms) — hanya properti warna,
@@ -171,18 +199,22 @@ body {
   display: none;
 }
 
-/* Reduced motion SELEKTIF: animasi/gerak (transform, translate) dimatikan,
-   tapi feedback warna & opacity jangan ikut mati supaya state masih terbaca.
-   !important hanya dipakai di blok ini untuk menimpa utilitas Tailwind. */
+/* Reduced motion: everything motion-related becomes INSTANT. Carousel
+   autoplay is stopped in Home.tsx via matchMedia; CSS only has to kill
+   transitions/animations and smooth scrolling. !important is confined to
+   this block so utility classes cannot reintroduce motion. */
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
   *::after {
     animation: none !important;
-    transition-property: color, background-color, border-color, opacity,
-      box-shadow !important;
-    transition-duration: 120ms !important;
+    transition-property: none !important;
+    transition-duration: 0ms !important;
     scroll-behavior: auto !important;
+  }
+  /* animation:none would otherwise leave the sheet permanently non-interactive. */
+  .sheet-panel {
+    pointer-events: auto !important;
   }
 }
 
@@ -281,12 +313,62 @@ body {
   }
 }
 
-/* Bottom-sheet: panel naik dari bawah layar + fade saat mount. Overlay
-   sengaja tidak dianimasi (langsung muncul). @starting-style memberi nilai
-   awal tanpa JS/state; saat komponen di-unmount tidak ada animasi keluar. */
+/* Image placeholder→loaded: opacity SAJA 120ms (100–140ms), tanpa layout
+   shift — rasio sudah dikunci holder. Gambar cache memakai data-instant. */
+.comic-image-fade {
+  transition: opacity 120ms var(--ease-out);
+}
+.comic-image-fade[data-instant='true'] {
+  transition: none;
+}
+
+/* Reader chrome: opacity SAJA, 140ms (rentang 120–160ms), tanpa transform/
+   translate supaya posisi gulir & gambar tidak bergeser saat tap. */
+.reader-chrome-fade {
+  opacity: 1;
+  transition: opacity 140ms var(--ease-out);
+}
+.reader-chrome-fade[data-hidden='true'] {
+  opacity: 0;
+}
+/* Tap layer tidak boleh ikut berpindah/tergeser saat chrome fade. */
+.reader-tap-layer {
+  touch-action: pan-y;
+}
+
+/* Konfirmasi favorit: isi + satu kali pembesaran ~1,08× selama 150 ms.
+   Terpisah dari `animate-heart-pop` (1,3×/300 ms) yang dipakai komponen lain
+   supaya perubahan di sini tidak mengubah perilaku mereka. */
+@keyframes heart-confirm {
+  0% { transform: scale(1); }
+  60% { transform: scale(1.08); }
+  100% { transform: scale(1); }
+}
+.animate-heart-confirm {
+  animation: heart-confirm 150ms var(--ease-out);
+}
+
+/* Bottom-sheet: masuk dari bawah 240ms ease-out, keluar dibalik 160ms dari
+   posisi saat ini (useSheetPresence menunda unmount). @starting-style memberi
+   nilai awal tanpa JS. Panel tidak menerima input selama masa masuk supaya
+   tap tidak menembus; backdrop tetap memblokir area di luar panel. */
 .sheet-panel {
   transform: translateY(0);
-  transition: transform 250ms var(--ease-drawer), opacity 250ms var(--ease-out);
+  opacity: 1;
+  transition: transform 240ms var(--ease-out), opacity 240ms var(--ease-out);
+  pointer-events: none;
+  animation: sheet-interactive 240ms step-end forwards;
+}
+.sheet-panel.sheet-closing {
+  transform: translateY(100%);
+  opacity: 0;
+  pointer-events: none !important;
+  transition-duration: 160ms;
+  transition-timing-function: var(--ease-drawer);
+}
+
+@keyframes sheet-interactive {
+  to { pointer-events: auto; }
 }
 
 @starting-style {
@@ -294,6 +376,25 @@ body {
     transform: translateY(100%);
     opacity: 0.4;
   }
+}
+
+.sheet-backdrop {
+  transition: background-color 240ms var(--ease-out);
+}
+.sheet-backdrop-closing {
+  background-color: transparent;
+  pointer-events: none !important;
+  transition-duration: 160ms;
+}
+
+/* Marathon: crossfade label chapter saat boundary aktif berubah. Hanya
+   opacity (120ms); tidak ada transform supaya posisi gambar tidak bergeser. */
+@keyframes chapter-label-fade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+.marathon-chapter-label-switch {
+  animation: chapter-label-fade 120ms var(--ease-out) both;
 }
 
 /* Floating download-range dock: non-modal action dock tepat di atas

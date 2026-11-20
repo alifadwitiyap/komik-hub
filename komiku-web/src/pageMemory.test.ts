@@ -81,22 +81,22 @@ describe('pageMemory', () => {
 
   it('anchorFrom memilih halaman terdekat ke tengah viewport', () => {
     vi.setSystemTime(1_000_000)
-    const anchor = pm.anchorFrom(7, ['p1', 'p2', 'p3'], 100, 200, [0, 500, 1000], [500, 500, 500])
+    const anchor = pm.anchorFrom('7', ['p1', 'p2', 'p3'], 100, 200, [0, 500, 1000], [500, 500, 500])
     expect(anchor).not.toBeNull()
-    expect(anchor!.chapterId).toBe(7)
+    expect(anchor!.chapterId).toBe('7')
     expect(anchor!.pageId).toBe('p1')
     expect(anchor!.at).toBe(1_000_000)
   })
 
   it('anchorFrom null saat input tidak lengkap', () => {
-    expect(pm.anchorFrom(1, [], 0, 200, [], [])).toBeNull()
-    expect(pm.anchorFrom(1, ['a'], 0, 0, [0], [10])).toBeNull()
-    expect(pm.anchorFrom(1, ['a', 'b'], 0, 200, [0], [10, 10])).toBeNull()
+    expect(pm.anchorFrom('1', [], 0, 200, [], [])).toBeNull()
+    expect(pm.anchorFrom('1', ['a'], 0, 0, [0], [10])).toBeNull()
+    expect(pm.anchorFrom('1', ['a', 'b'], 0, 200, [0], [10, 10])).toBeNull()
   })
 
   it('round-trip anchor: anchorFrom → scrollYForAnchor → usableAnchor', () => {
     vi.setSystemTime(1_000_000)
-    const anchor = pm.anchorFrom(7, ['p1', 'p2'], 120, 200, [0, 500], [500, 500])
+    const anchor = pm.anchorFrom('7', ['p1', 'p2'], 120, 200, [0, 500], [500, 500])
     expect(anchor).not.toBeNull()
     const y = pm.scrollYForAnchor(anchor!.offsetRatio, 0, 500, 200)
     expect(y).toBeCloseTo(120, 5)
@@ -112,7 +112,7 @@ describe('pageMemory', () => {
 
   it('usableAnchor menolak entri cacat / kedaluwarsa', () => {
     const at = 1_800_000_000_000
-    const base = { chapterId: 1, pageId: 'p', offsetRatio: 0.5, at }
+    const base = { chapterId: '1', pageId: 'p', offsetRatio: 0.5, at }
     expect(pm.usableAnchor(base, at + pm.ANCHOR_TTL_MS)).not.toBeNull()
     expect(pm.usableAnchor(base, at + pm.ANCHOR_TTL_MS + 1)).toBeNull()
     expect(pm.usableAnchor(null)).toBeNull()
@@ -121,6 +121,7 @@ describe('pageMemory', () => {
     expect(pm.usableAnchor({ ...base, pageId: 'p' })).not.toBeNull()
     expect(pm.usableAnchor({ ...base, offsetRatio: NaN })).toBeNull()
     expect(pm.usableAnchor({ ...base, offsetRatio: Number.POSITIVE_INFINITY })).toBeNull()
-    expect(pm.usableAnchor({ ...base, chapterId: null as unknown as string | number })).toBeNull()
+    expect(pm.usableAnchor({ ...base, chapterId: null as unknown as string })).toBeNull()
+    expect(pm.usableAnchor({ ...base, chapterId: '' })).toBeNull()
   })
 })

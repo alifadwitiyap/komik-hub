@@ -22,7 +22,8 @@ const ASPECT_KEY = 'komiku.web.page-aspect.v1'
 export const ANCHOR_TTL_MS = 90 * 24 * 60 * 60 * 1000
 
 export interface ReadingAnchor {
-  chapterId: string | number
+  /** Identitas chapter = string persis (lihat `toChapterId`). */
+  chapterId: string
   /** URL gambar absolut (sudah lewat imgUrl) dari halaman yang dibaca */
   pageId: string
   /** 0..1 — kedalaman posisi mata di dalam halaman itu */
@@ -87,7 +88,7 @@ export function rememberAspect(pageId: string, w: number, h: number): void {
 
 /** Halaman mana yang sedang ditatap + seberapa dalam posisi mata di sana. */
 export function anchorFrom(
-  chapterId: string | number,
+  chapterId: string,
   pageIds: readonly string[],
   scrollY: number,
   viewportH: number,
@@ -132,7 +133,7 @@ export function usableAnchor(
 ): ReadingAnchor | null {
   if (!entry || !entry.pageId) return null
   if (typeof entry.offsetRatio !== 'number' || !Number.isFinite(entry.offsetRatio)) return null
-  if (typeof entry.chapterId !== 'string' && typeof entry.chapterId !== 'number') return null
+  if (typeof entry.chapterId !== 'string' || !entry.chapterId) return null
   if (now - entry.at > ANCHOR_TTL_MS) return null
   return entry
 }

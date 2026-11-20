@@ -11,6 +11,7 @@ import HeartButton from '../components/HeartButton'
 import { useProgress } from '../hooks/useProgress'
 import { useDownloadRun, useOffline, retryRun } from '../hooks/useDownloadRun'
 import { useSeriesResume } from '../hooks/useSeriesResume'
+import { sortByChapterNumber } from '../chapterOrder'
 import { useReadMarks } from '../hooks/useReadMarks'
 import { rememberSeriesLite, readerHref } from '../readerSource'
 import {
@@ -24,6 +25,8 @@ import {
 import { RangeSelectBar, useRangeSelection, outOfRangeCount } from '../components/DownloadRangePicker'
 import { doneNumbers } from '../downloadHistory'
 import { friendlyError } from '../downloadBatch'
+import { ensureDownloadReturn } from '../downloadReturn'
+import ChapterJumpSearch from '../components/ChapterJumpSearch'
 
 /**
  * Detail manga unified (route /manga/:handle, handle 'sumber:native_id').
@@ -78,8 +81,12 @@ export default function SeriesUnified() {
   const downloadTriggerRef = useRef<HTMLButtonElement>(null)
   const wasPickingRef = useRef(false)
   const selectionKey = `komik:download-selection:${handle}`
+  const returnKey = `komik:download-return:${handle}`
   const resetRange = range.reset
   const selectRange = range.select
+
+  // Listener modul aktif meski halaman series unmount saat /akun tampil.
+  ensureDownloadReturn()
 
   useEffect(() => {
     if (wasPickingRef.current && !pickMode) downloadTriggerRef.current?.focus()
@@ -122,16 +129,9 @@ export default function SeriesUnified() {
     }
   }, [handle, reloadKey])
 
-  // urut nomor DESC (terbaru dulu). Nomor bisa "1195", "1.5", "extra-9" —
-  // bandingkan numerik kalau bisa, jatuh ke string supaya tidak pernah NaN.
+  // Satu aturan urutan dipakai daftar, tombol mulai, dan lanjut/next.
   const chapters = useMemo(
-    () =>
-      [...(data?.chapters ?? [])].sort((a, b) => {
-        const na = Number(a.number)
-        const nb = Number(b.number)
-        if (Number.isFinite(na) && Number.isFinite(nb) && na !== nb) return nb - na
-        return a.number.localeCompare(b.number)
-      }),
+    () => sortByChapterNumber(data?.chapters ?? [], (c) => c.number, 'terbaru'),
     [data],
   )
   // Simpan nomor chapter, bukan indeks: chapter baru dapat muncul selama login.
@@ -170,11 +170,12 @@ export default function SeriesUnified() {
   // Kunci = title_key series + nomor chapter (lihat readMarks.ts).
   const titleKey = data?.manga.title_key ?? null
   const { isRead, count: readTotal } = useReadMarks(titleKey)
-  // Resume baca + sesi maraton untuk series ini — hook bersama. Kunci resume
-  // sah hanya kalau milik handle ini (`handle:nomor`); kalau tidak, tombol
-  // baca jatuh ke fallback (chapter paling awal).
-  const { resume, resumeKey, marathonPos, resumeHref, marathonHref: marathonLink } =
-    useSeriesResume(handle, (key) => key.startsWith(`${handle}:`))
+  // Resume baca + sesi maraton untuk series ini — hook bersama. Progres
+  // mengikuti identitas series dengan kunci chapter persis; bila sumber halaman
+  // berbeda dari sumber progres, label menjelaskannya tanpa jatuh ke chapter
+  // lokal paling awal.
+  const { resumeKey, marathonPos, resumeHref, marathonHref: marathonLink, label, sourceNotice } =
+    useSeriesResume(handle, undefined, data?.representative_source ?? handle.split(':')[0] ?? null)
 
   // Range mengikuti URUTAN TAMPIL, dan `visible` selalu potongan awal `chapters`
   // → index baris aman dipakai walau daftar dipotong 40.
@@ -228,6 +229,7 @@ export default function SeriesUnified() {
         end: range.state.end === null ? null : chapters[range.state.end]?.number ?? null,
         showAll,
       }))
+      sessionStorage.setItem(returnKey, location.pathname + location.search + location.hash)
     } catch {
       setDlNote('Seleksi belum bisa disimpan. Izinkan penyimpanan browser sebelum masuk agar seleksi tidak hilang.')
       return
@@ -449,7 +451,7 @@ export default function SeriesUnified() {
                 to={resumeHref ?? `/baca/${handle}/${oldest.number}`}
                 className="flex min-h-11 flex-1 items-center justify-center rounded-xl bg-brand-amber py-2.5 text-center text-[13px] font-bold text-white transition-colors active:scale-[0.97] active:duration-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber focus-visible:ring-offset-2 [@media(hover:hover)]:hover:bg-brand-amber-soft"
               >
-                {resumeKey ? `Lanjut · ${resume?.chapterName}` : `Baca ${chapterLabel(oldest)}`}
+                {resumeKey ? `Lanjut · ${label}${sourceNotice ? ` ${sourceNotice}` : ''}` : `Baca ${chapterLabel(oldest)}`}
               </Link>
               <Link
                 to={
@@ -760,6 +762,10 @@ export default function SeriesUnified() {
             </RangeSelectBar>
           </div>
         )}
+
+        {/* Pencarian + lompat nomor chapter (sumber kebenaran dibaca sama dengan
+            daftar di bawah). Dipasang sebelum logika showAll. */}
+        {chapters.length > 0 && <ChapterJumpSearch chapters={chapters} titleKey={titleKey} />}
 
         {chapters.length === 0 ? (
           <div className="text-center">

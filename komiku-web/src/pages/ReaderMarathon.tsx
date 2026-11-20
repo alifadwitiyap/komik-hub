@@ -12,6 +12,7 @@ import ReaderToolbar from '../components/ReaderToolbar'
 import SourceBadge from '../components/SourceBadge'
 import { imgSrc, imgUrl, mountAheadPx, slowLink } from '../imgUrl'
 import { tapHitsReaderControl } from '../readerControls'
+import { createTapTracker } from '../tapTracker'
 import { useReaderSettings } from '../hooks/useReaderSettings'
 import { useChromeOnScroll } from '../hooks/useChromeOnScroll'
 import { useAutoFullscreen } from '../hooks/useAutoFullscreen'
@@ -23,6 +24,7 @@ import { handleOf } from '../marathonMemory'
 import type { ChapterResponse } from '../types'
 import { Empty } from '../App'
 import { useProgress } from '../hooks/useProgress'
+import { useReaderOverlayHistory } from '../hooks/useReaderOverlayHistory'
 import { didOpenChapter } from '../readingEvents'
 import { chapterNumberOf } from '../readMarks'
 import {
@@ -111,13 +113,21 @@ export default function ReaderMarathon() {
   const [menuOpen, setMenuOpen] = useState(false)
   const [sheetOpen, setSheetOpen] = useState(false)
   const [chapterPickerOpen, setChapterPickerOpen] = useState(false)
+  const dismissOverlay = useReaderOverlayHistory(
+    chapterPickerOpen ? 'chapter' : sheetOpen ? 'settings' : menuOpen ? 'menu' : null,
+    () => {
+      setChapterPickerOpen(false)
+      setSheetOpen(false)
+      setMenuOpen(false)
+    },
+  )
+  void dismissOverlay
   const [restartConfirm, setRestartConfirm] = useState(false)
   const [toast, setToast] = useState<string | null>(null)
   const [nextLoadFailed, setNextLoadFailed] = useState(false)
   /** sedang mengambil chapter berikutnya — untuk status "memuat" di dasar */
   const [loadingNext, setLoadingNext] = useState(false)
-  /** awal gesture tap — membedakan tap dari scroll (sama seperti Reader) */
-  const tapStart = useRef<{ x: number; y: number; t: number } | null>(null)
+  const tap = createTapTracker(tapHitsReaderControl)
   const bottomRef = useRef<HTMLDivElement | null>(null)
   /** chapterId yang sudah/sedang di-fetch — cegah fetch ganda & loop abort */
   const fetchedRef = useRef<Set<string>>(new Set())
@@ -350,6 +360,7 @@ export default function ReaderMarathon() {
       offsetRatio: 0,
       source: owner.source ?? null,
       handle: owner.handle || null,
+      mode: 'marathon',
     })
   }, [tailIdx, blocks, totalPages, save])
 
@@ -508,8 +519,31 @@ export default function ReaderMarathon() {
   }, [blocks])
 
   const curBlock = blocks[readBlock] ?? blocks[0]
+  // Crossfade HANYA saat blok aktif berganti chapter (reader melintasi
+  // boundary), bukan saat `pushBlock` menambah chapter di latar belakang.
+  const activeChapterId = curBlock?.chapterId ?? null
+  const prevActiveChapterRef = useRef(activeChapterId)
+  const [crossedChapter, setCrossedChapter] = useState(false)
+  useEffect(() => {
+    if (prevActiveChapterRef.current === activeChapterId) return
+    prevActiveChapterRef.current = activeChapterId
+    setCrossedChapter(true)
+    const t = setTimeout(() => setCrossedChapter(false), 120)
+    return () => clearTimeout(t)
+  }, [activeChapterId])
   const curLen = curBlock?.images.length ?? 0
   const { gotoReader } = useModeSwitch(chapterId, curBlock)
+  // Status muat maraton: belum semua gambar blok aktif selesai. Label ini
+  // terpisah dari "Hal. X dari N" (posisi baca) — jangan pakai persentase
+  // muat sebagai pengganti nomor halaman.
+  const [settledInBlock, setSettledInBlock] = useState<Set<number>>(() => new Set())
+  useEffect(() => {
+    setSettledInBlock(new Set())
+  }, [curBlock?.chapterId])
+  const loadingImages = curLen > 0 && settledInBlock.size < curLen
+  const pageStatus = curLen
+    ? `Hal. ${Math.min(Math.max(1, readInBlock), curLen)} dari ${curLen}`
+    : 'Hal. 0 dari 0'
 
   // Chapter yang SEDANG dibaca → tandai "sudah dibaca" (per akun).
   // Yang ditandai cuma blok yang jadi blok baca aktif — chapter berikutnya
@@ -642,24 +676,17 @@ export default function ReaderMarathon() {
       <div
         aria-hidden="true"
         data-testid="marathon-tap-layer"
+        className="reader-tap-layer fixed inset-0 z-10 touch-manipulation"
         onPointerDown={(e) => {
-          tapStart.current = { x: e.clientX, y: e.clientY, t: performance.now() }
+          tap.down(e.pointerId, e.pointerType, e.clientX, e.clientY, performance.now())
         }}
-        onPointerCancel={() => {
-          tapStart.current = null
-        }}
+        onPointerUp={(e) => tap.up(e.pointerId)}
+        onPointerCancel={(e) => tap.cancel(e.pointerId)}
         onClick={(e) => {
-          const start = tapStart.current
-          tapStart.current = null
-          if (start) {
-            const moved = Math.hypot(e.clientX - start.x, e.clientY - start.y)
-            if (moved > 12 || performance.now() - start.t > 900) return
-          }
-          if (tapHitsReaderControl(e.clientX, e.clientY)) return
+          if (!tap.shouldToggle(e.clientX, e.clientY, performance.now())) return
           // Tap area baca hanya toggle chrome. Fullscreen HANYA lewat tombol.
           chrome.toggle()
         }}
-        className="fixed inset-0 z-10 touch-manipulation"
       />
 
       <ReaderFullscreenButton
@@ -715,7 +742,8 @@ export default function ReaderMarathon() {
       <ReaderToolbar
         title={head?.seriesTitle ?? 'Maraton'}
         titleHref={seriesHref(head?.seriesId)}
-        subtitle={`${curBlock?.chapterName ?? ''} · ${readInBlock}/${curLen} halaman`}
+        subtitle={pageStatus}
+        loadingLabel={loadingImages ? 'Memuat gambar…' : null}
         onBack={() => navigate(seriesHref(head?.seriesId) ?? '/')}
         onHome={() => navigate('/')}
         onShare={() => setToast('Bagikan: salin URL halaman ini')}
@@ -736,7 +764,7 @@ export default function ReaderMarathon() {
 
       <ChapterPickerSheet
         open={chapterPickerOpen}
-        onClose={() => setChapterPickerOpen(false)}
+        onClose={() => dismissOverlay()}
         chapterKey={head?.chapterId ?? null}
         currentKey={curBlock?.chapterId ?? null}
         legacySeriesId={typeof head?.seriesId === 'number' ? head.seriesId : null}
@@ -779,7 +807,12 @@ export default function ReaderMarathon() {
             <div key={b.chapterId}>
               {bi > 0 && (
                 <p
+                  data-marathon-chapter-label={b.chapterId}
                   className={`my-4 text-center text-[12px] font-medium ${
+                    crossedChapter && bi === readBlock
+                      ? 'marathon-chapter-label-switch '
+                      : ''
+                  }${
                     settings.nightShift ? 'text-reader-muted-night' : 'text-reader-muted'
                   }`}
                 >
@@ -798,17 +831,35 @@ export default function ReaderMarathon() {
                   pageIndex={i}
                   // reserve tinggi sebelum decode: dimensi asli dari server
                   knownRatio={
-                    b.imageSizes?.[i] && b.imageSizes[i][1] > 0
+                    b.imageSizes?.[i] && b.imageSizes[i][0] > 0 && b.imageSizes[i][1] > 0
                       ? b.imageSizes[i][0] / b.imageSizes[i][1]
                       : undefined
                   }
                   // hanya halaman pertama blok PERTAMA yang langsung diminta;
                   // sisanya menunggu dekat layar (lihat ComicImage.mountAhead)
                   eager={bi === 0 && i === 0}
+                  // Marathon punya banyak chapter dalam satu DOM: halaman di
+                  // chapter berikutnya yang ikut mount tidak boleh menyita slot
+                  // antrean dari panel yang sedang dibaca.
+                  nearViewport={bi === readBlock && Math.abs(i + 1 - readInBlock) <= 2}
                   mountAhead={mountAhead}
                   onLoad={() =>
                     setTailIdx((n) => (start + i === n ? n + 1 : Math.max(n, start + i)))
                   }
+                  // onSettled dipanggil sukses ATAU gagal — label "Memuat
+                  // gambar…" harus hilang walau satu halaman gagal dan
+                  // menampilkan tombol Coba lagi.
+                  onSettled={() => {
+                    // hanya gambar blok aktif yang dihitung; blok lain yang
+                    // di-preload punya indeks `i` sama dan boleh mengisi set
+                    if (b.chapterId !== curBlock?.chapterId) return
+                    setSettledInBlock((prev) => {
+                      if (prev.has(i)) return prev
+                      const next = new Set(prev)
+                      next.add(i)
+                      return next
+                    })
+                  }}
                   className="manga-img w-full"
                 />
               ))}
@@ -881,7 +932,8 @@ export default function ReaderMarathon() {
       <ReaderMenu
         open={menuOpen}
         settings={{ ...settings, marathon: true }}
-        onClose={() => setMenuOpen(false)}
+        fullscreenActive={fsActive}
+        onClose={() => dismissOverlay()}
         onChange={(patch) => {
           // matikan marathon dari sini -> balik ke reader biasa chapter ini
           if (patch.marathon === false) {
@@ -895,12 +947,18 @@ export default function ReaderMarathon() {
           setMenuOpen(false)
           setSheetOpen(true)
         }}
+        onToggleFullscreen={() => {
+          if (fsActive) {
+            autoFS.reset()
+            chrome.show()
+          } else autoFS.requestEnter()
+        }}
       />
 
       <ReaderSettingsSheet
         open={sheetOpen}
         settings={{ ...settings, marathon: true }}
-        onClose={() => setSheetOpen(false)}
+        onClose={() => dismissOverlay()}
         onChange={(patch) => {
           if (patch.marathon === false) {
             setSheetOpen(false)
