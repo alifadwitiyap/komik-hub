@@ -493,6 +493,9 @@ export default function Reader() {
         // last_source, dan reader tahu kalau sumber pindah.
         source: activeSource,
         handle: activeHandle,
+        // Mode baca ikut disimpan supaya Beranda/Rak membuka kembali reader
+        // yang sama (normal vs maraton) dengan posisi halaman yang sama.
+        mode: 'normal',
       })
     }
     writeRef.current = write
@@ -848,6 +851,7 @@ export default function Reader() {
       <ReaderMenu
         open={menuOpen}
         settings={settings}
+        fullscreenActive={fsActive}
         onClose={() => setMenuOpen(false)}
         onChange={(patch) => {
           // toggle Maraton dari reader: pindah mode marathon chapter ini
@@ -861,6 +865,12 @@ export default function Reader() {
         onOpenSettings={() => {
           setMenuOpen(false)
           setSheetOpen(true)
+        }}
+        onToggleFullscreen={() => {
+          if (fsActive) {
+            autoFS.reset()
+            chrome.show()
+          } else autoFS.requestEnter()
         }}
       />
 

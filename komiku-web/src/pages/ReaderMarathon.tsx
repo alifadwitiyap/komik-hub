@@ -350,6 +350,7 @@ export default function ReaderMarathon() {
       offsetRatio: 0,
       source: owner.source ?? null,
       handle: owner.handle || null,
+      mode: 'marathon',
     })
   }, [tailIdx, blocks, totalPages, save])
 
@@ -907,6 +908,7 @@ export default function ReaderMarathon() {
       <ReaderMenu
         open={menuOpen}
         settings={{ ...settings, marathon: true }}
+        fullscreenActive={fsActive}
         onClose={() => setMenuOpen(false)}
         onChange={(patch) => {
           // matikan marathon dari sini -> balik ke reader biasa chapter ini
@@ -920,6 +922,12 @@ export default function ReaderMarathon() {
         onOpenSettings={() => {
           setMenuOpen(false)
           setSheetOpen(true)
+        }}
+        onToggleFullscreen={() => {
+          if (fsActive) {
+            autoFS.reset()
+            chrome.show()
+          } else autoFS.requestEnter()
         }}
       />
 

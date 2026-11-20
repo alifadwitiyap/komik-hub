@@ -458,15 +458,15 @@ export default function Search() {
         </button>
       </form>
 
-      {/* SATU tombol Filter — panel sumber/urutan/tipe/status/genre. Filter
-          lama (chip + 3 select) diganti supaya HP tidak penuh sebelum hasil. */}
-      <div className="mt-3">
+      {/* Dua kontrol utama tampil di awal: Filter dan Urutkan. Sumber/tipe/
+          status/genre masuk panel; Urutkan bisa diubah langsung tanpa panel. */}
+      <div className="mt-3 flex gap-2">
         <button
           type="button"
           aria-expanded={filterOpen}
           aria-controls="panel-filter-cari"
           onClick={openFilter}
-          className={`inline-flex min-h-11 touch-manipulation items-center gap-2 rounded-full px-4 py-2 text-[13px] font-bold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber focus-visible:ring-offset-2 active:scale-[0.97] ${
+          className={`inline-flex min-h-11 flex-1 touch-manipulation items-center justify-center gap-2 rounded-full px-4 py-2 text-[13px] font-bold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber focus-visible:ring-offset-2 active:scale-[0.97] ${
             filterOpen || activeChips.length > 0
               ? 'bg-brand-amber text-white'
               : 'border border-ink-700 bg-ink-900 text-ink-300'
@@ -475,6 +475,19 @@ export default function Search() {
           <IconSliders className="size-3.5" />
           Filter{activeChips.length > 0 ? ` (${activeChips.length})` : ''}
         </button>
+        <div className="relative flex min-h-11 min-w-0 flex-1 items-center">
+          <select
+            aria-label="Urutkan hasil"
+            value={srt ?? 'terbaru'}
+            onChange={(e) => setFilter('sort', e.target.value)}
+            className="min-h-11 w-full appearance-none rounded-full border border-ink-700 bg-ink-900 py-2 pl-4 pr-9 text-[13px] font-semibold text-ink-300 focus:border-brand-amber focus:outline-none"
+          >
+            {SORTS.map((s) => (
+              <option key={s.value} value={s.value}>{s.label}</option>
+            ))}
+          </select>
+          <SelectChevron />
+        </div>
       </div>
 
       {filterOpen && (
@@ -504,21 +517,6 @@ export default function Search() {
           </fieldset>
 
           <div className="grid grid-cols-2 gap-2">
-            <div className="relative flex min-w-0">
-              <select
-                aria-label="Urutkan"
-                value={draft.sort}
-                onChange={(e) => setDraft((d) => ({ ...d, sort: e.target.value }))}
-                className={selectBase}
-              >
-                {SORTS.map((s) => (
-                  <option key={s.value} value={s.value}>
-                    {s.label}
-                  </option>
-                ))}
-              </select>
-              <SelectChevron />
-            </div>
             <div className="relative flex min-w-0">
               <select
                 aria-label="Filter tipe"
@@ -696,7 +694,7 @@ export default function Search() {
                     className="inline-flex items-center gap-1 rounded-full bg-ink-500/10 px-2 py-0.5 text-[11px] text-ink-400"
                   >
                     <span className="inline-block h-1.5 w-1.5 animate-pulse rounded-full bg-ink-400" />
-                    melengkapi hasil…
+                    Masih mencari di sumber lain
                   </span>
                 )}
                 {failedSources > 0 && (
