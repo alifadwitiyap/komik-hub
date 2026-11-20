@@ -196,7 +196,7 @@ export default function Series() {
   )
   if (!data) return <Spinner label="Memuat manga…" />
 
-  const { series: s } = data
+  const { series: s } = data (Fix reading progress, chapter order, image retry and reader motion)
   const oldest = chapters.length > 0 ? chapters[chapters.length - 1] : null
   // rentang terpilih membentang > 40 chapter: perluas daftar supaya yang
   // terpilih benar-benar terlihat (bukan cuma sebagian). Tetap terpancar
