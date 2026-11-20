@@ -18,6 +18,8 @@ export interface PickableChapter {
   key: string
   /** nomor chapter (string: "1195", "1.5", "extra-9") */
   number: string
+  /** sumber/channel chapter (unified) — dipakai label edisi, bukan link */
+  source?: string | null
   /** judul chapter */
   title: string
 }
@@ -78,6 +80,7 @@ export function usePickableChapters({
           (r.chapters ?? []).map((c) => ({
             key: `${c.handle || unified.handle}:${c.number}`,
             number: c.number,
+            source: c.source || (c.handle || unified.handle).split(':')[0],
             title: c.title || `Chapter ${c.number}`,
           })),
         )

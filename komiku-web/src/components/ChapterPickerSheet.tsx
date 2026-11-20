@@ -1,7 +1,7 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { usePickableChapters } from '../hooks/usePickableChapters'
-import { sortByChapterNumber } from '../chapterOrder'
+import { sortByChapterNumber, chapterEditionLabel } from '../chapterOrder'
 import { useReadMarks } from '../hooks/useReadMarks'
 import { marathonHref, readerHref } from '../readerSource'
 
@@ -330,12 +330,12 @@ export default function ChapterPickerSheet({
                             ? 'text-white/55'
                             : 'text-white/60'
                       }`}
-                      title={c.number || c.title}
+                      title={chapterEditionLabel(c)}
                     >
-                      {c.number || '—'}
+                      {chapterEditionLabel(c)}
                     </span>
                     <span
-                      className={`min-w-0 flex-1 truncate text-[13px] ${
+                      className={`min-w-0 flex-1 truncate text-[12px] ${
                         isCurrent
                           ? 'font-bold text-white'
                           : read
@@ -343,7 +343,7 @@ export default function ChapterPickerSheet({
                             : 'text-white/85'
                       }`}
                     >
-                      {c.title}
+                      {c.title === chapterEditionLabel(c) ? '' : c.title}
                     </span>
                     {isCurrent && (
                       <span className="shrink-0 rounded-full bg-brand-amber px-2 py-0.5 text-[9.5px] font-bold text-white">

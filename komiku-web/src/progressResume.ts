@@ -39,11 +39,37 @@ export function isLegacyProgress(entry: ProgressEntry | null | undefined): boole
   return entry.page === 0 && !entry.pageId
 }
 
+/** Sumber dari key unified `sumber:id:...`; null untuk flow legacy. */
+export function sourceOfChapterKey(chapterId: string | null | undefined): string | null {
+  if (!chapterId) return null
+  const head = toChapterId(chapterId).split(':', 1)[0]
+  return head || null
+}
+
+/**
+ * Tampilan chapter + sumber yang sama persis di Beranda/Rak/detail.
+ * `chapterLabel` memakai `chapterName` tersimpan (bisa "Chapter 811 Fix"),
+ * sedangkan `chapterId` tetap dipertahankan apa adanya untuk link/href.
+ */
+export function resumeLabel(target: Pick<ResumeTarget, 'chapterId' | 'source'> & { chapterName?: string | null }): string {
+  const chapter = target.chapterName?.trim() || `Chapter ${target.chapterId.split(':').pop() ?? target.chapterId}`
+  const source = target.source?.trim()
+  return source ? `${chapter} · ${source}` : chapter
+}
+
+/** Kata "dari SUMBER" untuk menjelaskan progres lintas sumber di CTA. */
+export function resumeSourceNotice(target: Pick<ResumeTarget, 'source' | 'sourceChanged'>): string | null {
+  if (!target.sourceChanged || !target.source?.trim()) return null
+  return `dari ${target.source.trim()}`
+}
+
 /**
  * Pilih satu target dari progres tersimpan + sesi maraton.
  * Aturan prioritas: mode terakhir yang disimpan (`entry.mode`) menang; entri
  * lama tanpa mode memakai keberadaan `MarathonPosition` sebagai fallback.
  * `isValidResume` (opsional) menolak chapter yang bukan milik series tujuan.
+ * Jangan pakai validator yang membatasi sumber: aturan lintas-sumber ada di
+ * `sourceChanged` + label, bukan dengan membuang progres tersimpan.
  */
 export function resolveResumeTarget(
   entry: ProgressEntry | null | undefined,

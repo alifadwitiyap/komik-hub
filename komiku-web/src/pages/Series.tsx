@@ -171,7 +171,7 @@ export default function Series() {
     setDlMsg(null)
     if (dlHandle) retryRun(dlHandle)
   }
-  const { resume, marathonPos, resumeHref, marathonHref: marathonLink } =
+  const { resume, marathonPos, resumeHref, marathonHref: marathonLink, label } =
     useSeriesResume(id)
 
   if (error) return (
@@ -459,7 +459,7 @@ export default function Series() {
             to={resumeHref as string}
             className="mt-2 block min-h-11 content-center text-center text-[12px] font-medium text-ink-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber focus-visible:ring-offset-2 [@media(hover:hover)]:hover:text-brand-amber"
           >
-            Lanjut dari {resume.chapterName} · halaman {resume.page + 1}
+            Lanjut dari {label ?? `${resume.chapterName}`} · halaman {resume.page + 1}
           </Link>
         )}
       </div>

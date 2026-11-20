@@ -35,3 +35,19 @@ export function sortByChapterNumber<T>(
   const tanpaNomor = sorted.filter((row) => !CHAPTER_PREFIX.test(getNumber(row)))
   return [...bernomor.reverse(), ...tanpaNomor]
 }
+
+/**
+ * Edisi chapter untuk picker: nomor + sumber, dengan fallback pada suffix
+ * nomor asli ("1189.2", "811 Fix") bila sumber tidak tersedia. Kunci/link
+ * TIDAK diubah — helper ini hanya menghasilkan string tampilan.
+ */
+export function chapterEditionLabel(
+  chapter: { number?: string | null; key?: string | null; source?: string | null; title?: string | null },
+): string {
+  const number = (chapter.number || chapter.title || '').trim() || '—'
+  const source = chapter.source?.trim() || chapter.key?.split(':')[0]?.trim() || ''
+  // Judul sudah membawa edisi ("Chapter 811 Fix", "Chapter 1189.2 · Mangaku")
+  // → jangan dilabeli dua kali.
+  if (source && !/·\s*\S+\s*$/.test(number)) return `${number} · ${source}`
+  return number
+}

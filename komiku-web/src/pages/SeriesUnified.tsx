@@ -170,11 +170,12 @@ export default function SeriesUnified() {
   // Kunci = title_key series + nomor chapter (lihat readMarks.ts).
   const titleKey = data?.manga.title_key ?? null
   const { isRead, count: readTotal } = useReadMarks(titleKey)
-  // Resume baca + sesi maraton untuk series ini — hook bersama. Kunci resume
-  // sah hanya kalau milik handle ini (`handle:nomor`); kalau tidak, tombol
-  // baca jatuh ke fallback (chapter paling awal).
-  const { resume, resumeKey, marathonPos, resumeHref, marathonHref: marathonLink } =
-    useSeriesResume(handle, (key) => key.startsWith(`${handle}:`))
+  // Resume baca + sesi maraton untuk series ini — hook bersama. Progres
+  // mengikuti identitas series dengan kunci chapter persis; bila sumber halaman
+  // berbeda dari sumber progres, label menjelaskannya tanpa jatuh ke chapter
+  // lokal paling awal.
+  const { resumeKey, marathonPos, resumeHref, marathonHref: marathonLink, label, sourceNotice } =
+    useSeriesResume(handle, undefined, data?.representative_source ?? handle.split(':')[0] ?? null)
 
   // Range mengikuti URUTAN TAMPIL, dan `visible` selalu potongan awal `chapters`
   // → index baris aman dipakai walau daftar dipotong 40.
@@ -450,7 +451,7 @@ export default function SeriesUnified() {
                 to={resumeHref ?? `/baca/${handle}/${oldest.number}`}
                 className="flex min-h-11 flex-1 items-center justify-center rounded-xl bg-brand-amber py-2.5 text-center text-[13px] font-bold text-white transition-colors active:scale-[0.97] active:duration-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber focus-visible:ring-offset-2 [@media(hover:hover)]:hover:bg-brand-amber-soft"
               >
-                {resumeKey ? `Lanjut · ${resume?.chapterName}` : `Baca ${chapterLabel(oldest)}`}
+                {resumeKey ? `Lanjut · ${label}${sourceNotice ? ` ${sourceNotice}` : ''}` : `Baca ${chapterLabel(oldest)}`}
               </Link>
               <Link
                 to={

@@ -1,9 +1,6 @@
 import { describe, it, expect } from 'vitest'
-import {
-  resolveResumeTarget,
-  canRestorePage,
-  isLegacyProgress,
-} from './progressResume'
+import { canRestorePage, isLegacyProgress, resolveResumeTarget, resumeLabel, resumeSourceNotice } from './progressResume'
+import { chapterEditionLabel } from './chapterOrder'
 import { mergeProgress, type ProgressEntry } from './hooks/useProgress'
 import { toChapterId, readerHref, marathonHref } from './readerSource'
 
@@ -124,6 +121,42 @@ describe('progressResume — Solo Leveling', () => {
     const t = resolveResumeTarget(marathonEntry(), marathonPos(), undefined, { chapterId: CH, source: 'komiku' })
     expect(t!.sourceChanged).toBe(false)
     expect(canRestorePage(t, { chapterId: CH, source: 'komiku' }, [IMG(1), IMG(3)])).toBe(true)
+  })
+
+  it('lintas sumber: kunci persis dipertahankan + label sumber eksplisit', () => {
+    const entry = marathonEntry({
+      seriesId: 'one-piece',
+      chapterId: 'shinigami:1284:1',
+      chapterName: 'Chapter 1',
+      source: 'shinigami',
+      handle: 'shinigami:1284:1',
+      mode: 'normal',
+      seriesTitle: 'One Piece',
+    })
+    const t = resolveResumeTarget(entry, null, undefined, {
+      chapterId: 'shinigami:1284:3',
+      source: 'mangaku',
+      handle: 'mangaku:1284',
+    })
+    expect(t!.chapterId).toBe('shinigami:1284:1') // bukan chapter 3 lokal
+    expect(t!.href).toBe('/baca/shinigami:1284/1')
+    expect(t!.source).toBe('shinigami')
+    expect(t!.sourceChanged).toBe(true)
+    expect(t!.page).toBe(0) // tidak membawa anchor halaman lintas sumber
+    expect(resumeLabel({ chapterId: t!.chapterId, source: t!.source, chapterName: entry.chapterName }))
+      .toBe('Chapter 1 · shinigami')
+    expect(resumeSourceNotice(t!)).toBe('dari shinigami')
+  })
+
+  it('edisi ganda di picker dibedakan tanpa mengubah kunci/link', () => {
+    const shinigami = { key: 'shinigami:1284:1189', number: '1189', source: 'shinigami', title: 'Chapter 1189' }
+    const mangaku = { key: 'mangaku:1284:1189.2', number: '1189.2', source: 'mangaku', title: 'Chapter 1189.2' }
+    expect(chapterEditionLabel(shinigami)).toBe('1189 · shinigami')
+    expect(chapterEditionLabel(mangaku)).toBe('1189.2 · mangaku')
+    expect(chapterEditionLabel({ key: 'komiku:1284:811 Fix', number: '811 Fix', title: 'Chapter 811 Fix' }))
+      .toBe('811 Fix · komiku')
+    // Link tetap memakai kunci asli, bukan label tampilan.
+    expect(readerHref(mangaku.key)).toBe('/baca/mangaku:1284/1189.2')
   })
 })
 

@@ -5,7 +5,7 @@ import { accountHeaders, toMangaCard, unifiedApi } from '../api'
 import type { Manga } from '../types'
 import { MangaCard } from './Home'
 import * as rakStore from '../rakStore'
-import { readerHref, marathonHref } from '../readerSource'
+import { resolveResumeTarget, resumeLabel } from '../progressResume'
 import { useProgress } from '../hooks/useProgress'
 import { useMarathonMemory } from '../hooks/useMarathonMemory'
 import { getUser } from '../account'
@@ -267,15 +267,18 @@ function HistoryTab({ entries }: { entries: rakStore.HistoryEntry[] }) {
       const e = byHandle.get(String(p.handle ?? '')) ?? byHandle.get(String(p.seriesId))
       if (!e) return null
       const pos = marathon.forHandle(e.handle)
-      const key = String(p.chapterId ?? '')
-      const href = pos ? marathonHref(pos.chapterKey) : key ? readerHref(key) : null
-      if (!href) return null
+      const target = resolveResumeTarget(p, pos)
+      if (!target) return null
       return {
         key: e.title_key,
         entry: e,
-        href,
-        chapter: p.chapterName || `Chapter ${key.split(':').pop() ?? ''}`,
-        page: p.page,
+        href: target.href,
+        chapter: resumeLabel({
+          chapterId: target.chapterId,
+          source: target.source,
+          chapterName: p.chapterName,
+        }),
+        page: target.page,
         progress: Math.max(0, Math.min(1, p.progress || 0)),
       }
     })
