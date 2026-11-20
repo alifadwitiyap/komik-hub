@@ -54,7 +54,7 @@ describe('Kartu katalog: cover + judul 2 baris + label Ch.', () => {
     expect(homeSrc).toContain("const number = raw.replace(/^Ch\\.\\s*/i, '')")
     expect(homeSrc).toContain('return `Ch. ${number}`')
     expect(homeSrc).toContain('const label = chapterLabel(manga)')
-    expect(homeSrc).toContain('aspect-[62/82] overflow-hidden rounded-xl')
+    expect(homeSrc).toContain('aspect-[3/4] overflow-hidden rounded-xl')
     expect(homeSrc).toContain('line-clamp-2 font-display text-[12.5px] font-medium')
     expect(homeSrc).toContain('{label}')
     expect(searchSrc).toContain('<MangaCard manga={m} />')
