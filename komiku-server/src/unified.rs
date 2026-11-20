@@ -238,7 +238,7 @@ pub async fn warm_up(state: std::sync::Arc<UnifiedState>) {
         .iter()
         .filter_map(|it| {
             let h = it.handle();
-            (!h.is_empty()).then(|| h)
+            (!h.is_empty()).then_some(h)
         })
         .take(8)
         .collect();
