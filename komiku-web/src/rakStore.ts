@@ -206,3 +206,27 @@ export function listFavorites(): FavoriteEntry[] {
   const data = load()
   return Object.values(data.favorites).sort((a, b) => b.loved_at - a.loved_at)
 }
+
+/** Status rak versi plan UX lanjutan. */
+export type RakTab = 'semua' | 'sedang' | 'ingin' | 'selesai' | 'unduhan'
+
+/** Alias URL lama tetap membuka panel yang sama (tautan lama tidak putus). */
+const RAK_TAB_ALIASES: Record<string, RakTab> = {
+  semua: 'semua',
+  terbaru: 'semua',
+  sedang: 'sedang',
+  sejarah: 'sedang',
+  ingin: 'ingin',
+  favorit: 'ingin',
+  selesai: 'selesai',
+  unduhan: 'unduhan',
+}
+
+export function normalizeRakTab(raw: string | null | undefined): RakTab {
+  return RAK_TAB_ALIASES[String(raw ?? '').trim().toLowerCase()] ?? 'semua'
+}
+
+/** Query kanonik — 'semua' memakai URL bersih (warisan ?tab=terbaru). */
+export function rakTabQuery(tab: RakTab): Record<string, string> {
+  return tab === 'semua' ? {} : { tab }
+}
