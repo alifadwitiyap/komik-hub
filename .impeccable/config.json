@@ -8,6 +8,12 @@
         "value": "plus jakarta sans",
         "createdAt": "2026-11-20T10:05:54.669Z",
         "reason": "User plan (m01001 Fase 1.2) explicitly specifies Plus Jakarta Sans as the display font for Komik Hub mobile-first redesign"
+      },
+      {
+        "rule": "overused-font",
+        "value": "plus jakarta sans",
+        "createdAt": "2026-11-20T10:20:11.699Z",
+        "reason": "User plan (m01001 Fase 1.2) explicitly specifies Plus Jakarta Sans as the display font for Komik Hub mobile-first redesign"
       }
     ]
   }
