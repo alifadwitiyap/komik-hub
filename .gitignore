@@ -67,3 +67,4 @@ deploy/seed/.seeded
 .audit-after/
 .audit-baseline/
 .audit-mobile/
+.audit-advanced/
