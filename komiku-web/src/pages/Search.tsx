@@ -100,6 +100,9 @@ export default function Search() {
   const [page, setPage] = useState(1)
   const [recent, setRecent] = useState<string[]>(() => listRecent())
   const [filterOpen, setFilterOpen] = useState(false)
+  // Riwayat hanya muncul saat kolom benar-benar aktif dan belum ada submit.
+  const [inputActive, setInputActive] = useState(false)
+  const [riwayatDimatikan, setRiwayatDimatikan] = useState(false)
 
   // input mengikuti URL (termasuk navigasi back/forward)
   useEffect(() => setInput(query), [query])
@@ -183,6 +186,8 @@ export default function Search() {
    * ada efek debounce yang menulis URL saat mengetik.
    */
   const commitQuery = (v: string) => {
+    setRiwayatDimatikan(true)
+    setInputActive(false)
     setParams((prev) => {
       const next = new URLSearchParams(prev)
       if (v) next.set('q', v)
@@ -417,22 +422,38 @@ export default function Search() {
   }, [srcRaw, srtRaw, tipe, status, genreSlug, activeGenre])
 
   return (
-    <div className="mx-auto max-w-3xl px-4 py-5">
-      <h1 className="mb-3 text-lg font-semibold">Cari manga</h1>
+    <div className="mx-auto max-w-3xl px-3 py-3">
+      {/* P1 kompak 320px: judul halaman jadi sr-only (TopBar sudah memberi
+          konteks) supaya kolom + Filter + Urutkan + kartu pertama muat. */}
+      <h1 className="sr-only">Cari manga</h1>
 
+      {/* Fokus riwayat dipantau via onChange input + onBlur wrapper: berpindah
+          ke tombol riwayat tidak langsung menyembunyikan daftar. */}
+      <div
+        data-search-controls
+        onBlurCapture={(e) => {
+          if (!e.currentTarget.contains(e.relatedTarget as Node)) setInputActive(false)
+        }}
+      >
       <form
+        data-search-form
         onSubmit={(e) => {
           e.preventDefault()
           commitQuery(input.trim())
         }}
-        className="flex gap-2"
+        className="flex gap-1.5"
       >
         <div className="relative flex min-w-0 flex-1 items-center">
           <IconMagnifyingGlass className="pointer-events-none absolute left-3.5 size-4 text-ink-500" />
           {/* text-base (16px): di bawah 16px iOS Safari auto-zoom saat input difokuskan. */}
           <input
             value={input}
-            onChange={(e) => setInput(e.target.value)}
+            onChange={(e) => {
+              setInput(e.target.value)
+              setInputActive(true)
+              setRiwayatDimatikan(false)
+            }}
+            onFocus={() => setRiwayatDimatikan(false)}
             placeholder="Judul, mis. Solo Leveling"
             inputMode="search"
             enterKeyHint="search"
@@ -452,7 +473,8 @@ export default function Search() {
         </div>
         <button
           type="submit"
-          className="shrink-0 min-h-11 rounded-full bg-brand-amber px-5 py-2.5 text-sm font-bold text-white transition-colors active:bg-brand-amber/80 active:scale-[0.97] touch-manipulation focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber focus-visible:ring-offset-2 [@media(hover:hover)]:hover:bg-brand-amber-soft"
+          aria-label="Cari"
+          className="shrink-0 min-h-11 rounded-full bg-brand-amber px-3.5 py-2 text-[13px] font-bold text-white transition-colors active:bg-brand-amber/80 active:scale-[0.97] touch-manipulation focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber focus-visible:ring-offset-2 [@media(hover:hover)]:hover:bg-brand-amber-soft"
         >
           Cari
         </button>
@@ -460,27 +482,27 @@ export default function Search() {
 
       {/* Dua kontrol utama tampil di awal: Filter dan Urutkan. Sumber/tipe/
           status/genre masuk panel; Urutkan bisa diubah langsung tanpa panel. */}
-      <div className="mt-3 flex gap-2">
+      <div className="mt-1.5 flex gap-1.5">
         <button
           type="button"
           aria-expanded={filterOpen}
           aria-controls="panel-filter-cari"
           onClick={openFilter}
-          className={`inline-flex min-h-11 flex-1 touch-manipulation items-center justify-center gap-2 rounded-full px-4 py-2 text-[13px] font-bold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber focus-visible:ring-offset-2 active:scale-[0.97] ${
+          className={`inline-flex min-h-11 flex-1 touch-manipulation items-center justify-center gap-1.5 rounded-full px-2.5 py-1.5 text-[12.5px] font-bold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber focus-visible:ring-offset-2 active:scale-[0.97] ${
             filterOpen || activeChips.length > 0
               ? 'bg-brand-amber text-white'
               : 'border border-ink-700 bg-ink-900 text-ink-300'
           }`}
         >
           <IconSliders className="size-3.5" />
-          Filter{activeChips.length > 0 ? ` (${activeChips.length})` : ''}
+          <span className="truncate">Filter{activeChips.length > 0 ? ` (${activeChips.length})` : ''}</span>
         </button>
         <div className="relative flex min-h-11 min-w-0 flex-1 items-center">
           <select
             aria-label="Urutkan hasil"
             value={srt ?? 'terbaru'}
             onChange={(e) => setFilter('sort', e.target.value)}
-            className="min-h-11 w-full appearance-none rounded-full border border-ink-700 bg-ink-900 py-2 pl-4 pr-9 text-[13px] font-semibold text-ink-300 focus:border-brand-amber focus:outline-none"
+            className="min-h-11 w-full appearance-none rounded-full border border-ink-700 bg-ink-900 py-1 pl-3 pr-7 text-[12.5px] font-semibold text-ink-300 focus:border-brand-amber focus:outline-none"
           >
             {SORTS.map((s) => (
               <option key={s.value} value={s.value}>{s.label}</option>
@@ -488,6 +510,7 @@ export default function Search() {
           </select>
           <SelectChevron />
         </div>
+      </div>
       </div>
 
       {filterOpen && (
@@ -618,10 +641,11 @@ export default function Search() {
         </p>
       )}
 
-      {/* Riwayat pencarian + kata kunci cepat (diturunkan dari nama genre) —
-          tampil saat kolom kosong. */}
-      {!searching && (
-        <div data-recent-searches className="mt-3">
+      {/* Riwayat pencarian + kata kunci cepat: HANYA saat input aktif dan belum
+          pernah di-submit. Setelah submit, ruangnya dipakai hasil (kartu pertama
+          tetap dekat keyboard). */}
+      {inputActive && !riwayatDimatikan && !searching && (
+        <div data-recent-searches className="mt-2">
           {recent.length > 0 && (
             <div className="flex flex-wrap items-center gap-2">
               <span className="text-[11.5px] text-ink-500">Terakhir dicari</span>
@@ -664,7 +688,7 @@ export default function Search() {
       )}
 
       {searching ? (
-        <div className="mt-5">
+        <div className="mt-2">
           {loading && <SkeletonCards />}
           {/* lane5_microcopy.md:80 (High) — "Pencarian gagal — coba lagi." tanpa error mentah. */}
           {error && (
@@ -681,8 +705,8 @@ export default function Search() {
           )}
           {!loading && !error && (
             <>
-              <div className="mb-2 flex flex-wrap items-center gap-2">
-                <p data-search-count className="text-[12px] text-ink-500">
+              <div className="mb-1.5 flex flex-wrap items-center gap-1.5">
+                <p data-search-count className="text-[11.5px] text-ink-500">
                   {results.length} hasil untuk “{query}”{filterSuffix}
                   {sourcesTotal > 1 ? ` · dari ${sourcesTotal} sumber` : ''}
                 </p>
@@ -849,24 +873,11 @@ function ResultGrid({ items }: { items: Manga[] }) {
     <ul data-search-results className="grid grid-cols-2 gap-x-3 gap-y-4">
       {items.map((m) => (
         <li key={m.id} className="[&_a]:w-full">
-          <MangaCard manga={withChapterLabel(m)} />
+          <MangaCard manga={m} />
         </li>
       ))}
     </ul>
   )
-}
-
-/**
- * MangaCard (Home.tsx, milik subagent lain) menampilkan `other[0]` apa adanya.
- * Di sini nomor chapter terakhir diberi label "Terbaru · Ch. …" sebelum kartu
- * dirender — salinan objek, data asli tidak diubah.
- */
-function withChapterLabel(m: Manga): Manga {
-  const first = m.other?.[0]
-  if (typeof first !== 'string') return m
-  const number = first.trim().replace(/^Chapter\s+/i, '')
-  if (!/^\d+(?:[.,]\d+)?$/.test(number)) return m
-  return { ...m, other: [`Terbaru · Ch. ${number}`, ...(m.other?.slice(1) ?? [])] }
 }
 
 /** Kartu skeleton pemuatan (mode cari + eksplorasi): grid 2 kolom + aspect

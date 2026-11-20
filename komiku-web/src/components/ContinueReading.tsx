@@ -1,6 +1,7 @@
 import { memo, useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { imgUrl } from '../imgUrl'
+import { sourceLabel } from './SourceBadge'
 import * as rakStore from '../rakStore'
 import { resolveResumeTarget } from '../progressResume'
 import { useProgress, type ProgressEntry } from '../hooks/useProgress'
@@ -16,6 +17,7 @@ type Item = {
   cover: string | null
   chapter: string
   page: number | null
+  source: string | null
   href: string
 }
 
@@ -51,6 +53,7 @@ function buildItems(): Item[] {
           ? `Chapter ${pos.activeKey.split(':').pop()}`
           : p.chapterName || `Chapter ${target.chapterId}`,
         page: target.page,
+        source: p.source ?? entry.source,
         href,
         at: p.at,
       }]
@@ -72,6 +75,7 @@ function buildItems(): Item[] {
         cover: entry.cover_url,
         chapter: `Chapter ${entry.last_chapter}`,
         page: null,
+        source: entry.source,
         href,
       })
       if (items.length >= MAX_CARDS) break
@@ -98,7 +102,11 @@ const ContinueReading = memo(function ContinueReading() {
     <section className="mt-5">
       <div className="flex items-baseline justify-between px-4">
         <h2 className="font-display text-[14.5px] font-semibold text-ink-100">Lanjut membaca</h2>
-        <Link to="/rak?tab=sejarah" className="-mx-2 grid min-h-11 min-w-11 place-items-center px-2 py-3 text-[12px] font-semibold text-brand-amber">
+        <Link
+          to="/rak?tab=sejarah"
+          aria-label="Lihat semua riwayat baca"
+          className="-mx-2 grid min-h-11 min-w-11 place-items-center px-2 py-3 text-[12px] font-semibold text-brand-amber"
+        >
           Lihat semua
         </Link>
       </div>
@@ -113,6 +121,7 @@ export default ContinueReading
 
 function ResumeCard({ item }: { item: Item }) {
   const [src, setSrc] = useState(() => item.cover ? imgUrl(item.cover) : '')
+  const source = sourceLabel(item.source)
 
   return (
     <Link
@@ -137,10 +146,15 @@ function ResumeCard({ item }: { item: Item }) {
       </span>
       <span className="min-w-0 flex-1">
         <span className="block truncate font-display text-[13px] font-semibold text-ink-100">{item.title}</span>
-        <span className="mt-0.5 block truncate text-[11.5px] text-ink-400">
-          {item.chapter}{item.page != null ? ` · Hal. ${item.page + 1}` : ''}
+        <span className="mt-0.5 flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-[11.5px] text-ink-400">
+          <span className="truncate">{item.chapter}{item.page != null ? ` · Hal. ${item.page + 1}` : ''}</span>
+          {source && (
+            <span data-resume-source className="shrink-0 rounded bg-ink-800 px-1.5 py-0.5 text-[10px] font-semibold text-ink-300">
+              {source}
+            </span>
+          )}
         </span>
-        <span className="mt-1.5 inline-flex min-h-8 items-center rounded-lg bg-brand-amber px-3 text-[11.5px] font-bold text-white">
+        <span className="mt-1 inline-flex min-h-7 items-center rounded-lg bg-brand-amber px-2.5 text-[11.5px] font-bold text-white">
           Lanjut baca
         </span>
       </span>

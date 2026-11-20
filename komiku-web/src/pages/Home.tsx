@@ -440,11 +440,24 @@ function ShortcutMenu() {
   )
 }
 
+/** Kartu katalog: cover + judul 2 baris + label chapter eksplisit "Ch. N".
+ *  Dipakai Home dan Search; label dibentuk di sini (bukan di Search) supaya
+ *  formatnya konsisten. `other[0]` dari API biasanya last_chapter mentah. */
+export function chapterLabel(manga: Manga): string | null {
+  const first = manga.other?.[0]
+  if (typeof first !== 'string') return null
+  const raw = first.trim().replace(/^Chapter\s+/i, '')
+  const number = raw.replace(/^Ch\.\s*/i, '')
+  if (!/^\d+(?:[.,]\d+)?$/.test(number)) return null
+  return `Ch. ${number}`
+}
+
 export const MangaCard = memo(function MangaCard({ manga }: { manga: Manga }) {
   const [failed, setFailed] = useState(false)
   const img = coverOf(manga)
   // kartu unified (handle 'sumber:id') → route handle; kartu komiku → id lama.
   const to = manga.handle ? `/manga/${manga.handle}` : `/manga/${manga.id}`
+  const label = chapterLabel(manga)
 
   return (
     <Link
@@ -509,11 +522,15 @@ export const MangaCard = memo(function MangaCard({ manga }: { manga: Manga }) {
       <p className="mt-2 line-clamp-2 font-display text-[12.5px] font-medium leading-snug text-ink-100">
         {manga.title}
       </p>
-      {manga.other && manga.other.length > 0 && (
+      {label ? (
+        <p className="mt-0.5 line-clamp-1 text-[11px] font-bold leading-snug text-ink-500">
+          {label}
+        </p>
+      ) : manga.other && manga.other.length > 0 ? (
         <p className="mt-0.5 line-clamp-1 text-[11px] font-bold leading-snug text-ink-500">
           {manga.other[0]}
         </p>
-      )}
+      ) : null}
     </Link>
   )
 })
