@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { Link, useNavigate, useParams } from 'react-router-dom'
+import Toast, { showToast as pushToast } from '../components/Toast'
+import '../styles/reader.css'
 import ChapterPickerSheet from '../components/ChapterPickerSheet'
 import ComicImage from '../components/ComicImage'
 import HeartButton from '../components/HeartButton'
@@ -28,6 +30,7 @@ import { useProgress } from '../hooks/useProgress'
 import { useReaderOverlayHistory } from '../hooks/useReaderOverlayHistory'
 import { useModeSwitch } from '../hooks/useModeSwitch'
 import { didOpenChapter, rakMangaOf } from '../readingEvents'
+import { isFavorite } from '../rakStore'
 import { readingStatusForPage, visiblePageProgress, type ReadingStatus } from '../readingStatus'
 export { rakMangaOf }
 import { anchorFrom, usableAnchor } from '../pageMemory'
@@ -99,7 +102,12 @@ export default function Reader() {
     },
   )
   void dismissOverlay
-  const [toast, setToast] = useState<string | null>(null)
+  // setToast dipertahankan karena ReaderSettingsSheet menerima prop ini;
+  // sekarang semua notifikasi lewat store Toast (satu pesan, replace).
+  const setToast = (m: string | null) => {
+    if (m) pushToast(m)
+  }
+  const hairlineRef = useRef<HTMLDivElement | null>(null)
   const tap = createTapTracker(tapHitsReaderControl)
   const { save, recent } = useProgress()
   const { gotoMarathon } = useModeSwitch(chapterId)
@@ -117,6 +125,8 @@ export default function Reader() {
   const writeRef = useRef<(force: boolean) => void>(() => {})
   /** prefetch chapter berikutnya sudah dipicu (sekali per chapter) */
   const prefetchedNext = useRef(false)
+  /** toast "tidak ada chapter berikutnya" cukup sekali per chapter */
+  const noNextToast = useRef(false)
   /** frontier fill-ahead background: index halaman berikut yang dipanaskan */
   const [bgFillIdx, setBgFillIdx] = useState(0)
 
@@ -129,6 +139,7 @@ export default function Reader() {
     setImagesReady(false)
     pending.current = null
     prefetchedNext.current = false
+    noNextToast.current = false
     setBgFillIdx(0)
     setActivePage(1)
     setReadingStatus('Sedang dibaca')
@@ -151,6 +162,7 @@ export default function Reader() {
         // A1 — respons basi: abaikan total (gambar/badge/riwayat tidak disentuh)
         if (genRef.current !== gen) return
         setData(d)
+        if (d.switched_from) pushToast('Sumber bacaan diganti otomatis')
         // CHAPTER DIBUKA → tandai "sudah dibaca" + catat riwayat rak (satu
         // definisi di readingEvents.ts). Reader: penuh (mark + rak).
         //
@@ -180,6 +192,17 @@ export default function Reader() {
   }, [chapterId, attempt])
 
   const images = data?.images ?? []
+
+  // HeartButton punya feedback inline; reader mengumumkan hasilnya lewat
+  // toast tanpa mengubah komponen bersama itu (event 'rak-change').
+  useEffect(() => {
+    const key = data?.title_key
+    if (!key) return
+    const onRak = () =>
+      pushToast(isFavorite(key) ? 'Ditambahkan ke favorit' : 'Dihapus dari favorit')
+    window.addEventListener('rak-change', onRak)
+    return () => window.removeEventListener('rak-change', onRak)
+  }, [data?.title_key])
 
   // Dimensi asli dari server (baca header, belum decode) → rasio w/h tiap
   // halaman. Dipakai ComicImage untuk reserve tinggi SEBELUM gambar selesai
@@ -239,6 +262,10 @@ export default function Reader() {
       const total = document.documentElement.scrollHeight - vh
       const p = total > 0 ? Math.min(1, window.scrollY / total) : 0
       const next = Math.round(base * (1 + p)) // horizon: base → 2x base
+      // Hairline progres: tulis langsung ke style, TANPA setState per frame.
+      if (hairlineRef.current) {
+        hairlineRef.current.style.transform = `scaleX(${p})`
+      }
       setMountAhead((prev) => (Math.abs(prev - next) > 24 ? next : prev))
     }
     const onScroll = () => {
@@ -412,52 +439,61 @@ export default function Reader() {
   }, [data, loadedCount, images.length])
 
   // ---- prefetch chapter berikutnya (UX) ----
-  // Saat pembaca sudah membaca ~70% chapter (rasio progres scroll), hangatkan
-  // data + halaman pertama chapter berikutnya sehingga "Baca Berikutnya"
-  // terasa instan. Dilewati kalau mode hemat / saveData aktif (jangan boros
-  // bandwidth), atau saat posisi baca sedang dipulihkan (anchor restore).
+  // Saat pembaca masuk 80% halaman TERAKHIR chapter, hangatkan data +
+  // halaman pertama chapter berikutnya supaya "Baca Berikutnya" instan.
+  // Dilewati kalau mode hemat / saveData / koneksi lambat. Kalau chapter ini
+  // yang terakhir, beri tahu sekali dari scroll yang sama (bukan tombol mati).
   useEffect(() => {
     if (!data || images.length === 0 || !chapterId) return
     const nextId = data.chapter?.next ? String(data.chapter.next.id) : null
-    if (!nextId || prefetchedNext.current) return
-    try {
-      const mode = getReaderSettings().prefetchMode
-      const conn = (
-        typeof navigator !== 'undefined'
-          ? (navigator as Navigator & { connection?: { saveData?: boolean } }).connection
-          : undefined
-      )
-      if (mode === 'hemat' || conn?.saveData || slowLink()) return
-    } catch {
-      /* storage tertutup — lanjut default */
-    }
-    const scrollable = () =>
-      document.documentElement.scrollHeight - window.innerHeight
-    const onScroll = () => {
-      // jangan prefetch saat restore anchor sedang berjalan
-      if (pending.current) return
-      if (prefetchedNext.current) return
-      const total = scrollable()
-      if (total > 0 && window.scrollY / total >= 0.7) {
-        prefetchedNext.current = true
-        const ctrl = new AbortController()
-        loadChapter(nextId, ctrl.signal)
-          .then((d) => {
-            const firstImg = d.images?.[0]
-            if (firstImg) {
-              // Panaskan lewat proxy pada lebar yang BENAR-BENAR dipilih browser.
-              // Kontainer reader 768 px + DPR 2 → srcset 480/640/900 memilih 900w,
-              // jadi prefetch 480/640 dulu tidak pernah terpakai: transisi chapter
-              // tetap dingin (terukur 4,3 s). Byte asli di-cache server, jadi satu
-              // fetch upstream cukup untuk semua lebar.
-              const im = new window.Image()
-              im.src = imgSrc(firstImg)
-            }
-          })
-          .catch(() => {
-            /* gagal prefetch — bukan error fatal; user tetap bisa buka manual */
-          })
+    const lastSelector = `[data-page="${images.length - 1}"]`
+    // Fraksi masuk ke halaman terakhir = sejauh mana viewport menutupi
+    // halaman itu (0 = belum terlihat, 1 = halaman penuh terlewat).
+    const intoLastPage = () => {
+      const el = document.querySelector<HTMLElement>(lastSelector)
+      if (!el) {
+        const total = document.documentElement.scrollHeight - window.innerHeight
+        return total > 0 ? Math.min(1, window.scrollY / total) : 0
       }
+      const r = el.getBoundingClientRect()
+      if (r.height <= 0) return 0
+      return Math.max(0, Math.min(1, (window.innerHeight - r.top) / r.height))
+    }
+    const onScroll = () => {
+      if (pending.current) return
+      const progress = intoLastPage()
+      if (!nextId) {
+        if (progress >= 0.9 && !noNextToast.current) {
+          noNextToast.current = true
+          pushToast('Tidak ada chapter selanjutnya')
+        }
+        return
+      }
+      if (prefetchedNext.current || progress < 0.8) return
+      prefetchedNext.current = true
+      try {
+        const mode = getReaderSettings().prefetchMode
+        const conn = (
+          typeof navigator !== 'undefined'
+            ? (navigator as Navigator & { connection?: { saveData?: boolean } }).connection
+            : undefined
+        )
+        if (mode === 'hemat' || conn?.saveData || slowLink()) return
+      } catch {
+        /* storage tertutup — lanjut default */
+      }
+      const ctrl = new AbortController()
+      loadChapter(nextId, ctrl.signal)
+        .then((d) => {
+          const firstImg = d.images?.[0]
+          if (firstImg) {
+            const im = new window.Image()
+            im.src = imgSrc(firstImg)
+          }
+        })
+        .catch(() => {
+          /* gagal prefetch — bukan error fatal; user tetap bisa buka manual */
+        })
     }
     window.addEventListener('scroll', onScroll, { passive: true })
     return () => window.removeEventListener('scroll', onScroll)
@@ -575,13 +611,6 @@ export default function Reader() {
       writeRef.current(false)
     }
   }, [loadedCount])
-  // toast (komentar/bagikan) — hilang otomatis
-  useEffect(() => {
-    if (!toast) return
-    const t = setTimeout(() => setToast(null), 2200)
-    return () => clearTimeout(t)
-  }, [toast])
-
   if (error)
     return (
       <div className="mx-auto max-w-3xl px-4 py-16 text-center">
@@ -662,9 +691,16 @@ export default function Reader() {
     // overflow-hidden) dan tanpa memengaruhi elemen fixed.
     <div
       className={`relative min-h-dvh overflow-x-clip ${
-        settings.nightShift ? 'bg-night-dark' : 'bg-white'
+        settings.nightShift ? 'bg-night-dark' : 'bg-white reader-canvas'
       }`}
     >
+      {/* Progres baca 2px di pinggir atas. Transform ditulis rAF dari efek
+          mountAhead — tidak ada setState per frame. */}
+      <div
+        ref={hairlineRef}
+        aria-hidden="true"
+        className="reader-progress-hairline"
+      />
       {/**
        * Tap area baca: toggle chrome / eksekusi fullscreen saat ada niat.
        *
@@ -788,15 +824,7 @@ export default function Reader() {
         titleKey={data?.title_key ?? null}
       />
 
-      {toast && (
-        <p
-          role="status"
-          aria-live="polite"
-          className="pointer-events-none fixed bottom-[calc(9.5rem+env(safe-area-inset-bottom))] left-1/2 z-40 -translate-x-1/2 rounded-full bg-black/85 px-4 py-2 text-[12px] font-medium text-white shadow-lg"
-        >
-          {toast}
-        </p>
-      )}
+      <Toast />
 
       {/* Halaman manga — filter kecerahan/perisai malam diterapkan di sini */}
       {/* 2b — sumber pindah (fallback): SATU baris kecil berisi catatan
@@ -842,7 +870,7 @@ export default function Reader() {
         ref={flowRef}
         className={`reader-flow mx-auto flex w-full flex-col ${
           settings.readMode === 'webtoon' ? '' : 'max-w-3xl'
-        }`}
+        } ${settings.nightShift ? '' : 'reader-canvas'}`}
         style={filterStyle}
       >
       {images.map((src, i) => (
@@ -874,11 +902,22 @@ export default function Reader() {
             />
           </div>
         ))}
-        {/* Ruang bawah: footer SATU baris (~64px + safe-area). Spacer lama
-            120px (dua baris) disusutkan supaya ekor halaman terakhir tidak
-            jauh dari footer di layar 639/799. */}
-        <div className={footerSpacer} />
       </div>
+
+      {/* Kartu akhir chapter: DI LUAR flow (flow punya filter → stacking
+          context) supaya tidak tertimpa tap layer z-10. */}
+      {nextKey && (
+        <div className="relative z-20 mx-auto w-full max-w-3xl px-4 pt-4">
+          <Link
+            to={readerHref(nextKey)}
+            className="tactile-press flex min-h-14 w-full items-center justify-center rounded-2xl bg-brand-amber px-4 text-center text-[15px] font-bold text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber"
+          >
+            Lanjut ke Chapter Berikutnya →
+          </Link>
+        </div>
+      )}
+      {/* Ruang bawah untuk footer satu baris (+ safe-area). */}
+      <div className={footerSpacer} />
 
       <ReaderMenu
         open={menuOpen}

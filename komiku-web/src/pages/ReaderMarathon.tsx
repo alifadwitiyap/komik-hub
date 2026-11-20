@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
+import Toast, { showToast as pushToast } from '../components/Toast'
+import '../styles/reader.css'
 import ChapterPickerSheet from '../components/ChapterPickerSheet'
 import ComicImage from '../components/ComicImage'
 import ReaderFooter from '../components/ReaderFooter'
@@ -123,7 +125,11 @@ export default function ReaderMarathon() {
   )
   void dismissOverlay
   const [restartConfirm, setRestartConfirm] = useState(false)
-  const [toast, setToast] = useState<string | null>(null)
+  // setToast dipertahankan untuk ReaderSettingsSheet; notifikasi lewat store.
+  const setToast = (m: string | null) => {
+    if (m) pushToast(m)
+  }
+  const hairlineRef = useRef<HTMLDivElement | null>(null)
   const [nextLoadFailed, setNextLoadFailed] = useState(false)
   /** sedang mengambil chapter berikutnya — untuk status "memuat" di dasar */
   const [loadingNext, setLoadingNext] = useState(false)
@@ -478,7 +484,7 @@ export default function ReaderMarathon() {
    * menentukan posisi piksel yang sedang dipulihkan.
    */
   const restoringChain = wantBlocks > 0 && blocks.length < wantBlocks
-  const NEXT_CHAPTER_AT = 0.7 // muat chapter berikutnya saat 70% chapter terbaca
+  const NEXT_CHAPTER_AT = 0.8 // muat chapter berikutnya saat 80% chapter terbaca
 
   // Progres baca SEBENARNYA (= posisi scroll), bukan posisi muat: chaining
   // sudah memuat chapter berikutnya lebih dulu, jadi progres harus mengikuti
@@ -488,6 +494,11 @@ export default function ReaderMarathon() {
     let raf = 0
     const compute = () => {
       raf = 0
+      const total = document.documentElement.scrollHeight - window.innerHeight
+      if (hairlineRef.current) {
+        const p = total > 0 ? Math.min(1, window.scrollY / total) : 0
+        hairlineRef.current.style.transform = `scaleX(${p})`
+      }
       const root = flowRef.current
       if (!root) return
       const mid = window.scrollY + window.innerHeight * 0.5
@@ -668,7 +679,8 @@ export default function ReaderMarathon() {
   }
 
   return (
-    <div className={`relative min-h-dvh ${settings.nightShift ? 'bg-night-dark' : 'bg-white'}`}>
+    <div className={`relative min-h-dvh reader-canvas ${settings.nightShift ? 'bg-night-dark' : 'bg-white'}`}>
+      <div ref={hairlineRef} aria-hidden="true" className="reader-progress-hairline" />
       {/* Tap area baca — div (bukan button) supaya tidak jadi satu tombol
           raksasa di pohon aksesibilitas. Guard tap-vs-drag mencegah toggle
           saat jari hanya menggulir. Tap pada kontrol halaman (lingkaran
@@ -773,15 +785,7 @@ export default function ReaderMarathon() {
         mode="marathon"
       />
 
-      {toast && (
-        <p
-          role="status"
-          aria-live="polite"
-          className="pointer-events-none fixed bottom-[calc(9.5rem+env(safe-area-inset-bottom))] left-1/2 z-40 -translate-x-1/2 rounded-full bg-black/85 px-4 py-2 text-[12px] font-medium text-white shadow-lg"
-        >
-          {toast}
-        </p>
-      )}
+      <Toast />
 
 
       {/* banner maraton inline — muncul di dalam alur baca, bukan di chrome.
@@ -800,7 +804,11 @@ export default function ReaderMarathon() {
       </div>
 
       {/* Rantai halaman: semua chapter disambung jadi satu alur */}
-      <div ref={flowRef} className="mx-auto flex max-w-3xl flex-col" style={filterStyle}>
+      <div
+        ref={flowRef}
+        className={`mx-auto flex max-w-3xl flex-col ${settings.nightShift ? '' : 'reader-canvas'}`}
+        style={filterStyle}
+      >
         {blocks.map((b, bi) => {
           const start = blocks.slice(0, bi).reduce((n, x) => n + x.images.length, 0)
           return (
@@ -835,9 +843,8 @@ export default function ReaderMarathon() {
                       ? b.imageSizes[i][0] / b.imageSizes[i][1]
                       : undefined
                   }
-                  // hanya halaman pertama blok PERTAMA yang langsung diminta;
-                  // sisanya menunggu dekat layar (lihat ComicImage.mountAhead)
-                  eager={bi === 0 && i === 0}
+                  // 2 panel pertama (chapter pertama) pasti high priority.
+                  eager={bi === 0 && i < 2}
                   // Marathon punya banyak chapter dalam satu DOM: halaman di
                   // chapter berikutnya yang ikut mount tidak boleh menyita slot
                   // antrean dari panel yang sedang dibaca.
