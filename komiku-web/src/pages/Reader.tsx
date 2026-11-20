@@ -1,6 +1,6 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
-import Toast, { showToast as pushToast } from '../components/Toast'
+import Toast, { showToast as pushToast, showToastWithAction } from '../components/Toast'
 import '../styles/reader.css'
 import ChapterPickerSheet from '../components/ChapterPickerSheet'
 import ComicImage from '../components/ComicImage'
@@ -61,6 +61,79 @@ import {
  * karena rasio aspek tiap halaman diingat (ComicImage), tinggi halaman sudah
  * terpesan sebelum gambar decode — posisi tidak bergeser oleh layout-shift.
  */
+type AlternateSourceLink = { label: string; href: string }
+
+/**
+ * A2 — fallback sumber: HANYA memakai tautan eksplisit yang memang sudah ada
+ * di data chapter yang termuat. Tidak pernah merakit URL, menebak source, atau
+ * mengarahkan ke endpoint baru. `ChapterResponse` hari ini tidak punya field
+ * alternatif, jadi pill otomatis tersembunyi bila datanya tidak menyediakannya.
+ */
+function alternateSourceLinks(data: unknown): AlternateSourceLink[] {
+  const raw = data as Record<string, unknown>
+  const out: AlternateSourceLink[] = []
+  const seen = new Set<string>()
+  for (const bucket of [raw.alternate_sources, raw.alternates, raw.sources]) {
+    const rows = Array.isArray(bucket)
+      ? bucket
+      : bucket && typeof bucket === 'object'
+        ? Object.values(bucket)
+        : []
+    for (const row of rows) {
+      if (!row || typeof row !== 'object') continue
+      const r = row as Record<string, unknown>
+      const href =
+        typeof r.href === 'string'
+          ? r.href
+          : typeof r.url === 'string'
+            ? r.url
+            : null
+      if (!href || seen.has(href)) continue
+      // tolak skema non-http dan jangan pernah mengarang path relatif
+      if (!href.startsWith('/') && !/^https?:\/\//i.test(href)) continue
+      const label = [r.label, r.name, r.source, r.title].find(
+        (v): v is string => typeof v === 'string' && v.length > 0,
+      ) ?? 'Sumber lain'
+      seen.add(href)
+      out.push({ label, href })
+      if (out.length >= 3) return out
+    }
+  }
+  return out
+}
+
+function SourceFallback({
+  source,
+  links,
+}: {
+  source: string
+  links: AlternateSourceLink[]
+}) {
+  if (links.length === 0) return null
+  return (
+    <div
+      role="status"
+      aria-live="polite"
+      className="mx-auto mt-4 max-w-3xl rounded-2xl border border-brand-amber-dim/60 bg-black/70 px-4 py-3 text-center"
+    >
+      <p className="text-[12.5px] font-semibold text-white">
+        Gambar bermasalah di {source} · Coba sumber lain
+      </p>
+      <div className="mt-2 flex flex-wrap items-center justify-center gap-2">
+        {links.map((link) => (
+          <a
+            key={link.href}
+            href={link.href}
+            className="inline-flex min-h-11 items-center rounded-xl bg-brand-amber px-4 py-2.5 text-[12.5px] font-bold text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber"
+          >
+            {link.label}
+          </a>
+        ))}
+      </div>
+    </div>
+  )
+}
+
 export default function Reader() {
   const params = useParams<{
     chapterId?: string
@@ -75,6 +148,8 @@ export default function Reader() {
   // gambar bisa selesai decode bersilang, jadi yang dihitung himpunan
   // halaman complete — lihat onLoad ComicImage di flow bawah)
   const [loadedPages, setLoadedPages] = useState<Set<number>>(() => new Set())
+  /** Panel yang gagal dimuat — dipakai pill fallback sumber (ambang >3). */
+  const [failedPages, setFailedPages] = useState<Set<number>>(() => new Set())
   const loadedCount = loadedPages.size
   /** Halaman aktif untuk label "Hal. X dari N" — diisi dari efek anchor yang
    *  sama dengan penulisan progres (sumber tunggal, bukan hitungan baru). */
@@ -86,7 +161,7 @@ export default function Reader() {
   // chrome (toolbar + footer) ikut arah scroll; selama restore anchor
   // (`pending.current`) berjalan scroll programatik TIDAK memicunya
   const chrome = useChromeOnScroll(() => pending.current !== null)
-  const { settings, onChange, onReset, filterStyle } = useReaderSettings()
+  const { settings, onChange, onReset, filterStyle, dimOpacity, warmOpacity } = useReaderSettings()
   const autoFS = useAutoFullscreen()
   const [menuOpen, setMenuOpen] = useState(false)
   const [sheetOpen, setSheetOpen] = useState(false)
@@ -106,7 +181,56 @@ export default function Reader() {
     if (m) pushToast(m)
   }
   const hairlineRef = useRef<HTMLDivElement | null>(null)
-  const tap = createTapTracker(tapHitsReaderControl)
+  const tap = useRef(createTapTracker(tapHitsReaderControl)).current
+  const [zoom, setZoom] = useState(1)
+  const [zoomOrigin, setZoomOrigin] = useState('50% 50%')
+  const hudTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const restoreToastShown = useRef(false)
+  const announceRestore = useCallback((pageIndex: number) => {
+    if (restoreToastShown.current) return
+    restoreToastShown.current = true
+    showToastWithAction(`Melanjutkan dari Hal. ${pageIndex + 1}`, 'Ke awal', () => {
+      window.scrollTo({
+        top: 0,
+        behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches
+          ? 'instant'
+          : 'smooth',
+      })
+    })
+  }, [])
+  useEffect(() => {
+    restoreToastShown.current = false
+  }, [chapterId])
+  useEffect(() => () => {
+    if (hudTimer.current) clearTimeout(hudTimer.current)
+  }, [])
+  const onTapUp = (e: ReactPointerEvent<HTMLDivElement>) => {
+    tap.up(e.pointerId)
+    const action = tap.resolve(
+      e.clientX,
+      e.clientY,
+      performance.now(),
+      window.innerWidth,
+      settings.tapScroll,
+    )
+    if (hudTimer.current) clearTimeout(hudTimer.current)
+    if (action.type === 'hud') {
+      hudTimer.current = setTimeout(() => chrome.toggle(), 140)
+    } else if (action.type === 'zoom') {
+      const rect = flowRef.current?.getBoundingClientRect()
+      setZoomOrigin(
+        rect ? `${action.x - rect.left}px ${action.y - rect.top}px` : `${action.x}px ${action.y}px`,
+      )
+      setZoom((z) => (z > 1 ? 1 : 1.8))
+    } else if (action.type === 'scroll') {
+      window.scrollBy({
+        top: action.direction * window.innerHeight * 0.75,
+        behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches
+          ? 'instant'
+          : 'smooth',
+      })
+    }
+  }
   const { save, recent } = useProgress()
   const { gotoMarathon } = useModeSwitch(chapterId)
   const navigate = useNavigate()
@@ -134,6 +258,7 @@ export default function Reader() {
     setData(null)
     setError(null)
     setLoadedPages(new Set())
+    setFailedPages(new Set())
     setImagesReady(false)
     pending.current = null
     prefetchedNext.current = false
@@ -423,7 +548,10 @@ export default function Reader() {
     if (idx < 0) return // daftar gambar berubah sejak kunjungan lalu → abaikan
     pending.current = anchor
     const raf = requestAnimationFrame(() => {
-      if (apply(idx, anchor)) pending.current = null
+      if (apply(idx, anchor)) {
+        pending.current = null
+        announceRestore(idx)
+      }
     })
     return () => cancelAnimationFrame(raf)
     // `recent` sengaja tidak jadi dependensi: posisi dibaca sekali saat
@@ -444,6 +572,7 @@ export default function Reader() {
       const idx = images.findIndex((s) => imgUrl(s) === p.pageId)
       if (idx >= 0 && apply(idx, p)) {
         pending.current = null
+        announceRestore(idx)
         return
       }
       if (++tries > 180) {
@@ -507,10 +636,10 @@ export default function Reader() {
       const ctrl = new AbortController()
       loadChapter(nextId, ctrl.signal)
         .then((d) => {
-          const firstImg = d.images?.[0]
-          if (firstImg) {
+          // A2: metadata sudah diambil loadChapter; hangatkan 3 panel pertama.
+          for (const u of (d.images ?? []).slice(0, 3)) {
             const im = new window.Image()
-            im.src = imgSrc(firstImg)
+            im.src = imgSrc(u)
           }
         })
         .catch(() => {
@@ -648,11 +777,16 @@ export default function Reader() {
     )
   // chapter sukses tapi sumber tak kirim gambar: pesan jelas, jangan halaman kosong (QA gap D)
   if (data && images.length === 0) {
+    const alternates = alternateSourceLinks(data)
+    const sourceName = data.source ?? data.series?.source ?? 'sumber ini'
     return (
-      <Empty
-        title="Halaman tidak tersedia"
-        body="Sumber belum mengirim gambar untuk chapter ini. Coba chapter lain atau kembali nanti."
-      />
+      <>
+        <Empty
+          title="Halaman tidak tersedia"
+          body="Sumber belum mengirim gambar untuk chapter ini. Coba chapter lain atau kembali nanti."
+        />
+        <SourceFallback source={sourceName} links={alternates} />
+      </>
     )
   }
   if (!data) {
@@ -688,8 +822,8 @@ export default function Reader() {
   // lewat role=status milik ReaderToolbar.
   const loadingImages = images.length > 0 && loadedCount < images.length
   const pageStatus = images.length ? `Hal. ${activePage} dari ${images.length}` : 'Hal. 0 dari 0'
-  // Footer sekarang satu baris (±4.5rem termasuk safe-area), bukan dua baris.
-  const footerSpacer = 'h-[calc(4.5rem+env(safe-area-inset-bottom))]'
+  // Footer satu baris + scrubber 44px (±6.5rem termasuk safe-area).
+  const footerSpacer = 'h-[calc(6.5rem+env(safe-area-inset-bottom))]'
   const nextKey = chapter.next ? String(chapter.next.id) : null
   const prevKey = chapter.previous ? String(chapter.previous.id) : null
   // id manga legacy (angka) — cuma ada di flow komiku lama. Flow unified
@@ -700,6 +834,19 @@ export default function Reader() {
   const chromeHidden = !chrome.visible || autoFS.active || autoFS.nativeActive
   const fsActive = autoFS.active || autoFS.nativeActive
 
+  /** Scrubber footer: lepas slider → gulir ke panel itu, tanpa menulis ulang
+   *  anchor progres secara paksa (efek scroll yang akan menyimpan posisi). */
+  const seekPage = (page: number) => {
+    const el = flowRef.current?.querySelector<HTMLElement>(`[data-reader-page="${page - 1}"]`)
+    if (!el) return
+    window.scrollTo({
+      top: el.getBoundingClientRect().top + window.scrollY - 72,
+      behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches
+        ? 'instant'
+        : 'smooth',
+    })
+  }
+
   return (
     // overflow-x-clip: jaring pengaman. Kalau satu gambar (mis. spread halaman
     // ganda) meluber ke samping, Chrome mobile menganggap halaman lebih lebar
@@ -708,13 +855,34 @@ export default function Reader() {
     // overflow-hidden) dan tanpa memengaruhi elemen fixed.
     <div
       className={`relative min-h-dvh overflow-x-clip ${
-        settings.paperLight
-          ? 'reader-canvas reader-canvas-paper'
-          : settings.nightShift
-            ? 'bg-night-dark'
-            : 'reader-canvas'
+        settings.paperLight || settings.canvasTheme === 'terang'
+          ? 'reader-canvas-terang reader-canvas-paper'
+          : settings.canvasTheme === 'oled'
+            ? 'reader-canvas-oled'
+            : settings.canvasTheme === 'sepia'
+              ? 'reader-canvas-sepia'
+              : settings.nightShift
+                ? 'bg-night-dark'
+                : 'reader-canvas'
       }`}
     >
+      {/* Perisai malam + tint hangat: satu overlay tetap, bukan filter di
+          setiap panel (z-40, tembus pointer). Kecerahan lama dipetakan ke
+          overlay gelap; nightShift tetap memakai filter sepia di flow. */}
+      {dimOpacity > 0 && (
+        <div
+          aria-hidden="true"
+          className="reader-night-overlay"
+          style={{ backgroundColor: `rgba(0,0,0,${dimOpacity})` }}
+        />
+      )}
+      {warmOpacity > 0 && (
+        <div
+          aria-hidden="true"
+          className="reader-night-overlay"
+          style={{ backgroundColor: `rgba(255,160,70,${warmOpacity})` }}
+        />
+      )}
       {/* Progres baca 2px di pinggir atas. Transform ditulis rAF dari efek
           mountAhead — tidak ada setState per frame. */}
       <div
@@ -742,14 +910,8 @@ export default function Reader() {
         onPointerDown={(e) => {
           tap.down(e.pointerId, e.pointerType, e.clientX, e.clientY, performance.now())
         }}
-        onPointerUp={(e) => tap.up(e.pointerId)}
+        onPointerUp={onTapUp}
         onPointerCancel={(e) => tap.cancel(e.pointerId)}
-        onClick={(e) => {
-          if (!tap.shouldToggle(e.clientX, e.clientY, performance.now())) return
-          // Tap area baca hanya toggle chrome (toolbar/footer). Fullscreen
-          // HANYA lewat tombol layar penuh — bukan dari tap.
-          chrome.toggle()
-        }}
       />
       {/* Pengumuman untuk pembaca layar: status fullscreen adalah perilaku yang
           tidak terlihat, jadi keadaannya harus bisa didengar. */}
@@ -784,6 +946,9 @@ export default function Reader() {
         nextHref={nextKey ? readerHref(nextKey) : null}
         onPickChapter={() => setChapterPickerOpen(true)}
         visible={!chromeHidden}
+        pageCount={images.length}
+        activePage={activePage}
+        onSeek={seekPage}
       />
 
       <ChapterPickerSheet
@@ -839,29 +1004,25 @@ export default function Reader() {
       */}
       <div
         ref={flowRef}
-        className={`reader-flow mx-auto flex w-full flex-col ${
+        className={`reader-zoom-flow reader-flow mx-auto flex w-full flex-col ${
           settings.readMode === 'webtoon' ? '' : 'max-w-3xl'
-        } ${
-          settings.paperLight
-            ? 'reader-canvas reader-canvas-paper'
-            : settings.nightShift
-              ? ''
-              : 'reader-canvas'
         }`}
-        style={filterStyle}
+        style={{
+          ...filterStyle,
+          transformOrigin: zoomOrigin,
+          transform: zoom > 1 ? `scale(${zoom})` : undefined,
+        }}
       >
-      {images.map((src, i) => (
-          <div key={`${chapter.id}-${i}`} className="reader-page w-full">
+        {images.map((src, i) => (
+          <div key={`${chapter.id}-${i}`} data-reader-page={i} className="reader-page w-full">
             <ComicImage
               src={src}
               alt={`${chapter.name} halaman ${i + 1}`}
               pageIndex={i}
               knownRatio={knownRatios[i]}
-              // HANYA 2 halaman pertama yang langsung diminta (LCP + prioritas
-              // tinggi). Sisanya menunggu sampai dekat layar — dulu 3 halaman
-              // eager + margin lazy bawaan Chrome membuat 9 gambar / 1,7 MB
-              // berebut, dan halaman yang sedang dibaca kalah (53 detik di 3G).
-              eager={i < 2}
+              // B2: 3 panel pertama eager + fetchPriority high (LCP + antrean
+              // mobile); sisanya lazy/async lewat IntersectionObserver.
+              eager={i < 3}
               // Halaman aktif (anchor progres) adalah halaman yang sedang
               // dibaca. Tandai ±2 halaman sebagai dekat viewport supaya
               // imgQueue mendahulukannya dari halaman fill-ahead (B4).
@@ -873,6 +1034,10 @@ export default function Reader() {
               onLoad={() => {
                 setLoadedPages((s) => (s.has(i) ? s : new Set(s).add(i)))
               }}
+              onSettled={(ok) => {
+                if (ok) return
+                setFailedPages((s) => (s.has(i) ? s : new Set(s).add(i)))
+              }}
               // block + w-full: tidak ada baseline gap inline, tidak ada
               // letterbox — lebar gambar selalu = lebar kolom baca.
               className="manga-img block w-full"
@@ -880,6 +1045,13 @@ export default function Reader() {
           </div>
         ))}
       </div>
+
+      {failedPages.size > 3 && (
+        <SourceFallback
+          source={data.source ?? data.series?.source ?? 'sumber ini'}
+          links={alternateSourceLinks(data)}
+        />
+      )}
 
       {/* Kartu akhir chapter: DI LUAR flow (flow punya filter → stacking
           context) supaya tidak tertimpa tap layer z-10. */}

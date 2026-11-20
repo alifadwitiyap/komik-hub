@@ -1,6 +1,6 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
-import Toast, { showToast as pushToast } from '../components/Toast'
+import Toast, { showToast as pushToast, showToastWithAction } from '../components/Toast'
 import '../styles/reader.css'
 import ChapterPickerSheet from '../components/ChapterPickerSheet'
 import ComicImage from '../components/ComicImage'
@@ -67,6 +67,69 @@ function nextChapterId(d: ChapterResponse): string | null {
   return d.chapter.next ? String(d.chapter.next.id) : null
 }
 
+type AlternateSourceLink = { label: string; href: string }
+
+/** A2 — hanya tautan alternatif yang NYATA ada di data; tidak ada URL rekaan. */
+function alternateSourceLinks(data: unknown): AlternateSourceLink[] {
+  const raw = data as Record<string, unknown>
+  const out: AlternateSourceLink[] = []
+  const seen = new Set<string>()
+  for (const bucket of [raw.alternate_sources, raw.alternates, raw.sources]) {
+    const rows = Array.isArray(bucket)
+      ? bucket
+      : bucket && typeof bucket === 'object'
+        ? Object.values(bucket)
+        : []
+    for (const row of rows) {
+      if (!row || typeof row !== 'object') continue
+      const r = row as Record<string, unknown>
+      const href =
+        typeof r.href === 'string' ? r.href : typeof r.url === 'string' ? r.url : null
+      if (!href || seen.has(href)) continue
+      if (!href.startsWith('/') && !/^https?:\/\//i.test(href)) continue
+      const label = [r.label, r.name, r.source, r.title].find(
+        (v): v is string => typeof v === 'string' && v.length > 0,
+      ) ?? 'Sumber lain'
+      seen.add(href)
+      out.push({ label, href })
+      if (out.length >= 3) return out
+    }
+  }
+  return out
+}
+
+function SourceFallback({
+  source,
+  links,
+}: {
+  source: string
+  links: AlternateSourceLink[]
+}) {
+  if (links.length === 0) return null
+  return (
+    <div
+      role="status"
+      aria-live="polite"
+      className="mx-auto mt-4 max-w-3xl rounded-2xl border border-brand-amber-dim/60 bg-black/70 px-4 py-3 text-center"
+    >
+      <p className="text-[12.5px] font-semibold text-white">
+        Gambar bermasalah di {source} · Coba sumber lain
+      </p>
+      <div className="mt-2 flex flex-wrap items-center justify-center gap-2">
+        {links.map((link) => (
+          <a
+            key={link.href}
+            href={link.href}
+            className="inline-flex min-h-11 items-center rounded-xl bg-brand-amber px-4 py-2.5 text-[12.5px] font-bold text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber"
+          >
+            {link.label}
+          </a>
+        ))}
+      </div>
+    </div>
+  )
+}
+
 /**
  * MODE MARATON — pengalaman seperti aplikasi.
  *
@@ -131,7 +194,8 @@ export default function ReaderMarathon() {
   const [nextLoadFailed, setNextLoadFailed] = useState(false)
   /** sedang mengambil chapter berikutnya — untuk status "memuat" di dasar */
   const [loadingNext, setLoadingNext] = useState(false)
-  const tap = createTapTracker(tapHitsReaderControl)
+  // Persisten: tracker harus hidup lintas render supaya double-tap terdeteksi.
+  const tap = useRef(createTapTracker(tapHitsReaderControl)).current
   const bottomRef = useRef<HTMLDivElement | null>(null)
   /** chapterId yang sudah/sedang di-fetch — cegah fetch ganda & loop abort */
   const fetchedRef = useRef<Set<string>>(new Set())
@@ -141,13 +205,89 @@ export default function ReaderMarathon() {
   // lalu disimpan di ref supaya efek lain tidak perlu bergantung padanya
   const savedPosRef = useRef<ReturnType<typeof marathon.forChapter>>(null)
   const navigate = useNavigate()
-  const { settings, onChange, onReset, filterStyle } = useReaderSettings()
+  const {
+    settings,
+    onChange,
+    onReset,
+    filterStyle,
+    dimOpacity,
+    warmOpacity,
+  } = useReaderSettings()
   /**
    * Layar penuh di maraton: HANYA jalur manual (tombol). Auto-fullscreen
    * dihapus — scroll adalah cara membaca, tap cuma toggle chrome.
    */
   const autoFS = useAutoFullscreen()
   const fsActive = autoFS.active || autoFS.nativeActive
+
+  // B1: zoom transform saja — tidak menyentuh layout/scroll.
+  const [zoom, setZoom] = useState(1)
+  const [zoomOrigin, setZoomOrigin] = useState('50% 50%')
+  const hudTimer = useRef<number | null>(null)
+  const restoreToastShown = useRef(false)
+  const [failedPanels, setFailedPanels] = useState<Set<string>>(() => new Set())
+
+  useEffect(
+    () => () => {
+      if (hudTimer.current !== null) window.clearTimeout(hudTimer.current)
+    },
+    [],
+  )
+
+  const announceRestore = (pageId: string) => {
+    if (restoreToastShown.current) return
+    let base = 0
+    for (let bi = 0; bi < blocks.length; bi += 1) {
+      const idx = blocks[bi].images.findIndex((img) => imgUrl(img) === pageId)
+      if (idx >= 0) {
+        restoreToastShown.current = true
+        showToastWithAction(`Melanjutkan dari Hal. ${base + idx + 1}`, 'Ke awal', () =>
+          window.scrollTo({
+            top: 0,
+            behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches
+              ? 'instant'
+              : 'smooth',
+          }),
+        )
+        return
+      }
+      base += blocks[bi].images.length
+    }
+  }
+
+  const onTapUp = (e: ReactPointerEvent<HTMLDivElement>) => {
+    tap.up(e.pointerId)
+    const action = tap.resolve(
+      e.clientX,
+      e.clientY,
+      performance.now(),
+      window.innerWidth,
+      settings.tapScroll,
+    )
+    if (!action) return
+    if (action.type === 'scroll') {
+      window.scrollBy({
+        top: action.direction * window.innerHeight * 0.75,
+        behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches
+          ? 'instant'
+          : 'smooth',
+      })
+      return
+    }
+    if (action.type === 'zoom') {
+      const rect = flowRef.current?.getBoundingClientRect()
+      setZoomOrigin(
+        rect
+          ? `${action.x - rect.left}px ${action.y - rect.top}px`
+          : `${action.x}px ${action.y}px`,
+      )
+      setZoom((z) => (z > 1 ? 1 : 1.8))
+      return
+    }
+    if (hudTimer.current !== null) window.clearTimeout(hudTimer.current)
+    hudTimer.current = window.setTimeout(() => chrome.toggle(), 140)
+  }
+
   // seberapa jauh di luar layar halaman boleh mulai diminta (lihat ComicImage)
   const mountAhead = useMemo(
     () => mountAheadPx(typeof window !== 'undefined' ? window.innerHeight : 800),
@@ -177,6 +317,9 @@ export default function ReaderMarathon() {
     setError(null)
     setNextLoadFailed(false)
     setLoadingNext(false)
+    setFailedPanels(new Set())
+    restoreToastShown.current = false
+    setZoom(1)
     // channel baru: chrome tampil lagi (jangan warisi keadaan tersembunyi)
     chrome.show()
 
@@ -276,6 +419,7 @@ export default function ReaderMarathon() {
       if (!cur) return
       if (applyRestore(cur.pageId, cur.offsetRatio)) {
         pendingRef.current = null
+        announceRestore(cur.pageId)
         return
       }
       // ~3 detik: berhenti memaksa, jangan rebut kendali scroll dari pembaca
@@ -541,6 +685,18 @@ export default function ReaderMarathon() {
     return () => clearTimeout(t)
   }, [activeChapterId])
   const curLen = curBlock?.images.length ?? 0
+  const activePage =
+    blocks.slice(0, readBlock).reduce((n, b) => n + b.images.length, 0) + readInBlock
+  const seekPage = (page: number) => {
+    const el = flowRef.current?.querySelector<HTMLElement>(`[data-reader-page="${page - 1}"]`)
+    if (!el) return
+    window.scrollTo({
+      top: el.getBoundingClientRect().top + window.scrollY - 72,
+      behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches
+        ? 'instant'
+        : 'smooth',
+    })
+  }
   const { gotoReader } = useModeSwitch(chapterId, curBlock)
   // Keluar maraton dari menu/sheet: balik ke reader biasa di chapter yang SEDANG
   // dibaca (blok aktif, bukan blok pertama rantai), dengan posisi baca maraton
@@ -617,15 +773,14 @@ export default function ReaderMarathon() {
     loadChapter(nextId)
       .then((d) => {
         setNextLoadFailed(false)
-        // Warm gambar pertama chapter berikutnya lewat proxy pada lebar yang
-        // BENAR-BENAR dipilih browser (mirip Reader.tsx:404-413). Ini
-        // memindahkan decode+gambar keluar dari critical path transisi.
-        // `prefetchMode` 'hemat' + saveData → jangan pemanasan.
-        const im = d.images?.[0]
+        // Warm metadata (sudah terjadi via loadChapter) + 3 panel pertama
+        // chapter berikutnya. Mode hemat/saveData/slow link → tanpa pemanasan.
         const conn = (navigator as Navigator & { connection?: { saveData?: boolean } }).connection
-        if (im && settings.prefetchMode !== 'hemat' && !conn?.saveData && !slowLink()) {
-          const w = new window.Image()
-          w.src = imgSrc(im)
+        if (settings.prefetchMode !== 'hemat' && !conn?.saveData && !slowLink()) {
+          for (const u of (d.images ?? []).slice(0, 3)) {
+            const w = new window.Image()
+            w.src = imgSrc(u)
+          }
         }
         pushBlock(toBlock(d))
       })
@@ -682,8 +837,18 @@ export default function ReaderMarathon() {
 
   if (error) return <Empty title="Gagal memuat mode maraton" body={error} />
   if (blocks.length > 0 && blocks[blocks.length - 1].images.length === 0) {
+    const last = blocks[blocks.length - 1]
     return (
-      <Empty title="Halaman tidak tersedia" body="Sumber belum mengirim halaman chapter ini. Coba lagi nanti." />
+      <>
+        <Empty
+          title="Halaman tidak tersedia"
+          body="Sumber belum mengirim halaman chapter ini. Coba lagi nanti."
+        />
+        <SourceFallback
+          source={last.source ?? 'sumber ini'}
+          links={alternateSourceLinks(last)}
+        />
+      </>
     )
   }
   if (blocks.length === 0) {
@@ -712,8 +877,34 @@ export default function ReaderMarathon() {
   }
 
   return (
-    <div className={`relative min-h-dvh ${settings.paperLight ? 'reader-canvas reader-canvas-paper' : settings.nightShift ? 'bg-night-dark' : 'reader-canvas'}`}>
+    <div
+      className={`relative min-h-dvh ${
+        settings.paperLight || settings.canvasTheme === 'terang'
+          ? 'reader-canvas-terang reader-canvas-paper'
+          : settings.canvasTheme === 'oled'
+            ? 'reader-canvas-oled'
+            : settings.canvasTheme === 'sepia'
+              ? 'reader-canvas-sepia'
+              : settings.nightShift
+                ? 'bg-night-dark'
+                : 'reader-canvas'
+      }`}
+    >
       <div ref={hairlineRef} aria-hidden="true" className="reader-progress-hairline" />
+      {dimOpacity > 0 && (
+        <div
+          aria-hidden="true"
+          className="reader-night-overlay"
+          style={{ backgroundColor: `rgba(0,0,0,${dimOpacity})` }}
+        />
+      )}
+      {warmOpacity > 0 && (
+        <div
+          aria-hidden="true"
+          className="reader-night-overlay"
+          style={{ backgroundColor: `rgba(255,160,70,${warmOpacity})` }}
+        />
+      )}
       {/* Tap area baca — div (bukan button) supaya tidak jadi satu tombol
           raksasa di pohon aksesibilitas. Guard tap-vs-drag mencegah toggle
           saat jari hanya menggulir. Tap pada kontrol halaman (lingkaran
@@ -725,13 +916,8 @@ export default function ReaderMarathon() {
         onPointerDown={(e) => {
           tap.down(e.pointerId, e.pointerType, e.clientX, e.clientY, performance.now())
         }}
-        onPointerUp={(e) => tap.up(e.pointerId)}
+        onPointerUp={onTapUp}
         onPointerCancel={(e) => tap.cancel(e.pointerId)}
-        onClick={(e) => {
-          if (!tap.shouldToggle(e.clientX, e.clientY, performance.now())) return
-          // Tap area baca hanya toggle chrome. Fullscreen HANYA lewat tombol.
-          chrome.toggle()
-        }}
       />
 
       <ReaderToolbar
@@ -755,6 +941,9 @@ export default function ReaderMarathon() {
         nextHref={tail?.nextId ? marathonHref(tail.nextId) : null}
         onPickChapter={() => setChapterPickerOpen(true)}
         visible={chrome.visible}
+        pageCount={totalPages}
+        activePage={activePage}
+        onSeek={seekPage}
       />
 
       <ChapterPickerSheet
@@ -789,14 +978,12 @@ export default function ReaderMarathon() {
       {/* Rantai halaman: semua chapter disambung jadi satu alur */}
       <div
         ref={flowRef}
-        className={`mx-auto flex max-w-3xl flex-col ${
-          settings.paperLight
-            ? 'reader-canvas reader-canvas-paper'
-            : settings.nightShift
-              ? ''
-              : 'reader-canvas'
-        }`}
-        style={filterStyle}
+        className="reader-zoom-flow mx-auto flex max-w-3xl flex-col"
+        style={{
+          ...filterStyle,
+          transformOrigin: zoomOrigin,
+          transform: zoom > 1 ? `scale(${zoom})` : undefined,
+        }}
       >
         {blocks.map((b, bi) => {
           const start = blocks.slice(0, bi).reduce((n, x) => n + x.images.length, 0)
@@ -817,6 +1004,7 @@ export default function ReaderMarathon() {
                 </p>
               )}
               {b.images.map((src, i) => (
+                <div key={`${b.chapterId}-${i}`} data-reader-page={start + i} className="w-full">
                 <ComicImage
                   key={`${b.chapterId}-${i}`}
                   src={src}
@@ -832,8 +1020,8 @@ export default function ReaderMarathon() {
                       ? b.imageSizes[i][0] / b.imageSizes[i][1]
                       : undefined
                   }
-                  // 2 panel pertama (chapter pertama) pasti high priority.
-                  eager={bi === 0 && i < 2}
+                  // 3 panel pertama chapter pertama pasti high priority.
+                  eager={bi === 0 && i < 3}
                   // Marathon punya banyak chapter dalam satu DOM: halaman di
                   // chapter berikutnya yang ikut mount tidak boleh menyita slot
                   // antrean dari panel yang sedang dibaca.
@@ -856,8 +1044,15 @@ export default function ReaderMarathon() {
                       return next
                     })
                   }}
+                  onFailed={() => {
+                    const key = `${b.chapterId}:${i}`
+                    setFailedPanels((prev) =>
+                      prev.has(key) ? prev : new Set(prev).add(key),
+                    )
+                  }}
                   className="manga-img w-full"
                 />
+                </div>
               ))}
             </div>
           )
@@ -866,6 +1061,13 @@ export default function ReaderMarathon() {
         {/* penanda bawah untuk IntersectionObserver chaining */}
         <div ref={bottomRef} className="h-36" />
       </div>
+
+      {failedPanels.size > 3 && (
+        <SourceFallback
+          source={curBlock?.source ?? 'sumber ini'}
+          links={alternateSourceLinks(curBlock)}
+        />
+      )}
 
       {/**
        * Status + jalan keluar chaining DI LUAR kontainer ber-`filter`.

@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { IconArrowLeft, IconArrowRight } from '../icons'
 
@@ -12,6 +13,12 @@ interface ReaderFooterProps {
   onPickChapter: () => void
   /** false = sembunyi saat pembaca scroll turun (geser keluar layar) */
   visible?: boolean
+  /** jumlah panel di chapter; >1 menampilkan scrubber */
+  pageCount?: number
+  /** halaman aktif (1-based) */
+  activePage?: number
+  /** dipanggil saat scrubber dilepas */
+  onSeek?: (page: number) => void
 }
 
 /**
@@ -29,7 +36,19 @@ export default function ReaderFooter({
   nextHref,
   onPickChapter,
   visible = true,
+  pageCount = 0,
+  activePage = 1,
+  onSeek,
 }: ReaderFooterProps) {
+  const [preview, setPreview] = useState<number | null>(null)
+  const max = Math.max(1, pageCount)
+  const shown = Math.min(Math.max(preview ?? activePage, 1), max)
+  const percent = max > 1 ? Math.round(((shown - 1) / (max - 1)) * 100) : 100
+  const commit = () => {
+    if (preview === null) return
+    onSeek?.(preview)
+    setPreview(null)
+  }
   return (
     <footer
       data-reader-chrome="footer"
@@ -40,6 +59,35 @@ export default function ReaderFooter({
       aria-hidden={!visible}
       inert={!visible}
     >
+      {pageCount > 1 && onSeek && (
+        <div className="pointer-events-auto relative flex items-center gap-3 px-4 pb-1 [padding-left:max(1rem,env(safe-area-inset-left))] [padding-right:max(1rem,env(safe-area-inset-right))]">
+          <span className="shrink-0 text-[11px] font-semibold text-white/80">Hal</span>
+          <input
+            type="range"
+            min={1}
+            max={max}
+            step={1}
+            value={shown}
+            data-reader-scrubber=""
+            aria-label="Pilih halaman"
+            aria-valuetext={`Hal. ${shown} · ${percent}%`}
+            onChange={(e) => setPreview(Number(e.target.value))}
+            onPointerUp={commit}
+            onPointerCancel={() => setPreview(null)}
+            onKeyUp={commit}
+            onBlur={commit}
+            className="reader-scrubber min-h-11 flex-1 touch-manipulation"
+          />
+          <span className="w-11 shrink-0 text-right text-[11px] font-semibold text-white/85">
+            {max}
+          </span>
+          {preview !== null && (
+            <span className="reader-scrubber-preview pointer-events-none absolute -top-8 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full bg-black/85 px-3 py-1 text-[11px] font-bold text-white shadow">
+              Hal. {shown} · {percent}%
+            </span>
+          )}
+        </div>
+      )}
       <nav
         aria-label="Navigasi chapter"
         className="pointer-events-auto grid grid-cols-3 gap-2 px-4 py-2.5 [padding-left:max(1rem,env(safe-area-inset-left))] [padding-right:max(1rem,env(safe-area-inset-right))]"

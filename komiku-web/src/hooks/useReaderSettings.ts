@@ -79,24 +79,19 @@ export function useReaderSettings() {
   }, [settings.fullscreen])
 
   /**
-   * CSS filter untuk tumpukan gambar: kecerahan + perisai malam.
-   *
-   * PENTING: kalau tidak ada yang perlu difilter (brightness 100 & night shift
-   * mati), JANGAN pasang `filter` sama sekali. `brightness(100%)` tetap
-   * membuat stacking context + layer GPU sepanjang seluruh chapter (bisa
-   * puluhan ribu px). Layer sebesar itu dirasterisasi per-tile dan bisa
-   * memunculkan garis tipis di batas tile — salah satu sumber "garis-garis"
-   * yang terlihat di HP. Tanpa filter, gambar digambar langsung ke layer
-   * halaman: tidak ada tile seam, dan memori GPU jauh lebih kecil.
+   * CSS filter untuk perisai malam saja. Kecerahan & tint hangat dipindah ke
+   * overlay tetap (lihat `.reader-night-overlay`) supaya tidak menumpuk filter
+   * di atas puluhan ribu px gambar — itu memicu tile seam & layer GPU besar.
+   * Tanpa night shift JANGAN pasang `filter` sama sekali.
    */
-  const filterStyle =
-    settings.brightness === 100 && !settings.nightShift
-      ? undefined
-      : {
-          filter: `brightness(${settings.brightness}%)${
-            settings.nightShift ? ' sepia(0.4) hue-rotate(-12deg)' : ''
-          }`,
-        }
+  const filterStyle = settings.nightShift
+    ? { filter: 'sepia(0.4) hue-rotate(-12deg)' }
+    : undefined
 
-  return { settings, onChange, onReset, filterStyle }
+  /** Opacity overlay hitam untuk kecerahan <100% (perilaku lama dipertahankan). */
+  const dimOpacity = Math.max(0, (100 - settings.brightness) / 100) * 0.85
+  /** Overlay amber untuk tint hangat; tidak menyentuh `filter` gambar. */
+  const warmOpacity = Math.max(0, Math.min(100, settings.warmth)) / 100 * 0.22
+
+  return { settings, onChange, onReset, filterStyle, dimOpacity, warmOpacity }
 }

@@ -11,10 +11,11 @@ export type ToastState = {
   message: string | null
   id: number
   phase: 'in' | 'out'
+  action?: { label: string; onClick: () => void }
 }
 
 export type ToastAction =
-  | { type: 'show'; message: string }
+  | { type: 'show'; message: string; action?: ToastState['action'] }
   | { type: 'dismiss' }
   | { type: 'clear' }
 
@@ -23,7 +24,7 @@ export const initialToastState: ToastState = { message: null, id: 0, phase: 'in'
 export function reduceToast(state: ToastState, action: ToastAction): ToastState {
   switch (action.type) {
     case 'show':
-      return { message: action.message, id: state.id + 1, phase: 'in' }
+      return { message: action.message, id: state.id + 1, phase: 'in', action: action.action }
     case 'dismiss':
       return state.message && state.phase === 'in' ? { ...state, phase: 'out' } : state
     case 'clear':
@@ -64,8 +65,18 @@ export function dismissToast() {
 }
 
 export function showToast(message: string) {
+  showToastWithAction(message)
+}
+
+/** Pesan dengan satu aksi (mis. "Ke awal"). API lama showToast tetap valid. */
+export function showToastWithAction(
+  message: string,
+  label?: string,
+  onClick?: () => void,
+) {
   if (clearTimer) clearTimeout(clearTimer)
-  emit(reduceToast(state, { type: 'show', message }))
+  const action = label && onClick ? { label, onClick } : undefined
+  emit(reduceToast(state, { type: 'show', message, action }))
   if (hideTimer) clearTimeout(hideTimer)
   hideTimer = setTimeout(dismissToast, TOAST_AUTO_DISMISS_MS)
 }
@@ -76,12 +87,13 @@ export default function Toast() {
 
   if (!current.message) return null
   return (
-    <div className="pointer-events-none fixed inset-x-0 bottom-[calc(9.5rem+env(safe-area-inset-bottom))] z-50 flex justify-center px-4">
+    <div className="pointer-events-none fixed inset-x-0 bottom-[calc(11rem+env(safe-area-inset-bottom))] z-50 flex justify-center px-4">
       <div
-        className="pointer-events-auto max-w-[90vw] touch-pan-y"
+        className="pointer-events-auto flex max-w-[90vw] touch-pan-y items-center gap-2"
         role="status"
         aria-live="polite"
         onPointerDown={(e) => {
+          if ((e.target as HTMLElement).closest('button')) return
           startY.current = e.clientY
           e.currentTarget.setPointerCapture(e.pointerId)
         }}
@@ -104,9 +116,22 @@ export default function Toast() {
         <div
           key={current.id}
           data-phase={current.phase}
-          className="reader-toast rounded-full bg-black/85 px-4 py-2 text-[12px] font-medium text-white shadow-lg"
+          className="reader-toast flex max-w-full items-center gap-2 rounded-full bg-black/85 px-4 py-2 text-[12px] font-medium text-white shadow-lg"
         >
-          {current.message}
+          <span className="truncate">{current.message}</span>
+          {current.action && (
+            <button
+              type="button"
+              data-reader-toast-action=""
+              className="-my-2 min-h-11 shrink-0 rounded-full px-2 text-[12px] font-bold text-brand-amber focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/80"
+              onClick={() => {
+                current.action?.onClick()
+                dismissToast()
+              }}
+            >
+              {current.action.label}
+            </button>
+          )}
         </div>
       </div>
     </div>
