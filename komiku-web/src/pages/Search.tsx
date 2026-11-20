@@ -4,7 +4,7 @@ import { api, toMangaCard, unifiedApi } from '../api'
 import type { Manga, UnifiedGenre } from '../types'
 import { Empty } from '../App'
 import { MangaCard } from './Home'
-import { clearRecent, listRecent, rememberSearch } from '../recentSearches'
+import { clearRecent, forgetRecent, listRecent, rememberSearch } from '../recentSearches'
 import { useUnifiedSearch } from '../hooks/useUnifiedSearch'
 import { useSheetDrag } from '../hooks/useSheetDrag'
 import { useSheetPresence } from '../hooks/useSheetPresence'
@@ -747,28 +747,42 @@ export default function Search() {
             <div className="flex flex-wrap items-center gap-2">
               <span className="text-[11.5px] text-ink-500">Terakhir dicari</span>
               {recent.map((r) => (
-                <button
+                <span
                   key={r}
-                  type="button"
-                  onClick={() => commitQuery(r)}
-                  className="min-h-11 shrink-0 rounded-full border border-ink-800 bg-ink-900 px-3 py-1.5 text-[12px] font-medium text-ink-300 transition-colors [@media(hover:hover)]:hover:border-ink-700"
+                  className="inline-flex min-h-11 shrink-0 items-center overflow-hidden rounded-full border border-ink-800 bg-ink-900"
                 >
-                  {r}
-                </button>
+                  <button
+                    type="button"
+                    onClick={() => commitQuery(r)}
+                    className="min-h-11 px-3 py-1.5 text-[12px] font-medium text-ink-300 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber [@media(hover:hover)]:hover:text-ink-100"
+                  >
+                    {r}
+                  </button>
+                  <button
+                    type="button"
+                    aria-label={`Hapus ${r}`}
+                    onClick={() => setRecent(forgetRecent(r))}
+                    className="grid min-h-11 min-w-11 shrink-0 place-items-center border-l border-ink-800 text-[14px] leading-none text-ink-500 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand-amber [@media(hover:hover)]:hover:bg-ink-850 [@media(hover:hover)]:hover:text-ink-200"
+                  >
+                    ×
+                  </button>
+                </span>
               ))}
-              <button
-                type="button"
-                aria-label="Hapus riwayat pencarian"
-                onClick={() => setRecent(clearRecent())}
-                className="min-h-11 shrink-0 rounded-full border border-ink-800 px-3 py-1.5 text-[12px] font-medium text-ink-500 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber [@media(hover:hover)]:hover:border-ink-700 [@media(hover:hover)]:hover:text-ink-300"
-              >
-                Hapus riwayat
-              </button>
+              {recent.length > 1 && (
+                <button
+                  type="button"
+                  aria-label="Hapus riwayat pencarian"
+                  onClick={() => setRecent(clearRecent())}
+                  className="min-h-11 shrink-0 rounded-full border border-ink-800 px-3 py-1.5 text-[12px] font-medium text-ink-500 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber [@media(hover:hover)]:hover:border-ink-700 [@media(hover:hover)]:hover:text-ink-300"
+                >
+                  Hapus riwayat
+                </button>
+              )}
             </div>
           )}
           {quickKeywords.length > 0 && (
             <div className="mt-2 flex flex-wrap items-center gap-2">
-              <span className="text-[11.5px] text-ink-500">Coba cari</span>
+              <span className="text-[11.5px] text-ink-500">Sedang Ramai Dicari</span>
               {quickKeywords.map((k) => (
                 <button
                   key={k}
@@ -964,19 +978,23 @@ function filtersEqual(a: SearchReturnState['filter'], b: SearchReturnState['filt
 }
 
 /**
- * Hasil pencarian = daftar kartu kompak satu kolom. Grid 2 kolom dengan
- * cover 2:3 hanya memuat ~2 judul di layar 390×844; baris ~124px memuat
- * 4–6 judul sekali lihat. `data-search-results` dipakai delegasi "Kembali".
+ * Hasil pencarian: 2 kolom kartu vertikal (≈2×2 per viewport HP). Wrapper
+ * mengubah `MangaCard compact` jadi kartu atas-bawah tanpa duplikat DOM;
+ * cover tetap 2:3, judul 2 baris, dan `data-search-results` tetap dipakai
+ * delegasi "Kembali". Di layar lebar grid tetap 2 kolom supaya baris tidak
+ * terlalu panjang.
  */
 function ResultGrid({ items }: { items: Manga[] }) {
   return (
-    <ul data-search-results className="flex flex-col gap-2">
-      {items.map((m) => (
-        <li key={m.id}>
-          <MangaCard manga={m} compact />
-        </li>
-      ))}
-    </ul>
+    <div className="grid grid-cols-2 gap-2 [&>ul]:contents [&>ul>li]:min-w-0 [&>ul>li>a]:relative [&>ul>li>a]:block [&>ul>li>a>div:first-child]:w-full [&>ul>li>a>div:last-child]:mt-1.5 [&>ul>li>a>div:last-child>p:first-child]:text-[12.5px] [&>ul>li>a>div:last-child>p.font-bold]:absolute [&>ul>li>a>div:last-child>p.font-bold]:right-1 [&>ul>li>a>div:last-child>p.font-bold]:top-1 [&>ul>li>a>div:last-child>p.font-bold]:z-10 [&>ul>li>a>div:last-child>p.font-bold]:m-0 [&>ul>li>a>div:last-child>p.font-bold]:rounded [&>ul>li>a>div:last-child>p.font-bold]:bg-black/70 [&>ul>li>a>div:last-child>p.font-bold]:px-1.5 [&>ul>li>a>div:last-child>p.font-bold]:py-0.5 [&>ul>li>a>div:last-child>p.font-bold]:text-white">
+      <ul data-search-results className="flex flex-col gap-2">
+        {items.map((m) => (
+          <li key={m.id}>
+            <MangaCard manga={m} compact />
+          </li>
+        ))}
+      </ul>
+    </div>
   )
 }
 
