@@ -466,7 +466,15 @@ export default function Reader() {
       if (pending.current || !readyRef.current) return
       const flow = flowRef.current
       if (!flow) return
-      const geometry = measurePages(flow, (el) => el.getAttribute('src'), 'img[data-page]')
+      // Identitas halaman diambil dari DATA via `data-page`, bukan atribut
+      // `src`: src sudah lewat proxy `/img?u=…`, sementara `pageId`/`images`
+      // memakai URL CDN asli. Memakai src membuat findIndex() selalu -1 →
+      // progres 0 dan restore halaman selalu kembali ke halaman 1.
+      const geometry = measurePages(flow, (el) => {
+        const pi = Number((el as HTMLElement).dataset.page ?? '-1')
+        const url = images[pi]
+        return url ? imgUrl(url) : null
+      }, 'img[data-page]')
       const pageIds = geometry.map((g) => g.pageId)
       const pageTops = geometry.map((g) => g.top)
       const pageHeights = geometry.map((g) => g.height)
