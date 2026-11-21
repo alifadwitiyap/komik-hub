@@ -74,6 +74,9 @@ impl Rankable for Manga {
         fill!(rating);
         fill!(last_chapter);
         fill!(url);
+        if self.genres.is_empty() && !other.genres.is_empty() {
+            self.genres = other.genres.clone();
+        }
         if self.updated_at.is_none() {
             self.updated_at = other.updated_at;
         }
