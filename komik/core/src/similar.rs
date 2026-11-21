@@ -21,18 +21,24 @@ fn rating_bonus(rating: Option<&str>) -> u32 {
 }
 
 fn score(target: &Manga, candidate: &Manga) -> (u32, String) {
-    let target_genres: HashSet<String> = target.genres.iter().map(|g| norm(g)).collect();
+    let target_labels: HashMap<String, String> = target
+        .genres
+        .iter()
+        .filter_map(|genre| {
+            let label = genre.trim();
+            (!label.is_empty()).then(|| (norm(label), label.to_string()))
+        })
+        .collect();
     let mut seen = HashSet::new();
     let mut overlap: Vec<String> = candidate
         .genres
         .iter()
         .filter_map(|genre| {
-            let display = genre.trim();
-            let key = norm(display);
-            if display.is_empty() || !target_genres.contains(&key) || !seen.insert(key) {
+            let key = norm(genre);
+            if key.is_empty() || !target_labels.contains_key(&key) || !seen.insert(key.clone()) {
                 None
             } else {
-                Some(display.to_string())
+                Some(target_labels[&key].clone())
             }
         })
         .collect();
