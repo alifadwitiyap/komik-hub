@@ -1,101 +1,68 @@
 /**
- * SourceHealthBadge — pill kecil di TopBar: "N/4" sumber sehat.
+ * SourceHealthBadge — adaptive TopBar indicator.
  *
- * Hover / fokus keyboard menampilkan tooltip yang MENYEBUT sumber mati
- * (nama + pesan error server). Warna mengikuti tier: hijau (semua sehat),
- * amber (sebagian), merah (semua mati), abu (belum ada data).
- *
- * Tooltip memakai CSS `group-hover`/`group-focus-within` — tanpa state React
- * dan tanpa listener dokumen, jadi tidak mengganggu penutupan panel lain.
- * Teks lengkap juga ada di aria-label + title supaya pembaca layar dan hover
- * native tetap dapat info walau tooltip CSS tidak muncul.
+ * Sehat (4/4, bukan stale): HP dapat SATU target 44×44 berisi dot 8px saja;
+ * desktop tetap pil dot + "4/4". Begitu ada gangguan / stale / belum ada
+ * data, kedua breakpoint memakai pil kontras dengan angka atau label netral.
+ * Klik selalu membuka SourceHealthSheet — tidak pernah probe diam-diam.
  */
 
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useState } from 'react'
 import { useSourceHealth } from '../hooks/useSourceHealth'
-import { deadRowText, deadSources, healthDescription, healthTier } from './sourceHealth'
+import SourceHealthSheet from './SourceHealthSheet'
+import {
+  deadSources,
+  healthDescription,
+  healthTier,
+  type HealthTier,
+} from './sourceHealth'
 
-const TIER_CLASS: Record<string, string> = {
+const PILL_CLASS: Record<HealthTier, string> = {
   ok: 'bg-healthy/12 text-healthy ring-healthy/30',
-  warn: 'bg-warn/12 text-warn ring-warn/30',
-  danger: 'bg-danger/12 text-danger ring-danger/30',
-  unknown: 'bg-ink-850 text-ink-500 ring-ink-700',
+  warn: 'bg-warn/15 text-warn ring-warn/50',
+  danger: 'bg-danger/15 text-danger ring-danger/50',
+  unknown: 'bg-ink-850 text-ink-200 ring-ink-600',
 }
 
-const DOT_CLASS: Record<string, string> = {
+const DOT_CLASS: Record<HealthTier, string> = {
   ok: 'bg-healthy',
   warn: 'bg-warn',
   danger: 'bg-danger',
-  unknown: 'bg-ink-600',
+  unknown: 'bg-ink-400',
 }
 
 export default function SourceHealthBadge() {
-  const { rows, healthy, total, status, refresh } = useSourceHealth()
-  const dead = useMemo(() => deadSources(rows), [rows])
-  const tier = healthTier(healthy, total)
-  // Angka pill: "—" selama belum ada data (probe pertama jalan ATAU 404),
-  // supaya tidak pernah menampilkan "0/0" yang terbaca seperti tuduhan.
-  const countText = total <= 0 ? '—' : `${healthy}/${total}`
+  const { rows, healthy, total, status } = useSourceHealth()
+  const [open, setOpen] = useState(false)
+  const close = useCallback(() => setOpen(false), [])
+  const dead = deadSources(rows)
+  const compact = total > 0 && healthy === total && status !== 'stale'
+  // Stale dengan angka lama "sehat" tetap harus terasa seperti peringatan.
+  const tier: HealthTier =
+    status === 'stale' && total > 0 ? 'warn' : healthTier(healthy, total)
   const description = healthDescription(healthy, total, dead)
-
-  // klik = probe ulang manual; label singkat berubah sesaat.
-  const [poked, setPoked] = useState(false)
-  useEffect(() => {
-    if (!poked) return
-    const t = setTimeout(() => setPoked(false), 1500)
-    return () => clearTimeout(t)
-  }, [poked])
+  const countText = total <= 0 ? 'Belum ada data' : `${healthy}/${total}`
 
   return (
-    <div className="group relative" data-source-health>
+    <>
       <button
         type="button"
-        onClick={() => {
-          refresh()
-          setPoked(true)
-        }}
+        data-source-health=""
+        onClick={() => setOpen(true)}
         aria-label={description}
-        aria-live="polite"
-        title={description}
-        className={`flex h-11 touch-manipulation items-center gap-1.5 rounded-full px-2.5 text-[12px] font-bold ring-1 transition-colors ${TIER_CLASS[tier]}`}
+        aria-haspopup="dialog"
+        aria-expanded={open}
+        className={`sh-tap inline-flex h-11 items-center justify-center gap-1.5 rounded-full text-[12px] font-bold ring-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber ${compact ? 'w-11 px-0 sm:w-auto sm:px-2.5' : 'w-auto px-2.5 ring-2'} ${PILL_CLASS[tier]}`}
       >
-        <span aria-hidden="true" className={`size-1.5 rounded-full ${DOT_CLASS[tier]}`} />
-        <span className="tabular-nums">{countText}</span>
+        <span
+          aria-hidden="true"
+          className={`size-2 shrink-0 rounded-full ${DOT_CLASS[tier]}`}
+        />
+        <span className={compact ? 'hidden tabular-nums sm:inline' : 'tabular-nums'}>
+          {countText}
+        </span>
       </button>
-
-      {/* tooltip: muncul saat hover / fokus keyboard. Di-centered pada pil
-          (left-1/2 + -translate-x-1/2) karena `right-0` membuat tepi kiri
-          jatuh di luar layar pada viewport sempit. */}
-      <div
-        role="tooltip"
-        className="pointer-events-none absolute left-1/2 top-full z-50 mt-2 hidden w-56 max-w-[calc(100vw-1.5rem)] -translate-x-1/2 rounded-xl border border-ink-800 bg-ink-900 p-3 text-left shadow-xl shadow-black/20 group-hover:block group-focus-within:block"
-      >
-        <p className="font-display text-[12px] font-bold text-ink-100">{description}</p>
-        {rows.length > 0 && (
-          <ul className="mt-1.5 space-y-1">
-            {rows.map((r) => (
-              <li key={r.source} className="flex items-center gap-1.5 text-[11.5px]">
-                <span
-                  aria-hidden="true"
-                  className={`size-1.5 shrink-0 rounded-full ${r.ok ? 'bg-healthy' : 'bg-danger'}`}
-                />
-                <span className={r.ok ? 'text-ink-400' : 'font-semibold text-ink-100'}>
-                  {deadRowText(r)}
-                </span>
-              </li>
-            ))}
-          </ul>
-        )}
-        <p className="mt-2 text-[11px] text-ink-500">
-          {status === 'stale'
-            ? total <= 0
-              ? 'Belum bisa memeriksa sumber.'
-              : 'Pemeriksaan terakhir gagal — angka mungkin basi.'
-            : poked
-              ? 'Memeriksa ulang…'
-              : 'Klik untuk periksa ulang.'}
-        </p>
-      </div>
-    </div>
+      <SourceHealthSheet open={open} onClose={close} />
+    </>
   )
 }
