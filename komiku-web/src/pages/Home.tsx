@@ -9,6 +9,7 @@ import HeartButton from '../components/HeartButton'
 import { IconPlaySolid } from '../icons'
 import ContinueReading from '../components/ContinueReading'
 import QuickActionSheet, { LONG_PRESS_MS, LONG_PRESS_SLOP_PX } from '../components/QuickActionSheet'
+import PwaInstallBanner from '../components/PwaInstallBanner'
 import { useProgress } from '../hooks/useProgress'
 
 /**
@@ -163,6 +164,9 @@ export default function Home() {
           Sebagian konten Komiku tidak tersedia — menampilkan sumber lain.
         </div>
       )}
+
+      {/* Ajakan pasang langsung di bawah header / area atas beranda. */}
+      <PwaInstallBanner />
 
       {/* "Lanjut membaca" tampil langsung di bawah header agar pembaca bisa
           segera lanjut — lebih dekat daripada carousel atau pintasan. */}

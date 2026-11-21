@@ -12,6 +12,7 @@ const Notifikasi = lazy(() => import('./pages/Notifikasi'))
 import { IconHouse, IconRectangleHistory, IconMoon, IconSun, IconMagnifyingGlass, IconBookHeart, IconBell, IconUser } from './icons'
 import NotifPanel from './components/NotifPanel'
 import SourceHealthBadge from './components/SourceHealthBadge'
+import SwUpdateToast from './components/SwUpdateToast'
 import { startFavoritesSync } from './notifStore'
 import { startReadMarksSync } from './readMarks'
 import { captureFromUrl } from './account'
@@ -100,6 +101,7 @@ export default function App() {
           </ErrorBoundary>
         </main>
 
+        <SwUpdateToast />
         {!immersive && <BottomNav />}
       </div>
     </NotifCountsProvider>

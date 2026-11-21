@@ -67,7 +67,13 @@ self.addEventListener('install', (e) => {
       await Promise.all(PRECACHE.map((u) => c.add(u).catch(() => {})))
     }),
   )
-  self.skipWaiting()
+  // Update SENGAJA menunggu: klien menawarkan toast, lalu mengirim
+  // SKIP_WAITING saat user memilih "Muat ulang". `activate` tetap claim() client.
+})
+
+// Satu-satunya jalan memotong masa tunggu update, dipakai SwUpdateToast.
+self.addEventListener('message', (event) => {
+  if (event.data && event.data.type === 'SKIP_WAITING') self.skipWaiting()
 })
 
 self.addEventListener('activate', (e) => {

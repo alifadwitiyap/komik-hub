@@ -26,6 +26,7 @@ import {
 } from '../account'
 import { userApi } from '../api'
 import { IconUser } from '../icons'
+import { usePwaInstall } from '../hooks/usePwaInstall'
 
 export default function Akun() {
   // Link akun (?u=…) sudah ditangkap di App (boot) SEBELUM halaman ini render,
@@ -35,6 +36,7 @@ export default function Akun() {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [copied, setCopied] = useState(false)
+  const { isStandalone, isIosSafari, canPromptAndroid, promptInstall } = usePwaInstall()
 
   async function submit(e: React.FormEvent) {
     e.preventDefault()
@@ -91,6 +93,33 @@ export default function Akun() {
         Identitas dipakai supaya favorit, notifikasi, unduhan, dan posisi baca
         tersimpan per orang — bukan per device.
       </p>
+
+      {!isStandalone && (
+        <section className="mb-6 rounded-2xl border border-ink-800 bg-ink-900 p-4">
+          <h2 className="font-display text-[15px] font-semibold text-ink-100">Pasang Komik Hub</h2>
+          <p className="mt-1 text-[12px] text-ink-500">
+            Baca layar penuh langsung dari layar utama. Kartu ini selalu ada di sini kalau nanti
+            kamu mau memasangnya.
+          </p>
+          {isIosSafari ? (
+            <p className="mt-3 text-[12px] text-ink-300">
+              Ketuk ikon Bagikan → Pilih &quot;Tambah ke Layar Utama&quot;
+            </p>
+          ) : canPromptAndroid ? (
+            <button
+              type="button"
+              onClick={() => void promptInstall()}
+              className="kh-tap mt-3 rounded-xl bg-brand-amber px-5 text-sm font-semibold text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber"
+            >
+              Pasang aplikasi
+            </button>
+          ) : (
+            <p className="mt-3 text-[12px] text-ink-300">
+              Gunakan menu browser → Tambahkan ke layar utama.
+            </p>
+          )}
+        </section>
+      )}
 
       {username === null ? (
         <form onSubmit={submit} className="rounded-2xl border border-ink-800 bg-ink-900 p-4">
