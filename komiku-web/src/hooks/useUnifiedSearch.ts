@@ -50,6 +50,8 @@ export interface UnifiedSearchFilter {
   genre?: string | null
   source?: string | null
   sort?: string | null
+  /** Minimal chapter; null/0 = tanpa batas. */
+  min_ch?: number | null
 }
 
 export function useUnifiedSearch(
@@ -103,6 +105,7 @@ export function useUnifiedSearch(
           genre: f.genre,
           source: f.source,
           sort: f.sort,
+          min_ch: f.min_ch,
         })
         .then((r) => {
           if (cancelled) return
@@ -187,6 +190,7 @@ export function useUnifiedSearch(
     filter.genre,
     filter.source,
     filter.sort,
+    filter.min_ch,
   ])
 
   return {

@@ -23,6 +23,8 @@ export type SearchReturnFilter = {
   tipe: string
   status: string
   genre: string
+  /** URL min_ch disimpan sebagai string; kosong = tanpa batas. */
+  min_ch?: string
 }
 
 export interface SearchReturnState {
@@ -130,9 +132,26 @@ function parse(raw: string): SearchReturnState | null {
     ) {
       return null
     }
+    // min_ch boleh datang sebagai string (URL) atau number (state lama/API);
+    // simpan sebagai string supaya searchReturnQuery tinggal memakainya.
+    const rawMin = (f as { min_ch?: unknown }).min_ch
+    const minCh =
+      typeof rawMin === 'string' && /^\d+$/.test(rawMin)
+        ? rawMin
+        : typeof rawMin === 'number' && Number.isFinite(rawMin) && rawMin > 0
+          ? String(Math.trunc(rawMin))
+          : ''
     return {
       query: v.query,
-      filter: { source: f.source, sort: f.sort, tipe: f.tipe, status: f.status, genre: f.genre },
+      filter: {
+        source: f.source,
+        sort: f.sort,
+        tipe: f.tipe,
+        status: f.status,
+        genre: f.genre,
+        // Kunci optional: payload lama tanpa min_ch tetap utuh saat dipulihkan.
+        ...(minCh ? { min_ch: minCh } : {}),
+      },
       scrollY: typeof v.scrollY === 'number' && Number.isFinite(v.scrollY) ? v.scrollY : 0,
       href: typeof v.href === 'string' ? v.href : '',
     }

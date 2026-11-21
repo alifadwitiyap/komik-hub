@@ -101,9 +101,9 @@ export function encodeHandle(handle: string): string {
 }
 
 /**
- * Query string filter tipe/status/genre + sumber/urut (kontrak search-ux.md).
- * Kosong kalau tidak ada filter yang aktif — supaya request tanpa filter tetap
- * bentuk lama.
+ * Query string filter tipe/status/genre + sumber/urut + min_ch (kontrak
+ * search-ux.md). Kosong kalau tidak ada filter yang aktif — supaya request
+ * tanpa filter tetap bentuk lama.
  */
 function filterQuery(f?: {
   tipe?: string | null
@@ -111,6 +111,7 @@ function filterQuery(f?: {
   genre?: string | null
   source?: string | null
   sort?: string | null
+  min_ch?: number | null
 }): string {
   let qs = ''
   if (f?.tipe) qs += `&tipe=${encodeURIComponent(f.tipe)}`
@@ -118,6 +119,8 @@ function filterQuery(f?: {
   if (f?.genre) qs += `&genre=${encodeURIComponent(f.genre)}`
   if (f?.source) qs += `&source=${encodeURIComponent(f.source)}`
   if (f?.sort) qs += `&sort=${encodeURIComponent(f.sort)}`
+  // 0 / null = "Semua" — jangan kirim param supaya cache server tetap kunci lama.
+  if (f?.min_ch != null && f.min_ch > 0) qs += `&min_ch=${encodeURIComponent(String(f.min_ch))}`
   return qs
 }
 
@@ -130,6 +133,8 @@ export interface UnifiedFilter {
   source?: string | null
   /** Urutan (''=terbaru, rating, trending); kosong = default server. */
   sort?: string | null
+  /** Minimal jumlah chapter; hanya dikirim kalau > 0. */
+  min_ch?: number | null
 }
 
 export const unifiedApi = {

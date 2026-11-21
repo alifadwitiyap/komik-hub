@@ -47,6 +47,23 @@ const TIPE = ['Manga', 'Manhwa', 'Manhua']
 
 /** Chip status (status di MangaOut, case-insensitive). */
 const STATUS = ['Ongoing', 'Completed']
+/** Nilai canonical "Tamat" — chip cepat memakai nilai yang sama dengan panel. */
+const COMPLETED_STATUS = STATUS[1]
+
+/** URL min_ch → number; nilai cacat/≤ 0 jadi null (tidak dikirim ke server). */
+function parseMinCh(raw: string | null): number | null {
+  if (!raw || !/^\d+$/.test(raw)) return null
+  const n = Number(raw)
+  return n > 0 && n <= 5000 ? n : null
+}
+
+/** Preset "Minimal Chapter" di sheet: '' = Semua (param dihapus). */
+const MIN_CH_OPTIONS = [
+  { label: 'Semua', value: '' },
+  { label: '20+', value: '20' },
+  { label: '50+', value: '50' },
+  { label: '100+', value: '100' },
+]
 
 /** Chip kata kunci cepat, diturunkan dari nama genre yang tersedia. */
 const QUICK_KEYWORDS = 6
@@ -80,6 +97,8 @@ type FilterValues = {
   tipe: string
   status: string
   genre: string
+  /** Minimal chapter dari URL; '' = Semua. */
+  min_ch: string
 }
 
 export default function Search() {
@@ -90,6 +109,8 @@ export default function Search() {
   const genreSlug = params.get('genre')
   const tipe = params.get('tipe')
   const status = params.get('status')
+  const minChRaw = params.get('min_ch')
+  const minCh = parseMinCh(minChRaw)
   const searching = query.trim().length > 0
 
   // sumber & urutan aktif (dari URL); nilai default dipetakan ke null supaya
@@ -143,7 +164,7 @@ export default function Search() {
    * server per satu aksi filter. React me-render ulang sebelum commit, jadi
    * effect pencarian hanya pernah melihat page 1.
    */
-  const searchSig = `${query}\u0000${tipe ?? ''}\u0000${status ?? ''}\u0000${genreSlug ?? ''}\u0000${src ?? ''}\u0000${srt ?? ''}`
+  const searchSig = `${query}\u0000${tipe ?? ''}\u0000${status ?? ''}\u0000${genreSlug ?? ''}\u0000${src ?? ''}\u0000${srt ?? ''}\u0000${minCh ?? ''}`
   const searchSigRef = useRef(searchSig)
   if (searchSigRef.current !== searchSig) {
     searchSigRef.current = searchSig
@@ -232,12 +253,12 @@ export default function Search() {
   const search = useUnifiedSearch(
     query,
     page,
-    { tipe, status, genre: genreSlug, source: src, sort: srt },
+    { tipe, status, genre: genreSlug, source: src, sort: srt, min_ch: minCh },
     searching,
     // Fallback hanya saat TIDAK ada filter: /api/search lama tidak menerima
-    // tipe/status/genre/sumber/urutan, jadi memakainya dengan filter aktif
-    // akan memalsukan jumlah hasil.
-    tipe || status || genreSlug || src || srt
+    // tipe/status/genre/sumber/urutan/min_ch, jadi memakainya dengan filter
+    // aktif akan memalsukan jumlah hasil.
+    tipe || status || genreSlug || src || srt || minCh
       ? undefined
       : (signal) => api.search(query, page, signal).then((r) => r.manga),
   )
@@ -266,8 +287,8 @@ export default function Search() {
   /** filter aktif → feed pindah ke katalog (bukan populer). Termasuk
    *  sumber/urutan pilihan user (dulu diabaikan: klik sort tidak mengubah
    *  gambar karena tetap mengambil feed popular yang sama). */
-  const filtered = Boolean(tipe || status || genreSlug || src || srt)
-  const filterArg = { tipe, status, genre: genreSlug, source: src, sort: srt }
+  const filtered = Boolean(tipe || status || genreSlug || src || srt || minCh)
+  const filterArg = { tipe, status, genre: genreSlug, source: src, sort: srt, min_ch: minCh }
 
   // Union genre semua sumber. Gagal → dropdown genre kosong, halaman tetap
   // jalan (mode "Semua").
@@ -318,9 +339,9 @@ export default function Search() {
       })
     return () => ctrl.abort()
     // filterArg sengaja tidak jadi dependensi: nilainya sudah terwakili oleh
-    // tipe/status/genreSlug/src/srt di bawah (objek baru tiap render akan loop).
+    // tipe/status/genreSlug/src/srt/minCh di bawah (objek baru tiap render akan loop).
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searching, filtered, tipe, status, genreSlug, src, srt, listReloadKey])
+  }, [searching, filtered, tipe, status, genreSlug, src, srt, minCh, listReloadKey])
 
   // "Muat lebih" menambah halaman berikutnya (append + dedup).
   const loadMore = () => {
@@ -357,7 +378,7 @@ export default function Search() {
   const resetFilters = () => {
     setParams((prev) => {
       const next = new URLSearchParams(prev)
-      for (const key of ['source', 'sort', 'tipe', 'status', 'genre']) next.delete(key)
+      for (const key of ['source', 'sort', 'tipe', 'status', 'genre', 'min_ch']) next.delete(key)
       return next
     })
     setFilterOpen(false)
@@ -394,16 +415,25 @@ export default function Search() {
   const filterSuffix = [
     tipe ? ` · ${tipe}` : '',
     status ? ` · ${status}` : '',
+    minCh ? ` · Minimal ${minCh} Ch.` : '',
     activeGenre ? ` · ${activeGenre.name}` : '',
   ].join('')
 
-  const defaults: FilterValues = { source: 'semua', sort: 'terbaru', tipe: '', status: '', genre: '' }
+  const defaults: FilterValues = {
+    source: 'semua',
+    sort: 'terbaru',
+    tipe: '',
+    status: '',
+    genre: '',
+    min_ch: '',
+  }
   const activeFilters: FilterValues = {
     source: srcRaw,
     sort: srtRaw,
     tipe: tipe ?? '',
     status: status ?? '',
     genre: genreSlug ?? '',
+    min_ch: minChRaw ?? '',
   }
   const [draft, setDraft] = useState<FilterValues>(activeFilters)
 
@@ -420,6 +450,11 @@ export default function Search() {
       for (const [key, value] of Object.entries(draft)) {
         const isDefault =
           (key === 'source' && value === 'semua') || (key === 'sort' && value === 'terbaru')
+        // min_ch datang dari pill; tetap jaga boundary URL dari nilai cacat.
+        if (key === 'min_ch' && parseMinCh(value) === null) {
+          next.delete(key)
+          continue
+        }
         if (!value || isDefault) next.delete(key)
         else next.set(key, value)
       }
@@ -444,9 +479,10 @@ export default function Search() {
     }
     if (tipe) chips.push({ key: 'tipe', label: `Tipe: ${tipe}` })
     if (status) chips.push({ key: 'status', label: `Status: ${status}` })
+    if (minCh) chips.push({ key: 'min_ch', label: `≥ ${minCh} Ch.` })
     if (genreSlug) chips.push({ key: 'genre', label: `Genre: ${activeGenre?.name ?? genreSlug}` })
     return chips
-  }, [srcRaw, srtRaw, tipe, status, genreSlug, activeGenre])
+  }, [srcRaw, srtRaw, tipe, status, genreSlug, activeGenre, minCh])
 
   return (
     <div className="mx-auto max-w-3xl px-3 py-3">
@@ -516,7 +552,7 @@ export default function Search() {
           aria-expanded={filterOpen}
           aria-controls="panel-filter-cari"
           onClick={openFilter}
-          className={`inline-flex min-h-11 flex-1 touch-manipulation items-center justify-center gap-1.5 rounded-full px-2.5 py-1.5 text-[12.5px] font-bold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber focus-visible:ring-offset-2 active:scale-[0.97] ${
+          className={`kh-tap inline-flex min-h-11 flex-1 touch-manipulation items-center justify-center gap-1.5 rounded-full px-2.5 py-1.5 text-[12.5px] font-bold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber focus-visible:ring-offset-2 active:scale-[0.97] ${
             filterOpen || activeChips.length > 0
               ? 'bg-brand-amber text-white'
               : 'border border-ink-700 bg-ink-900 text-ink-300'
@@ -524,6 +560,23 @@ export default function Search() {
         >
           <IconSliders className="size-3.5" />
           <span className="truncate">Filter{activeChips.length > 0 ? ` (${activeChips.length})` : ''}</span>
+        </button>
+        {/* Chip cepat "Tamat": satu ketukan = toggle status Completed (nilai
+            canonical yang sama dengan panel), tanpa buka sheet. */}
+        <button
+          type="button"
+          data-tamat-chip
+          aria-pressed={status === COMPLETED_STATUS}
+          onClick={() =>
+            setFilter('status', status === COMPLETED_STATUS ? null : COMPLETED_STATUS)
+          }
+          className={`kh-tap inline-flex min-h-11 shrink-0 touch-manipulation items-center justify-center rounded-full px-3 py-1.5 text-[12.5px] font-bold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber focus-visible:ring-offset-2 active:scale-[0.97] ${
+            status === COMPLETED_STATUS
+              ? 'bg-brand-amber text-white'
+              : 'border border-ink-700 bg-ink-900 text-ink-300'
+          }`}
+        >
+          Tamat
         </button>
         <div className="relative flex min-h-11 min-w-0 flex-1 items-center">
           <select
@@ -686,6 +739,29 @@ export default function Search() {
                     ))}
                   </select>
                   <SelectChevron />
+                </div>
+              </div>
+              <div>
+                <p className="mb-1.5 text-[12px] font-semibold text-ink-300">Minimal Chapter</p>
+                <div role="group" aria-label="Minimal Chapter" className="grid grid-cols-4 gap-1.5">
+                  {MIN_CH_OPTIONS.map((opt) => {
+                    const active = draft.min_ch === opt.value
+                    return (
+                      <button
+                        key={opt.label}
+                        type="button"
+                        aria-pressed={active}
+                        onClick={() => setDraft((d) => ({ ...d, min_ch: opt.value }))}
+                        className={`kh-tap inline-flex min-h-11 touch-manipulation items-center justify-center rounded-full border px-1.5 text-[12px] font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber ${
+                          active
+                            ? 'border-brand-amber bg-brand-amber text-white'
+                            : 'border-ink-800 bg-ink-850 text-ink-300'
+                        }`}
+                      >
+                        {opt.label}
+                      </button>
+                    )
+                  })}
                 </div>
               </div>
               <div className="flex gap-2">
@@ -867,6 +943,15 @@ export default function Search() {
                 </div>
               )}
 
+              {(minCh !== null || status === COMPLETED_STATUS) && results.length < 6 && (
+                <LowResultNote
+                  count={results.length}
+                  hasMore={search.hasMore}
+                  onNext={() => setPage((p) => p + 1)}
+                  onRelax={() => setFilter('min_ch', null)}
+                />
+              )}
+
               {results.length > 0 && (
                 <div className="mt-5 flex items-center justify-between">
                   <button
@@ -947,10 +1032,62 @@ export default function Search() {
                   </button>
                 </div>
               )}
+              {(minCh !== null || status === COMPLETED_STATUS) && items.length < 6 && (
+                <LowResultNote
+                  count={items.length}
+                  hasMore={hasMore}
+                  busy={more}
+                  onNext={loadMore}
+                  onRelax={() => setFilter('min_ch', null)}
+                />
+              )}
             </>
           )}
         </div>
       )}
+    </div>
+  )
+}
+
+/**
+ * Catatan tenang saat filter ketat menyisakan sedikit judul. Bukan error:
+ * user bisa lanjut halaman atau menurunkan batas chapter dengan satu ketukan.
+ */
+function LowResultNote({
+  count,
+  hasMore,
+  busy = false,
+  onNext,
+  onRelax,
+}: {
+  count: number
+  hasMore: boolean
+  busy?: boolean
+  onNext: () => void
+  onRelax: () => void
+}) {
+  return (
+    <div data-low-result className="mt-3 rounded-xl border border-ink-800 bg-ink-900 px-3 py-2.5">
+      <p className="text-[12px] text-ink-400">Menampilkan {count} judul di halaman ini</p>
+      <div className="mt-2 flex flex-wrap gap-2">
+        {hasMore && (
+          <button
+            type="button"
+            disabled={busy}
+            onClick={onNext}
+            className="kh-tap min-h-11 rounded-full border border-ink-700 px-4 py-2 text-[12px] font-semibold text-ink-300 transition-colors active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber disabled:opacity-40"
+          >
+            Muat halaman berikutnya
+          </button>
+        )}
+        <button
+          type="button"
+          onClick={onRelax}
+          className="kh-tap min-h-11 rounded-full px-4 py-2 text-[12px] font-semibold text-ink-400 transition-colors active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber [@media(hover:hover)]:hover:text-ink-200"
+        >
+          Longgarkan filter
+        </button>
+      </div>
     </div>
   )
 }
@@ -963,6 +1100,7 @@ function cloneFilters(params: URLSearchParams): SearchReturnState['filter'] {
     tipe: params.get('tipe') ?? '',
     status: params.get('status') ?? '',
     genre: params.get('genre') ?? '',
+    min_ch: params.get('min_ch') ?? '',
   }
 }
 
@@ -973,7 +1111,8 @@ function filtersEqual(a: SearchReturnState['filter'], b: SearchReturnState['filt
     a.sort === b.sort &&
     a.tipe === b.tipe &&
     a.status === b.status &&
-    a.genre === b.genre
+    a.genre === b.genre &&
+    (a.min_ch ?? '') === (b.min_ch ?? '')
   )
 }
 

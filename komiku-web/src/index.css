@@ -293,6 +293,45 @@ body {
   }
 }
 
+/* Shared mobile motion primitives (Track 4). --ease-out-emil, --dur-press and
+   --dur-sheet already live in styles/motion.css; only --dur-toast is new. */
+:root {
+  --dur-toast: 220ms;
+}
+
+.kh-tap {
+  min-height: 44px;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  transition: transform var(--dur-press) ease-out, background-color 150ms ease-out,
+    border-color 150ms ease-out;
+}
+.kh-tap:active { transform: scale(0.97); }
+
+@keyframes kh-toast-in {
+  from { opacity: 0; transform: translate3d(0, 12px, 0) scale(0.96); }
+  to { opacity: 1; transform: translate3d(0, 0, 0) scale(1); }
+}
+.kh-toast-enter { animation: kh-toast-in var(--dur-toast) var(--ease-out-emil) both; }
+
+.kh-sheet {
+  transition: transform var(--dur-sheet) var(--ease-out-emil);
+  padding-bottom: calc(16px + env(safe-area-inset-bottom));
+}
+.kh-sheet[data-open='false'] { transform: translate3d(0, 100%, 0); }
+
+@media (prefers-reduced-motion: reduce) {
+  .kh-tap,
+  .kh-toast-enter,
+  .kh-sheet {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+  /* Jangan reset transform .kh-sheet: data-open=false harus tetap tersembunyi. */
+  .kh-tap:active,
+  .kh-toast-enter { transform: none !important; }
+}
+
 /* ---------------------------------------------------------------------------
    RITME BACA RAPAT — SEMUA VIEWPORT (bukan cuma mobile)
    Halaman manga dari sumber datang tanpa jeda: dua gambar menempel persis.
