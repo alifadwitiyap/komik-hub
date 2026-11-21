@@ -9,6 +9,7 @@ import type {
   MangaOut,
   SearchResult,
   SeriesDetail,
+  SimilarResponse,
   SourceHealth,
   UnifiedChapter,
   UnifiedGenre,
@@ -181,6 +182,8 @@ export const unifiedApi = {
       `/unified/series/${encodeHandle(handle)}${lastSource ? `?last_source=${encodeURIComponent(lastSource)}` : ''}`,
       signal,
     ),
+  similar: (handle: string, signal?: AbortSignal) =>
+    get<SimilarResponse>(`/unified/series/${encodeHandle(handle)}/similar`, signal),
   // `number` = nomor chapter (string: "1195", "1.5") sesuai kontrak server
   chapter: (handle: string, number: string, signal?: AbortSignal) =>
     get<UnifiedChapter>(

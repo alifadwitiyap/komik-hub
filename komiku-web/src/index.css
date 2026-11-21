@@ -244,6 +244,55 @@ body {
   }
 }
 
+/* Similar-series accordion motion tokens. Existing --ease-out-emil and
+   --dur-press are defined in styles/motion.css and intentionally reused. */
+:root {
+  --dur-accordion: 240ms;
+}
+
+.similar-trigger {
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  transition: transform var(--dur-press) ease-out, background-color 150ms ease-out;
+}
+.similar-trigger:active { transform: scale(0.985); }
+.similar-chevron { transition: transform var(--dur-accordion) var(--ease-out-emil); }
+.similar-trigger[aria-expanded='true'] .similar-chevron { transform: rotate(180deg); }
+.similar-panel {
+  display: grid;
+  grid-template-rows: 0fr;
+  opacity: 0;
+  transition: grid-template-rows var(--dur-accordion) var(--ease-out-emil), opacity 180ms ease-out;
+}
+.similar-panel[data-open='true'] { grid-template-rows: 1fr; opacity: 1; }
+.similar-panel-inner {
+  overflow: hidden;
+  transform: translateY(-6px);
+  transition: transform var(--dur-accordion) var(--ease-out-emil);
+}
+.similar-panel[data-open='true'] .similar-panel-inner { transform: translateY(0); }
+.similar-card {
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  transition: transform var(--dur-press) ease-out;
+}
+.similar-card:active { transform: scale(0.97); }
+@media (prefers-reduced-motion: reduce) {
+  .similar-trigger,
+  .similar-chevron,
+  .similar-panel,
+  .similar-panel-inner,
+  .similar-card {
+    transition-duration: 0.01ms !important;
+  }
+  .similar-chevron,
+  .similar-panel-inner,
+  .similar-card:active,
+  .similar-trigger:active {
+    transform: none !important;
+  }
+}
+
 /* ---------------------------------------------------------------------------
    RITME BACA RAPAT — SEMUA VIEWPORT (bukan cuma mobile)
    Halaman manga dari sumber datang tanpa jeda: dua gambar menempel persis.
