@@ -18,6 +18,7 @@ import { humanSize, saveGeneratedPdf } from '../downloadBatch'
 import { cancelRun, getRuns, isRunStale, runBusy, runProgress, subscribeRuns, type DlRun } from '../downloadStore'
 import { useNotifCounts } from '../notifCounts'
 import SourceBadge from '../components/SourceBadge'
+import UpdateQueueStrip from '../components/UpdateQueueStrip'
 import type { DownloadItem, DownloadsResponse } from '../types'
 
 type TabKey = rakStore.RakTab
@@ -190,7 +191,7 @@ export default function Rak() {
         </section>
       )}
       {tab === 'sedang' && <section role="tabpanel" id="panel-sedang" aria-labelledby="tab-sejarah"><HistoryTab entries={history} /></section>}
-      {tab === 'ingin' && <section role="tabpanel" id="panel-ingin" aria-labelledby="tab-favorit"><FavoritesTab entries={favorites} /></section>}
+      {tab === 'ingin' && <section role="tabpanel" id="panel-ingin" aria-labelledby="tab-favorit"><UpdateQueueStrip /><FavoritesTab entries={favorites} /></section>}
       {tab === 'selesai' && (
         <section role="tabpanel" id="panel-selesai" aria-labelledby="tab-selesai">
           <LibraryTab mode="selesai" history={history} favorites={favorites} />

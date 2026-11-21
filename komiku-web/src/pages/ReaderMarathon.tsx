@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
-import { Link, useNavigate, useParams } from 'react-router-dom'
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import Toast, { showToast as pushToast, showToastWithAction } from '../components/Toast'
 import '../styles/reader.css'
+import QueueDrawer from '../components/QueueDrawer'
+import QueueNextCard from '../components/QueueNextCard'
 import ChapterPickerSheet from '../components/ChapterPickerSheet'
 import ComicImage from '../components/ComicImage'
 import ReaderFooter from '../components/ReaderFooter'
@@ -27,6 +29,14 @@ import { useProgress } from '../hooks/useProgress'
 import { useReaderOverlayHistory } from '../hooks/useReaderOverlayHistory'
 import { didOpenChapter } from '../readingEvents'
 import { chapterNumberOf } from '../readMarks'
+import {
+  advanceReadingQueue,
+  loadReadingQueue,
+  markQueueItemRead,
+  queueReaderHref,
+  saveReadingQueue,
+  type ReadingQueueState,
+} from '../readingQueue'
 import {
   chapterKeyOf,
   loadChapter,
@@ -151,6 +161,14 @@ export default function ReaderMarathon() {
     number?: string
   }>()
   const chapterId = chapterKeyOf(params.chapterId, params.handle, params.number)
+  const [searchParams] = useSearchParams()
+  const inQueue = searchParams.get('queue') === '1'
+  const [queueState, setQueueState] = useState<ReadingQueueState | null>(() =>
+    inQueue ? loadReadingQueue() : null,
+  )
+  const [queueEnd, setQueueEnd] = useState(false)
+  const [queueDrawerOpen, setQueueDrawerOpen] = useState(false)
+  const queueMarkedRef = useRef<string | null>(null)
   const [blocks, setBlocks] = useState<Block[]>([])
   const [error, setError] = useState<string | null>(null)
   const [tailIdx, setTailIdx] = useState(-1) // index gambar terakhir yang ter-render
@@ -320,6 +338,10 @@ export default function ReaderMarathon() {
     setFailedPanels(new Set())
     restoreToastShown.current = false
     setZoom(1)
+    setQueueEnd(false)
+    setQueueDrawerOpen(false)
+    queueMarkedRef.current = null
+    if (inQueue) setQueueState(loadReadingQueue())
     // channel baru: chrome tampil lagi (jangan warisi keadaan tersembunyi)
     chrome.show()
 
@@ -627,6 +649,62 @@ export default function ReaderMarathon() {
    */
   const restoringChain = wantBlocks > 0 && blocks.length < wantBlocks
   const NEXT_CHAPTER_AT = 0.8 // muat chapter berikutnya saat 80% chapter terbaca
+
+  // ---- ANTREAN UPDATE (client-side) --------------------------------------
+  const queueItem = queueState?.items[queueState.currentIndex]
+  const nextQueueItem = queueState?.items[queueState.currentIndex + 1]
+  useEffect(() => {
+    if (!inQueue || !queueState?.active || !queueItem) return
+    const markKey = `${queueState.currentIndex}:${queueItem.titleKey}:${queueItem.targetChapter}`
+    if (queueMarkedRef.current === markKey) return
+    queueMarkedRef.current = markKey
+    markQueueItemRead(queueState)
+  }, [inQueue, queueState, queueItem])
+
+  // Observer khusus untuk akhir antrean. Jangan sentuh observer chaining yang
+  // ada di bawah: itu punya kerja sendiri (menambah blok chapter berikutnya).
+  useEffect(() => {
+    if (!inQueue || !queueState?.active || !chainExhausted || restoringChain) {
+      setQueueEnd(false)
+      return
+    }
+    const el = bottomRef.current
+    if (!el) return
+    const io = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((e) => e.isIntersecting)) {
+          setQueueEnd(true)
+          io.disconnect()
+        }
+      },
+      { rootMargin: '0px 0px 120px 0px' },
+    )
+    io.observe(el)
+    return () => io.disconnect()
+  }, [inQueue, queueState?.active, chainExhausted, restoringChain, blocks.length])
+
+  const exitQueue = () => {
+    if (!queueState) return
+    if (queueItem) markQueueItemRead(queueState)
+    const next = { ...queueState, active: false }
+    saveReadingQueue(next)
+    setQueueState(next)
+    setQueueDrawerOpen(false)
+  }
+  const goQueueIndex = (index: number) => {
+    if (!queueState?.items[index]) return
+    if (queueItem) markQueueItemRead(queueState)
+    const next = { ...queueState, currentIndex: index, active: true }
+    saveReadingQueue(next)
+    navigate(queueReaderHref(next.items[index]))
+  }
+  const goQueueNext = () => {
+    if (!queueState || !nextQueueItem) return
+    if (queueItem) markQueueItemRead(queueState)
+    const next = advanceReadingQueue(queueState)
+    saveReadingQueue(next)
+    navigate(queueReaderHref(nextQueueItem))
+  }
 
   // Progres baca SEBENARNYA (= posisi scroll), bukan posisi muat: chaining
   // sudah memuat chapter berikutnya lebih dulu, jadi progres harus mengikuti
@@ -1125,6 +1203,38 @@ export default function ReaderMarathon() {
           </div>
         )}
       </div>
+
+      {/* Antrean update — section khusus, tidak menggantikan tombol chapter
+          berikutnya di atas. Map tap-overlay z-10 → relative z-20. */}
+      {queueEnd && queueItem && nextQueueItem && (
+        <QueueNextCard
+          item={nextQueueItem}
+          index={(queueState?.currentIndex ?? 0) + 1}
+          total={queueState?.items.length ?? 0}
+          onNext={goQueueNext}
+          onOpenDrawer={() => setQueueDrawerOpen(true)}
+          onFinish={exitQueue}
+        />
+      )}
+      {queueEnd && queueItem && !nextQueueItem && (
+        <section className="relative z-20 mx-auto w-full max-w-3xl px-4 pt-5 text-center" aria-label="Antrean selesai">
+          <p className="text-[13px] font-semibold text-ink-100">Semua update favorit sudah terbaca</p>
+          <Link
+            to="/rak?tab=favorit"
+            className="kh-tap mt-2 inline-flex min-h-11 items-center rounded-xl border border-ink-700 px-5 text-[13px] font-bold text-ink-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber"
+          >
+            Kembali ke Rak
+          </Link>
+        </section>
+      )}
+      <QueueDrawer
+        open={queueDrawerOpen}
+        items={queueState?.items ?? []}
+        currentIndex={queueState?.currentIndex ?? 0}
+        onClose={() => setQueueDrawerOpen(false)}
+        onPick={goQueueIndex}
+        onExit={exitQueue}
+      />
 
       {/* Menu + preferensi reader (sama seperti reader biasa) */}
       <ReaderMenu

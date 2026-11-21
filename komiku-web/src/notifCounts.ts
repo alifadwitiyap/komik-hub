@@ -11,8 +11,9 @@
  * persis seperti kontrak lane.
  */
 
-import { createContext, createElement, useContext, type ReactNode } from 'react'
+import { createContext, createElement, useContext, useEffect, type ReactNode } from 'react'
 import { useNotifications, type UseNotifications } from './hooks/useNotifications'
+import { QUEUE_READ_EVENT, setNotifSnapshot } from './readingQueue'
 import type { NotifItem } from './api'
 
 type Hook = UseNotifications
@@ -50,6 +51,26 @@ export function NotifCountsProvider({ children }: { children: ReactNode }) {
   // unreadByTitle/latestByTitle ke useNotifications(); begitu mendarat,
   // cast jadi identitas dan baris ini bisa dibuang.
   const value = useNotifications() as NotifCountsValue
+
+  // Antrean (modul non-React) membaca snapshot ini; useEffect aktif setelah
+  // commit supaya tidak ada side effect di render.
+  useEffect(() => {
+    setNotifSnapshot(value.items, value.unreadByTitle, value.latestByTitle)
+  }, [value.items, value.unreadByTitle, value.latestByTitle])
+
+  // Kartu antrean menandai satu seri selesai → tandai notif belum baca seri itu
+  // lewat jalur context yang sama dengan panel Notifikasi (optimistik + API).
+  useEffect(() => {
+    const onQueueRead = (event: Event) => {
+      const titleKey = (event as CustomEvent<{ titleKey?: string }>).detail?.titleKey
+      if (!titleKey) return
+      const ids = value.items.filter((it) => it.title_key === titleKey && !it.read).map((it) => it.id)
+      if (ids.length > 0) void value.markRead(ids)
+    }
+    window.addEventListener(QUEUE_READ_EVENT, onQueueRead)
+    return () => window.removeEventListener(QUEUE_READ_EVENT, onQueueRead)
+  }, [value.items, value.markRead])
+
   return createElement(NotifCountsContext.Provider, { value }, children)
 }
 

@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
-import { Link, useNavigate, useParams } from 'react-router-dom'
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import Toast, { showToast as pushToast, showToastWithAction } from '../components/Toast'
 import '../styles/reader.css'
+import QueueDrawer from '../components/QueueDrawer'
+import QueueNextCard from '../components/QueueNextCard'
 import ChapterPickerSheet from '../components/ChapterPickerSheet'
 import ComicImage from '../components/ComicImage'
 import HeartButton from '../components/HeartButton'
@@ -30,6 +32,14 @@ import { useModeSwitch } from '../hooks/useModeSwitch'
 import { didOpenChapter, rakMangaOf } from '../readingEvents'
 import { isFavorite } from '../rakStore'
 import { readingStatusForPage, visiblePageProgress, type ReadingStatus } from '../readingStatus'
+import {
+  advanceReadingQueue,
+  loadReadingQueue,
+  markQueueItemRead,
+  queueReaderHref,
+  saveReadingQueue,
+  type ReadingQueueState,
+} from '../readingQueue'
 export { rakMangaOf }
 import { anchorFrom, usableAnchor } from '../pageMemory'
 import type { ReadingAnchor } from '../pageMemory'
@@ -141,6 +151,13 @@ export default function Reader() {
     number?: string
   }>()
   const chapterId = chapterKeyOf(params.chapterId, params.handle, params.number)
+  const [searchParams] = useSearchParams()
+  const inQueue = searchParams.get('queue') === '1'
+  const [queueState, setQueueState] = useState<ReadingQueueState | null>(() =>
+    inQueue ? loadReadingQueue() : null,
+  )
+  const [queueDrawerOpen, setQueueDrawerOpen] = useState(false)
+  const queueMarkedRef = useRef<string | null>(null)
   const [data, setData] = useState<ChapterResponse | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [attempt, setAttempt] = useState(0)
@@ -235,6 +252,48 @@ export default function Reader() {
   const { gotoMarathon } = useModeSwitch(chapterId)
   const navigate = useNavigate()
 
+  // ---- antrean update (aktif hanya dengan ?queue=1) ------------------------
+  const queueEnd = inQueue && data !== null && !!queueState?.active && readingStatus === 'Selesai'
+  const queueItem = queueState?.items[queueState.currentIndex]
+  const nextQueueItem = queueState?.items[queueState.currentIndex + 1]
+
+  useEffect(() => {
+    if (!queueEnd || !queueState || !queueItem) return
+    const key = `${queueState.currentIndex}:${queueItem.titleKey}:${queueItem.targetChapter}`
+    if (queueMarkedRef.current === key) return
+    queueMarkedRef.current = key
+    markQueueItemRead(queueState)
+  }, [queueEnd, queueState, queueItem])
+
+  const exitQueue = () => {
+    if (!queueState) return
+    markQueueItemRead(queueState)
+    const exited = { ...queueState, active: false }
+    saveReadingQueue(exited)
+    setQueueState(exited)
+    setQueueDrawerOpen(false)
+  }
+
+  const goQueueIndex = (index: number) => {
+    if (!queueState) return
+    markQueueItemRead(queueState)
+    const picked = { ...queueState, currentIndex: index, active: true }
+    saveReadingQueue(picked)
+    setQueueState(picked)
+    setQueueDrawerOpen(false)
+    const item = picked.items[index]
+    if (item) navigate(queueReaderHref(item))
+  }
+
+  const goQueueNext = () => {
+    if (!queueState || !nextQueueItem) return
+    markQueueItemRead(queueState)
+    const advanced = advanceReadingQueue(queueState)
+    saveReadingQueue(advanced)
+    setQueueState(advanced)
+    navigate(queueReaderHref(nextQueueItem))
+  }
+
   // URL sumber asli halaman ini (hanya flow unified) — dipakai badge toolbar.
   // Kontrak v2: `source` = sumber yang MELAYANI halaman ini (bisa beda dari
   // handle di URL kalau terjadi fallback lintas-sumber).
@@ -267,6 +326,12 @@ export default function Reader() {
     setActivePage(1)
     setReadingStatus('Sedang dibaca')
     atChapterEnd.current = false
+    setQueueDrawerOpen(false)
+    queueMarkedRef.current = null
+    if (inQueue) {
+      const saved = loadReadingQueue()
+      if (saved) setQueueState(saved)
+    }
     // React Router v7 TIDAK reset scroll saat rute berubah → chapter baru
     // akan tampil di posisi scroll chapter lama (bawah). Scroll ke atas
     // SEBELUM fetch; kalau chapter ini punya anchor tersimpan, efek restore
@@ -1065,6 +1130,39 @@ export default function Reader() {
           </Link>
         </div>
       )}
+
+      {/* Antrean update: section khusus di bawah tombol chapter berikutnya,
+          supaya dua jalur tidak saling menimpa. */}
+      {queueEnd && queueItem && nextQueueItem && (
+        <QueueNextCard
+          item={nextQueueItem}
+          index={(queueState?.currentIndex ?? 0) + 1}
+          total={queueState?.items.length ?? 0}
+          onNext={goQueueNext}
+          onOpenDrawer={() => setQueueDrawerOpen(true)}
+          onFinish={exitQueue}
+        />
+      )}
+      {queueEnd && queueItem && !nextQueueItem && (
+        <section className="relative z-20 mx-auto w-full max-w-3xl px-4 pt-5 text-center" aria-label="Antrean selesai">
+          <p className="text-[13px] font-semibold text-ink-100">Semua update favorit sudah terbaca</p>
+          <Link
+            to="/rak?tab=favorit"
+            className="kh-tap mt-2 inline-flex min-h-11 items-center rounded-xl border border-ink-700 px-5 text-[13px] font-bold text-ink-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber"
+          >
+            Kembali ke Rak
+          </Link>
+        </section>
+      )}
+      <QueueDrawer
+        open={queueDrawerOpen}
+        items={queueState?.items ?? []}
+        currentIndex={queueState?.currentIndex ?? 0}
+        onClose={() => setQueueDrawerOpen(false)}
+        onPick={goQueueIndex}
+        onExit={exitQueue}
+      />
+
       {/* Ruang bawah untuk footer satu baris (+ safe-area). */}
       <div className={footerSpacer} />
 
