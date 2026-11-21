@@ -414,6 +414,8 @@ pub struct CatalogueQuery {
     source: Option<String>,
     /// mode urutan: latest|rating|trending (default latest)
     sort: Option<String>,
+    /// minimal chapter (0/absent = tanpa filter, >5000 di-clamp ke 5000)
+    min_ch: Option<u32>,
 }
 
 #[derive(Deserialize)]
@@ -433,6 +435,8 @@ pub struct SearchQuery {
     source: Option<String>,
     /// mode urutan: latest|rating|trending (default latest)
     sort: Option<String>,
+    /// minimal chapter (0/absent = tanpa filter, >5000 di-clamp ke 5000)
+    min_ch: Option<u32>,
 }
 
 /// Normalisasi param `?source=`: trim, kosong / tak dikenal -> None (semua).
@@ -455,6 +459,28 @@ fn match_filters(m: &Manga, tipe: Option<&str>, status: Option<&str>) -> bool {
     eq_ci(&m.manga_type, tipe) && eq_ci(&m.status, status)
 }
 
+/// Ambil angka chapter pertama dari teks bebas ("Ch. 170", "170.5", "170").
+/// Murni, tanpa I/O. Koma desimal lebih dari satu membuat parsing gagal ->
+/// None, sesuai aturan "jangan pura-pura tahu".
+fn parse_chapter_num(raw: Option<&str>) -> Option<f64> {
+    let s = raw?.trim();
+    if s.is_empty() {
+        return None;
+    }
+    let num_str: String = s
+        .chars()
+        .skip_while(|c| !c.is_ascii_digit())
+        .take_while(|c| c.is_ascii_digit() || *c == '.')
+        .collect();
+    num_str.parse::<f64>().ok()
+}
+
+/// 0/absent = tanpa filter; nilai di atas batas di-clamp (kunci cache tetap
+/// terikat, tidak meledak dengan URL buatan).
+fn norm_min_ch(raw: Option<u32>) -> u32 {
+    raw.unwrap_or(0).min(5000)
+}
+
 /// Batas fan-out internal: core `search`/`list` SUDAH merge+dedup 4 sumber;
 /// di sini kita ambil lebih banyak dari yang ditampilkan supaya filter
 /// tipe/status + rank relevansi bisa jalan pada set yang cukup (kalau hanya
@@ -471,6 +497,7 @@ fn list_out_filtered(
     query: Option<&str>,
     tipe: Option<&str>,
     status: Option<&str>,
+    min_ch: u32,
     sort: SortMode,
     max: Option<usize>,
 ) -> ListOut {
@@ -488,7 +515,12 @@ fn list_out_filtered(
         None => merged.items,
     }
     .into_iter()
-    .filter(|m| match_filters(m, tipe, status))
+    .filter(|m| {
+        match_filters(m, tipe, status)
+            && (min_ch == 0
+                || parse_chapter_num(m.last_chapter.as_deref())
+                    .is_some_and(|n| n >= min_ch as f64))
+    })
     .collect();
     let items = komik_core::aggregator::apply_sort(items, sort);
     let mut out = ListOut::from(komik_core::aggregator::Merged { items, ..merged });
@@ -532,9 +564,10 @@ fn search_key(
     limit: u32,
     source: Option<&str>,
     sort: SortMode,
+    min_ch: u32,
 ) -> String {
     format!(
-        "{query}\u{1}{}\u{1}{page}\u{1}{limit}\u{1}{}\u{1}{}",
+        "{query}\u{1}{}\u{1}{page}\u{1}{limit}\u{1}{}\u{1}{}\u{1}{min_ch}",
         genre.unwrap_or(""),
         source.unwrap_or("*"),
         sort.as_str()
@@ -590,7 +623,8 @@ async fn u_search(
     let sort = SortMode::parse(q.sort.as_deref());
     let page = q.page.unwrap_or(1).max(1);
     let limit = q.limit.unwrap_or(48);
-    let key = search_key(&query, genre.as_deref(), page, limit, source, sort);
+    let min_ch = norm_min_ch(q.min_ch);
+    let key = search_key(&query, genre.as_deref(), page, limit, source, sort, min_ch);
     if let Some(hit) = search_cache_get(&state.search_cache, &key) {
         return Ok(crate::routes::json_with_etag(
             &hit,
@@ -644,6 +678,7 @@ async fn u_search(
         Some(&query),
         q.tipe.as_deref(),
         q.status.as_deref(),
+        min_ch,
         sort,
         Some(limit as usize),
     );
@@ -684,12 +719,14 @@ async fn u_catalogue(
         .list(genre, q.page.unwrap_or(1).max(1), FILTER_FANOUT_CAP, source, sort)
         .await;
     let limit = q.limit.unwrap_or(48);
+    let min_ch = norm_min_ch(q.min_ch);
     Ok(crate::routes::json_with_etag(
         &list_out_filtered(
             merged,
             None,
             q.tipe.as_deref(),
             q.status.as_deref(),
+            min_ch,
             sort,
             Some(limit as usize),
         ),
@@ -2585,7 +2622,7 @@ mod tests {
             from_cache: false,
         };
         // Filter tipe=Manga -> 2 item (a, c), status Ongoing -> ya.
-        let out = list_out_filtered(merged.clone(), None, Some("Manga"), None, SortMode::Latest, None);
+        let out = list_out_filtered(merged.clone(), None, Some("Manga"), None, 0, SortMode::Latest, None);
         assert_eq!(out.items.len(), 2, "count harus jujur terhadap filter");
         assert!(out
             .items
@@ -2595,16 +2632,16 @@ mod tests {
         assert_eq!(out.failed_sources, vec!["kiryuu".to_string()]);
 
         // Tanpa filter = semua item (recency core apa adanya, tidak di-rank).
-        let all = list_out_filtered(merged.clone(), None, None, None, SortMode::Latest, None);
+        let all = list_out_filtered(merged.clone(), None, None, None, 0, SortMode::Latest, None);
         assert_eq!(all.items.len(), 4);
 
         // AND: tipe=Manga + status=Ongoing -> 1 item.
-        let both = list_out_filtered(merged.clone(), None, Some("manga"), Some("ongoing"), SortMode::Latest, None);
+        let both = list_out_filtered(merged.clone(), None, Some("manga"), Some("ongoing"), 0, SortMode::Latest, None);
         assert_eq!(both.items.len(), 1);
         assert_eq!(both.items[0].native_id, "a");
 
         // `max` memotong HASIL terfilter, bukan input.
-        let capped = list_out_filtered(merged.clone(), None, None, None, SortMode::Latest, Some(2));
+        let capped = list_out_filtered(merged.clone(), None, None, None, 0, SortMode::Latest, Some(2));
         assert_eq!(capped.items.len(), 2);
     }
 
@@ -2619,7 +2656,7 @@ mod tests {
             sources_ok: 4,
             from_cache: true,
         };
-        let out = list_out_filtered(merged, None, Some("Manga"), None, SortMode::Latest, None);
+        let out = list_out_filtered(merged, None, Some("Manga"), None, 0, SortMode::Latest, None);
         assert!(out.from_cache);
         assert_eq!(out.items.len(), 1);
 
@@ -2635,10 +2672,96 @@ mod tests {
             None,
             Some("Manga"),
             None,
+            0,
             SortMode::Latest,
             None,
         );
         assert_eq!(out0.items.len(), 0);
+    }
+
+
+    /// Parsing chapter dari teks bebas: None/kosong/non-numeric/double-dot
+    /// tidak boleh mengarang angka.
+    #[test]
+    fn parse_chapter_num_kasus_pinggir() {
+        assert_eq!(parse_chapter_num(None), None);
+        assert_eq!(parse_chapter_num(Some("")), None);
+        assert_eq!(parse_chapter_num(Some("   ")), None);
+        assert_eq!(parse_chapter_num(Some("Ch. 170")), Some(170.0));
+        assert_eq!(parse_chapter_num(Some("170.5")), Some(170.5));
+        assert_eq!(parse_chapter_num(Some("bukan angka")), None);
+        assert_eq!(parse_chapter_num(Some("170.5.2")), None);
+    }
+
+    /// min_ch menyaring setelah dedup/ceiling (Merged dari core) dan sebelum
+    /// truncate, supaya halaman tetap terisi dari set over-fetch.
+    #[test]
+    fn list_out_filtered_min_ch_strict() {
+        let mut none = sample("none", None, None);
+        none.last_chapter = None;
+        let mut low = sample("low", None, None);
+        low.last_chapter = Some("169.9".into());
+        let mut exact = sample("exact", None, None);
+        exact.last_chapter = Some("Ch. 170".into());
+        let mut high = sample("high", None, None);
+        high.last_chapter = Some("170.5".into());
+        let mut garbage = sample("garbage", None, None);
+        garbage.last_chapter = Some("ongoing".into());
+        let merged = || komik_core::aggregator::Merged {
+            items: vec![
+                none.clone(),
+                low.clone(),
+                exact.clone(),
+                high.clone(),
+                garbage.clone(),
+            ],
+            failures: vec![],
+            sources_total: 4,
+            sources_ok: 4,
+            from_cache: false,
+        };
+
+        let all = list_out_filtered(merged(), None, None, None, 0, SortMode::Latest, None);
+        assert_eq!(all.items.len(), 5, "0 = tanpa filter");
+
+        let out = list_out_filtered(merged(), None, None, None, 170, SortMode::Latest, None);
+        let mut ids: Vec<&str> = out.items.iter().map(|m| m.native_id.as_str()).collect();
+        ids.sort_unstable();
+        assert_eq!(ids, vec!["exact", "high"]);
+    }
+
+    /// Clamp batas atas + min_ch WAJIB mengubah kunci cache (kalau tidak,
+    /// halaman dengan min berbeda menyajikan hasil cache yang salah).
+    #[test]
+    fn min_ch_normalisasi_dan_kunci_cache() {
+        assert_eq!(norm_min_ch(None), 0);
+        assert_eq!(norm_min_ch(Some(0)), 0);
+        assert_eq!(norm_min_ch(Some(50)), 50);
+        assert_eq!(norm_min_ch(Some(5001)), 5000);
+        assert_ne!(
+            search_key("q", None, 1, 48, None, SortMode::Latest, norm_min_ch(None)),
+            search_key("q", None, 1, 48, None, SortMode::Latest, norm_min_ch(Some(50)))
+        );
+        assert_eq!(
+            search_key(
+                "q",
+                None,
+                1,
+                48,
+                None,
+                SortMode::Latest,
+                norm_min_ch(Some(5001))
+            ),
+            search_key(
+                "q",
+                None,
+                1,
+                48,
+                None,
+                SortMode::Latest,
+                norm_min_ch(Some(5000))
+            )
+        );
     }
 
     // ------------------------------------------------ akses file PDF (P1-5)
