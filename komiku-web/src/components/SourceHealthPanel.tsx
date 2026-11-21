@@ -1,76 +1,51 @@
 /**
  * SourceHealthPanel — daftar terbuka 4 sumber API, tanpa kartu bertumpuk.
  *
- * Zero-prop: state diambil langsung dari useSourceHealth. `probing` belum ada
- * di hook (lane lain menambahkannya), jadi dibaca lewat accessor kompatibel +
- * fallback lokal untuk klik manual. Parent akan menyederhanakan setelah merge.
+ * Zero-prop: state diambil langsung dari useSourceHealth. `probing`, helper
+ * latensi, dan waktu relatif berasal dari lane foundation yang sudah di-merge.
+ * CSS sh-* di-import oleh parent setelah lane index.css selesai.
  */
 
-import { useState, type CSSProperties } from 'react'
+import type { CSSProperties } from 'react'
 import { useSourceHealth } from '../hooks/useSourceHealth'
 import type { SourceHealthRow } from '../types'
-import { deadSources, healthSummary, rowLabel } from './sourceHealth'
+import {
+  latencyLabel,
+  latencyScale,
+  latencyTier,
+  panelSummary,
+  relativeChecked,
+  rowLabel,
+} from './sourceHealth'
 
-const LATENCY_CAP_MS = 2000
+type Tone = 'ok' | 'warn' | 'danger' | 'dead' | 'muted'
 
-function panelSummary(healthy: number, total: number, deadCount: number): string {
-  const base = healthSummary(healthy, total)
-  if (total <= 0 || deadCount === 0) return base
-  return `${base} · ${deadCount} gangguan`
-}
-
-function relativeChecked(checkedAtMs: number | null): string {
-  if (checkedAtMs == null) return 'Belum pernah dicek'
-  const delta = Math.max(0, Date.now() - checkedAtMs)
-  if (delta < 5000) return 'Baru saja'
-  if (delta < 60_000) return `${Math.floor(delta / 1000)} detik lalu`
-  if (delta < 3_600_000) return `${Math.floor(delta / 60_000)} menit lalu`
-  return `${Math.floor(delta / 3_600_000)} jam lalu`
-}
-
-function latencyText(row: SourceHealthRow): string {
-  if (!row.ok) return 'Mati'
-  const ms = row.latency_ms
-  return typeof ms === 'number' && Number.isFinite(ms) ? `${Math.round(ms)} ms` : '—'
-}
-
-function latencyTone(row: SourceHealthRow): 'ok' | 'warn' | 'danger' | 'muted' {
-  if (!row.ok) return 'danger'
-  const ms = row.latency_ms
-  if (typeof ms !== 'number' || !Number.isFinite(ms)) return 'muted'
-  if (ms > 1500) return 'danger'
-  if (ms >= 500) return 'warn'
-  return 'ok'
-}
-
-const TEXT_TONE = {
+const TEXT_TONE: Record<Tone, string> = {
   ok: 'text-healthy',
   warn: 'text-warn',
   danger: 'text-danger',
+  dead: 'text-danger',
   muted: 'text-ink-300',
-} as const
+}
 
-const BAR_TONE = {
+const BAR_TONE: Record<Tone, string> = {
   ok: 'bg-healthy',
   warn: 'bg-warn',
   danger: 'bg-danger',
+  dead: 'bg-danger',
   muted: 'bg-ink-500',
-} as const
+}
+
+function toneOf(row: SourceHealthRow): Tone {
+  if (!row.ok) return 'dead'
+  if (typeof row.latency_ms !== 'number' || !Number.isFinite(row.latency_ms)) return 'muted'
+  return latencyTier(row)
+}
 
 export default function SourceHealthPanel() {
-  // Kompatibilitas sementara: hook lane belum menyediakan `probing`.
-  const h = useSourceHealth() as ReturnType<typeof useSourceHealth> & { probing?: boolean }
-  const [manualProbing, setManualProbing] = useState(false)
-  const probing = Boolean(h.probing ?? manualProbing)
-  const dead = deadSources(h.rows)
-  const summary = `${panelSummary(h.healthy, h.total, dead.length)}${h.status === 'stale' ? ' · data basi' : ''}`
-  const checked = relativeChecked(h.checkedAtMs)
-
-  const refresh = () => {
-    if (probing) return
-    setManualProbing(true)
-    Promise.resolve(h.refresh()).finally(() => setManualProbing(false))
-  }
+  const health = useSourceHealth()
+  const summary = `${panelSummary(health.healthy, health.total)}${health.status === 'stale' ? ' · data basi' : ''}`
+  const checked = relativeChecked(health.checkedAtMs)
 
   return (
     <div className="px-4 pb-5 pt-1">
@@ -82,25 +57,22 @@ export default function SourceHealthPanel() {
         </div>
         <button
           type="button"
-          onClick={refresh}
-          disabled={probing}
-          aria-busy={probing}
+          onClick={health.refresh}
+          disabled={health.probing}
+          aria-busy={health.probing}
           className="sh-tap inline-flex min-h-11 shrink-0 items-center gap-1.5 rounded-lg border border-ink-700 bg-ink-850 px-3 text-[12px] font-semibold text-ink-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber disabled:opacity-70"
         >
-          <span aria-hidden="true" className={`text-[15px] leading-none ${probing ? 'sh-spin' : ''}`}>
+          <span aria-hidden="true" className={`text-[15px] leading-none ${health.probing ? 'sh-spin' : ''}`}>
             ↻
           </span>
-          {probing ? 'Memeriksa…' : 'Cek ulang'}
+          {health.probing ? 'Memeriksa…' : 'Cek ulang'}
         </button>
       </header>
 
       <ul className="divide-y divide-ink-800 border-b border-ink-800">
-        {h.rows.map((row, index) => {
-          const tone = latencyTone(row)
-          const ratio =
-            row.ok && typeof row.latency_ms === 'number' && Number.isFinite(row.latency_ms)
-              ? Math.min(1, Math.max(0, row.latency_ms / LATENCY_CAP_MS))
-              : 0
+        {health.rows.map((row, index) => {
+          const tone = toneOf(row)
+          const ratio = row.ok ? latencyScale(row.latency_ms) : 0
           const error = row.ok ? '' : row.error?.trim() ?? ''
           return (
             <li
@@ -124,7 +96,7 @@ export default function SourceHealthPanel() {
               </div>
               <div className="flex shrink-0 flex-col items-end gap-1.5">
                 <span className={`text-[12.5px] tabular-nums ${TEXT_TONE[tone]}`}>
-                  {latencyText(row)}
+                  {latencyLabel(row)}
                 </span>
                 <span aria-hidden="true" className="h-[3px] w-3.5 overflow-hidden rounded-full bg-ink-700">
                   <span
