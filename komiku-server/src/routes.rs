@@ -257,22 +257,49 @@ const HOMEPAGE_FAIL_COOLDOWN: std::time::Duration = std::time::Duration::from_se
 static HOMEPAGE_LAST_FAIL: once_cell::sync::Lazy<std::sync::Mutex<Option<std::time::Instant>>> =
     once_cell::sync::Lazy::new(|| std::sync::Mutex::new(None));
 
-fn homepage_cached() -> Option<Value> {
+/// Baca cache: `stale_ok=false` hanya entri segar (dalam TTL);
+/// `stale_ok=true` mengembalikan entri berapa pun umurnya (stale-while-revalidate).
+fn homepage_cached(stale_ok: bool) -> Option<Value> {
     let guard = HOMEPAGE_CACHE.lock().ok()?;
     let (at, cached) = guard.as_ref()?;
-    (at.elapsed() < HOMEPAGE_CACHE_TTL).then(|| cached.clone())
+    (stale_ok || at.elapsed() < HOMEPAGE_CACHE_TTL).then(|| cached.clone())
 }
 
-/// Payload homepage (cache + single-flight + TTL) — dipisah dari handler
-/// supaya warm-up startup memakai jalur yang SAMA.
-pub(crate) async fn homepage_payload() -> Result<Value, AppError> {
-    if let Some(cached) = homepage_cached() {
-        return Ok(cached);
+/// Transform raw upstream -> payload homepage (seksi diringkas seragam via
+/// `slim`). Murni, tanpa jaringan — bisa diuji offline.
+fn homepage_transform(raw: &Value) -> serde_json::Map<String, Value> {
+    let mut out = serde_json::Map::new();
+    out.insert(
+        "success".into(),
+        raw.get("success").cloned().unwrap_or(json!(true)),
+    );
+    if let Some(obj) = raw.as_object() {
+        for (key, val) in obj {
+            if key == "success" {
+                continue;
+            }
+            let Some(items) = val.get("data").and_then(|d| d.as_array()) else {
+                continue;
+            };
+            out.insert(
+                key.clone(),
+                json!({
+                    "title": val.get("title").cloned().unwrap_or(json!(key)),
+                    "more": val.get("more"),
+                    "data": items.iter().map(slim).collect::<Vec<_>>(),
+                }),
+            );
+        }
     }
+    out
+}
 
+/// Fetch + transform + store. PEMANGGIL wajib memegang gate `HOMEPAGE_REFRESH`
+/// (single-flight). Dipakai bersama oleh jalur blocking (cache kosong) dan
+/// background refresh (stale-while-revalidate).
+async fn homepage_fetch_store() -> Result<Value, AppError> {
     // double-check di dalam gate: yang kalah balapan ikut memakai hasil leader
-    let _gate = HOMEPAGE_REFRESH.lock().await;
-    if let Some(cached) = homepage_cached() {
+    if let Some(cached) = homepage_cached(false) {
         return Ok(cached);
     }
 
@@ -296,35 +323,41 @@ pub(crate) async fn homepage_payload() -> Result<Value, AppError> {
             return Err(AppError::new(e));
         }
     };
-    let mut out = serde_json::Map::new();
-    out.insert(
-        "success".into(),
-        raw.get("success").cloned().unwrap_or(json!(true)),
-    );
-
-    // setiap seksi (trending/popular/latest/...) diringkas seragam
-    if let Some(obj) = raw.as_object() {
-        for (key, val) in obj {
-            if key == "success" {
-                continue;
-            }
-            let Some(items) = val.get("data").and_then(|d| d.as_array()) else {
-                continue;
-            };
-            out.insert(
-                key.clone(),
-                json!({
-                    "title": val.get("title").cloned().unwrap_or(json!(key)),
-                    "more": val.get("more"),
-                    "data": items.iter().map(slim).collect::<Vec<_>>(),
-                }),
-            );
-        }
-    }
+    let out = homepage_transform(&raw);
     if let Ok(mut guard) = HOMEPAGE_CACHE.lock() {
         *guard = Some((std::time::Instant::now(), Value::Object(out.clone())));
     }
     Ok(Value::Object(out))
+}
+
+/// Payload homepage (cache + single-flight + TTL + stale-while-revalidate) —
+/// dipisah dari handler supaya warm-up startup memakai jalur yang SAMA.
+///
+/// SWR: setelah TTL lewat tapi masih ada entri lama, balas SOFORT dengan
+/// payload stale dan segarkan di background di balik gate single-flight —
+/// request pasca-TTL tidak lagi membayar 0,3–4 s upstream. Hanya hit pertama
+/// sepanjang masa (cache kosong) yang boleh blocking.
+pub(crate) async fn homepage_payload() -> Result<Value, AppError> {
+    if let Some(cached) = homepage_cached(false) {
+        return Ok(cached);
+    }
+    if let Some(stale) = homepage_cached(true) {
+        // try_lock, bukan lock().await: request stale berikutnya tidak menunggu
+        // refresh yang sedang jalan — cukup satu refresher, sisanya layan stale.
+        tokio::spawn(async {
+            let Ok(_gate) = HOMEPAGE_REFRESH.try_lock() else { return };
+            // _gate dipinjam dari static ('static) dan tokio guard itu Send,
+            // jadi aman dipegang across await di dalam spawn: inilah satu-satunya
+            // pemegang gate selama background fetch — jalur blocking yang datang
+            // belakangan ikut melihat cache segar via double-check.
+            if let Err(e) = homepage_fetch_store().await {
+                tracing::debug!("homepage SWR refresh gagal (saji stale): {e:?}");
+            }
+        });
+        return Ok(stale);
+    }
+    let _gate = HOMEPAGE_REFRESH.lock().await;
+    homepage_fetch_store().await
 }
 
 /// Ambil nilai header `If-None-Match` sebagai &str (kalau ada & valid).
@@ -698,6 +731,35 @@ mod tests {
         assert_eq!(res.status(), StatusCode::BAD_REQUEST);
         let v = body_json(res).await;
         assert!(v.get("hint").is_none());
+    }
+
+    /// Transformasi homepage murni (bagian yang di-cache SWR): payload inti
+    /// selalu ada, tiap seksi menyimpan title/more/data yang sudah di-slim.
+    #[test]
+    fn homepage_transform_tanpa_jaringan() {
+        let raw = json!({
+            "success": true,
+            "latest": {
+                "title": "Terbaru",
+                "more": "/latest",
+                "data": [{ "id": 7, "title": "A", "cover": "x", "extra": 1 }],
+            },
+            "broken": { "title": "Tanpa data" },
+        });
+        let out = homepage_transform(&raw);
+        assert_eq!(out["success"], true);
+        assert_eq!(out["latest"]["title"], "Terbaru");
+        assert_eq!(out["latest"]["more"], "/latest");
+        let first = &out["latest"]["data"][0];
+        assert_eq!(first["id"], 7);
+        assert_eq!(first["title"], "A");
+        assert_eq!(first["title_key"], "a");
+        assert!(first.get("extra").is_none(), "slim harus buang field asing");
+        assert!(!out.contains_key("broken"), "seksi tanpa data dilewati");
+
+        let empty = homepage_transform(&json!({}));
+        assert_eq!(empty["success"], true, "success default saat raw kosong");
+        assert_eq!(empty.len(), 1);
     }
 
     /// Payload series dibentuk penuh (title_key + chapter list) tanpa jaringan;
