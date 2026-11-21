@@ -30,7 +30,7 @@ fn score(target: &Manga, candidate: &Manga) -> (u32, String) {
         .is_some_and(|(a, b)| norm(a) == norm(b));
     let same_author = target.author.as_ref().zip(candidate.author.as_ref())
         .is_some_and(|(a, b)| !a.trim().is_empty() && norm(a) == norm(b));
-    let mut total = genre_score + u32::from(same_type) * 15 + u32::from(same_author) * 20
+    let total = genre_score + u32::from(same_type) * 15 + u32::from(same_author) * 20
         + rating_bonus(candidate.rating.as_deref());
     let reason = if !overlap.is_empty() {
         overlap.iter().take(2).cloned().collect::<Vec<_>>().join(" · ")
