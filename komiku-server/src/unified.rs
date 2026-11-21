@@ -53,7 +53,7 @@ use axum::{
     routing::{get, post},
     Json, Router,
 };
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use std::sync::Arc;
 
@@ -129,6 +129,8 @@ pub struct UnifiedState {
     pub series_cache: std::sync::Mutex<SeriesCache>,
     pub series_gates: std::sync::Mutex<std::collections::HashMap<String, Arc<tokio::sync::Mutex<()>>>>,
     pub series_fanout_permits: tokio::sync::Semaphore,
+    pub similar_cache: std::sync::Mutex<SimilarCache>,
+    pub similar_gates: std::sync::Mutex<std::collections::HashMap<String, Arc<tokio::sync::Mutex<()>>>>,
     /// Single-flight PER CHAPTER (`handle` + nomor ternormalisasi) untuk
     /// `/api/unified/chapter/*`. Terpisah dari `series_gates`: request chapter
     /// TIDAK boleh ikut mengantre di gerbang series (fan-out series jauh lebih
@@ -155,6 +157,8 @@ impl UnifiedState {
             series_cache: std::sync::Mutex::new(std::collections::HashMap::new()),
             series_gates: std::sync::Mutex::new(std::collections::HashMap::new()),
             series_fanout_permits: tokio::sync::Semaphore::new(3),
+            similar_cache: std::sync::Mutex::new(std::collections::HashMap::new()),
+            similar_gates: std::sync::Mutex::new(std::collections::HashMap::new()),
             chapter_gates: ChapterGates::default(),
             chapter_cache: std::sync::Mutex::new(std::collections::HashMap::new()),
             image_client: reqwest::Client::builder()
@@ -1075,6 +1079,36 @@ const SERIES_CACHE_MAX: usize = 256;
 
 type SeriesCache = std::collections::HashMap<String, (std::time::Instant, serde_json::Value)>;
 
+/// Final similar summaries only; target details and chapters never enter this cache.
+const SIMILAR_CACHE_TTL: std::time::Duration = std::time::Duration::from_secs(21600);
+const SIMILAR_CACHE_MAX: usize = 128;
+type SimilarCache = std::collections::HashMap<String, (std::time::Instant, Value)>;
+
+fn similar_gate(
+    gates: &std::sync::Mutex<std::collections::HashMap<String, Arc<tokio::sync::Mutex<()>>>>,
+    key: &str,
+) -> Arc<tokio::sync::Mutex<()>> {
+    let mut guard = gates.lock().unwrap_or_else(|e| e.into_inner());
+    guard.entry(key.to_owned()).or_insert_with(|| Arc::new(tokio::sync::Mutex::new(()))).clone()
+}
+
+fn similar_cache_read(cache: &std::sync::Mutex<SimilarCache>, key: &str) -> Option<Value> {
+    let guard = cache.lock().ok()?;
+    guard.get(key).and_then(|(at, value)| (at.elapsed() < SIMILAR_CACHE_TTL).then(|| value.clone()))
+}
+
+fn similar_cache_put(cache: &std::sync::Mutex<SimilarCache>, key: String, value: Value) {
+    if let Ok(mut guard) = cache.lock() {
+        if guard.len() >= SIMILAR_CACHE_MAX && !guard.contains_key(&key) {
+            if let Some(old) = guard.iter().min_by_key(|(_, (at, _))| *at).map(|(k, _)| k.clone()) {
+                guard.remove(&old);
+            }
+        }
+        guard.insert(key, (std::time::Instant::now(), value));
+    }
+}
+
+
 /// Kunci cache: handle + last_source (sticky source mengubah hasil union
 /// primary, jadi tidak boleh berbagi entri).
 fn series_key(handle: &str, last_source: Option<&str>) -> String {
@@ -1366,8 +1400,71 @@ fn spawn_series_refresh(state: Arc<UnifiedState>, handle: String, last_source: O
     });
 }
 
-/// GET /api/unified/series/{handle} — detail + daftar chapter UNION lintas
-/// sumber. Respons di-cache (memory) dengan **stale-while-revalidate**:
+/// GET /api/unified/series/{handle}/similar — one source-local candidate pool,
+/// ranked by the core similarity scorer and cached as a final summary.
+#[derive(Serialize)]
+struct SimilarItemOut {
+    handle: String,
+    title: String,
+    cover_url: Option<String>,
+    manga_type: Option<String>,
+    last_chapter: Option<String>,
+    reason: String,
+    score: u32,
+}
+
+async fn u_similar(
+    State(state): State<Arc<crate::routes::AppState>>,
+    Path(handle): Path<String>,
+) -> Result<Json<Value>, AppError> {
+    validate_handle(&handle)?;
+    let unified = state.unified.clone();
+    if let Some(items) = similar_cache_read(&unified.similar_cache, &handle) {
+        return Ok(Json(json!({"handle": handle, "from_cache": true, "items": items})));
+    }
+    let gate = similar_gate(&unified.similar_gates, &handle);
+    let _guard = gate.lock().await;
+    if let Some(items) = similar_cache_read(&unified.similar_cache, &handle) {
+        return Ok(Json(json!({"handle": handle, "from_cache": true, "items": items})));
+    }
+
+    let outcome = unified
+        .aggregator
+        .series_resolve_pref(&handle, SERIES_CHAPTER_LIMIT, None, None)
+        .await
+        .map_err(classify_core_err)?;
+    let target = outcome.detail.manga;
+    let source = unified
+        .aggregator
+        .sources
+        .iter()
+        .find(|source| source.id() == target.source)
+        .ok_or_else(|| AppError::internal(format!("sumber {} tidak tersedia", target.source.as_str())))?;
+    let candidates = if let Some(genre) = target.genres.first() {
+        source.list(Some(genre), 1).await
+    } else {
+        source.popular(1).await
+    }
+    .map_err(|e| AppError::new(anyhow::anyhow!("gagal memuat kandidat serupa: {e:#}")))?;
+    let items: Vec<SimilarItemOut> = komik_core::similar::rank(&target, candidates, 10)
+        .into_iter()
+        .map(|hit| SimilarItemOut {
+            handle: hit.handle,
+            title: hit.title,
+            cover_url: hit.cover_url,
+            manga_type: hit.manga_type,
+            last_chapter: hit.last_chapter,
+            reason: hit.reason,
+            score: hit.score,
+        })
+        .collect();
+    let items = serde_json::to_value(items)
+        .map_err(|e| AppError::internal(format!("gagal membentuk similar: {e}")))?;
+    similar_cache_put(&unified.similar_cache, handle.clone(), items.clone());
+    Ok(Json(json!({"handle": handle, "from_cache": false, "items": items})))
+}
+
+
 /// umur < TTL → sajikan cache seketika; ≥ TTL dan < MAX_STALE → sajikan
 /// stale seketika + refresh latar (single-flight); ≥ MAX_STALE / kosong →
 /// hitung inline. Ini yang membuat kunjungan ulang series ~milidetik,
@@ -2065,6 +2162,7 @@ pub fn unified_routes() -> Router<Arc<crate::routes::AppState>> {
         .route("/api/unified/popular", get(u_popular))
         .route("/api/unified/latest", get(u_latest))
         .route("/api/unified/genres", get(u_genres))
+        .route("/api/unified/series/:handle/similar", get(u_similar))
         .route("/api/unified/series/:handle", get(u_series))
         .route("/api/unified/chapter/:handle/:number", get(u_chapter))
         // Rak buku: unduhan PDF (kontrak lane rak-buku). Limit byte +
