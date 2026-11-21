@@ -173,6 +173,7 @@ pub struct Manga {
     pub status: Option<String>,
     pub manga_type: Option<String>,
     pub rating: Option<String>,
+    pub genres: Vec<String>,
     /// Nomor chapter terbaru (string; bisa desimal).
     pub last_chapter: Option<String>,
     /// epoch millis update terbaru (best-effort; None kalau sumber tak expose).
@@ -192,6 +193,7 @@ impl Manga {
             status: None,
             manga_type: None,
             rating: None,
+            genres: Vec::new(),
             last_chapter: None,
             updated_at: None,
             url: None,

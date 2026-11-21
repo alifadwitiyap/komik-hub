@@ -47,6 +47,8 @@ struct MangaDef {
     status: Option<String>,
     manga_type: Option<String>,
     rating: Option<String>,
+    #[serde(default)]
+    genres: Vec<String>,
     last_chapter: Option<String>,
     updated_at: Option<i64>,
     url: Option<String>,

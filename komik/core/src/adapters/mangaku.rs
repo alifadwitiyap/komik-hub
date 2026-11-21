@@ -166,6 +166,7 @@ impl MangakuSource {
         m.author = str_field(obj.get("author"));
         m.status = str_field(obj.get("status"));
         m.manga_type = str_field(obj.get("type"));
+        m.genres = obj.get("genres").and_then(|x| x.as_array()).map(|a| a.iter().filter_map(|g| g.get("name").and_then(Value::as_str).map(str::to_string)).collect()).unwrap_or_default();
         m.rating = str_field(obj.get("rating"));
         // last_chapter bisa objek chapter (katalog) atau angka/teks
         m.last_chapter = match obj.get("last_chapter") {

@@ -178,6 +178,7 @@ fn manga_from_value(source: &SourceId, v: &serde_json::Value) -> Option<Manga> {
     m.author = tax_names(v, "Author");
     m.status = fmt_status(v.get("status").and_then(|s| s.as_i64()));
     m.manga_type = tax_names(v, "Format");
+    m.genres = tax_names(v, "Genre").map(|s| s.split(", ").map(str::to_string).collect()).unwrap_or_default();
     m.rating = num_str(v.get("user_rate"));
     m.last_chapter = num_str(v.get("latest_chapter_number"));
     m.updated_at = str_field(v, "latest_chapter_time").as_deref().and_then(iso8601_to_millis);

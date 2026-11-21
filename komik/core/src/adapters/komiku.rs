@@ -314,6 +314,7 @@ fn map_manga(v: &Value) -> Option<Manga> {
     m.author = str_field(v, "author");
     m.status = names_joined(v, "statusmanga");
     m.manga_type = names_joined(v, "tipe");
+    m.genres = v.get("genre").and_then(|x| x.as_array()).map(|a| super::common::name_list(a)).unwrap_or_default();
     m.rating = str_field(v, "score");
     m.last_chapter = latest_chapter_number(v);
     m.updated_at = str_field(v, "update_date").as_deref().and_then(parse_komik_date);
