@@ -1,5 +1,5 @@
 use crate::model::{title_canonical_key, Manga};
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SimilarHit {
@@ -21,10 +21,22 @@ fn rating_bonus(rating: Option<&str>) -> u32 {
 }
 
 fn score(target: &Manga, candidate: &Manga) -> (u32, String) {
-    let mut overlap: Vec<String> = target.genres.iter().map(|g| norm(g))
-        .filter(|g| candidate.genres.iter().any(|c| norm(c) == *g)).collect();
-    overlap.sort();
-    overlap.dedup();
+    let target_genres: HashSet<String> = target.genres.iter().map(|g| norm(g)).collect();
+    let mut seen = HashSet::new();
+    let mut overlap: Vec<String> = candidate
+        .genres
+        .iter()
+        .filter_map(|genre| {
+            let display = genre.trim();
+            let key = norm(display);
+            if display.is_empty() || !target_genres.contains(&key) || !seen.insert(key) {
+                None
+            } else {
+                Some(display.to_string())
+            }
+        })
+        .collect();
+    overlap.sort_by_key(|genre| genre.to_lowercase());
     let genre_score = (overlap.len() as u32 * 25).min(75);
     let same_type = target.manga_type.as_ref().zip(candidate.manga_type.as_ref())
         .is_some_and(|(a, b)| norm(a) == norm(b));
@@ -86,6 +98,6 @@ mod tests {
         let hits = rank(&target, vec![other, duplicate, self_copy], 10);
         assert_eq!(hits.len(), 1);
         assert_eq!(hits[0].score, 74);
-        assert_eq!(hits[0].reason, "action · fantasy");
+        assert_eq!(hits[0].reason, "Action · Fantasy");
     }
 }
