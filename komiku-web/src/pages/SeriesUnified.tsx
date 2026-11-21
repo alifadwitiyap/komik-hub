@@ -7,6 +7,7 @@ import { getUser } from '../account'
 import type { MangaOut, UnifiedChapterOut } from '../types'
 import { Empty, Spinner } from '../App'
 import SourceBadge from '../components/SourceBadge'
+import SimilarSeriesAccordion from '../components/SimilarSeriesAccordion'
 import HeartButton from '../components/HeartButton'
 import { useProgress } from '../hooks/useProgress'
 import { useDownloadRun, useOffline, retryRun } from '../hooks/useDownloadRun'
@@ -959,6 +960,7 @@ export default function SeriesUnified() {
           </button>
         )}
       </section>
+      <SimilarSeriesAccordion handle={handle} />
     </div>
   )
 }

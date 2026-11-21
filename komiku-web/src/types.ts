@@ -81,6 +81,22 @@ export interface UnifiedGenre {
   sources: string[]
 }
 
+export interface SimilarItem {
+  handle: string
+  title: string
+  cover_url?: string | null
+  manga_type?: string | null
+  last_chapter?: string | null
+  reason: string
+  score: number
+}
+
+export interface SimilarResponse {
+  handle: string
+  from_cache: boolean
+  items: SimilarItem[]
+}
+
 /** Baris daftar chapter di respons series.
  *  CATATAN: `number` sesuai server adalah STRING (bisa "1195", "1.5",
  *  "extra-9"), jadi jangan dipaksa number di web. */
