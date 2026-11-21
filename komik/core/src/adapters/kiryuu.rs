@@ -305,6 +305,7 @@ impl KiryuuSource {
         m.author = (!author.is_empty()).then_some(author);
         m.status = (!status.is_empty()).then_some(status);
         m.manga_type = (!typ.is_empty()).then_some(typ);
+        m.genres = term_names(v, "genre");
         m.rating = normalize_score(meta_str(v, "score"));
         m.url = Some(
             v["link"]

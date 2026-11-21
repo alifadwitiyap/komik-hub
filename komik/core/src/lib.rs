@@ -5,4 +5,5 @@ pub mod model;
 pub mod probe;
 pub mod rank;
 pub mod source;
+pub mod similar;
 pub mod union;
