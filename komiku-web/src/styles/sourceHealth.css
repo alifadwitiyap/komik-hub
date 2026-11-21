@@ -1,0 +1,150 @@
+/* Source-health motion primitives (plan SH §2). CSS-only, GPU transforms.
+   Dipasang terpisah dari index.css/motion.css — tidak di-import di lane ini.
+   Alias lokal sengaja memakai prefik --sh-* supaya tidak menimpa token
+   --dur-sheet/--dur-popover yang dipakai komponen lain. */
+
+:root {
+  --sh-ease: cubic-bezier(0.22, 1, 0.36, 1);
+  --sh-ease-beacon: cubic-bezier(0, 0, 0.2, 1);
+  --sh-dur-press: 100ms;
+  --sh-dur-popover: 160ms;
+  --sh-dur-sheet: 240ms;
+  --sh-dur-row: 200ms;
+  --sh-row-step: 35ms;
+  --sh-dur-sweep: 750ms;
+  --sh-dur-spin: 520ms;
+}
+
+/* Tactile press — badge & tombol Cek ulang. */
+.sh-tap {
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  transition:
+    transform var(--sh-dur-press) ease-out,
+    background-color 140ms ease-out,
+    border-color 140ms ease-out;
+}
+.sh-tap:active {
+  transform: scale(0.965);
+}
+
+/* Ambient radar beacon — hanya untuk sumber sehat. */
+@keyframes sh-beacon {
+  0% {
+    transform: scale(1);
+    opacity: 0.45;
+  }
+  75%,
+  100% {
+    transform: scale(2.2);
+    opacity: 0;
+  }
+}
+.sh-beacon-ring {
+  animation: sh-beacon 2.4s var(--sh-ease-beacon) infinite;
+  will-change: transform, opacity;
+}
+
+/* Bottom sheet mobile + safe area. */
+@keyframes sh-sheet-in {
+  from {
+    transform: translate3d(0, 100%, 0);
+  }
+  to {
+    transform: translate3d(0, 0, 0);
+  }
+}
+.sh-sheet-enter {
+  animation: sh-sheet-in var(--sh-dur-sheet) var(--sh-ease) both;
+  padding-bottom: calc(20px + env(safe-area-inset-bottom));
+  will-change: transform;
+}
+
+/* Popover desktop, origin-aware — mulai dari 0.96, bukan scale(0). */
+@keyframes sh-popover-in {
+  from {
+    opacity: 0;
+    transform: translate3d(0, -4px, 0) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+}
+.sh-popover-enter {
+  transform-origin: top right;
+  animation: sh-popover-in var(--sh-dur-popover) var(--sh-ease) both;
+  will-change: transform, opacity;
+}
+
+/* Row reveal — set --row-i: 0..3 inline di tiap baris. */
+@keyframes sh-row-in {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 6px, 0);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+.sh-row-enter {
+  animation: sh-row-in var(--sh-dur-row) var(--sh-ease) both;
+  animation-delay: calc(var(--row-i, 0) * var(--sh-row-step));
+  will-change: transform, opacity;
+}
+
+/* Latency bar — proporsi di-set lewat inline transform: scaleX(ratio). */
+.sh-latency-bar {
+  transform-origin: left center;
+  transition: transform 360ms var(--sh-ease);
+  will-change: transform;
+}
+
+/* Live probe sweep saat probing === true. */
+@keyframes sh-sweep {
+  from {
+    transform: translate3d(-100%, 0, 0);
+  }
+  to {
+    transform: translate3d(100%, 0, 0);
+  }
+}
+.sh-probing-bar {
+  animation: sh-sweep var(--sh-dur-sweep) var(--sh-ease) infinite;
+  will-change: transform;
+}
+
+@keyframes sh-spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+.sh-spin {
+  animation: sh-spin var(--sh-dur-spin) var(--sh-ease) infinite;
+}
+
+/* Reduced motion: matikan gerak spasial, tapi jangan hapus scaleX bar. */
+@media (prefers-reduced-motion: reduce) {
+  .sh-beacon-ring,
+  .sh-sheet-enter,
+  .sh-popover-enter,
+  .sh-row-enter,
+  .sh-probing-bar,
+  .sh-spin {
+    animation: none !important;
+  }
+  .sh-beacon-ring {
+    opacity: 0;
+  }
+  .sh-tap,
+  .sh-latency-bar {
+    transition: none !important;
+  }
+  .sh-tap:active {
+    transform: none !important;
+  }
+}

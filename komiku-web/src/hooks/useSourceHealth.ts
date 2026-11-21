@@ -30,6 +30,8 @@ export interface SourceHealthState {
   total: number
   checkedAtMs: number | null
   status: HealthStatus
+  /** true HANYA saat probe manual (force=1) berjalan — dipakai UI sweep. */
+  probing: boolean
   /** paksa probe ulang sekarang (mis. setelah tab kembali fokus). */
   refresh: () => void
 }
@@ -40,6 +42,7 @@ const INITIAL: Omit<SourceHealthState, 'refresh'> = {
   total: 0,
   checkedAtMs: null,
   status: 'loading',
+  probing: false,
 }
 
 export function useSourceHealth(): SourceHealthState {
@@ -60,6 +63,10 @@ export function useSourceHealth(): SourceHealthState {
     inFlight.current?.abort()
     const ctrl = new AbortController()
     inFlight.current = ctrl
+    // Poll/visibilitychange TIDAK menyalakan animasi — hanya klik Cek ulang.
+    if (force && mounted.current && inFlight.current === ctrl && !ctrl.signal.aborted) {
+      setState((s) => ({ ...s, probing: true }))
+    }
     try {
       const data = await unifiedApi.health(ctrl.signal, force)
       if (!mounted.current || ctrl.signal.aborted) return
@@ -68,17 +75,24 @@ export function useSourceHealth(): SourceHealthState {
       const healthy =
         typeof data.healthy === 'number' ? data.healthy : rows.filter((r) => r.ok).length
       const total = typeof data.total === 'number' ? data.total : rows.length
-      setState({
+      setState((s) => ({
+        ...s,
         rows,
         healthy,
         total,
         checkedAtMs: data.checked_at_ms ?? null,
         status: 'live',
-      })
+      }))
     } catch {
       // 404 (endpoint belum ada) / offline: jumlah terakhir dipertahankan.
       if (!mounted.current || ctrl.signal.aborted) return
       setState((s) => ({ ...s, status: 'stale' }))
+    } finally {
+      // Klik cepat berturut-turut: hanya controller terakhir yang boleh
+      // mematikan probing; request lama yang di-abort tidak ikut menimpa.
+      if (mounted.current && inFlight.current === ctrl) {
+        setState((s) => ({ ...s, probing: false }))
+      }
     }
   }, [])
 
