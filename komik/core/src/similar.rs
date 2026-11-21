@@ -106,4 +106,19 @@ mod tests {
         assert_eq!(hits[0].score, 74);
         assert_eq!(hits[0].reason, "Action · Fantasy");
     }
+
+    #[test]
+    fn fallback_genre_kosong_memakai_tipe_dan_author() {
+        let mut target = manga("komiku", "1", "Tanpa Genre", &[]);
+        target.author = Some("Pengarang Sama".into());
+        let mut same_author = manga("mangaku", "2", "Karya Pengarang Sama", &[]);
+        same_author.author = Some("pengarang sama".into());
+        let same_type = manga("kiryuu", "3", "Sesama Manhwa", &[]);
+        let other_type = Manga::new(crate::model::SourceId::from("shinigami"), "4", "Bedatype");
+        let hits = rank(&target, vec![same_author, same_type, other_type], 10);
+        assert_eq!(hits.len(), 3);
+        assert_eq!(hits[0].reason, "Karya author sama");
+        assert!(hits.iter().any(|h| h.reason == "Sesama Manhwa populer"));
+        assert!(hits.iter().any(|h| h.reason == "Pilihan populer"));
+    }
 }
