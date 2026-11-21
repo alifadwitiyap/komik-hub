@@ -94,7 +94,7 @@ export default function SimilarSeriesAccordion({ handle }: SimilarSeriesAccordio
         </svg>
       </button>
 
-      <div id={panelId} className="similar-panel" data-open={isOpen}>
+      <div id={panelId} className="similar-panel" data-open={isOpen} aria-hidden={!isOpen}>
         <div className="similar-panel-inner min-h-0">
           {loading && (
             <div className="flex gap-3 overflow-hidden px-4 pb-4 pt-1" aria-label="Memuat saran sejenis" role="status">

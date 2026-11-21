@@ -960,7 +960,7 @@ export default function SeriesUnified() {
           </button>
         )}
       </section>
-      <SimilarSeriesAccordion handle={handle} />
+      <SimilarSeriesAccordion key={handle} handle={handle} />
     </div>
   )
 }
