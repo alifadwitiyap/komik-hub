@@ -296,28 +296,30 @@ def cmd_media_list(args):
     finally:
         ws.close()
 
+def _click_trusted(cmd, x, y):
+    cmd("Input.dispatchMouseEvent", {"type":"mouseMoved","x":x,"y":y})
+    time.sleep(0.3)
+    cmd("Input.dispatchMouseEvent", {"type":"mousePressed","x":x,"y":y,"button":"left","clickCount":1})
+    cmd("Input.dispatchMouseEvent", {"type":"mouseReleased","x":x,"y":y,"button":"left","clickCount":1})
+
 def cmd_download(args):
     ws, cmd = _cdp()
     try:
         ev = lambda e: _eval(cmd, e)
-        _nav_open(cmd, "https://flow.google.com/edit/%s" % args.uuid)
+        _nav_open(cmd, "https://flow.google.com/project/%s/edit/%s" % (args.project, args.uuid))
         time.sleep(4)
-        # click "Download media" button (top-right toolbar)
+        # "Download media" = Angular mat-menu trigger. Trusted CDP mouse renders a
+        # tooltip instead of the menu (flaky); synthetic .click() opens it reliably.
         ok = ev("(()=>{const b=[...document.querySelectorAll('button')].find(x=>x.getAttribute('aria-label')==='Download media'); if(!b) return false; b.click(); return true;})()")
         if not ok:
             print("gflow: tombol 'Download media' tidak ditemukan"); return
-        time.sleep(1.0)
+        time.sleep(1.2)
         # pick quality: 270p/720p/1080p (720p = 'Ukuran asli')
         q = args.quality
         label = "720p" if q == "720p" else q
-        got = ev("(()=>{const items=[...document.querySelectorAll('*')].filter(x=>(x.innerText||'').trim().includes(%r) && x.getBoundingClientRect().width>0); const it=items[items.length-1]; if(!it) return null; const r=it.getBoundingClientRect(); return {x:r.x,y:r.y,w:r.width,h:r.height};})()" % label)
-        if not got:
+        ok = ev("(()=>{const items=[...document.querySelectorAll('.mat-mdc-menu-item')].filter(x=>(x.innerText||'').includes(%r)); const it=items[0]; if(!it) return false; it.click(); return true;})()" % label)
+        if not ok:
             print("gflow: opsi kualitas %s tidak ditemukan" % q); return
-        cx, cy = got["x"]+got["w"]/2, got["y"]+got["h"]/2
-        cmd("Input.dispatchMouseEvent", {"type":"mouseMoved","x":cx,"y":cy})
-        time.sleep(0.3)
-        cmd("Input.dispatchMouseEvent", {"type":"mousePressed","x":cx,"y":cy,"button":"left","clickCount":1})
-        cmd("Input.dispatchMouseEvent", {"type":"mouseReleased","x":cx,"y":cy,"button":"left","clickCount":1})
         print("download %s (%s) diklik" % (args.uuid, q))
         print("file jatuh ke ~/Downloads — cek dengan ls -lt ~/Downloads")
     finally:
@@ -395,7 +397,8 @@ def main():
     pml_list.add_argument("uuid")
 
     pdw = sub.add_parser("download", help="download media by uuid (kualitas)")
-    pdw.add_argument("uuid")
+    pdw.add_argument("project", help="project uuid")
+    pdw.add_argument("uuid", help="media uuid")
     pdw.add_argument("--quality", choices=["270p", "720p", "1080p"], default="720p")
 
     ptr = sub.add_parser("trash", help="kelola sampah project")
