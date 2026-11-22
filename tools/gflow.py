@@ -233,12 +233,17 @@ def _composer(ev):
     return ev("(()=>{const d=document.querySelector('div[aria-label=\"Apa yang ingin Anda buat?\"]'); if(!d) return null; d.focus(); return true;})()")
 
 def _type(ws, cmd, ev, text):
-    if not _composer(ev):
+    js = ("(()=>{const sel=['div.ProseMirror[role=textbox]',"
+          "'div[aria-label=\"Apa yang ingin Anda buat?\"]'];let d=null;"
+          "for(const s of sel){d=document.querySelector(s);if(d)break;}"
+          "if(!d) return false;d.focus();"
+          "document.execCommand('selectAll');"
+          "document.execCommand('insertText', false, %s);return true;})()" % json.dumps(text))
+    ev(js)
+    if not ev(js):
         ev("(()=>{const b=[...document.querySelectorAll('button')].find(x=>(x.innerText||'').includes('Buat sesi baru')); if(b) b.click(); return !!b;})()")
         time.sleep(1.5)
-    _composer(ev)
-    time.sleep(0.3)
-    cmd("Input.insertText", {"text": text})
+        ev(js)
     time.sleep(0.5)
 
 def _enter(ws, cmd, ev):
