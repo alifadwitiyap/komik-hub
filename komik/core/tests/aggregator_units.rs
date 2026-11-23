@@ -728,13 +728,16 @@ async fn all_sources_registered_and_accounted_for() {
     // Registry lengkap + setiap sumber diperhitungkan (sukses/gagal) tanpa
     // mengandalkan hasil network (adapter boleh stub atau nyata).
     let sources = all_sources(reqwest::Client::new());
-    assert_eq!(sources.len(), 4);
+    assert_eq!(sources.len(), 5);
     let ids: Vec<String> = sources.iter().map(|s| s.id().to_string()).collect();
-    assert_eq!(ids, vec!["komiku", "mangaku", "shinigami", "kiryuu"]);
+    assert_eq!(
+        ids,
+        vec!["komiku", "mangaku", "shinigami", "kiryuu", "komikindo"]
+    );
     let agg = Aggregator::new(sources);
     let merged = agg.popular(1, 5, None, SortMode::Latest).await;
-    assert_eq!(merged.sources_total, 4);
-    assert_eq!(merged.sources_ok + merged.failures.len(), 4, "semua sumber diperhitungkan");
+    assert_eq!(merged.sources_total, 5);
+    assert_eq!(merged.sources_ok + merged.failures.len(), 5, "semua sumber diperhitungkan");
 }
 
 #[tokio::test]

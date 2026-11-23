@@ -4,6 +4,7 @@ pub mod common;
 pub mod komiku;
 pub mod mangaku;
 pub mod kiryuu;
+pub mod komikindo;
 pub mod shinigami;
 
 use crate::model::SourceId;
@@ -18,7 +19,8 @@ pub fn all_sources(client: reqwest::Client) -> Vec<Arc<dyn Source>> {
         Arc::new(super::adapters::komiku::KomikuSource::new(client.clone())) as Arc<dyn Source>,
         Arc::new(super::adapters::mangaku::MangakuSource::new(client.clone())) as Arc<dyn Source>,
         Arc::new(super::adapters::shinigami::ShinigamiSource::new(client.clone())) as Arc<dyn Source>,
-        Arc::new(super::adapters::kiryuu::KiryuuSource::new(client)) as Arc<dyn Source>,
+        Arc::new(super::adapters::kiryuu::KiryuuSource::new(client.clone())) as Arc<dyn Source>,
+        Arc::new(super::adapters::komikindo::KomikindoSource::new(client)) as Arc<dyn Source>,
     ]
 }
 

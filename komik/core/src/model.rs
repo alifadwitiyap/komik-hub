@@ -7,7 +7,7 @@ use serde::{Deserialize, Serialize};
 use std::fmt;
 
 /// Urutan prioritas fallback (dipakai sebagai tiebreak ranking & fallback).
-pub const SOURCE_PRIORITY: [&str; 4] = ["komiku", "mangaku", "shinigami", "kiryuu"];
+pub const SOURCE_PRIORITY: [&str; 5] = ["komiku", "mangaku", "shinigami", "kiryuu", "komikindo"];
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct SourceId(pub String);
