@@ -59,7 +59,7 @@ export interface UnifiedListResult {
   from_cache?: boolean
   /**
    * Jumlah sumber yang digabung server. Dikirim server supaya web tidak
-   * hardcode `TOTAL_SOURCES = 4` — tambah sumber ke-5 di Rust dan UI tetap benar.
+   * hardcode `TOTAL_SOURCES = 4` — tambah sumber ke-5 sampai ke-N di Rust dan UI tetap benar.
    * Opsional: server lama belum punya field ini.
    */
   sources_total?: number

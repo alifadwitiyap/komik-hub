@@ -19,6 +19,7 @@ export const SOURCES = [
   { id: 'mangaku', label: 'Mangaku' },
   { id: 'shinigami', label: 'Shinigami' },
   { id: 'kiryuu', label: 'Kiryuu' },
+  { id: 'komikindo', label: 'Komikindo' },
 ] as const
 
 /** Pilihan urutan (value = nilai query `?sort=`). */

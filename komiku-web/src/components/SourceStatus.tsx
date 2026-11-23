@@ -18,6 +18,7 @@ const LABEL: Record<string, string> = {
   kiryuu: 'Kiryuu',
   mangaku: 'Mangaku',
   shinigami: 'Shinigami',
+  komikindo: 'Komikindo',
 }
 
 /** `kiryuu` -> `Kiryuu`; id yang tidak dikenal tetap dibaca manusia. */

@@ -48,7 +48,7 @@ services:
     # bind-mount Windows tidak dapat inotify lintas VM Docker Desktop.
     command: sh -c "npm ci && npm run dev -- --host 0.0.0.0"
     environment:
-      VITE_API_TARGET: http://server:8788
+      VITE_API_TARGET: http://komiku-server:8788
       CHOKIDAR_USEPOLLING: "true"
     volumes:
       - ../komiku-web:/app

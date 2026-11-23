@@ -125,7 +125,7 @@ export interface UnifiedFilter {
   tipe?: string | null
   status?: string | null
   genre?: string | null
-  /** Sumber (komiku/mangaku/shinigami/kiryuu); kosong = semua. */
+  /** Sumber (komiku/mangaku/shinigami/kiryuu/komikindo); kosong = semua. */
   source?: string | null
   /** Urutan (''=terbaru, rating, trending); kosong = default server. */
   sort?: string | null
@@ -169,7 +169,7 @@ export const unifiedApi = {
   genres: (signal?: AbortSignal) =>
     get<{ items: UnifiedGenre[] }>('/unified/genres', signal),
   /**
-   * Kesehatan 4 sumber. Server membalas {total,healthy,sources[]}.
+   * Kesehatan 5 sumber. Server membalas {total,healthy,sources[]}.
    * Server memakai stale-while-revalidate (cache 30s): respons normal
    * dilayani seketika (mungkin stale ≤30s). `force` = paksa probe inline
    * (tombol "periksa ulang" → hasil segar sekarang, bukan stale).
@@ -329,7 +329,7 @@ export const readApi = {
 /**
  * MangaOut (unified) → bentuk kartu `Manga` yang sudah dipakai komponen
  * existing (Row/MangaCard). Dirata di sini supaya TIDAK ada komponen duplikat:
- * user melihat UI yang sama untuk 4 sumber, hanya beda badge.
+ * user melihat UI yang sama untuk 5 sumber, hanya beda badge.
  */
 export function toMangaCard(m: MangaOut): Manga {
   return {

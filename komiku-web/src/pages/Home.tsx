@@ -11,7 +11,7 @@ import ContinueReading from '../components/ContinueReading'
 
 /**
  * Beranda: urutan replika Komiku+ v2.3.0 Home (fragment_home) tapi KONTEN
- * gabungan 4 sumber (unified):
+ * gabungan 5 sumber (unified):
  *   (a) backdrop carousel  → unifiedApi.popular(1) (item_index_backdrop)
  *   (b) shortcut menu       → ikon+label horizontal (item_index_menu_top):
  *                            Populer(#populer) · Terbaru(#terbaru) ·

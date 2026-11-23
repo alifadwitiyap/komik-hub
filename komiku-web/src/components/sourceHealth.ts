@@ -31,7 +31,7 @@ export function healthTier(healthy: number, total: number): HealthTier {
   return healthy < total ? 'warn' : 'ok'
 }
 
-/** "3/4 sumber sehat" — teks count pill + tooltip. Kalau belum ada data
+/** "5/5 sumber sehat" — teks count pill + tooltip. Kalau belum ada data
  *  (total 0), jangan mengaku "0/0 sehat" — pakai kalimat netral. */
 export function healthSummary(healthy: number, total: number): string {
   if (total <= 0) return 'Kesehatan sumber belum diketahui'

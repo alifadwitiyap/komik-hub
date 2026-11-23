@@ -2,7 +2,7 @@ import type { SVGProps } from 'react'
 
 /**
  * Badge sumber (komiku / non-komiku) — kecil & halus, ditaruh di kartu
- * (MangaCard/Row). User tidak perlu sadar ada 4 sumber; badge hanya memberi
+ * (MangaCard/Row). User tidak perlu sadar ada 5 sumber; badge hanya memberi
  * tahu "ini bukan dari komiku" supaya ekspektasi gambar/kecepatannya pas.
  */
 const LABELS: Record<string, string> = {
@@ -11,6 +11,7 @@ const LABELS: Record<string, string> = {
   shngm: 'Shngm',
   shinigami: 'Shinigami',
   mangaku: 'Mangaku',
+  komikindo: 'Komikindo',
   kuma: 'Kuma',
   softkomik: 'Softkomik',
   yuu: 'Yuu',

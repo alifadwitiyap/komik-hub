@@ -253,7 +253,7 @@ export default function Search() {
     return () => ctrl.abort()
   }, [])
 
-  // Daftar: TANPA filter → popular digabung 4 sumber server (feed lama yang
+  // Daftar: TANPA filter → popular digabung 5 sumber server (feed lama yang
   // terbukti). ADA filter tipe/status/genre → catalogue yang menyaring di
   // server. Halaman 1 dimuat SEKALI saat masuk mode eksplorasi (dan setiap
   // filter berubah); "Muat lebih" menambah halaman berikutnya.
@@ -894,7 +894,7 @@ function SkeletonCards() {
 }
 
 /**
- * Chip ringkas sumber yang gagal — pengganti banner "⚠ n/4 sumber gagal
+ * Chip ringkas sumber yang gagal — pengganti banner "⚠ n/5 sumber gagal
  * dimuat". Warna & bentuknya meniru pill kesehatan sumber di TopBar supaya
  * bahasa visualnya sama.
  */
