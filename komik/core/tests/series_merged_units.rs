@@ -190,3 +190,29 @@ async fn series_merged_manga_hasil_primary() {
     assert_eq!(merged.manga.native_id, "komiku-native");
     assert_eq!(merged.manga.title, "Chainsaw Man");
 }
+
+/// Dua-fase: `series_dua_fase` langsung mengembalikan fase-1 (primary) +
+/// daftar `pending` sumber yang belum selesai di-merge background.
+/// Fase-1 TIDAK menunggu union — chapter primary tersaji seketika.
+#[tokio::test]
+async fn series_dua_fase_kembalikan_primary_dan_pending() {
+    let agg = Aggregator::new(vec![
+        Arc::new(Mock::new("komiku", "Chainsaw Man").with(&["232"])),
+        Arc::new(Mock::new("shinigami", "Chainsaw Man").with(&["277"])),
+    ]);
+
+    let (phase1, pending) = agg
+        .series_dua_fase("komiku:6167", 100, None, None)
+        .await
+        .expect("fase-1 harus berhasil");
+
+    // Fase-1 = manga primary + chapter primary, leftover union di pending.
+    assert_eq!(phase1.manga.source.as_str(), "komiku");
+    let numbers: Vec<&str> = phase1.chapters.iter().map(|c| c.number.as_str()).collect();
+    assert_eq!(numbers, vec!["232"], "fase-1 hanya chapter primary");
+
+    // Sumber lain (shinigami) belum di-merge → masuk pending.
+    let pending_ids: Vec<String> = pending.iter().map(|s| s.as_str().to_string()).collect();
+    assert!(pending_ids.contains(&"shinigami".to_string()), "pending: {pending_ids:?}");
+    assert!(!pending_ids.contains(&"komiku".to_string()), "primary tidak di-pending");
+}

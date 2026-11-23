@@ -134,6 +134,14 @@ export default function Series() {
     [data],
   )
   const tipeNames = useMemo(() => (data?.series.tipe ?? []).map((x) => x.name), [data])
+  // chapters terurut TERBARU -> TERLAMA. Satu aturan yang sama dipakai tombol
+  // mulai, daftar, dan lanjut/next. Maraton mulai dari paling awal supaya
+  // auto-advance benar-benar berjalan, bukan langsung ketemu "Tuntas".
+  const rawChapters = data?.chapters ?? []
+  const chapters = useMemo(
+    () => sortByChapterNumber(rawChapters, (c) => chapterNumberOf(c) ?? '', 'terbaru'),
+    [rawChapters],
+  )
   const rangeList = useMemo(() => {
     if (anchor == null || rangeEnd == null) return []
     const step = rangeEnd >= anchor ? 1 : -1
@@ -188,14 +196,7 @@ export default function Series() {
   )
   if (!data) return <Spinner label="Memuat manga…" />
 
-  const { series: s, chapters: rawChapters } = data
-  // chapters terurut TERBARU -> TERLAMA. Satu aturan yang sama dipakai tombol
-  // mulai, daftar, dan lanjut/next. Maraton mulai dari paling awal supaya
-  // auto-advance benar-benar berjalan, bukan langsung ketemu "Tuntas".
-  const chapters = useMemo(
-    () => sortByChapterNumber(rawChapters, (c) => chapterNumberOf(c) ?? '', 'terbaru'),
-    [rawChapters],
-  )
+  const { series: s } = data
   const oldest = chapters.length > 0 ? chapters[chapters.length - 1] : null
   // rentang terpilih membentang > 40 chapter: perluas daftar supaya yang
   // terpilih benar-benar terlihat (bukan cuma sebagian). Tetap terpancar

@@ -102,6 +102,12 @@ export interface UnifiedSeries {
   source: string
   failed_sources: string[]
   /**
+   * Sumber lain yang BELUM tercermin (masih di-merge server di background).
+   * Fase-1: chapter dari sumber pelayan tersaji, sisanya menyusul. Non-empty
+   * → respons parsial; UI panggil ulang sampai kosong (pola useUnifiedSearch).
+   */
+  pending?: string[]
+  /**
    * Sumber representatif (server yang putuskan) untuk indikator
    * "Terbaru dari <sumber>". Bisa absen (field belum ada di server) atau
    * null — UI harus toleran, jangan crash.

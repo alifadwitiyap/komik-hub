@@ -1224,6 +1224,118 @@ impl Aggregator {
         })
     }
 
+    /// Versi dua-fase [`Aggregator::series_merged`] untuk halaman series:
+    /// sajikan manga utama + daftar chapter SUMBER PELAYAN seketika (resolve
+    /// primary, ~1-2 s), sementara gabungan lintas sumber diselesaikan di
+    /// background dan ditulis ke cache union `series-union:{tkey}`.
+    ///
+    /// Mengembalikan `(MergedSeries, pending)`: `pending` = sumber lain yang
+    /// BELUM tercermin di respons (masih di-merge di background). Pemanggil
+    /// HANYA boleh cache kalau `pending` kosong — menyimpan hasil separuh
+    /// membuat panggilan berikutnya menyajikan daftar tidak lengkap selama TTL.
+    /// Ceiling `last_chapter` dihitung dari union penuh (panggilan berikutnya),
+    /// jadi episode terbaru dari sumber manapun tetap tampil.
+    pub async fn series_dua_fase(
+        &self,
+        id: &str,
+        limit: u32,
+        source: Option<&str>,
+        last_source: Option<&str>,
+    ) -> anyhow::Result<(MergedSeries, Vec<SourceId>)> {
+        let outcome = self.series_resolve_pref(id, limit, source, last_source).await?;
+        let detail = outcome.detail;
+        let manga = detail.manga.clone();
+        let title = manga.title.clone();
+
+        // Primary = sumber pelayan; handle kanonik "sumber:native_id".
+        let primary = crate::union::SourceChapterList {
+            source: manga.source.clone(),
+            handle: manga.handle(),
+            chapters: detail.chapters,
+        };
+
+        let tkey = crate::model::title_key(&title);
+        let cache_key = format!("series-union:{tkey}");
+        let skip_id = Some(manga.source.clone());
+
+        // Baca cache union yang sudah ada (entri per sumber yang pernah sukses).
+        let mut by_source: std::collections::BTreeMap<String, (String, Vec<Chapter>)> =
+            std::collections::BTreeMap::new();
+        if let Some(cache) = &self.cache {
+            if let Some(hit) = cache
+                .fresh_json::<std::collections::BTreeMap<String, (String, Vec<Chapter>)>>(&cache_key)
+            {
+                by_source = hit;
+            }
+        }
+
+        // Target: semua sumber lain yang belum ada di cache dan tidak sedang
+        // ditandai gagal (`neg-union:{title_key}:{sumber}`).
+        let mut failed: Vec<(SourceId, String)> = Vec::new();
+        let mut targets: Vec<Arc<dyn Source>> = Vec::new();
+        for s in &self.sources {
+            let sid = s.id();
+            if Some(&sid) == skip_id.as_ref() || by_source.contains_key(sid.as_str()) {
+                continue;
+            }
+            match self
+                .cache
+                .as_ref()
+                .and_then(|c| c.fresh_json::<String>(&self.neg_union_key(&tkey, &sid)))
+            {
+                Some(msg) => failed.push((sid, msg)),
+                None => targets.push(s.clone()),
+            }
+        }
+
+        let pending: Vec<SourceId> = targets.iter().map(|s| s.id()).collect();
+
+        // Fase 1: primary dulu (menang dedup nomor sama), lalu sumber yang
+        // sudah ada di cache union dari panggilan sebelumnya.
+        let mut lists = Vec::with_capacity(by_source.len() + 1);
+        lists.push(primary);
+        for (sid, (handle, chapters)) in by_source {
+            if Some(sid.as_str()) != skip_id.as_ref().map(|s| s.as_str()) {
+                lists.push(crate::union::SourceChapterList {
+                    source: SourceId::from(sid.as_str()),
+                    handle,
+                    chapters,
+                });
+            }
+        }
+        let representative_source = crate::union::pick_representative_source(&lists);
+        let merged_chapters = crate::union::merge_chapter_lists(&lists);
+        let mut manga = manga;
+        if let Some(hi) = merged_chapters
+            .iter()
+            .map(|c| c.number.as_str())
+            .max_by(|a, b| crate::union::cmp_chapter_number(a, b))
+        {
+            manga.last_chapter = Some(hi.to_string());
+        }
+        let phase1 = MergedSeries {
+            manga,
+            chapters: merged_chapters,
+            failed,
+            from_cache: outcome.from_cache,
+            representative_source,
+        };
+
+        // Fase 2: selesaikan union penuh di background dan tulis cache union.
+        // `collect_series_across_sources` melakukan resolve+series semua target
+        // paralel, lalu `cache_put` — persis apa yang `series_merged` butuh
+        // di panggilan berikutnya (seperti fase-2 search menulis ke kunci sama).
+        if !targets.is_empty() {
+            let this = self.clone();
+            tokio::spawn(async move {
+                this.collect_series_across_sources(&title, skip_id.as_ref(), limit)
+                    .await;
+            });
+        }
+
+        Ok((phase1, pending))
+    }
+
     /// Fallback chain untuk series yang manganya sudah diketahui.
     pub async fn series_with_fallback(
         &self,

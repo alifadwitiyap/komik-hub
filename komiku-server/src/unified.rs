@@ -1294,7 +1294,10 @@ where
 
 /// Bentuk JSON final respons series dari hasil union (dipakai jalur inline
 /// dan refresh latar SWR — satu sumber kebenaran, tak ada duplikasi logika).
-fn build_series_json(merged: &komik_core::aggregator::MergedSeries) -> serde_json::Value {
+fn build_series_json(
+    merged: &komik_core::aggregator::MergedSeries,
+    pending: &[String],
+) -> serde_json::Value {
     let manga = MangaOut::from(&merged.manga);
     let chapters: Vec<ChapterRow> = merged.chapters.iter().map(ChapterRow::from).collect();
     json!({
@@ -1314,11 +1317,15 @@ fn build_series_json(merged: &komik_core::aggregator::MergedSeries) -> serde_jso
             .iter()
             .map(|(s, _)| s.as_str().to_string())
             .collect::<Vec<_>>(),
+        // Sumber lain yang BELUM tercermin (masih di-merge di background).
+        // Respons dua-fase: non-empty berarti masih parsial — pemanggil
+        // jangan cache & jangan beri Cache-Control max-age (teladani search).
+        "pending": pending,
         "from_cache": merged.from_cache,
     })
 }
 
-/// Hitung union 4 sumber dengan pagar budget total. Dipakai jalur inline
+/// Hitung union penuh 4 sumber dengan pagar budget total. Dipakai jalur inline
 /// (Expired/kosong) dan refresh latar SWR.
 async fn compute_series(
     state: &UnifiedState,
@@ -1339,7 +1346,33 @@ async fn compute_series(
         Ok(r) => r.map_err(classify_core_err)?,
         Err(_) => return Err(budget_err("series")),
     };
-    Ok(build_series_json(&merged))
+    Ok(build_series_json(&merged, &[]))
+}
+
+/// Versi dua-fase `compute_series`: sajikan manga + daftar chapter SUMBER
+/// PELAYAN seketika, sementara union lintas sumber di-merge di background.
+/// Sumber yang belum tercermin dilaporkan via `pending` (field JSON non-empty).
+async fn compute_series_dua_fase(
+    state: &UnifiedState,
+    handle: &str,
+    last_source: Option<&str>,
+) -> Result<serde_json::Value, AppError> {
+    let (merged, pending) = match tokio::time::timeout(
+        UNIFIED_REQUEST_BUDGET,
+        state.aggregator.series_dua_fase(
+            handle,
+            SERIES_CHAPTER_LIMIT,
+            None,
+            last_source,
+        ),
+    )
+    .await
+    {
+        Ok(r) => r.map_err(classify_core_err)?,
+        Err(_) => return Err(budget_err("series")),
+    };
+    let pending: Vec<String> = pending.iter().map(|s| s.as_str().to_string()).collect();
+    Ok(build_series_json(&merged, &pending))
 }
 
 /// Jalankan SATU refresh latar per handle (single-flight): ambil gerbang,
@@ -1378,20 +1411,26 @@ async fn u_series(
     Query(q): Query<SeriesQuery>,
     headers: HeaderMap,
 ) -> Result<Response, AppError> {
+    let (value, has_pending) = u_series_inner(state, handle, q).await?;
+    // Respons dua-fase (masih ada sumber di-merge di background): tanpa
+    // max-age supaya browser/tidak disimpan — teladani, fase-2 search.
+    let cache_control = if has_pending { "no-cache" } else { "public, max-age=15" };
     Ok(crate::routes::json_with_etag(
-        &u_series_inner(state, handle, q).await?.0,
-        "public, max-age=15",
+        &value,
+        cache_control,
         crate::routes::if_none_match(&headers),
     ))
 }
 
 /// Isi penuh `u_series` (SWR + single-flight + fan-out). Dipisah jadi fungsi
 /// dalam supaya handler tipis tinggal menempelkan ETag/Cache-Control.
+/// Mengembalikan `(json, has_pending)`: `has_pending` = masih ada sumber lain
+/// yang di-merge di background (respons parsial → jangan cache).
 async fn u_series_inner(
     state: Arc<crate::routes::AppState>,
     handle: String,
     q: SeriesQuery,
-) -> Res<Value> {
+) -> Result<(Value, bool), AppError> {
     validate_handle(&handle)?;
     let unified = state.unified.clone();
     let key = series_key(&handle, q.last_source.as_deref());
@@ -1400,10 +1439,10 @@ async fn u_series_inner(
     //    sangat basi / belum ada -> hitung inline di bawah.
     if let Some((age, hit)) = series_cache_read(&unified.series_cache, &key) {
         match age {
-            CacheAge::Fresh => return Ok(Json(hit)),
+            CacheAge::Fresh => return Ok((hit, false)),
             CacheAge::Stale => {
                 spawn_series_refresh(unified, handle, q.last_source, key);
-                return Ok(Json(hit));
+                return Ok((hit, false));
             }
             CacheAge::Expired => {}
         }
@@ -1416,7 +1455,7 @@ async fn u_series_inner(
 
     // Double-check: bisa jadi request lain mengisi cache saat kita menunggu.
     if let Some((CacheAge::Fresh, hit)) = series_cache_read(&unified.series_cache, &key) {
-        return Ok(Json(hit));
+        return Ok((hit, false));
     }
 
     // 3. Batasi fan-out serentak lintas handle (antre, bukan tolak).
@@ -1426,10 +1465,15 @@ async fn u_series_inner(
         .await
         .map_err(|_| AppError::new(anyhow::anyhow!("gerbang fan-out series ditutup")))?;
 
-    // 4. Hitung union penuh (budget total di dalam `compute_series`).
-    let out = compute_series(&unified, &handle, q.last_source.as_deref()).await?;
-    series_cache_put(&unified.series_cache, key, out.clone());
-    Ok(Json(out))
+    // 4. Dua-fase: sajikan primary seketika, union di-merge di background.
+    //    Kalau masih ada `pending` (sumber belum tercermin) → JANGAN cache
+    //    hasil separuh; panggilan berikutnya menghitung ulang sampai penuh.
+    let out = compute_series_dua_fase(&unified, &handle, q.last_source.as_deref()).await?;
+    let has_pending = out["pending"].as_array().map(|a| !a.is_empty()).unwrap_or(false);
+    if !has_pending {
+        series_cache_put(&unified.series_cache, key, out.clone());
+    }
+    Ok((out, has_pending))
 }
 
 /// Klasifikasi galat core: "tidak ditemukan"/"tidak ada" = entitas absen
