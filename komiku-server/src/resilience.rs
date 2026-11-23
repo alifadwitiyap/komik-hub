@@ -76,9 +76,15 @@ pub mod stats {
 
     /// Histogram latensi request user (ms), 5 bucket: <5, <50, <500,
     /// <5000, >=5000. Diisi middleware `count_request` (routes.rs).
-    /// `const Z` + `[Z; 5]` karena AtomicU64 bukan Copy.
-    const Z: AtomicU64 = AtomicU64::new(0);
-    pub static LATENCY: [AtomicU64; 5] = [Z; 5];
+    /// Array static atomic: tiap bucket punya state sendiri, bukan salin
+    /// satu `const` (Rust 1.99 menolak `const` dengan interior mutability).
+    pub static LATENCY: [AtomicU64; 5] = [
+        AtomicU64::new(0),
+        AtomicU64::new(0),
+        AtomicU64::new(0),
+        AtomicU64::new(0),
+        AtomicU64::new(0),
+    ];
 
     /// Catat latensi satu request (ms) ke bucket histogram.
     pub fn record_latency(ms: u64) {

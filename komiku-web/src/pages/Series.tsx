@@ -1,6 +1,7 @@
+import { ensureDownloadReturn } from '../downloadReturn'
 import { imgUrl } from '../imgUrl'
 import { useEffect, useMemo, useState } from 'react'
-import { Link, useNavigate, useParams } from 'react-router-dom'
+import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
 import { api } from '../api'
 import { getUser } from '../account'
 import {
@@ -17,9 +18,11 @@ import HeartButton from '../components/HeartButton'
 import { useDownloadRun, useOffline, retryRun } from '../hooks/useDownloadRun'
 import { friendlyError } from '../downloadBatch'
 import { useSeriesResume } from '../hooks/useSeriesResume'
+import { sortByChapterNumber } from '../chapterOrder'
 import { chapterNumberOf } from '../readMarks'
 import { useReadMarks } from '../hooks/useReadMarks'
 import { marathonHref, readerHref } from '../readerSource'
+import ChapterJumpSearch from '../components/ChapterJumpSearch'
 
 type SeriesData = {
   series: SeriesDetail
@@ -29,6 +32,11 @@ type SeriesData = {
 
 /** Maksimal chapter terpilih per unduhan (spek parity Komiku+). */
 const BATCH_MAX = 30
+
+// Halaman /akun mengganti halaman series sehingga listener React di komponen
+// tidak lagi hidup saat login selesai. Listener modul (downloadReturn) tetap
+// aktif dan mengembalikan user ke URL yang disimpan sebelum navigasi.
+ensureDownloadReturn()
 
 /** Detail manga: sampul, metadata, lalu daftar chapter terbaru di atas.
  *
@@ -63,6 +71,31 @@ export default function Series() {
   // bukan ikon gambar rusak.
   const [coverFailed, setCoverFailed] = useState(false)
   const [reloadKey, setReloadKey] = useState(0)
+  const location = useLocation()
+  const selectionKey = `komik:download-selection:${dlHandle}`
+  const returnKey = `komik:download-return:${dlHandle}`
+
+  useEffect(() => {
+    if (!data || !dlHandle) return
+    try {
+      const raw = sessionStorage.getItem(selectionKey)
+      if (!raw) return
+      sessionStorage.removeItem(selectionKey)
+      const saved = JSON.parse(raw) as { start: string | null; end: string | null; showAll: boolean }
+      const chapters = data.chapters
+      const start = saved.start === null ? -1 : chapters.findIndex((c) => chapterNumber(c) === saved.start)
+      const end = saved.end === null ? -1 : chapters.findIndex((c) => chapterNumber(c) === saved.end)
+      setPickMode(true)
+      setShowAll(saved.showAll || start >= 40 || end >= 40)
+      setAnchor(start >= 0 ? start : null)
+      setRangeEnd(end >= 0 ? end : null)
+      if ((saved.start !== null && start < 0) || (saved.end !== null && end < 0)) {
+        setDlMsg('Seleksi sebelumnya tidak bisa dipulihkan — pilih ulang chapter.')
+      }
+    } catch {
+      setDlMsg('Seleksi sebelumnya tidak bisa dipulihkan — pilih ulang chapter.')
+    }
+  }, [data, dlHandle, selectionKey])
 
   useEffect(() => {
     if (!id) return
@@ -138,7 +171,7 @@ export default function Series() {
     setDlMsg(null)
     if (dlHandle) retryRun(dlHandle)
   }
-  const { resume, marathonPos, resumeHref, marathonHref: marathonLink } =
+  const { resume, marathonPos, resumeHref, marathonHref: marathonLink, label } =
     useSeriesResume(id)
 
   if (error) return (
@@ -155,9 +188,14 @@ export default function Series() {
   )
   if (!data) return <Spinner label="Memuat manga…" />
 
-  const { series: s, chapters } = data
-  // chapters terurut TERBARU -> TERLAMA. Untuk maraton kita mulai dari paling awal
-  // supaya auto-advance benar-benar berjalan, bukan langsung ketemu "Tuntas".
+  const { series: s, chapters: rawChapters } = data
+  // chapters terurut TERBARU -> TERLAMA. Satu aturan yang sama dipakai tombol
+  // mulai, daftar, dan lanjut/next. Maraton mulai dari paling awal supaya
+  // auto-advance benar-benar berjalan, bukan langsung ketemu "Tuntas".
+  const chapters = useMemo(
+    () => sortByChapterNumber(rawChapters, (c) => chapterNumberOf(c) ?? '', 'terbaru'),
+    [rawChapters],
+  )
   const oldest = chapters.length > 0 ? chapters[chapters.length - 1] : null
   // rentang terpilih membentang > 40 chapter: perluas daftar supaya yang
   // terpilih benar-benar terlihat (bukan cuma sebagian). Tetap terpancar
@@ -204,6 +242,26 @@ export default function Series() {
     }
   }
 
+  /** Simpan seleksi lalu ke /akun; setelah masuk, listener 'account-change'
+   *  mengembalikan user ke halaman ini dan effect restore memulihkan rentang. */
+  const signInForDownload = () => {
+    const back = location.pathname + location.search + location.hash
+    if (anchor !== null && rangeEnd !== null) {
+      try {
+        sessionStorage.setItem(selectionKey, JSON.stringify({
+          start: chapterNumber(chapters[anchor]),
+          end: chapterNumber(chapters[rangeEnd]),
+          showAll,
+        }))
+        sessionStorage.setItem(returnKey, back)
+      } catch {
+        setDlMsg('Seleksi belum bisa disimpan. Izinkan penyimpanan browser sebelum masuk agar seleksi tidak hilang.')
+        return
+      }
+    }
+    navigate('/akun', { state: { from: back } })
+  }
+
   const runDownload = (cache: boolean) => {
     if (dlBusy || rangeList.length === 0 || !dlHandle) return
     if (offline) {
@@ -211,7 +269,7 @@ export default function Series() {
       return
     }
     if (getUser() === null) {
-      navigate('/akun')
+      signInForDownload()
       return
     }
     // chapter tanpa nomor yang bisa diparse = dilewati, jangan dikarang
@@ -401,7 +459,7 @@ export default function Series() {
             to={resumeHref as string}
             className="mt-2 block min-h-11 content-center text-center text-[12px] font-medium text-ink-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber focus-visible:ring-offset-2 [@media(hover:hover)]:hover:text-brand-amber"
           >
-            Lanjut dari {resume.chapterName} · halaman {resume.page + 1}
+            Lanjut dari {label ?? `${resume.chapterName}`} · halaman {resume.page + 1}
           </Link>
         )}
       </div>
@@ -426,6 +484,15 @@ export default function Series() {
         </h2>
 
         {/* Info seleksi + progres unduh (tetap tampil setelah run selesai) */}
+        {dlHandle && getUser() === null && (
+          <div className="mb-3 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-brand-amber-dim bg-brand-amber/10 p-3">
+            <div>
+              <p className="text-[12px] font-bold text-brand-amber">Masuk untuk mengunduh</p>
+              <p className="mt-1 text-[11px] text-ink-300">Seleksi chapter dipertahankan setelah masuk.</p>
+            </div>
+            <button type="button" onClick={signInForDownload} className="min-h-11 rounded-lg bg-brand-amber px-4 py-2 text-[12px] font-bold text-white">Masuk</button>
+          </div>
+        )}
         {(pickMode || run || dlMsg) && (
           <div className="mb-3 rounded-xl border border-ink-800 bg-ink-900 p-3">
             {pickMode && (
@@ -595,6 +662,9 @@ export default function Series() {
             )}
           </div>
         )}
+
+        {/* Search + lompat chapter, sebelum daftar yang dipotong showAll. */}
+        {chapters.length > 0 && <ChapterJumpSearch chapters={chapters} titleKey={s.title_key} />}
 
         {chapters.length === 0 ? (
           <div className="text-center">

@@ -14,6 +14,7 @@ import SourceBadge from '../components/SourceBadge'
 import { imgSrc, imgUrl, mountAheadPx, slowLink } from '../imgUrl'
 import { nextFillFrontier } from '../fillAhead'
 import { tapHitsReaderControl } from '../readerControls'
+import { createTapTracker } from '../tapTracker'
 import { downloadChapterImages } from '../chapterOffline'
 import { saveGeneratedPdf } from '../downloadBatch'
 import { unifiedApi } from '../api'
@@ -24,8 +25,10 @@ import { useAutoFullscreen } from '../hooks/useAutoFullscreen'
 import type { ChapterResponse } from '../types'
 import { Empty } from '../App'
 import { useProgress } from '../hooks/useProgress'
+import { useReaderOverlayHistory } from '../hooks/useReaderOverlayHistory'
 import { useModeSwitch } from '../hooks/useModeSwitch'
 import { didOpenChapter, rakMangaOf } from '../readingEvents'
+import { readingStatusForPage, visiblePageProgress, type ReadingStatus } from '../readingStatus'
 export { rakMangaOf }
 import { anchorFrom, usableAnchor } from '../pageMemory'
 import type { ReadingAnchor } from '../pageMemory'
@@ -72,6 +75,13 @@ export default function Reader() {
   // halaman complete — lihat onLoad ComicImage di flow bawah)
   const [loadedPages, setLoadedPages] = useState<Set<number>>(() => new Set())
   const loadedCount = loadedPages.size
+  /** Halaman aktif untuk label "Hal. X dari N" — diisi dari efek anchor yang
+   *  sama dengan penulisan progres (sumber tunggal, bukan hitungan baru). */
+  const [activePage, setActivePage] = useState(1)
+  /** Status baca eksplisit — tidak pernah ditebak dari gambar termuat. */
+  const [readingStatus, setReadingStatus] = useState<ReadingStatus>('Sedang dibaca')
+  /** true kalau viewport sudah menyentuh bawah halaman terakhir. */
+  const atChapterEnd = useRef(false)
   // chrome (toolbar + footer) ikut arah scroll; selama restore anchor
   // (`pending.current`) berjalan scroll programatik TIDAK memicunya
   const chrome = useChromeOnScroll(() => pending.current !== null)
@@ -80,9 +90,17 @@ export default function Reader() {
   const [menuOpen, setMenuOpen] = useState(false)
   const [sheetOpen, setSheetOpen] = useState(false)
   const [chapterPickerOpen, setChapterPickerOpen] = useState(false)
+  const dismissOverlay = useReaderOverlayHistory(
+    chapterPickerOpen ? 'chapter' : sheetOpen ? 'settings' : menuOpen ? 'menu' : null,
+    () => {
+      setChapterPickerOpen(false)
+      setSheetOpen(false)
+      setMenuOpen(false)
+    },
+  )
+  void dismissOverlay
   const [toast, setToast] = useState<string | null>(null)
-  /** awal gesture tap di area baca — dipakai membedakan tap dari scroll/drag */
-  const tapStart = useRef<{ x: number; y: number; t: number } | null>(null)
+  const tap = createTapTracker(tapHitsReaderControl)
   const { save, recent } = useProgress()
   const { gotoMarathon } = useModeSwitch(chapterId)
   const navigate = useNavigate()
@@ -112,6 +130,9 @@ export default function Reader() {
     pending.current = null
     prefetchedNext.current = false
     setBgFillIdx(0)
+    setActivePage(1)
+    setReadingStatus('Sedang dibaca')
+    atChapterEnd.current = false
     // React Router v7 TIDAK reset scroll saat rute berubah → chapter baru
     // akan tampil di posisi scroll chapter lama (bawah). Scroll ke atas
     // SEBELUM fetch; kalau chapter ini punya anchor tersimpan, efek restore
@@ -166,7 +187,7 @@ export default function Reader() {
   const knownRatios = useMemo(
     () =>
       (data?.image_sizes ?? []).map((s) =>
-        s && s[1] > 0 ? s[0] / s[1] : undefined,
+        s && s[0] > 0 && s[1] > 0 ? s[0] / s[1] : undefined,
       ),
     [data],
   )
@@ -316,6 +337,9 @@ export default function Reader() {
   const apply = (idx: number, anchor: ReadingAnchor): boolean => {
     const el = flowRef.current?.querySelector<HTMLElement>(`[data-page="${idx}"]`)
     if (!el) return false
+    // Label halaman ikut posisi yang dipulihkan, bukan menunggu scroll event
+    // (scroll programatik sengaja tidak menulis progres saat restore).
+    setActivePage(idx + 1)
     return setScrollToAnchor(el, anchor)
   }
 
@@ -452,10 +476,26 @@ export default function Reader() {
       if (pending.current || !readyRef.current) return
       const flow = flowRef.current
       if (!flow) return
-      const geometry = measurePages(flow, (el) => el.getAttribute('src'), 'img[data-page]')
+      // Identitas halaman diambil dari DATA via `data-page`, bukan atribut
+      // `src`: src sudah lewat proxy `/img?u=…`, sementara `pageId`/`images`
+      // memakai URL CDN asli. Memakai src membuat findIndex() selalu -1 →
+      // progres 0 dan restore halaman selalu kembali ke halaman 1.
+      const geometry = measurePages(flow, (el) => {
+        const pi = Number((el as HTMLElement).dataset.page ?? '-1')
+        const url = images[pi]
+        return url ? imgUrl(url) : null
+      }, 'img[data-page]')
       const pageIds = geometry.map((g) => g.pageId)
       const pageTops = geometry.map((g) => g.top)
       const pageHeights = geometry.map((g) => g.height)
+      // Bawah halaman terakhir = chapter benar-benar habis (bukan sekadar
+      // gambar terakhir termuat / halaman terakhir terlihat).
+      const lastBottom = pageTops.length
+        ? pageTops[pageTops.length - 1] + pageHeights[pageHeights.length - 1]
+        : Number.POSITIVE_INFINITY
+      atChapterEnd.current =
+        pageIds.length > 0 &&
+        window.scrollY + window.innerHeight >= lastBottom - 2
       const anchor = anchorFrom(
         chapterId,
         pageIds,
@@ -471,19 +511,28 @@ export default function Reader() {
       last.pageId = anchor.pageId
       last.t = now
       const idx = images.findIndex((s) => imgUrl(s) === anchor.pageId)
+      // Satu anchor → satu sumber kebenaran untuk progres DAN label halaman.
+      setActivePage(idx >= 0 ? idx + 1 : 1)
+      setReadingStatus(readingStatusForPage(idx + 1, images.length, atChapterEnd.current))
       save({
         seriesId: data.series?.id ?? chapterId,
         seriesTitle: data.series?.title ?? null,
         chapterId,
         chapterName: data.chapter.name,
         page: idx >= 0 ? idx : 0,
-        progress: idx >= 0 ? (idx + 1) / images.length : 0,
+        progress: visiblePageProgress(idx + 1, images.length),
         pageId: anchor.pageId,
         offsetRatio: anchor.offsetRatio,
         // A2 — sumber & handle pelayan supaya series page bisa kirim
         // last_source, dan reader tahu kalau sumber pindah.
         source: activeSource,
         handle: activeHandle,
+        // Status baca eksplisit: dibuka = "Sedang dibaca"; hanya "Selesai"
+        // kalau halaman terakhir benar-benar habis digulir.
+        status: readingStatusForPage(idx + 1, images.length, atChapterEnd.current),
+        // Mode baca ikut disimpan supaya Beranda/Rak membuka kembali reader
+        // yang sama (normal vs maraton) dengan posisi halaman yang sama.
+        mode: 'normal',
       })
     }
     writeRef.current = write
@@ -583,9 +632,13 @@ export default function Reader() {
 
   const { chapter, series } = data
   const seriesId = series?.id
-  const pct = images.length
-    ? Math.min(100, Math.round((loadedCount / images.length) * 100))
-    : 0
+  // Status MEMUAT dipisah dari posisi baca — "Hal. X dari N" tetap akurat
+  // walau sebagian gambar belum dimuat. Pembaca layar mendengar status ini
+  // lewat role=status milik ReaderToolbar.
+  const loadingImages = images.length > 0 && loadedCount < images.length
+  const pageStatus = images.length ? `Hal. ${activePage} dari ${images.length}` : 'Hal. 0 dari 0'
+  // Footer sekarang satu baris (±4.5rem termasuk safe-area), bukan dua baris.
+  const footerSpacer = 'h-[calc(4.5rem+env(safe-area-inset-bottom))]'
   const nextKey = chapter.next ? String(chapter.next.id) : null
   const prevKey = chapter.previous ? String(chapter.previous.id) : null
   // id manga legacy (angka) — cuma ada di flow komiku lama. Flow unified
@@ -599,7 +652,7 @@ export default function Reader() {
   // turun = sembunyi, naik = tampil, supaya area baca tetap bersih saat
   // membaca. Tombol keluar tetap bisa dijangkau lewat tap tengah (toggle
   // chrome) atau scroll ke atas.
-  const fsInteractive = chrome.visible || fsActive
+  const fsInteractive = chrome.visible
 
   return (
     // overflow-x-clip: jaring pengaman. Kalau satu gambar (mis. spread halaman
@@ -628,27 +681,18 @@ export default function Reader() {
       <div
         aria-hidden="true"
         data-testid="reader-tap-layer"
+        className="reader-tap-layer fixed inset-0 z-10 touch-manipulation"
         onPointerDown={(e) => {
-          tapStart.current = { x: e.clientX, y: e.clientY, t: performance.now() }
+          tap.down(e.pointerId, e.pointerType, e.clientX, e.clientY, performance.now())
         }}
-        onPointerCancel={() => {
-          tapStart.current = null
-        }}
+        onPointerUp={(e) => tap.up(e.pointerId)}
+        onPointerCancel={(e) => tap.cancel(e.pointerId)}
         onClick={(e) => {
-          const start = tapStart.current
-          tapStart.current = null
-          if (start) {
-            const moved = Math.hypot(e.clientX - start.x, e.clientY - start.y)
-            if (moved > 12 || performance.now() - start.t > 900) return
-          }
-          // Tap pada kontrol halaman (lingkaran "Muat ulang"/"Coba lagi")
-          // BUKAN tap area baca: jangan toggle chrome.
-          if (tapHitsReaderControl(e.clientX, e.clientY)) return
+          if (!tap.shouldToggle(e.clientX, e.clientY, performance.now())) return
           // Tap area baca hanya toggle chrome (toolbar/footer). Fullscreen
           // HANYA lewat tombol layar penuh — bukan dari tap.
           chrome.toggle()
         }}
-        className="fixed inset-0 z-10 touch-manipulation"
       />
       {/**
        * Tombol layar penuh manual — jalur eksplisit (fallback iOS / saat
@@ -708,7 +752,10 @@ export default function Reader() {
 
       <ReaderToolbar
         title={chapter.name}
-        subtitle={`${series?.title ?? 'Memuat…'} · ${pct}%`}
+        subtitle={pageStatus}
+        loadingLabel={loadingImages ? 'Memuat gambar…' : null}
+        progress={visiblePageProgress(activePage, images.length)}
+        status={readingStatus}
         onBack={() => navigate(seriesHref(seriesId) ?? '/')}
         titleHref={seriesHref(seriesId)}
         onHome={() => navigate('/')}
@@ -734,7 +781,7 @@ export default function Reader() {
 
       <ChapterPickerSheet
         open={chapterPickerOpen}
-        onClose={() => setChapterPickerOpen(false)}
+        onClose={() => dismissOverlay()}
         chapterKey={chapterId}
         legacySeriesId={legacySeriesId}
         seriesTitle={series?.title ?? null}
@@ -759,6 +806,8 @@ export default function Reader() {
         // mengikuti tema app): latar reader selalu putih atau #131313, jadi
         // ink-500 versi tema gelap (#9aa0a8) hanya 2,5:1 di atas putih.
         <p
+          role="status"
+          aria-live="polite"
           className={`mx-auto max-w-3xl px-4 pr-16 pt-[calc(env(safe-area-inset-top)+3.5rem)] text-[12px] leading-relaxed max-sm:text-[12.5px] max-sm:leading-[1.7] ${
             settings.nightShift ? 'text-reader-muted-night' : 'text-reader-muted'
           }`}
@@ -808,8 +857,10 @@ export default function Reader() {
               // eager + margin lazy bawaan Chrome membuat 9 gambar / 1,7 MB
               // berebut, dan halaman yang sedang dibaca kalah (53 detik di 3G).
               eager={i < 2}
-              // TODO(FE-A): kirim prop nearViewport={Math.abs(i - currentVisibleIndex) <= 2}
-              // ke ComicImage untuk halaman dekat layar — belum terdefinisi di ComicImage.tsx.
+              // Halaman aktif (anchor progres) adalah halaman yang sedang
+              // dibaca. Tandai ±2 halaman sebagai dekat viewport supaya
+              // imgQueue mendahulukannya dari halaman fill-ahead (B4).
+              nearViewport={Math.abs(i + 1 - activePage) <= 2}
               // B2: horizon adaptif saat scroll (mountAhead tumbuh 3x).
               // B4: halaman di belakang frontier fill-ahead dipaksa mount dengan
               // mountAhead raksasa → antre di imgQueue (satu-satu) hingga memuat.
@@ -823,19 +874,17 @@ export default function Reader() {
             />
           </div>
         ))}
-        {/* Ruang bawah: footer fixed TIDAK boleh menutupi ekor halaman
-            terakhir saat chrome tampil. Tinggi footer terukur (390 px):
-            10 + 44 + 8 + 44 + 10 = 116 px + safe-area. Dulu spacer-nya
-            h-36 (144 px) — di iPhone (inset 34 px → footer 150 px) sisa
-            6 px ekor halaman tertutup. Sekarang 120 px + safe-area, jadi
-            selalu ≥ tinggi footer di semua perangkat. */}
-        <div className="h-[calc(7.5rem+env(safe-area-inset-bottom))]" />
+        {/* Ruang bawah: footer SATU baris (~64px + safe-area). Spacer lama
+            120px (dua baris) disusutkan supaya ekor halaman terakhir tidak
+            jauh dari footer di layar 639/799. */}
+        <div className={footerSpacer} />
       </div>
 
       <ReaderMenu
         open={menuOpen}
         settings={settings}
-        onClose={() => setMenuOpen(false)}
+        fullscreenActive={fsActive}
+        onClose={() => dismissOverlay()}
         onChange={(patch) => {
           // toggle Maraton dari reader: pindah mode marathon chapter ini
           if (patch.marathon === true && !settings.marathon) {
@@ -849,12 +898,18 @@ export default function Reader() {
           setMenuOpen(false)
           setSheetOpen(true)
         }}
+        onToggleFullscreen={() => {
+          if (fsActive) {
+            autoFS.reset()
+            chrome.show()
+          } else autoFS.requestEnter()
+        }}
       />
 
       <ReaderSettingsSheet
         open={sheetOpen}
         settings={settings}
-        onClose={() => setSheetOpen(false)}
+        onClose={() => dismissOverlay()}
         onChange={onChange}
         onReset={onReset}
         setToast={setToast}

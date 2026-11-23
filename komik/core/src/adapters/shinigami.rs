@@ -1,4 +1,4 @@
-//! Shinigami adapter — api.shngm.io/v1, JSON envelope `{retcode, data, meta}`.
+//! Shinigami adapter — api.shinigami.io/v1 (s1.shinigami.mx), JSON envelope `{retcode, data, meta}`.
 //! Tanpa auth, tanpa enkripsi (beda dari Komiku+). Manga & chapter id = UUID.
 //! Chapter pages dibangun dari `base_url` + `chapter.path` + filename di
 //! `assets.shngm.id`. Semantik error & retry mengikuti klien Python acuan
@@ -9,8 +9,8 @@ use crate::model::*;
 use crate::source::{classified, Source, SourceError, SourceResult};
 use super::common::{iso8601_to_millis_offset, names_joined};
 
-const API: &str = "https://api.shngm.io/v1";
-const WEB: &str = "https://app.shinigami.asia";
+const API: &str = "https://api.shinigami.io/v1"; // s1.shinigami.mx (uptime: shngm.io origin broken)
+const WEB: &str = "https://s1.shinigami.mx";
 const UA: &str = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 \
                   (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36";
 /// page_size daftar katalog: server hormati sampai 500 (referensi).
@@ -336,7 +336,9 @@ impl Source for ShinigamiSource {
     }
 
     async fn genres(&self) -> SourceResult<Vec<(String, String)>> {
-        let v = self.get("/genre/list", &[]).await?;
+        // Host baru (s1.shinigami.mx / api.shinigami.io) pindah: `/genre/list`
+        // -> `/taxonomy/list?type=genre`. Item: {taxonomy_id, slug, name, type}.
+        let v = self.get("/taxonomy/list", &[("type", "genre".to_string())]).await?;
         Ok(data_array(&v)
             .iter()
             .filter_map(|g| {

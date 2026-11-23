@@ -51,7 +51,7 @@ export default function ModeBacaSheet({
     document.addEventListener('keydown', onKey)
     return () => {
       document.removeEventListener('keydown', onKey)
-      prev?.focus()
+      prev?.focus({ preventScroll: true })
     }
   }, [onClose])
 
@@ -100,7 +100,7 @@ export default function ModeBacaSheet({
         className="sheet-panel w-full max-w-md rounded-t-2xl border-t border-ink-700 bg-ink-900 pb-[calc(1.5rem+env(safe-area-inset-bottom))] outline-none"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex items-center justify-between px-4 py-3">
+        <div className="sticky top-0 z-20 flex items-center justify-between bg-ink-900 px-4 py-3">
           <h2 className="font-display text-[15px] font-semibold text-ink-100">Pilih Mode Baca</h2>
           <button
             onClick={onClose}

@@ -9,6 +9,19 @@ import type {
   UnifiedSeries,
 } from './types'
 
+/** Mode baca yang ikut disimpan di ProgressEntry. */
+export type ReadingMode = 'normal' | 'marathon'
+
+/**
+ * Identitas chapter = STRING apa adanya. `String(trim())` saja — TANPA
+ * `Number()`, `parseInt`, leading-zero stripping, atau perbandingan numerik.
+ * "0" dan "00.1" adalah dua chapter berbeda dan harus tetap berbeda.
+ */
+export function toChapterId(raw: string | number | null | undefined): string {
+  if (raw === null || raw === undefined) return ''
+  return String(raw).trim()
+}
+
 /**
  * Jembatan dua flow baca tanpa menduplikasi komponen Reader.
  *

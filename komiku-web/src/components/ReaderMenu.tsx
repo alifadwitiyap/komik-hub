@@ -1,10 +1,12 @@
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
+import { useSheetPresence } from '../hooks/useSheetPresence'
 import {
   IconBars,
   IconPersonRunning,
   IconPlaySolid,
   IconMoonOverSun,
   IconSliders,
+  IconExpand,
 } from '../icons'
 
 export interface ReaderSettings {
@@ -41,32 +43,67 @@ export const DEFAULT_SETTINGS: ReaderSettings = {
 interface ReaderMenuProps {
   open: boolean
   settings: ReaderSettings
+  /** true saat native/immersive fullscreen aktif (dari useAutoFullscreen). */
+  fullscreenActive?: boolean
   onClose: () => void
   onChange: (patch: Partial<ReaderSettings>) => void
   onOpenSettings: () => void
+  /** Memanggil useAutoFullscreen().requestEnter()/reset() dari halaman. */
+  onToggleFullscreen: () => void
 }
 
 /**
- * Menu reader (layout_reader_menu APK) — 5 aksi melayang di atas footer:
- * Mode Baca, Maraton, Putar Otomatis, Kecerahan, Perisai Malam.
+ * Menu reader — enam aksi dalam satu bilah bawah: Mode Baca, Maraton,
+ * Putar Otomatis, Perisai Malam, Layar penuh, Preferensi.
  */
 export default function ReaderMenu({
   open,
   settings,
+  fullscreenActive = false,
   onClose,
   onChange,
   onOpenSettings,
+  onToggleFullscreen,
 }: ReaderMenuProps) {
+  const panelRef = useRef<HTMLDivElement>(null)
+  const prevRef = useRef<HTMLElement | null>(null)
+  const mounted = useSheetPresence(open)
+
   useEffect(() => {
     if (!open) return
+    prevRef.current = document.activeElement as HTMLElement | null
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') onClose()
+      if (e.key !== 'Tab' || !panelRef.current) return
+      const focusables = Array.from(
+        panelRef.current.querySelectorAll<HTMLElement>(
+          'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])',
+        ),
+      ).filter((el) => !el.hasAttribute('disabled'))
+      if (focusables.length === 0) return
+      const first = focusables[0]
+      const last = focusables[focusables.length - 1]
+      if (e.shiftKey && document.activeElement === first) {
+        e.preventDefault()
+        last.focus()
+      } else if (!e.shiftKey && document.activeElement === last) {
+        e.preventDefault()
+        first.focus()
+      }
     }
     document.addEventListener('keydown', onKey)
-    return () => document.removeEventListener('keydown', onKey)
+    const raf = requestAnimationFrame(() => {
+      panelRef.current?.querySelector<HTMLElement>('button')?.focus({ preventScroll: true })
+    })
+    return () => {
+      document.removeEventListener('keydown', onKey)
+      cancelAnimationFrame(raf)
+      // Tombol kembali dari menu mengembalikan fokus ke kontrol pemicu.
+      prevRef.current?.focus?.({ preventScroll: true })
+    }
   }, [open, onClose])
 
-  if (!open) return null
+  if (!mounted) return null
   const items = [
     {
       key: 'read_mode',
@@ -100,6 +137,17 @@ export default function ReaderMenu({
       onClick: () => onChange({ nightShift: !settings.nightShift }),
     },
     {
+      key: 'fullscreen',
+      label: 'Layar penuh',
+      icon: <IconExpand className="size-5" />,
+      active: fullscreenActive,
+      ariaPressed: fullscreenActive,
+      onClick: () => {
+        onToggleFullscreen()
+        onClose()
+      },
+    },
+    {
       key: 'settings',
       label: 'Preferensi',
       icon: <IconSliders className="size-5" />,
@@ -112,24 +160,28 @@ export default function ReaderMenu({
   // menang atas #root pada z-index yang sama — tanpa ini tombol melingkar
   // itu melayang DI ATAS backdrop menu yang sedang terbuka.
   return (
-    <div className="fixed inset-0 z-50 flex items-end bg-black/40" onClick={onClose}>
+    <div className={`fixed inset-0 z-50 flex items-end bg-black/40 ${open ? 'sheet-backdrop' : 'sheet-backdrop-closing'}`} onClick={onClose}>
       <div
+        ref={panelRef}
         role="dialog"
         aria-modal="true"
         aria-label="Menu reader"
-        className="sheet-panel w-full rounded-t-2xl bg-night-dark/95 px-2 pb-[calc(1.25rem+env(safe-area-inset-bottom))] pt-3 backdrop-blur"
+        aria-hidden={!open}
+        inert={!open}
+        className={`sheet-panel w-full rounded-t-2xl bg-night-dark/95 px-2 pb-[calc(1.25rem+env(safe-area-inset-bottom))] pt-3 backdrop-blur ${open ? '' : 'sheet-closing'}`}
         onClick={(e) => e.stopPropagation()}
       >
         <div className="mb-2 flex justify-center">
           <span className="h-1 w-10 rounded-full bg-white/25" />
         </div>
-        <div className="flex justify-around">
+        <div className="grid grid-cols-3 gap-y-2">
           {items.map((it) => (
             <button
               key={it.key}
+              type="button"
               onClick={it.onClick}
               aria-pressed={'ariaPressed' in it ? it.ariaPressed : undefined}
-              className="flex w-16 flex-col items-center gap-1.5 rounded-xl py-2 active:bg-white/10 active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70"
+              className="flex min-h-11 w-full flex-col items-center gap-1.5 rounded-xl py-2 active:bg-white/10 active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70"
             >
               <span
                 className={`grid size-10 place-items-center rounded-full ${
@@ -138,13 +190,11 @@ export default function ReaderMenu({
               >
                 {it.icon}
               </span>
-              <span className="text-center text-[10px] font-medium leading-tight text-white/85">{it.label}</span>
+              <span className="text-center text-[12px] font-medium leading-tight text-white/85">{it.label}</span>
             </button>
           ))}
         </div>
-        <p className="mt-2 text-center text-[10px] font-medium text-white/70">
-          Ketuk — 5 kontrol
-        </p>
+
       </div>
     </div>
   )

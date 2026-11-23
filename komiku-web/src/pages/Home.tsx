@@ -7,7 +7,6 @@ import { Empty, Spinner } from '../App'
 import SourceBadge from '../components/SourceBadge'
 import HeartButton from '../components/HeartButton'
 import { IconBolt, IconMagnifyingGlass, IconPlaySolid, IconRectangleHistory } from '../icons'
-
 import ContinueReading from '../components/ContinueReading'
 
 /**
@@ -128,12 +127,15 @@ export default function Home() {
     ).values(),
   ).slice(0, 12)
 
-  // (a) backdrop carousel: 5 populer pertama dari unified (fallback ke
-  // seksi komiku pertama kalau unified mati — carousel tak pernah kosong).
+  // (a) backdrop carousel: 2 populer pertama (cukup sebagai pintu visual;
+  // 5 slide membuat katalog baru terlihat di layar pertama). Fallback ke
+  // seksi komiku pertama kalau unified mati — carousel tak pernah kosong.
   const featured = (popular ?? []).length > 0
-    ? popular!.slice(0, 5)
-    : (sections[0]?.data.slice(0, 5) ?? [])
+    ? popular!.slice(0, 2)
+    : (sections[0]?.data.slice(0, 2) ?? [])
 
+  // Bila ada riwayat, "Lanjut membaca" tampil paling atas (tepat di bawah
+  // header) supaya pembaca yang kembali bisa langsung melanjutkan bacaan.
   return (
     <div
       onTouchStart={onTouchStart}
@@ -163,15 +165,14 @@ export default function Home() {
         </div>
       )}
 
-      {/* (a) Backdrop carousel replika item_index_backdrop — konten unified */}
-      {featured.length > 0 && <BackdropCarousel items={featured} />}
+      {/* (c) "Lanjut membaca" replika item_index_history: bila ada riwayat,
+          tampil langsung di bawah header agar pembaca bisa segera lanjut. */}
+      <ContinueReading />
 
       {/* (b) shortcut menu replika item_index_menu_top — empat pintu beranda */}
       <ShortcutMenu />
 
-      {/* (c) "Lanjut membaca" replika item_index_history: grid 2 kolom dari
-          rak. Kosong (riwayat tidak ada) → tidak dirender. */}
-      <ContinueReading />
+      {featured.length > 0 && <BackdropCarousel items={featured} />}
 
       <div className="mx-auto max-w-3xl pb-2">
         {/* (d) Populer (semua sumber) */}
@@ -277,10 +278,10 @@ function BackdropCarousel({ items }: { items: Manga[] }) {
           return (
             <Link
               key={m.id}
-              to={`/manga/${m.id}`}
+              to={m.handle ? `/manga/${m.handle}` : `/manga/${m.id}`}
               className="relative w-[94%] shrink-0 snap-start overflow-hidden rounded-xl border-[0.8px] border-ink-800 active:scale-[0.97] active:duration-100"
             >
-              <div className="relative aspect-[2/1.1]">
+              <div className="relative aspect-[16/7] max-h-[170px] overflow-hidden">
                 {img && (
                   <img referrerPolicy="no-referrer"
                     src={imgUrl(img)}
@@ -439,11 +440,24 @@ function ShortcutMenu() {
   )
 }
 
+/** Kartu katalog: cover + judul 2 baris + label chapter eksplisit "Ch. N".
+ *  Dipakai Home dan Search; label dibentuk di sini (bukan di Search) supaya
+ *  formatnya konsisten. `other[0]` dari API biasanya last_chapter mentah. */
+export function chapterLabel(manga: Manga): string | null {
+  const first = manga.other?.[0]
+  if (typeof first !== 'string') return null
+  const raw = first.trim().replace(/^Chapter\s+/i, '')
+  const number = raw.replace(/^Ch\.\s*/i, '')
+  if (!/^\d+(?:[.,]\d+)?$/.test(number)) return null
+  return `Ch. ${number}`
+}
+
 export const MangaCard = memo(function MangaCard({ manga }: { manga: Manga }) {
   const [failed, setFailed] = useState(false)
   const img = coverOf(manga)
   // kartu unified (handle 'sumber:id') → route handle; kartu komiku → id lama.
   const to = manga.handle ? `/manga/${manga.handle}` : `/manga/${manga.id}`
+  const label = chapterLabel(manga)
 
   return (
     <Link
@@ -508,11 +522,15 @@ export const MangaCard = memo(function MangaCard({ manga }: { manga: Manga }) {
       <p className="mt-2 line-clamp-2 font-display text-[12.5px] font-medium leading-snug text-ink-100">
         {manga.title}
       </p>
-      {manga.other && manga.other.length > 0 && (
+      {label ? (
+        <p className="mt-0.5 line-clamp-1 text-[11px] font-bold leading-snug text-ink-500">
+          {label}
+        </p>
+      ) : manga.other && manga.other.length > 0 ? (
         <p className="mt-0.5 line-clamp-1 text-[11px] font-bold leading-snug text-ink-500">
           {manga.other[0]}
         </p>
-      )}
+      ) : null}
     </Link>
   )
 })

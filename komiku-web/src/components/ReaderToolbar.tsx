@@ -4,6 +4,8 @@ import { IconAngleLeft, IconHouse, IconShare, IconEllipsisV } from '../icons'
 interface ReaderToolbarProps {
   title: string
   subtitle?: string
+  /** Label terpisah untuk status muat gambar — tidak menggantikan posisi baca. */
+  loadingLabel?: string | null
   onBack: () => void
   /** Kalau diisi, judul jadi link ke halaman detail komik (mis. dari Maraton). */
   titleHref?: string | null
@@ -16,6 +18,8 @@ interface ReaderToolbarProps {
   /** 0..1 — kalau diisi, garis progres 2px ditempel di tepi bawah header
    *  (bukan elemen fixed terpisah yang bisa menimpa baris meta). */
   progress?: number | null
+  /** Status baca eksplisit (diperlihatkan di baris meta). */
+  status?: string | null
   /** badge sumber (muncul hanya untuk manga non-komiku) */
   badge?: React.ReactNode
   /**
@@ -36,6 +40,7 @@ interface ReaderToolbarProps {
 export default function ReaderToolbar({
   title,
   subtitle,
+  loadingLabel,
   onBack,
   titleHref,
   onHome,
@@ -46,6 +51,7 @@ export default function ReaderToolbar({
   heart,
   visible = true,
   progress,
+  status,
 }: ReaderToolbarProps) {
   // Sama node buat dua render-mode (link aktif / tidak). Judul + baris meta
   // duduk dalam satu target sentuh supaya seluruh area bisa dipencet untuk
@@ -59,12 +65,27 @@ export default function ReaderToolbar({
     </p>
   )
   const metaNode =
-    subtitle || badge || chip ? (
+    subtitle || loadingLabel || badge || chip ? (
       <div className="flex min-w-0 items-center gap-1.5">
         {subtitle && (
           <p className="min-w-0 truncate text-[11px] tabular-nums leading-tight text-white/85 [text-shadow:0_1px_2px_rgba(0,0,0,0.7)]">
             {subtitle}
           </p>
+        )}
+        {status && (
+          <span className="shrink-0 rounded-[5px] bg-white/15 px-1.5 py-[2px] text-[10px] font-semibold leading-tight text-white/90 [text-shadow:0_1px_2px_rgba(0,0,0,0.7)]">
+            {status}
+          </span>
+        )}
+        {/* Status muat gambar punya node sendiri + role=status: pembaca layar
+            mendengar "Memuat gambar…" tanpa mengganti label posisi baca. */}
+        <p role="status" aria-live="polite" className="sr-only">
+          {loadingLabel ?? ''}
+        </p>
+        {loadingLabel && (
+          <span className="shrink-0 text-[10px] leading-tight text-white/70 [text-shadow:0_1px_2px_rgba(0,0,0,0.7)]">
+            {loadingLabel}
+          </span>
         )}
         {/* badge sumber di baris meta — judul tetap dapat lebar penuh
             di layar 390px (sebelumnya badge memakan ~60px judul) */}
@@ -82,9 +103,10 @@ export default function ReaderToolbar({
   return (
     <header
       data-reader-chrome="toolbar"
-      className={`fixed inset-x-0 top-0 z-30 bg-gradient-to-b from-black/90 via-black/70 to-transparent pt-[env(safe-area-inset-top)] pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)] backdrop-blur-[2px] transition-transform duration-200 ${
-        visible ? 'translate-y-0' : '-translate-y-full'
+      className={`fixed inset-x-0 top-0 z-30 bg-gradient-to-b from-black/90 via-black/70 to-transparent pt-[env(safe-area-inset-top)] pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)] backdrop-blur-[2px] reader-chrome-fade ${
+        visible ? 'opacity-100' : 'opacity-0'
       }`}
+      data-hidden={!visible}
       aria-hidden={!visible}
       inert={!visible}
     >

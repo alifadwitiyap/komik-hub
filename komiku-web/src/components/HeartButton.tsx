@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, type MouseEvent } from 'react'
 import { isFavorite, toggleFavorite } from '../rakStore'
 import type { RakManga } from '../rakStore'
 import { useNotifCounts } from '../notifCounts'
@@ -19,6 +19,9 @@ function badgeClass() {
   return 'pointer-events-none absolute -right-1 -top-1 grid h-[14px] min-w-[14px] place-items-center rounded-full bg-brand-amber px-0.5 text-[9px] font-bold leading-none text-white'
 }
 
+/** Lama konfirmasi "Tersimpan di Rak" tampil setelah favorit ditambahkan. */
+const SAVED_MS = 2000
+
 /**
  * Tombol favorit series — state dari rakStore, re-render via custom event
  * 'rak-change' (tanpa Context: satu event per tab cukup). Jumlah chapter
@@ -27,6 +30,7 @@ function badgeClass() {
 export default function HeartButton({ manga, className = '', labeled = false }: HeartButtonProps) {
   const [loved, setLoved] = useState(() => isFavorite(manga.title_key))
   const [pop, setPop] = useState(false)
+  const [saved, setSaved] = useState(false)
   const { unreadByTitle } = useNotifCounts()
   const count = unreadByTitle[manga.title_key] ?? 0
 
@@ -36,6 +40,25 @@ export default function HeartButton({ manga, className = '', labeled = false }: 
     return () => window.removeEventListener('rak-change', onRak)
   }, [manga.title_key])
 
+  useEffect(() => {
+    if (!saved) return
+    const t = window.setTimeout(() => setSaved(false), SAVED_MS)
+    return () => window.clearTimeout(t)
+  }, [saved])
+
+  const onToggle = (e: MouseEvent<HTMLButtonElement>) => {
+    e.preventDefault()
+    e.stopPropagation()
+    toggleFavorite(manga)
+    const nowLoved = isFavorite(manga.title_key)
+    if (nowLoved) {
+      setPop(true)
+      setSaved(true)
+    } else {
+      setSaved(false)
+    }
+  }
+
   const heart = (
     <svg
       viewBox="0 0 24 24"
@@ -44,7 +67,7 @@ export default function HeartButton({ manga, className = '', labeled = false }: 
       strokeLinejoin="round"
       aria-hidden="true"
       onAnimationEnd={() => setPop(false)}
-      className={`${loved ? 'fill-brand-amber stroke-brand-amber' : 'fill-none stroke-current'} ${labeled ? 'size-4' : 'size-5'} ${pop ? 'animate-heart-pop' : ''}`}
+      className={`${loved ? 'fill-brand-amber stroke-brand-amber' : 'fill-none stroke-current'} ${labeled ? 'size-4' : 'size-5'} ${pop ? 'animate-heart-confirm' : ''}`}
     >
       <path d={HEART_D} />
     </svg>
@@ -55,21 +78,16 @@ export default function HeartButton({ manga, className = '', labeled = false }: 
       <button
         aria-label={loved ? 'Hapus dari favorit' : 'Tambah ke favorit'}
         aria-pressed={loved}
-        onClick={(e) => {
-          e.preventDefault()
-          e.stopPropagation()
-          toggleFavorite(manga)
-          if (isFavorite(manga.title_key)) setPop(true)
-        }}
-        className={`flex min-h-11 shrink-0 items-center justify-center gap-1.5 rounded-xl border px-3 py-2.5 text-[13px] font-semibold transition-colors active:scale-[0.97] active:transition-transform active:duration-100 ${
+        onClick={onToggle}
+        className={`flex min-h-11 shrink-0 items-center justify-center gap-1.5 rounded-xl border px-3 py-2.5 text-[13px] font-semibold transition-colors active:scale-[0.97] active:transition-transform active:duration-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber ${
           loved
             ? 'border-brand-amber-dim bg-brand-amber/15 text-brand-amber'
             : 'border-ink-700 text-ink-300 [@media(hover:hover)_and_(pointer:fine)]:hover:bg-ink-850'
         } ${className}`}
       >
         {heart}
-        {loved ? 'Difavoritkan' : 'Favorit'}
-        {count > 0 && ` · ${count}`}
+        <span aria-live="polite">{saved ? 'Tersimpan di Rak' : loved ? 'Difavoritkan' : 'Favorit'}</span>
+        {count > 0 && !saved && ` · ${count}`}
       </button>
     )
   }
@@ -79,18 +97,22 @@ export default function HeartButton({ manga, className = '', labeled = false }: 
     <button
       aria-label={loved ? 'Hapus dari favorit' : 'Tambah ke favorit'}
       aria-pressed={loved}
-      onClick={(e) => {
-        e.preventDefault()
-        e.stopPropagation()
-        toggleFavorite(manga)
-        if (isFavorite(manga.title_key)) setPop(true)
-      }}
-      className={`relative grid min-h-11 min-w-11 touch-manipulation place-items-center rounded-full p-3 transition-colors active:scale-[0.97] active:transition-transform active:duration-100 ${className}`}
+      onClick={onToggle}
+      className={`relative grid min-h-11 min-w-11 touch-manipulation place-items-center rounded-full p-3 transition-colors active:scale-[0.97] active:transition-transform active:duration-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber ${className}`}
     >
       {heart}
       {count > 0 && (
         <span aria-hidden="true" className={badgeClass()}>
           {count > 9 ? '9+' : count}
+        </span>
+      )}
+      <span className="sr-only" aria-live="polite">{saved ? 'Tersimpan di Rak' : ''}</span>
+      {saved && (
+        <span
+          aria-hidden="true"
+          className="pointer-events-none absolute left-1/2 top-full z-10 mt-1 -translate-x-1/2 whitespace-nowrap rounded-md bg-ink-950 px-2 py-1 text-[10px] font-semibold text-brand-amber shadow-lg"
+        >
+          Tersimpan di Rak
         </span>
       )}
     </button>

@@ -33,6 +33,8 @@ const CAP_SLOW = 1
 
 interface Waiter {
   seq: number
+  /** 2 = dekat viewport, 1 = normal. */
+  priority: 1 | 2
   onReady: () => void
   /** false = masih di antrean, true = slot sudah diberikan. */
   granted: boolean
@@ -55,7 +57,17 @@ function pump(): void {
   // Halaman eager masih memuat → jangan kirim byte lain ke jalur yang sama.
   if (eagerActive > 0) return
   while (waiters.length > 0 && otherActive < cap()) {
-    const w = waiters.shift()!
+    // Marathon memuat banyak chapter sekaligus: tanpa ini halaman yang
+    // diprefetch lebih dulu menyita slot sementara panel yang sedang dibaca
+    // masih menunggu. Dekat viewport (2) didahulukan; seq jaga urutan antrean
+    // di kelas yang sama.
+    let pick = 0
+    for (let i = 1; i < waiters.length; i++) {
+      const a = waiters[i]
+      const b = waiters[pick]
+      if (a.priority > b.priority || (a.priority === b.priority && a.seq < b.seq)) pick = i
+    }
+    const [w] = waiters.splice(pick, 1)
     w.granted = true
     otherActive += 1
     w.onReady()
@@ -65,12 +77,14 @@ function pump(): void {
 /**
  * Minta izin mulai memuat satu gambar.
  *
- * @param eager halaman pertama chapter — selalu langsung, tidak antre
+ * @param priority 0 = eager (langsung), 2 = dekat viewport (didahulukan),
+ *                 1 = normal (FIFO). Urutan antrean: 2 sebelum 1, dengan seq
+ *                 sebagai tie-break agar tidak membalik urutan dalam kelas.
  * @param onReady dipanggil saat boleh memasang `src` (langsung, atau nanti)
  * @returns fungsi pembatalan/pelepasan yang IDEMPOTEN: aman dipanggil dari
  *          pembersihan efek React maupun dari handler `onLoad`/`onError`.
  */
-export function acquireImageSlot(priority: 0 | 1, onReady: () => void): () => void {
+export function acquireImageSlot(priority: 0 | 1 | 2, onReady: () => void): () => void {
   if (priority === 0) {
     eagerActive += 1
     onReady()
@@ -83,7 +97,12 @@ export function acquireImageSlot(priority: 0 | 1, onReady: () => void): () => vo
     }
   }
 
-  const w: Waiter = { seq: seq++, onReady, granted: false }
+  const w: Waiter = {
+    seq: seq++,
+    priority: priority === 2 ? 2 : 1,
+    onReady,
+    granted: false,
+  }
   waiters.push(w)
   pump()
 

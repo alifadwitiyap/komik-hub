@@ -1,13 +1,17 @@
 import { useCallback, useEffect, useRef } from 'react'
 import { getUser } from '../account'
 import { progressApi } from '../api'
+import { toChapterId } from '../readerSource'
 import { usePerAccountLocalStorage } from './usePerAccountLocalStorage'
+import type { ReadingStatus } from '../readingStatus'
 
 export interface ProgressEntry {
   seriesId: number | string
   seriesTitle: string | null
-  chapterId: number | string
+  /** Identitas chapter = string. "0" dan "00.1" adalah dua chapter berbeda. */
+  chapterId: string
   chapterName: string
+  /** Nomor halaman (0-based) — 0 kalau data lama tidak punya pageId. */
   page: number
   /** 0..1 — posiasi halaman terakhir yang terbaca */
   progress: number
@@ -29,6 +33,10 @@ export interface ProgressEntry {
    * cuma ke atas halaman.
    */
   offsetRatio?: number
+  /** Mode baca sesi terakhir. Entri lama tanpa mode dianggap 'normal'. */
+  mode?: 'normal' | 'marathon'
+  /** Status baca eksplisit. Entri lama tanpa status dianggap dibuka. */
+  status?: ReadingStatus
   at: number
 }
 
@@ -50,7 +58,12 @@ function parse(raw: string | null): ProgressEntry[] {
     if (!Array.isArray(parsed)) return []
     // kompatibilitas: buang entri legacy berkunci judul ("t:<judul>") yang
     // bikin duplikat di riwayat — series sekarang selalu pakai id numerik.
-    return (parsed as ProgressEntry[]).filter((e) => !String(e.seriesId).startsWith('t:'))
+    const list = (parsed as ProgressEntry[]).filter(
+      (e) => e && !String(e.seriesId).startsWith('t:'),
+    )
+    // Spec §1: chapter identity SELALU string. Entri lama menyimpan angka;
+    // toChapterId hanya String(trim()) — "0" tidak berubah jadi "00.1".
+    return list.map((e) => ({ ...e, chapterId: toChapterId(e.chapterId) }))
   } catch {
     return []
   }
@@ -64,7 +77,8 @@ function parse(raw: string | null): ProgressEntry[] {
  */
 export function mergeProgress(a: ProgressEntry[], b: ProgressEntry[]): ProgressEntry[] {
   const byId = new Map<string, ProgressEntry>()
-  for (const e of [...a, ...b]) {
+  for (const entry of [...a, ...b]) {
+    const e = { ...entry, chapterId: toChapterId(entry.chapterId) }
     const key = String(e.seriesId)
     const prev = byId.get(key)
     if (!prev || e.at > prev.at) byId.set(key, e)
@@ -74,9 +88,9 @@ export function mergeProgress(a: ProgressEntry[], b: ProgressEntry[]): ProgressE
 
 /** Server mengembalikan blob JSON opaque — bentuknya `ProgressEntry`. */
 function asEntries(raw: unknown[]): ProgressEntry[] {
-  return (raw as ProgressEntry[]).filter(
-    (e) => e && e.seriesId !== undefined && typeof e.at === 'number',
-  )
+  return (raw as ProgressEntry[])
+    .filter((e) => e && e.seriesId !== undefined && typeof e.at === 'number')
+    .map((e) => ({ ...e, chapterId: toChapterId(e.chapterId) }))
 }
 
 /**
@@ -137,6 +151,11 @@ export function useProgress() {
   // boot: akun yang sedang aktif → PULL.
   useEffect(() => {
     void syncFromServer()
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') void syncFromServer()
+    }
+    document.addEventListener('visibilitychange', onVisible)
+    return () => document.removeEventListener('visibilitychange', onVisible)
   }, [syncFromServer])
 
   useEffect(() => {
@@ -147,9 +166,18 @@ export function useProgress() {
 
   const save = useCallback(
     (entry: Omit<ProgressEntry, 'at'>) => {
+      // Spec §5: penulis yang lebih lama (storage event / pull yang tertunda)
+      // tidak boleh menimpa entri series yang lebih baru di `entriesRef`.
+      const at = Date.now()
+      const prev = entriesRef.current.find(
+        (p: ProgressEntry) => String(p.seriesId) === String(entry.seriesId),
+      )
+      if (prev && prev.at > at) return
       const next = [
-        { ...entry, at: Date.now() },
-        ...entriesRef.current.filter((p) => String(p.seriesId) !== String(entry.seriesId)),
+        { ...entry, chapterId: toChapterId(entry.chapterId), at },
+        ...entriesRef.current.filter(
+          (p: ProgressEntry) => String(p.seriesId) !== String(entry.seriesId),
+        ),
       ].slice(0, MAX)
       apply(next)
       push(next)

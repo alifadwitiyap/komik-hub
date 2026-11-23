@@ -30,11 +30,13 @@
  */
 import { useCallback, useEffect, useRef, useState } from 'react'
 
+import { isChromeToggleKey } from '../readerChromeKeys'
+
 const THRESHOLD_PX = 40
 
 export interface ChromeControl {
   visible: boolean
-  /** toggle manual (tap tengah) */
+  /** toggle manual (tap tengah / tombol 'H') */
   toggle: () => void
   /** paksa tampil — dipakai saat chapter berganti */
   show: () => void
@@ -56,6 +58,23 @@ export function useChromeOnScroll(
 
   const show = useCallback(() => setVisible(true), [])
   const toggle = useCallback(() => setVisible((v) => !v), [])
+
+  // Pemicu keyboard: 'H'/'h' toggle chrome. Abaikan kalau fokus sedang di
+  // input/textarea/select/contenteditable atau elemen lain yang memakai tombol
+  // itu (mis. dialog preferensi) — handler hanya jalan saat fokus di body /
+  // area baca, jadi shortcut tidak mengganggu form.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (!isChromeToggleKey(e)) return
+      const t = e.target as HTMLElement | null
+      if (t?.closest('input, textarea, select, [contenteditable="true"], [role="dialog"]')) {
+        return
+      }
+      toggle()
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [toggle])
 
   useEffect(() => {
     anchor.current = window.scrollY

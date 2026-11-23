@@ -1,4 +1,5 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useId, useRef } from 'react'
+import { useSheetPresence } from '../hooks/useSheetPresence'
 import {
   IconBars,
   IconPersonRunning,
@@ -43,40 +44,62 @@ export default function ReaderSettingsSheet({
   marathonActions,
 }: ReaderSettingsSheetProps) {
   const panelRef = useRef<HTMLDivElement>(null)
+  const mounted = useSheetPresence(open)
+  const closeRef = useRef<HTMLButtonElement>(null)
+  const openerRef = useRef<HTMLElement | null>(null)
+  const onCloseRef = useRef(onClose)
+  onCloseRef.current = onClose
 
+  // Escape + focus return ke tombol pembuka. onClose dibaca dari ref supaya
+  // arrow function baru dari induk tidak memicu cleanup (focus return) di
+  // tengah sheet terbuka.
   useEffect(() => {
-    const prev = document.activeElement as HTMLElement | null
-    panelRef.current?.focus()
+    if (!open) return
+    const active = document.activeElement
+    const opener = active instanceof HTMLElement && active !== document.body ? active : null
+    openerRef.current = opener
+    // Tutup berada DI DALAM header sticky yang tidak ikut ter-scroll — fokus
+    // keyboard tidak boleh berhenti di elemen yang secara visual off-screen.
+    closeRef.current?.focus({ preventScroll: true })
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose()
+      if (e.key === 'Escape') onCloseRef.current()
     }
     document.addEventListener('keydown', onKey)
     return () => {
       document.removeEventListener('keydown', onKey)
-      prev?.focus()
+      openerRef.current?.focus({ preventScroll: true })
+      openerRef.current = null
     }
-  }, [onClose])
+  }, [open])
 
-  if (!open) return null
+  if (!mounted) return null
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/50" onClick={onClose}>
+    <div className={`fixed inset-0 z-50 flex items-end justify-center bg-black/50 ${open ? 'sheet-backdrop' : 'sheet-backdrop-closing'}`} onClick={onClose}>
       <div
         ref={panelRef}
         role="dialog"
         aria-modal="true"
+        aria-hidden={!open}
+        inert={!open}
         tabIndex={-1}
-        className="sheet-panel w-full max-w-md rounded-t-2xl bg-ink-900 pb-[calc(1.5rem+env(safe-area-inset-bottom))] outline-none"
+        className={`sheet-panel flex max-h-[92dvh] w-full flex-col overflow-hidden rounded-t-2xl bg-ink-900 outline-none ${open ? '' : 'sheet-closing'}`}
         onClick={(e) => e.stopPropagation()}
         onKeyDown={trapFocus}
       >
-        <div className="flex items-center justify-between px-4 py-3">
+        <div className="sticky top-0 z-20 flex shrink-0 items-center justify-between bg-ink-900 px-4 py-3">
           <h2 className="font-display text-[15px] font-bold text-ink-100">Preferensi</h2>
-          <button onClick={onClose} aria-label="Tutup" className="grid size-11 place-items-center rounded-xl text-ink-500 active:bg-ink-800 active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber">
+          <button
+            ref={closeRef}
+            type="button"
+            onClick={onClose}
+            aria-label="Tutup preferensi"
+            className="grid size-11 place-items-center rounded-xl text-ink-500 active:bg-ink-800 active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber"
+          >
             <IconXmark className="size-4" />
           </button>
         </div>
-        <div className="h-px bg-ink-800" />
 
+        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain pb-[env(safe-area-inset-bottom)]">
         <Row
           icon={<IconBars className="size-4" />}
           label="Mode Baca"
@@ -188,6 +211,7 @@ export default function ReaderSettingsSheet({
             Kembalikan Semula
           </button>
         </div>
+        </div>
       </div>
     </div>
   )
@@ -236,6 +260,7 @@ export function Row({
   disabled?: boolean
 }) {
   const clickable = onClick !== undefined
+  const generatedLabelId = useId()
   return (
     <div
       role={clickable ? 'button' : undefined}
@@ -246,14 +271,14 @@ export function Row({
       className={`flex items-center gap-3 px-4 py-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70 focus-visible:ring-inset ${clickable ? `${disabled ? 'cursor-not-allowed opacity-50' : 'cursor-pointer select-none active:bg-ink-850'}` : ''}`}
     >
       <span className="grid size-8 place-items-center rounded-full bg-ink-850 text-ink-300">{icon}</span>
-      <span id={labelId} className="min-w-0 flex-1 text-[13px] font-medium text-ink-100">{label}</span>
+      <span id={labelId ?? generatedLabelId} className="min-w-0 flex-1 text-[13px] font-medium text-ink-100">{label}</span>
       {value && <span className="text-[12px] text-ink-500">{value}</span>}
       {toggle !== undefined && (
         <span className="grid min-h-11 min-w-11 shrink-0 place-items-center">
           <button
           role="switch"
           aria-checked={toggle}
-          aria-labelledby={labelId}
+          aria-labelledby={labelId ?? generatedLabelId}
           onClick={() => onToggle?.(!toggle)}
           className={`relative h-6 w-11 shrink-0 rounded-full transition-colors duration-200 ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70 ${
             toggle ? 'bg-brand-amber' : 'bg-ink-700'
