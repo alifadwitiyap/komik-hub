@@ -1,4 +1,6 @@
 import { useEffect, useRef } from 'react'
+import { useSheetPresence } from '../hooks/useSheetPresence'
+import '../styles/sheets.css'
 import type { QueueItem } from '../readingQueue'
 
 interface Props {
@@ -13,15 +15,18 @@ interface Props {
 /** Bottom sheet daftar antrean — fokus terjaga, Escape menutup. */
 export default function QueueDrawer({ open, items, currentIndex, onClose, onPick, onExit }: Props) {
   const sheetRef = useRef<HTMLDivElement | null>(null)
+  const mounted = useSheetPresence(open)
+  const onCloseRef = useRef(onClose)
+  onCloseRef.current = onClose
 
   useEffect(() => {
-    if (!open) return
+    if (!open || !mounted) return
     const previous = document.activeElement instanceof HTMLElement ? document.activeElement : null
     sheetRef.current?.querySelector<HTMLElement>('button')?.focus()
     const onKey = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
         event.preventDefault()
-        onClose()
+        onCloseRef.current()
         return
       }
       if (event.key !== 'Tab') return
@@ -44,7 +49,9 @@ export default function QueueDrawer({ open, items, currentIndex, onClose, onPick
       document.removeEventListener('keydown', onKey)
       if (previous?.isConnected) previous.focus()
     }
-  }, [open, onClose])
+  }, [open, mounted])
+
+  if (!mounted) return null
 
   return (
     <div
@@ -56,7 +63,7 @@ export default function QueueDrawer({ open, items, currentIndex, onClose, onPick
         type="button"
         aria-label="Tutup daftar antrean"
         onClick={onClose}
-        className="absolute inset-0 size-full bg-black/60"
+        className={`sheet-backdrop absolute inset-0 size-full bg-black/60 ${open ? '' : 'sheet-backdrop-closing'}`}
       />
       <div
         ref={sheetRef}
@@ -64,7 +71,7 @@ export default function QueueDrawer({ open, items, currentIndex, onClose, onPick
         aria-modal="true"
         aria-label="Daftar antrean baca"
         data-open={open}
-        className="kh-sheet absolute inset-x-0 bottom-0 max-h-[75dvh] overflow-y-auto overscroll-contain rounded-t-2xl border-t border-ink-700 bg-night-dark px-4 pb-[calc(16px+env(safe-area-inset-bottom))] pt-4 text-white"
+        className={`sheet-panel absolute inset-x-0 bottom-0 max-h-[75dvh] overflow-y-auto overscroll-contain rounded-t-2xl border-t border-ink-700 bg-night-dark px-4 pb-[calc(16px+env(safe-area-inset-bottom))] pt-4 text-white ${open ? '' : 'sheet-closing'}`}
       >
         <div className="mb-3 flex items-center justify-between gap-3">
           <h2 className="text-[14px] font-bold">Sisa antrean</h2>
