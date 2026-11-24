@@ -4,7 +4,7 @@ import { imgUrl } from '../imgUrl'
 import { accountHeaders, unifiedApi } from '../api'
 import * as rakStore from '../rakStore'
 import { resolveResumeTarget, resumeLabel } from '../progressResume'
-import { readerHref, marathonHref } from '../readerSource' (feat(web): add mobile resume rail, quick actions, and rak status tabs)
+import { resumeHref } from '../readerSource'
 import { useProgress } from '../hooks/useProgress'
 import { useMarathonMemory } from '../hooks/useMarathonMemory'
 import { getUser } from '../account'
@@ -348,19 +348,6 @@ function HistoryTab({ entries }: { entries: rakStore.HistoryEntry[] }) {
       const pos = marathon.forHandle(e.handle)
       const target = resolveResumeTarget(p, pos)
       if (!target) return null
-      return {
-        key: e.title_key,
-        entry: e,
-        href: target.href,
-        chapter: resumeLabel({
-          chapterId: target.chapterId,
-          source: target.source,
-          chapterName: p.chapterName,
-        }),
-        page: target.page,
-      const key = String(p.chapterId ?? '')
-      const href = pos ? marathonHref(pos.chapterKey) : key ? readerHref(key) : null
-      if (!href) return null
       return {
         key: e.title_key,
         entry: e,

@@ -179,10 +179,9 @@ export default function Series() {
   // chapters terurut TERBARU -> TERLAMA. Satu aturan yang sama dipakai tombol
   // mulai, daftar, dan lanjut/next. Maraton mulai dari paling awal supaya
   // auto-advance benar-benar berjalan, bukan langsung ketemu "Tuntas".
-  const rawChapters = data?.chapters ?? []
   const chapters = useMemo(
-    () => sortByChapterNumber(rawChapters, (c) => chapterNumberOf(c) ?? '', 'terbaru'),
-    [rawChapters],
+    () => sortByChapterNumber(data?.chapters ?? [], (c) => chapterNumberOf(c) ?? '', 'terbaru'),
+    [data],
   )
   const rangeList = useMemo(() => {
     if (anchor == null || rangeEnd == null) return []
@@ -244,7 +243,7 @@ export default function Series() {
   )
   if (!data) return <Spinner label="Memuat manga…" />
 
-  const { series: s } = data (Fix reading progress, chapter order, image retry and reader motion)
+  const { series: s } = data
   const oldest = chapters.length > 0 ? chapters[chapters.length - 1] : null
   // rentang terpilih membentang > 40 chapter: perluas daftar supaya yang
   // terpilih benar-benar terlihat (bukan cuma sebagian). Tetap terpancar

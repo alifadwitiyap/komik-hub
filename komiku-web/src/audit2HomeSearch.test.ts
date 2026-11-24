@@ -16,7 +16,7 @@ describe('TopBar audit2: HP paling banyak dua ikon', () => {
     expect(appSrc).toContain('<CircleButton label="Cari" to="/cari">')
     expect(appSrc).toContain('<CircleButton label="Rak buku" to="/rak" className="hidden sm:grid">')
     expect(appSrc).toContain('<CircleButton label="Akun" to="/akun" className="hidden sm:grid">')
-    expect(appSrc.match(/<div className="hidden sm:flex">/g)?.length).toBe(2)
+    expect(appSrc.match(/<div className="hidden sm:flex">/g)?.length).toBe(1)
     expect(appSrc).toContain('<SourceHealthBadge />')
     expect(appSrc).toContain('<ThemeToggle />')
   })
