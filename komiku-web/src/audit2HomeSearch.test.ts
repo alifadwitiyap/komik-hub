@@ -8,12 +8,12 @@ import homeSrc from './pages/Home.tsx?raw'
 import searchSrc from './pages/Search.tsx?raw'
 import heartSrc from './components/HeartButton.tsx?raw'
 
-describe('TopBar audit2: HP logo + Cari/Notifikasi/Menu; sisanya sm+', () => {
-  it('logo kiri + Cari/Notifikasi/Menu kanan; sisanya sm+', () => {
+describe('TopBar audit2: HP logo + Menu/Notifikasi (Cari masuk burger); sisanya sm+', () => {
+  it('logo kiri + Menu/Notifikasi kanan; Cari/Akun/Rak dan ThemeToggle sm+', () => {
     const circleTags = appSrc.match(/<CircleButton[^>]*>/g) ?? []
     const mobile = circleTags.filter((tag) => !tag.includes('hidden sm:grid') && !tag.includes('sm:hidden'))
-    expect(mobile).toHaveLength(2)
-    expect(appSrc).toContain('<CircleButton label="Cari" to="/cari">')
+    expect(mobile).toHaveLength(1)
+    expect(appSrc).toContain('<CircleButton label="Cari" to="/cari" className="hidden sm:grid">')
     expect(appSrc).toContain('<CircleButton label="Rak buku" to="/rak" className="hidden sm:grid">')
     expect(appSrc).toContain('<CircleButton label="Akun" to="/akun" className="hidden sm:grid">')
     expect(appSrc.match(/<div className="hidden sm:flex">/g)?.length).toBe(1)
@@ -21,11 +21,13 @@ describe('TopBar audit2: HP logo + Cari/Notifikasi/Menu; sisanya sm+', () => {
     expect(appSrc).toContain('<ThemeToggle />')
   })
 
-  it('tombol Menu HP membuka dropdown Akun + Rak', () => {
+  it('tombol Menu HP membuka dropdown Cari + Akun + Rak', () => {
     expect(appSrc).toContain('label="Menu"')
     expect(appSrc).toContain('className="sm:hidden"')
     expect(appSrc).toContain('role="menu"')
     expect(appSrc).toContain('aria-label="Menu utama"')
+    expect(appSrc).toContain("navigate('/cari')")
+    expect(appSrc).toContain('> Cari')
     expect(appSrc).toContain("navigate('/akun')")
     expect(appSrc).toContain('> Akun')
     expect(appSrc).toContain("navigate('/rak')")

@@ -184,12 +184,12 @@ function TopBar({
           />
         </Link>
         <div className="ml-auto flex items-center gap-1.5">
-          {/* HP: hanya logo + dua ikon (Cari, Notifikasi). Desktop tetap lengkap. */}
+          {/* HP: logo + Menu + Notifikasi. Cari masuk ke dropdown burger; desktop tetap lengkap. */}
           <SourceHealthBadge />
           <div className="hidden sm:flex">
             <ThemeToggle />
           </div>
-          <CircleButton label="Cari" to="/cari">
+          <CircleButton label="Cari" to="/cari" className="hidden sm:grid">
             <IconMagnifyingGlass className="size-4" />
           </CircleButton>
           <div className="relative" ref={menuWrap}>
@@ -222,8 +222,16 @@ function TopBar({
                   <button
                     type="button"
                     role="menuitem"
-                    onClick={() => { setMenuOpen(false); navigate('/akun') }}
+                    onClick={() => { setMenuOpen(false); navigate('/cari') }}
                     className="flex min-h-11 w-full items-center gap-3 px-3.5 text-left text-[13px] font-medium text-ink-100 transition-colors active:bg-ink-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand-amber"
+                  >
+                    <IconMagnifyingGlass className="size-4 shrink-0 text-ink-300" /> Cari
+                  </button>
+                  <button
+                    type="button"
+                    role="menuitem"
+                    onClick={() => { setMenuOpen(false); navigate('/akun') }}
+                    className="flex min-h-11 w-full items-center gap-3 border-t border-ink-800 px-3.5 text-left text-[13px] font-medium text-ink-100 transition-colors active:bg-ink-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand-amber"
                   >
                     <IconUser className="size-4 shrink-0 text-ink-300" /> Akun
                   </button>
