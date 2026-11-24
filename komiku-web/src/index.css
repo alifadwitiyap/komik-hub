@@ -193,15 +193,27 @@ html {
 }
 
 html,
-body,
-#root {
+body {
   height: 100%;
+  overscroll-behavior: none;
+}
+
+#root {
+  min-height: 100dvh;
 }
 
 body {
   @apply bg-ink-950 text-ink-200 font-sans antialiased;
-  /* cegah rubber-band saat scroll panjang di iOS */
-  overscroll-behavior-y: none;
+}
+
+/* Cegah seleksi teks/oranye tak sengaja saat tap cepat di kontrol sentuh.
+   Hanya pada kontrol interaktif — BUKAN body (teks artikel tetap bisa dipilih). */
+button,
+[role="button"],
+nav a {
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
 }
 
 /* scrollbar tipis gelap */
@@ -254,7 +266,7 @@ body {
 .similar-trigger {
   touch-action: manipulation;
   -webkit-tap-highlight-color: transparent;
-  transition: transform var(--dur-press) ease-out, background-color 150ms ease-out;
+  transition: transform var(--dur-press) var(--ease-out), background-color 150ms var(--ease-out);
 }
 .similar-trigger:active { transform: scale(0.985); }
 .similar-chevron { transition: transform var(--dur-accordion) var(--ease-out-emil); }
@@ -263,7 +275,7 @@ body {
   display: grid;
   grid-template-rows: 0fr;
   opacity: 0;
-  transition: grid-template-rows var(--dur-accordion) var(--ease-out-emil), opacity 180ms ease-out;
+  transition: grid-template-rows var(--dur-accordion) var(--ease-out-emil), opacity 180ms var(--ease-out);
 }
 .similar-panel[data-open='true'] { grid-template-rows: 1fr; opacity: 1; }
 .similar-panel-inner {
@@ -275,7 +287,7 @@ body {
 .similar-card {
   touch-action: manipulation;
   -webkit-tap-highlight-color: transparent;
-  transition: transform var(--dur-press) ease-out;
+  transition: transform var(--dur-press) var(--ease-out);
 }
 .similar-card:active { transform: scale(0.97); }
 @media (prefers-reduced-motion: reduce) {
@@ -300,12 +312,35 @@ body {
   --dur-toast: 220ms;
 }
 
+/* Notifikasi dropdown: 160ms var(--ease-out) scale(0.95)→1 + fade,
+   dari sudut kanan atas. @starting-style memberi enter saat mount;
+   keluar memakai animasi keyframe (unmount langsung oleh React). */
+.notif-panel {
+  transform: scale(1);
+  opacity: 1;
+  transition: transform 160ms var(--ease-out), opacity 160ms var(--ease-out);
+}
+@starting-style {
+  .notif-panel {
+    transform: scale(0.95);
+    opacity: 0;
+  }
+}
+@keyframes notif-panel-out {
+  from { transform: scale(1); opacity: 1; }
+  to { transform: scale(0.95); opacity: 0; }
+}
+.notif-panel-closing {
+  animation: notif-panel-out 160ms var(--ease-out) both;
+  pointer-events: none;
+}
+
 .kh-tap {
   min-height: 44px;
   touch-action: manipulation;
   -webkit-tap-highlight-color: transparent;
-  transition: transform var(--dur-press) ease-out, background-color 150ms ease-out,
-    border-color 150ms ease-out;
+  transition: transform var(--dur-press) var(--ease-out), background-color 150ms var(--ease-out),
+    border-color 150ms var(--ease-out);
 }
 .kh-tap:active { transform: scale(0.97); }
 
@@ -532,7 +567,8 @@ body {
   animation: range-rail-in 180ms var(--ease-out);
 }
 @keyframes range-rail-in {
-  from { transform: scaleY(0); }
+  from { transform: scaleY(0.05); opacity: 0; }
+  to { transform: scaleY(1); opacity: 1; }
 }
 /* Segmen progres berjalan: shimmer opacity, bukan ping. */
 .bar-shimmer {

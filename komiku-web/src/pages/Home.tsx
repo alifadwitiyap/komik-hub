@@ -104,7 +104,7 @@ export default function Home() {
               setError(null)
               setReloadKey((k) => k + 1)
             }}
-            className="min-h-11 rounded-full bg-brand-amber px-5 py-2.5 text-[13px] font-bold text-white transition-colors active:scale-[0.97] active:duration-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber focus-visible:ring-offset-2 [@media(hover:hover)]:hover:bg-brand-amber-soft"
+            className="min-h-11 rounded-full bg-brand-amber px-5 py-2.5 text-[13px] font-bold text-white transition-colors active:scale-[0.97] active:duration-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber focus-visible:ring-offset-2 [@media(hover:hover)_and_(pointer:fine)]:hover:bg-brand-amber-soft"
           >
             Coba lagi
           </button>
@@ -161,7 +161,7 @@ export default function Home() {
 
       {/* Legacy Komiku gagal: beri tahu tanpa memblokir feed sumber lain. */}
       {error && (
-        <div className="mx-2.5 mt-3 rounded-xl border border-ink-800 bg-ink-900 px-3 py-2 text-[12px] text-ink-300">
+        <div className="mx-4 mt-3 rounded-xl border border-ink-800 bg-ink-900 px-3 py-2 text-[12px] text-ink-300">
           Sebagian konten Komiku tidak tersedia — menampilkan sumber lain.
         </div>
       )}
@@ -326,7 +326,7 @@ function BackdropCarousel({ items }: { items: Manga[] }) {
           onClick={() => setAutoplay((a) => !a)}
           aria-label={autoplay ? 'Jeda putar otomatis' : 'Lanjutkan putar otomatis'}
           aria-pressed={!autoplay}
-          className="absolute right-4 top-4 grid size-11 place-items-center rounded-full bg-black/50 text-white backdrop-blur-sm transition-colors [@media(hover:hover)]:hover:bg-black/70"
+          className="absolute right-4 top-4 grid size-11 place-items-center rounded-full bg-black/50 text-white backdrop-blur-sm transition-colors active:scale-[0.97] [@media(hover:hover)_and_(pointer:fine)]:hover:bg-black/70"
         >
           {autoplay ? <IconPause className="size-3.5" /> : <IconPlaySolid className="size-3.5" />}
         </button>
@@ -348,7 +348,7 @@ function BackdropCarousel({ items }: { items: Manga[] }) {
             >
               <span
                 aria-hidden="true"
-                className={`h-1.5 rounded-full transition-[transform] duration-200 ease-out origin-left ${
+                className={`h-1.5 rounded-full transition-[transform] duration-200 ease-out origin-center ${
                   i === idx ? 'w-2 scale-x-[2.5] bg-brand-amber' : 'w-2 bg-ink-300'
                 }`}
               />
@@ -538,11 +538,6 @@ export const MangaCard = memo(function MangaCard({
           {manga.title}
         </span>
       )}
-      {label && !compact && (
-        <span className="absolute right-1 top-1 max-w-[calc(100%-0.5rem)] truncate rounded bg-black/70 px-1.5 py-0.5 text-[10px] font-bold tabular-nums text-white">
-          {label}
-        </span>
-      )}
       {canFavorite && (
         <HeartButton
           manga={{
@@ -620,7 +615,7 @@ export function Row({ manga }: { manga: Manga }) {
   return (
     <Link
       to={to}
-      className="flex items-center gap-3 rounded-xl border border-ink-800 bg-ink-900 p-2.5 transition-colors active:scale-[0.97] active:duration-100 [@media(hover:hover)]:hover:border-ink-700"
+      className="flex items-center gap-3 rounded-xl border border-ink-800 bg-ink-900 p-2.5 transition-colors active:scale-[0.97] active:duration-100 [@media(hover:hover)_and_(pointer:fine)]:hover:border-ink-700"
     >
       <div className="size-12 shrink-0 overflow-hidden rounded-xl bg-ink-850">
         {img && !failed && (
@@ -656,7 +651,7 @@ export function Row({ manga }: { manga: Manga }) {
             handle: manga.handle ?? String(manga.id),
             source: manga.source ?? 'komiku',
           }}
-          className="shrink-0 text-ink-300 [@media(hover:hover)]:hover:text-brand-amber"
+          className="shrink-0 text-ink-300 [@media(hover:hover)_and_(pointer:fine)]:hover:text-brand-amber"
         />
       )}
     </Link>

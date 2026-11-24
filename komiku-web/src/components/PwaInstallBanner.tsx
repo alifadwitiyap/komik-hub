@@ -7,7 +7,7 @@ export default function PwaInstallBanner() {
   if (isStandalone || dismissed) return null
 
   return (
-    <div className="sticky top-[calc(3.5rem+env(safe-area-inset-top))] z-30 mx-2.5 mt-2 flex items-center gap-2 rounded-xl border border-ink-800 bg-ink-900/95 px-3 py-1.5 backdrop-blur-[16px]">
+    <div className="sticky top-[calc(3.5rem+env(safe-area-inset-top))] z-30 mx-4 mt-2 flex items-center gap-2 rounded-xl border border-ink-800 bg-ink-900/95 px-3 py-1.5 backdrop-blur-[16px]">
       <p className="min-w-0 flex-1 text-[12px] leading-tight text-ink-300">
         Pasang Komik Hub di layar utama untuk baca layar penuh.
         {isIosSafari && (
@@ -28,7 +28,7 @@ export default function PwaInstallBanner() {
       <button
         type="button"
         onClick={dismissBanner}
-        aria-label="Tutup ajangan pasang aplikasi"
+        aria-label="Tutup ajakan pasang aplikasi"
         className="kh-tap grid size-11 shrink-0 place-items-center rounded-lg text-xl text-ink-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber"
       >
         ×

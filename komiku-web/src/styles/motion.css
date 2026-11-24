@@ -76,8 +76,8 @@ html {
   touch-action: manipulation;
   -webkit-tap-highlight-color: transparent;
   transition:
-    transform var(--dur-press) ease-out,
-    opacity var(--dur-press) ease-out;
+    transform var(--dur-press) var(--ease-out-quint),
+    opacity var(--dur-press) var(--ease-out-quint);
 }
 .tap-target:active {
   transform: scale(0.97);

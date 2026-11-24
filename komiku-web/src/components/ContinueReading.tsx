@@ -153,7 +153,7 @@ function ResumeCard({ item, first }: { item: Item; first: boolean }) {
         to={item.href}
         aria-label={`Lanjut baca ${item.title}`}
         data-testid="continue-reading-card"
-        className="flex min-h-20 items-center gap-3 w-[196px] shrink-0 snap-start rounded-2xl border border-ink-800 bg-ink-900 p-2 transition-colors [@media(hover:hover)]:hover:border-ink-700 active:scale-[0.98]"
+        className="flex min-h-20 items-center gap-3 w-[196px] shrink-0 snap-start rounded-2xl border border-ink-800 bg-ink-900 p-2 transition-colors [@media(hover:hover)_and_(pointer:fine)]:hover:border-ink-700 active:scale-[0.98]"
       >
         {body}
       </Link>
@@ -163,7 +163,7 @@ function ResumeCard({ item, first }: { item: Item; first: boolean }) {
     <Link
       to={item.href}
       aria-label={`Buka ${item.title}`}
-      className="flex min-h-20 items-center gap-3 w-[196px] shrink-0 snap-start rounded-2xl border border-ink-800 bg-ink-900 p-2 transition-colors [@media(hover:hover)]:hover:border-ink-700 active:scale-[0.98]"
+      className="flex min-h-20 items-center gap-3 w-[196px] shrink-0 snap-start rounded-2xl border border-ink-800 bg-ink-900 p-2 transition-colors [@media(hover:hover)_and_(pointer:fine)]:hover:border-ink-700 active:scale-[0.98]"
     >
       {body}
     </Link>
@@ -192,7 +192,7 @@ export default function ContinueReading() {
         ))}
         <Link
           to="/rak?tab=sejarah"
-          className="grid min-h-11 min-w-11 shrink-0 snap-start place-items-center rounded-2xl border border-dashed border-ink-700 px-4 text-center text-[11.5px] font-semibold text-brand-amber transition-colors [@media(hover:hover)]:hover:border-brand-amber"
+          className="grid min-h-11 min-w-11 shrink-0 snap-start place-items-center rounded-2xl border border-dashed border-ink-700 px-4 text-center text-[11.5px] font-semibold text-brand-amber transition-colors [@media(hover:hover)_and_(pointer:fine)]:hover:border-brand-amber"
         >
           Lihat semua
         </Link>

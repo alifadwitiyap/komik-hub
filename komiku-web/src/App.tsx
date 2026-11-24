@@ -63,7 +63,7 @@ export default function App() {
 
   return (
     <NotifCountsProvider>
-      <div className="min-h-full bg-ink-950">
+      <div className="min-h-[100dvh] bg-ink-950">
         <a
           href="#konten"
           className="sr-only focus:not-sr-only focus:fixed focus:left-3 focus:top-3 focus:z-50 focus:rounded-full focus:bg-brand-amber focus:px-4 focus:py-2 focus:text-sm focus:font-bold focus:text-white"
@@ -74,7 +74,7 @@ export default function App() {
           <TopBar bellOpen={bellOpen} onToggleBell={() => setBellOpen((o) => !o)} onClosePanel={() => setBellOpen(false)} />
         )}
 
-        <main id="konten" tabIndex={-1} className={immersive ? '' : 'pb-24 pt-14 outline-none'}>
+        <main id="konten" tabIndex={-1} className={immersive ? '' : 'pb-[calc(6rem+env(safe-area-inset-bottom))] pt-[calc(3.5rem+env(safe-area-inset-top))] outline-none'}>
           {/* Boundary DI LUAR Suspense: Suspense menangani pending, boundary
               harus melihat error yang lolos darinya. Diletakkan di sini (bukan
               membungkus seluruh App) supaya TopBar/BottomNav tetap hidup dan
@@ -145,7 +145,7 @@ function TopBar({
 
   return (
     <header className="fixed inset-x-0 top-0 z-40 border-b border-ink-800 bg-ink-950/95">
-      <div className="mx-auto flex h-[calc(3.5rem+env(safe-area-inset-top))] max-w-3xl items-center gap-1 px-3 pr-[max(0.75rem,env(safe-area-inset-right))]">
+      <div className="mx-auto flex h-[calc(3.5rem+env(safe-area-inset-top))] max-w-3xl items-center gap-1 px-4 pl-[max(1rem,env(safe-area-inset-left))] pr-[max(1rem,env(safe-area-inset-right))] pt-[env(safe-area-inset-top)]">
         <Link to="/" className="flex min-h-11 items-center py-2.5" aria-label="Komik Hub">
           <img
             src="/logo-komik-hub.png"
@@ -262,7 +262,7 @@ function CircleButton({
   className?: string
 } & React.AriaAttributes) {
   const cls =
-    `grid size-11 place-items-center rounded-full bg-ink-850 text-ink-300 transition-colors active:bg-ink-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber focus-visible:ring-offset-2 focus-visible:ring-offset-ink-950 ${className ?? ''}`
+    `grid size-11 place-items-center rounded-full bg-ink-850 transition-[transform,background-color] duration-[var(--dur-press)] ease-[var(--ease-out)] active:scale-[0.97] text-ink-300 transition-colors active:bg-ink-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber focus-visible:ring-offset-2 focus-visible:ring-offset-ink-950 ${className ?? ''}`
   if (to) {
     return (
       <Link to={to} aria-label={label} className={cls} {...rest}>
@@ -290,7 +290,7 @@ function BottomNav() {
   return (
     <nav
       aria-label="Navigasi utama"
-      className="fixed inset-x-3 bottom-3 z-40 mx-auto max-w-3xl rounded-2xl border border-hairline bg-ink-900/88 pb-[env(safe-area-inset-bottom)] backdrop-blur-[16px]"
+      className="fixed inset-x-4 bottom-3 z-40 mx-auto max-w-3xl rounded-2xl border border-hairline bg-ink-900/88 pb-[env(safe-area-inset-bottom)] backdrop-blur-[16px]"
     >
       <ul className="relative flex p-1">
         {/* SATU pill persisten — posisi berubah via transform, tidak remount. */}

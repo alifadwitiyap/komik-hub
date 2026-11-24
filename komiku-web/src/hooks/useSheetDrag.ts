@@ -2,7 +2,6 @@ import { useEffect, useLayoutEffect, useRef } from 'react'
 import type { PointerEvent as ReactPointerEvent, RefObject } from 'react'
 import {
   DUR_SHEET_MS,
-  EASE_OUT_QUINT,
   SHEET_DISMISS_DISTANCE_PX,
   SHEET_DISMISS_VELOCITY_PX_S,
 } from '../lib/motion'
@@ -162,8 +161,10 @@ export function useSheetDrag({
     if (!d || e.pointerId !== d.id) return
     const panel = panelRef.current
     if (!panel) return
-    // Hanya ke bawah; geser naik dijepit di 0 (tanpa efek karet).
-    const dy = Math.max(0, d.startOffset + e.clientY - d.startY)
+    // Rubber-band hanya untuk geser naik (rawDy < 0): 20% dari jarak jari.
+    // Geser bawah tetap 1:1; velocity/dismiss memakai jarak mentah (tanpa damping).
+    const rawDy = d.startOffset + e.clientY - d.startY
+    const dy = rawDy < 0 ? rawDy * 0.2 : rawDy
     panel.style.transform = `translateY(${dy}px)`
     const now = performance.now()
     d.samples.push({ y: e.clientY, t: now })
@@ -198,7 +199,7 @@ export function useSheetDrag({
       clearInline(panel)
       return
     }
-    panel.style.transition = `transform ${DUR_SHEET_MS}ms ${EASE_OUT_QUINT}`
+    panel.style.transition = `transform ${DUR_SHEET_MS}ms var(--ease-drawer)`
     const onSpringEnd = (e: TransitionEvent) => {
       if (e.propertyName === 'transform') clearInline(panel)
     }

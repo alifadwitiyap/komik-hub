@@ -107,6 +107,6 @@ export const DUR_MICRO_MS = 150
 export const DUR_UI_MS = 220
 export const DUR_SHEET_MS = 240
 
-// Drag-to-dismiss peka kecepatan (plan 3.4): flick > 500 px/s atau tarik > 100 px.
-export const SHEET_DISMISS_VELOCITY_PX_S = 500
+// Drag-to-dismiss peka kecepatan (plan 3.4): flick > 110 px/s atau tarik > 100 px.
+export const SHEET_DISMISS_VELOCITY_PX_S = 110
 export const SHEET_DISMISS_DISTANCE_PX = 100

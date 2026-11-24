@@ -3,10 +3,10 @@ import { describe, it, expect } from 'vitest'
 import { decideDismiss } from './hooks/useSheetDrag'
 import { SHEET_DISMISS_DISTANCE_PX, SHEET_DISMISS_VELOCITY_PX_S } from './lib/motion'
 
-const FLICK = SHEET_DISMISS_VELOCITY_PX_S / 1000 // 0.5 px/ms = 500 px/s
+const FLICK = SHEET_DISMISS_VELOCITY_PX_S / 1000 // 0.11 px/ms = 110 px/s
 
 describe('useSheetDrag.decideDismiss', () => {
-  it('flick ke bawah > 500 px/s menutup walau jaraknya pendek', () => {
+  it('flick ke bawah > 110 px/s menutup walau jaraknya pendek', () => {
     expect(decideDismiss(12, FLICK + 0.01)).toBe(true)
   })
 

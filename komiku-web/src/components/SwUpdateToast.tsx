@@ -67,7 +67,7 @@ export default function SwUpdateToast() {
   }
 
   return (
-    <div className="pointer-events-none fixed inset-x-3 bottom-[calc(4.75rem+env(safe-area-inset-bottom))] z-30 mx-auto max-w-3xl">
+    <div className="pointer-events-none fixed inset-x-4 bottom-[calc(4.75rem+env(safe-area-inset-bottom))] z-30 mx-auto max-w-3xl">
       <div
         role="status"
         className="kh-toast-enter pointer-events-auto flex items-center gap-3 rounded-2xl border border-ink-700 bg-ink-900/95 px-3 py-2 shadow-lg backdrop-blur-[16px]"
@@ -76,7 +76,7 @@ export default function SwUpdateToast() {
         <button
           type="button"
           onClick={applyUpdate}
-          className="kh-toast-enter kh-tap shrink-0 rounded-xl bg-brand-amber px-4 text-[13px] font-semibold text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber"
+          className="kh-tap shrink-0 rounded-xl bg-brand-amber px-4 text-[13px] font-semibold text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber"
         >
           Muat ulang
         </button>
