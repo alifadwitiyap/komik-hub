@@ -365,7 +365,7 @@ export default function ChapterPickerSheet({
                     </span>
                     {isCurrent && (
                       <span className="shrink-0 rounded-full bg-brand-amber px-2 py-0.5 text-[9.5px] font-bold text-white">
-                        Dip baca
+                        Dibaca
                       </span>
                     )}
                   </Link>

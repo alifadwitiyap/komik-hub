@@ -66,7 +66,7 @@ export default function ReaderToolbar({
   )
   const metaNode =
     subtitle || loadingLabel || badge || chip ? (
-      <div className="flex min-w-0 items-center gap-1.5">
+      <div className="flex min-w-0 items-center gap-1.5 overflow-hidden">
         {subtitle && (
           <p className="min-w-0 truncate text-[11px] tabular-nums leading-tight text-white/85 [text-shadow:0_1px_2px_rgba(0,0,0,0.7)]">
             {subtitle}
@@ -83,7 +83,7 @@ export default function ReaderToolbar({
           {loadingLabel ?? ''}
         </p>
         {loadingLabel && (
-          <span className="shrink-0 text-[10px] leading-tight text-white/70 [text-shadow:0_1px_2px_rgba(0,0,0,0.7)]">
+          <span className="min-w-0 truncate text-[10px] leading-tight text-white/70 [text-shadow:0_1px_2px_rgba(0,0,0,0.7)]">
             {loadingLabel}
           </span>
         )}
@@ -115,7 +115,7 @@ export default function ReaderToolbar({
           type="button"
           onClick={onBack}
           aria-label="Kembali"
-          className="grid size-11 shrink-0 touch-manipulation place-items-center rounded-full text-white/90 active:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/80"
+          className="grid size-11 shrink-0 touch-manipulation select-none [-webkit-touch-callout:none] place-items-center rounded-full text-white/90 active:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/80"
         >
           <IconAngleLeft className="size-4" aria-hidden="true" />
         </button>
@@ -124,7 +124,7 @@ export default function ReaderToolbar({
             type="button"
             onClick={onHome}
             aria-label="Beranda"
-            className="grid size-11 shrink-0 touch-manipulation place-items-center rounded-full text-white/90 active:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/80"
+            className="grid size-11 shrink-0 touch-manipulation select-none [-webkit-touch-callout:none] place-items-center rounded-full text-white/90 active:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/80"
           >
             <IconHouse className="size-4" aria-hidden="true" />
           </button>
@@ -132,13 +132,13 @@ export default function ReaderToolbar({
         {titleHref ? (
           <Link
             to={titleHref}
-            className="flex min-h-11 min-w-0 flex-1 flex-col justify-center rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/80"
+            className="flex min-h-11 min-w-0 flex-1 flex-col justify-center overflow-hidden rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/80"
           >
             {titleNode}
             {metaNode}
           </Link>
         ) : (
-          <div className="min-w-0 flex-1">
+          <div className="min-w-0 flex-1 overflow-hidden">
             {titleNode}
             {metaNode}
           </div>
@@ -150,7 +150,7 @@ export default function ReaderToolbar({
           type="button"
           onClick={onShare}
           aria-label="Bagikan"
-          className="grid size-11 shrink-0 touch-manipulation place-items-center rounded-full text-white/90 active:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/80"
+          className="grid size-11 shrink-0 touch-manipulation select-none [-webkit-touch-callout:none] place-items-center rounded-full text-white/90 active:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/80"
         >
           <IconShare className="size-4" aria-hidden="true" />
         </button>
@@ -158,7 +158,7 @@ export default function ReaderToolbar({
           type="button"
           onClick={onMore}
           aria-label="Menu"
-          className="grid size-11 shrink-0 touch-manipulation place-items-center rounded-full text-white/90 active:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/80"
+          className="grid size-11 shrink-0 touch-manipulation select-none [-webkit-touch-callout:none] place-items-center rounded-full text-white/90 active:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/80"
         >
           <IconEllipsisV className="size-4" aria-hidden="true" />
         </button>

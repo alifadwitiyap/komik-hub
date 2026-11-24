@@ -42,7 +42,7 @@ describe('(1) footer satu baris + navigasi', () => {
     expect(footerSrc).toContain('grid-cols-3')
     expect(footerSrc).toContain('disabled={!prevHref}')
     expect(footerSrc).toContain('disabled={!nextHref}')
-    expect(footerSrc).toContain("nextHref ? 'Berikutnya' : 'Chapter berikutnya'")
+    expect(footerSrc).toContain("nextHref ? 'Berikutnya' : 'Berikutnya'")
   })
 
   it('kontrol tersembunyi keluar dari urutan Tab', () => {
@@ -67,7 +67,7 @@ describe('(2) pemicu keyboard dipasang di hook chrome', () => {
 
 describe('(3) sheet Preferensi: viewport, scroll, sticky, Escape + focus return', () => {
   it('max-h viewport + header shrink-0 + area opsi overflow-y-auto', () => {
-    expect(sheetSrc).toContain('max-h-[92dvh]')
+    expect(sheetSrc).toContain('max-h-[85dvh] max-w-md')
     expect(sheetSrc).toContain('flex shrink-0 items-center justify-between')
     expect(sheetSrc).toContain('min-h-0 flex-1 overflow-y-auto')
   })

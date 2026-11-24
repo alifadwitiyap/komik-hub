@@ -956,7 +956,7 @@ export default function ReaderMarathon() {
 
   return (
     <div
-      className={`relative min-h-dvh ${
+      className={`relative min-h-dvh overflow-x-clip ${
         settings.paperLight || settings.canvasTheme === 'terang'
           ? 'reader-canvas-terang reader-canvas-paper'
           : settings.canvasTheme === 'oled'
@@ -990,7 +990,7 @@ export default function ReaderMarathon() {
       <div
         aria-hidden="true"
         data-testid="marathon-tap-layer"
-        className="reader-tap-layer fixed inset-0 z-10 touch-manipulation"
+        className="reader-tap-layer fixed inset-0 z-10 touch-manipulation select-none [-webkit-touch-callout:none]"
         onPointerDown={(e) => {
           tap.down(e.pointerId, e.pointerType, e.clientX, e.clientY, performance.now())
         }}
@@ -1043,7 +1043,7 @@ export default function ReaderMarathon() {
           pt = tinggi toolbar + safe-area supaya tidak tertutup toolbar fixed.
           Chip "Maraton" di toolbar DIHAPUS: judul sudah menyebut mode ini, dan
           Judul di 390 px menyisakan ~120 px untuk teks + ikon kembali. */}
-      <div className="mx-auto max-w-3xl px-5 pr-16 pt-[calc(env(safe-area-inset-top)+7.5rem)] lg:pr-5">
+      <div className="mx-auto max-w-3xl px-5 pr-16 pt-[calc(env(safe-area-inset-top)+3.5rem)] lg:pr-5">
         <p
           className={`rounded-lg border border-brand-amber-dim/60 bg-brand-amber-dim/10 px-3 py-2 text-center text-[12px] font-medium leading-snug ${
             settings.paperLight ? 'text-reader-muted' : 'text-reader-muted-night'
@@ -1056,7 +1056,7 @@ export default function ReaderMarathon() {
       {/* Rantai halaman: semua chapter disambung jadi satu alur */}
       <div
         ref={flowRef}
-        className="reader-zoom-flow mx-auto flex max-w-3xl flex-col"
+        className="reader-zoom-flow reader-flow mx-auto flex max-w-3xl flex-col"
         style={{
           ...filterStyle,
           transformOrigin: zoomOrigin,

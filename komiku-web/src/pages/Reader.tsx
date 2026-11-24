@@ -971,7 +971,7 @@ export default function Reader() {
       <div
         aria-hidden="true"
         data-testid="reader-tap-layer"
-        className="reader-tap-layer fixed inset-0 z-10 touch-manipulation"
+        className="reader-tap-layer fixed inset-0 z-10 touch-manipulation select-none [-webkit-touch-callout:none]"
         onPointerDown={(e) => {
           tap.down(e.pointerId, e.pointerType, e.clientX, e.clientY, performance.now())
         }}

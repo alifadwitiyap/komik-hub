@@ -204,11 +204,11 @@ export default function ReaderMenu({
               type="button"
               onClick={it.onClick}
               aria-pressed={'ariaPressed' in it ? it.ariaPressed : undefined}
-              className="flex min-h-11 w-full flex-col items-center gap-1.5 rounded-xl py-2 active:bg-white/10 active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70"
+              className="flex min-h-11 w-full flex-col items-center gap-1.5 rounded-xl py-2 select-none transition-transform duration-[var(--dur-press)] ease-[var(--ease-out)] active:bg-white/10 active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70"
             >
               <span
                 className={`grid size-10 place-items-center rounded-full ${
-                  it.active ? 'bg-brand-red text-white' : 'bg-white/10 text-white/85'
+                  it.active ? 'bg-brand-amber text-ink-950' : 'bg-white/10 text-white/85'
                 }`}
               >
                 {it.icon}

@@ -105,7 +105,7 @@ export default function ReaderFooter({
           type="button"
           onClick={onPickChapter}
           aria-label="Pilih Chapter"
-          className="pointer-events-auto flex min-h-11 min-w-0 touch-manipulation items-center justify-center gap-2 rounded-xl border border-white/40 bg-black/70 px-2 py-3 text-[13px] font-bold text-white backdrop-blur-sm active:bg-black/85 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/80"
+          className="pointer-events-auto flex min-h-11 min-w-0 touch-manipulation select-none [-webkit-touch-callout:none] items-center justify-center gap-2 rounded-xl border border-white/40 bg-black/70 px-2 py-3 text-[13px] font-bold text-white backdrop-blur-sm transition-transform duration-[var(--dur-press)] ease-[var(--ease-out)] active:bg-black/85 active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/80"
         >
           <IconChapterList className="size-4 shrink-0" />
           <span className="truncate">Chapter</span>
@@ -120,7 +120,7 @@ export default function ReaderFooter({
             ? 'bg-brand-amber active:bg-[#005f92]'
             : 'border border-white/25 bg-black/50 text-white/70'}
         >
-          <span className="truncate">{nextHref ? 'Berikutnya' : 'Chapter berikutnya'}</span>
+          <span className="truncate">{nextHref ? 'Berikutnya' : 'Berikutnya'}</span>
           {nextHref ? <IconArrowRight className="size-3.5 shrink-0" aria-hidden="true" /> : null}
         </FooterButton>
       </nav>
@@ -142,7 +142,7 @@ function FooterButton({
   className: string
   children: React.ReactNode
 }) {
-  const base = `pointer-events-auto flex min-h-11 min-w-0 touch-manipulation items-center justify-center gap-1.5 rounded-xl px-2 py-3 text-[13px] font-bold text-white backdrop-blur-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white ${className}`
+  const base = `pointer-events-auto flex min-h-11 min-w-0 touch-manipulation select-none [-webkit-touch-callout:none] items-center justify-center gap-1.5 rounded-xl px-2 py-3 text-[13px] font-bold text-white backdrop-blur-sm transition-transform duration-[var(--dur-press)] ease-[var(--ease-out)] active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white ${className}`
   if (disabled || !to) {
     return (
       <button

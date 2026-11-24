@@ -134,7 +134,7 @@
   height: 24px;
   margin-top: -9px;
   border-radius: 9999px;
-  background: #ffb020;
+  background: var(--color-brand-amber);
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.6);
 }
 .reader-scrubber::-moz-range-track {
@@ -147,7 +147,7 @@
   height: 24px;
   border: 0;
   border-radius: 9999px;
-  background: #ffb020;
+  background: var(--color-brand-amber);
 }
 
 /* Panel: skeleton sebelum rasio diketahui; slot gagal tetap seluar halaman. */
