@@ -10,6 +10,7 @@ import { IconPlaySolid } from '../icons'
 import ContinueReading from '../components/ContinueReading'
 import QuickActionSheet, { LONG_PRESS_MS, LONG_PRESS_SLOP_PX } from '../components/QuickActionSheet'
 import PwaInstallBanner from '../components/PwaInstallBanner'
+import UpdateQueueStrip from '../components/UpdateQueueStrip'
 import { useProgress } from '../hooks/useProgress'
 
 /**
@@ -167,6 +168,8 @@ export default function Home() {
 
       {/* Ajakan pasang langsung di bawah header / area atas beranda. */}
       <PwaInstallBanner />
+
+      <UpdateQueueStrip />
 
       {/* "Lanjut membaca" tampil langsung di bawah header agar pembaca bisa
           segera lanjut — lebih dekat daripada carousel atau pintasan. */}

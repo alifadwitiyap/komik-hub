@@ -165,9 +165,7 @@ function TopBar({
         </Link>
         <div className="ml-auto flex items-center gap-1.5">
           {/* HP: hanya logo + dua ikon (Cari, Notifikasi). Desktop tetap lengkap. */}
-          <div className="hidden sm:flex">
-            <SourceHealthBadge />
-          </div>
+          <SourceHealthBadge />
           <div className="hidden sm:flex">
             <ThemeToggle />
           </div>

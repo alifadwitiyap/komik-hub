@@ -1,5 +1,6 @@
 @import 'tailwindcss';
 @import './styles/motion.css';
+@import './styles/sourceHealth.css';
 
 /* ---------------------------------------------------------------------------
    Tema Komiku+ v2.3.0 — nilai diekstrak dari APK (resources.arsc):
