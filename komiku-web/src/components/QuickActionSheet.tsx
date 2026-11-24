@@ -138,11 +138,11 @@ export default function QuickActionSheet({
         aria-label={`Aksi cepat ${manga.title}`}
         data-testid="quick-action-sheet"
         tabIndex={-1}
-        className={`sheet-panel w-full max-w-md rounded-t-2xl border-t border-ink-700 bg-ink-900 pb-[calc(1.5rem+env(safe-area-inset-bottom))] outline-none ${open ? '' : 'sheet-closing'}`}
+        className={`sheet-panel max-h-[85dvh] w-full max-w-md overflow-y-auto overscroll-contain rounded-t-2xl border-t border-ink-700 bg-ink-900 pb-[calc(1.5rem+env(safe-area-inset-bottom))] outline-none ${open ? '' : 'sheet-closing'}`}
         onClick={(e) => e.stopPropagation()}
       >
         <div {...drag} aria-hidden="true" className="pointer-events-auto flex h-11 touch-none select-none items-start justify-center">
-          <span className="h-1 w-9 rounded-full bg-white/20" />
+          <span className="h-1 w-9 rounded-full bg-ink-500/40 dark:bg-white/20" />
         </div>
         <div {...drag} className="sticky top-0 z-20 flex items-center justify-between gap-2 bg-ink-900 px-4 py-2 pointer-events-auto touch-none select-none">
           <p className="min-w-0 truncate font-display text-[14px] font-semibold text-ink-100">{manga.title}</p>
@@ -160,7 +160,7 @@ export default function QuickActionSheet({
             <Link
               to={read.href}
               onClick={onClose}
-              className="flex min-h-11 items-center gap-3 rounded-xl border border-brand-amber-dim bg-brand-amber-dim/10 px-3.5 py-3 text-left text-[13px] font-semibold text-ink-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber"
+              className="flex min-h-11 active:scale-[0.97] transition-[transform,background-color] duration-150 ease-[var(--ease-out)] touch-manipulation select-none items-center gap-3 rounded-xl border border-brand-amber-dim bg-brand-amber-dim/10 px-3.5 py-3 text-left text-[13px] font-semibold text-ink-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber"
             >
               <span aria-hidden="true">▶</span>{read.label}
             </Link>
@@ -169,7 +169,7 @@ export default function QuickActionSheet({
             <button
               type="button"
               onClick={toggleFavorite}
-              className="flex min-h-11 w-full items-center gap-3 rounded-xl border border-ink-700 px-3.5 py-3 text-left text-[13px] font-semibold text-ink-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber"
+              className="flex min-h-11 w-full active:scale-[0.97] transition-[transform,background-color] duration-150 ease-[var(--ease-out)] touch-manipulation select-none items-center gap-3 rounded-xl border border-ink-700 px-3.5 py-3 text-left text-[13px] font-semibold text-ink-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber"
             >
               <span aria-hidden="true">{favorite ? '♥' : '♡'}</span>
               {favorite ? 'Hapus dari Rak' : 'Simpan ke Rak'}
@@ -178,14 +178,14 @@ export default function QuickActionSheet({
           <Link
             to={detailHref}
             onClick={onClose}
-            className="flex min-h-11 items-center gap-3 rounded-xl border border-ink-700 px-3.5 py-3 text-left text-[13px] font-semibold text-ink-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber"
+            className="flex min-h-11 active:scale-[0.97] transition-[transform,background-color] duration-150 ease-[var(--ease-out)] touch-manipulation select-none items-center gap-3 rounded-xl border border-ink-700 px-3.5 py-3 text-left text-[13px] font-semibold text-ink-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber"
           >
             <span aria-hidden="true">↗</span>Buka Detail Komik
           </Link>
           <button
             type="button"
             onClick={() => void copy()}
-            className="flex min-h-11 w-full items-center gap-3 rounded-xl border border-ink-700 px-3.5 py-3 text-left text-[13px] font-semibold text-ink-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber"
+            className="flex min-h-11 w-full active:scale-[0.97] transition-[transform,background-color] duration-150 ease-[var(--ease-out)] touch-manipulation select-none items-center gap-3 rounded-xl border border-ink-700 px-3.5 py-3 text-left text-[13px] font-semibold text-ink-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber"
           >
             <span aria-hidden="true">⧉</span>Salin Tautan
           </button>

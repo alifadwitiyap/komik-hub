@@ -98,9 +98,9 @@ export default function SourceHealthPanel() {
                 <span className={`text-[12.5px] tabular-nums ${TEXT_TONE[tone]}`}>
                   {latencyLabel(row)}
                 </span>
-                <span aria-hidden="true" className="h-[3px] w-3.5 overflow-hidden rounded-full bg-ink-700">
+                <span aria-hidden="true" className="h-[3px] w-12 overflow-hidden rounded-full bg-ink-700">
                   <span
-                    className={`sh-latency-bar block h-[3px] w-3.5 rounded-full ${BAR_TONE[tone]}`}
+                    className={`sh-latency-bar block h-[3px] w-12 rounded-full ${BAR_TONE[tone]}`}
                     style={{ transform: `scaleX(${ratio})` }}
                   />
                 </span>

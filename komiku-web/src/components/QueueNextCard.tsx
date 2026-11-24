@@ -29,8 +29,8 @@ export default function QueueNextCard({ item, index, total, onNext, onOpenDrawer
 
   return (
     <section className="relative z-20 mx-auto w-full max-w-3xl px-4 pt-5" aria-label="Antrean baca berikutnya">
-      <div className="rounded-2xl border border-ink-700/60 bg-night-dark/80 p-4 text-ink-100">
-        <p className="mb-3 text-[11px] font-semibold uppercase tracking-wide text-ink-300">
+      <div className="rounded-2xl border border-ink-700/60 bg-night-dark/80 p-4 text-white">
+        <p className="mb-3 text-[11px] font-semibold uppercase tracking-wide text-neutral-400">
           Selesai di seri ini · Antrean {index + 1} dari {total}
         </p>
         <div className="flex items-start gap-3">
@@ -48,14 +48,14 @@ export default function QueueNextCard({ item, index, total, onNext, onOpenDrawer
           ) : (
             <div
               aria-hidden="true"
-              className="flex h-[72px] w-12 shrink-0 items-center justify-center rounded bg-ink-800 text-lg font-bold text-ink-300"
+              className="flex h-[72px] w-12 shrink-0 items-center justify-center rounded bg-ink-800 text-lg font-bold text-neutral-200"
             >
               {item.title.slice(0, 1).toUpperCase()}
             </div>
           )}
           <div className="min-w-0 flex-1">
             <p className="line-clamp-2 text-[14px] font-bold leading-snug">{item.title}</p>
-            <p className="mt-1 text-[12px] text-ink-300">
+            <p className="mt-1 text-[12px] text-neutral-300">
               Ch. {item.targetChapter} (+{item.unreadCount} baru)
             </p>
           </div>
@@ -72,14 +72,14 @@ export default function QueueNextCard({ item, index, total, onNext, onOpenDrawer
           <button
             type="button"
             onClick={onOpenDrawer}
-            className="kh-tap min-h-11 rounded px-2 text-[12px] font-semibold text-ink-200 underline-offset-2 active:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber"
+            className="kh-tap min-h-11 rounded px-2 text-[12px] font-semibold text-neutral-200 underline-offset-2 active:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber"
           >
             Lihat sisa antrean ({total - index - 1})
           </button>
           <button
             type="button"
             onClick={onFinish}
-            className="kh-tap min-h-11 rounded px-2 text-[12px] font-semibold text-ink-300 underline-offset-2 active:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber"
+            className="kh-tap min-h-11 rounded px-2 text-[12px] font-semibold text-neutral-300 underline-offset-2 active:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber"
           >
             Selesai
           </button>

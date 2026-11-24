@@ -71,10 +71,10 @@ export function SourceSortBar() {
             type="button"
             aria-pressed={source === s.id}
             onClick={() => setField('source', s.id)}
-            className={`min-h-11 touch-manipulation rounded-full px-3 py-1.5 text-[13px] font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber focus-visible:ring-offset-2 ${
+            className={`min-h-11 touch-manipulation select-none rounded-full px-3 py-1.5 text-[13px] font-semibold transition-[transform,background-color,border-color,color] duration-150 ease-[var(--ease-out)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber focus-visible:ring-offset-2 active:scale-[0.97] ${
               source === s.id
                 ? 'bg-brand-amber text-white'
-                : 'border border-ink-800 bg-ink-900 text-ink-300 transition-colors active:scale-[0.97] active:border-brand-amber [@media(hover:hover)]:hover:border-ink-700'
+                : 'border border-ink-800 bg-ink-900 text-ink-300 transition-colors active:border-brand-amber [@media(hover:hover)_and_(pointer:fine)]:hover:border-ink-700'
             }`}
           >
             {s.label}

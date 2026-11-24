@@ -141,6 +141,9 @@ export default function Akun() {
               autoComplete="username"
               autoCapitalize="none"
               spellCheck={false}
+              autoCorrect="off"
+              inputMode="text"
+              enterKeyHint="go"
               placeholder="username"
               className="min-h-11 min-w-0 flex-1 rounded-xl border border-ink-700 bg-ink-850 px-3 py-2 text-base text-ink-100 outline-none focus:border-brand-amber"
             />
