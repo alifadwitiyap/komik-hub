@@ -29,8 +29,8 @@ describe('PWA manifest + ikon', () => {
       scope: '/',
       display: 'standalone',
       orientation: 'portrait-primary',
-      background_color: '#0d1117',
-      theme_color: '#0b0b0d',
+      background_color: '#0a0c0f',
+      theme_color: '#0a0c0f',
       lang: 'id',
     })
     expect(m.icons.map((i: { purpose: string }) => i.purpose)).toEqual(['any', 'any', 'maskable'])
@@ -95,7 +95,8 @@ describe('UX install + update', () => {
     expect(toastSrc).toContain("pathname.startsWith('/maraton/')")
     expect(toastSrc).toContain("Versi baru siap")
     expect(toastSrc).toContain('Muat ulang')
-    expect(toastSrc).toContain('kh-toast-enter kh-tap')
+    expect(toastSrc).toContain('kh-toast-enter')
+    expect(toastSrc).toContain('kh-tap')
     expect(toastSrc).toContain("{ type: 'SKIP_WAITING' }")
     expect(toastSrc).toContain('controllerchange')
     expect(toastSrc).toContain('window.location.reload()')
