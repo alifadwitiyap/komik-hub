@@ -125,7 +125,7 @@ export default function SimilarSeriesAccordion({ handle }: SimilarSeriesAccordio
             <div className="no-bar flex snap-x snap-mandatory gap-3 overflow-x-auto px-4 pb-4 pt-1">
               {items.map((item) => (
                 <Link key={item.handle} to={`/manga/${encodeURIComponent(item.handle)}`} className="similar-card w-[118px] shrink-0 snap-start focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber">
-                  <div className="relative aspect-[2/3] overflow-hidden rounded-[10px] bg-[#1B202A]">
+                  <div className="relative aspect-[2/3] overflow-hidden rounded-[10px] bg-ink-850">
                     {item.cover_url ? <img src={imgUrl(item.cover_url)} alt="" loading="lazy" className="size-full object-cover" /> : <span className="grid size-full place-items-center p-2 text-center text-[11px] text-ink-500">{item.title}</span>}
                     {item.last_chapter && <span className="absolute right-1 top-1 rounded bg-black/70 px-1 py-0.5 text-[9px] font-semibold text-white">Ch. {item.last_chapter}</span>}
                   </div>

@@ -495,10 +495,10 @@ export default function Series() {
                   title={chapters.length === 0 ? 'Tidak ada chapter untuk diunduh' : undefined}
                   aria-pressed={pickMode}
                   aria-label="Unduh chapter"
-                  className={`flex min-h-11 items-center gap-1.5 rounded-xl px-3.5 py-2.5 text-[13px] font-bold transition-colors active:scale-[0.97] active:duration-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber focus-visible:ring-offset-2 disabled:opacity-50 ${
+                  className={`flex min-h-11 items-center justify-center gap-1.5 rounded-xl border px-3.5 py-2.5 text-[13px] font-semibold transition-colors active:scale-[0.97] active:duration-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber focus-visible:ring-offset-2 disabled:opacity-50 ${
                     pickMode
-                      ? 'bg-brand-amber-soft text-ink-100 ring-2 ring-brand-amber/50'
-                      : 'bg-brand-amber text-white [@media(hover:hover)]:hover:bg-brand-amber-soft'
+                      ? 'border-brand-amber bg-brand-amber/15 text-brand-amber'
+                      : 'border-ink-700 text-ink-300 [@media(hover:hover)]:hover:bg-ink-850'
                   }`}
                 >
                   <IconDownload className="size-4" />
@@ -572,7 +572,9 @@ export default function Series() {
             placeholder="Cari nomor chapter…"
             value={chapterQuery}
             onChange={(e) => setChapterQuery(e.target.value)}
-            className="min-h-11 min-w-0 flex-1 rounded-xl border border-ink-700 bg-ink-900 px-3 text-[12.5px] text-ink-100 placeholder:text-ink-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber"
+            inputMode="decimal"
+            enterKeyHint="search"
+            className="min-h-11 min-w-0 flex-1 rounded-xl border border-ink-700 bg-ink-900 px-3 text-base text-ink-100 placeholder:text-ink-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber sm:text-[12.5px]"
           />
           {chapterQuery.trim() && (
             <button

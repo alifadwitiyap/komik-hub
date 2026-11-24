@@ -153,7 +153,7 @@ export function RangeSelectBar({
       role="region"
       aria-label="Pilih range unduhan"
       data-range-dock
-      className="range-dock fixed inset-x-3 bottom-[calc(4rem+env(safe-area-inset-bottom))] z-30 rounded-xl border border-ink-800 bg-ink-900/95 p-3 shadow-lg shadow-black/40 backdrop-blur"
+      className="range-dock fixed inset-x-3 bottom-[calc(4.75rem+env(safe-area-inset-bottom))] z-30 rounded-xl border border-ink-800 bg-ink-900/95 p-3 shadow-lg shadow-black/40 backdrop-blur"
     >
       <div className="flex flex-wrap items-center justify-between gap-2">
         <p className="text-[12px] font-semibold tabular-nums text-ink-200" aria-live="polite" aria-atomic="true">

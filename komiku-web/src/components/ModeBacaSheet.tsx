@@ -100,7 +100,7 @@ export default function ModeBacaSheet({
         aria-modal="true"
         tabIndex={-1}
         onKeyDown={trapFocus}
-        className="sheet-panel w-full max-w-md rounded-t-2xl border-t border-ink-700 bg-ink-900 pb-[calc(1.5rem+env(safe-area-inset-bottom))] outline-none"
+        className="sheet-panel flex max-h-[85dvh] w-full max-w-md flex-col overflow-hidden rounded-t-2xl border-t border-ink-700 bg-ink-900 pb-[calc(1.5rem+env(safe-area-inset-bottom))] outline-none"
         onClick={(e) => e.stopPropagation()}
       >
         {/* 44px hit area; 36×4px visual. */}
@@ -109,7 +109,7 @@ export default function ModeBacaSheet({
           aria-hidden="true"
           className="pointer-events-auto flex h-11 touch-none select-none items-start justify-center"
         >
-          <span className="h-1 w-9 rounded-full bg-white/20" />
+          <span className="h-1 w-9 rounded-full bg-ink-500/40 dark:bg-white/20" />
         </div>
         <div
           {...drag}
@@ -127,7 +127,7 @@ export default function ModeBacaSheet({
           </button>
         </div>
 
-        <div className="space-y-1.5 px-3">
+        <div className="min-h-0 space-y-1.5 overflow-y-auto overscroll-contain px-3">
           {/* Gulir Halaman — mode manual (aktif saat auto scroll mati) */}
           <button
             onClick={() => onAutoToggle(false)}
