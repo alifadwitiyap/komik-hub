@@ -1,4 +1,4 @@
-import { Link, NavLink, Route, Routes, useLocation, useParams } from 'react-router-dom'
+import { Link, NavLink, Route, Routes, useLocation, useNavigate, useParams } from 'react-router-dom'
 import { lazy, Suspense, useEffect, useRef, useState } from 'react'
 import Home from './pages/Home'
 import Search from './pages/Search'
@@ -9,7 +9,7 @@ const Reader = lazy(() => import('./pages/Reader'))
 const ReaderMarathon = lazy(() => import('./pages/ReaderMarathon'))
 const Akun = lazy(() => import('./pages/Akun'))
 const Notifikasi = lazy(() => import('./pages/Notifikasi'))
-import { IconHouse, IconRectangleHistory, IconMoon, IconSun, IconMagnifyingGlass, IconBookHeart, IconBell, IconUser } from './icons'
+import { IconHouse, IconRectangleHistory, IconMoon, IconSun, IconMagnifyingGlass, IconBookHeart, IconBell, IconUser, IconBars, IconXmark } from './icons'
 import NotifPanel from './components/NotifPanel'
 import SourceHealthBadge from './components/SourceHealthBadge'
 import SwUpdateToast from './components/SwUpdateToast'
@@ -133,15 +133,35 @@ function TopBar({
   onClosePanel: () => void
 }) {
   const notif = useNotifCounts()
+  const navigate = useNavigate()
+  const [menuOpen, setMenuOpen] = useState(false)
+  const toggleMenu = () => setMenuOpen((o) => !o)
   // panel baru dibuka → tarik data terbaru
   const refreshNotif = notif.refresh
   useEffect(() => {
     if (bellOpen) refreshNotif()
   }, [bellOpen, refreshNotif])
 
+  useEffect(() => {
+    if (!menuOpen) return
+    const onDown = (e: MouseEvent) => {
+      if (!menuWrap.current?.contains(e.target as Node)) setMenuOpen(false)
+    }
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setMenuOpen(false)
+    }
+    document.addEventListener('mousedown', onDown)
+    document.addEventListener('keydown', onKey)
+    return () => {
+      document.removeEventListener('mousedown', onDown)
+      document.removeEventListener('keydown', onKey)
+    }
+  }, [menuOpen])
+
   // batas "di dalam" untuk klik-luar panel: menu + lonceng sekaligus,
   // supaya klik lonceng tidak langsung ditutup listener luar.
   const bellWrap = useRef<HTMLDivElement>(null)
+  const menuWrap = useRef<HTMLDivElement>(null)
 
   return (
     <header className="fixed inset-x-0 top-0 z-40 border-b border-ink-800 bg-ink-950/95">
@@ -172,6 +192,53 @@ function TopBar({
           <CircleButton label="Cari" to="/cari">
             <IconMagnifyingGlass className="size-4" />
           </CircleButton>
+          <div className="relative" ref={menuWrap}>
+            <CircleButton
+              label="Menu"
+              onClick={toggleMenu}
+              aria-expanded={menuOpen}
+              aria-haspopup="menu"
+              className="sm:hidden"
+            >
+              {menuOpen ? <IconXmark className="size-4" /> : <IconBars className="size-4" />}
+            </CircleButton>
+            {menuOpen && (
+              <>
+                {/* klik-luar: overlay transparan menutup menu tanpa menutup NotifPanel */}
+                <button
+                  type="button"
+                  aria-label="Tutup menu"
+                  className="fixed inset-0 z-40 cursor-default sm:hidden"
+                  onClick={() => setMenuOpen(false)}
+                />
+                <div
+                  role="menu"
+                  aria-label="Menu utama"
+                  className="notif-panel absolute right-0 top-full z-50 mt-2 w-[min(15rem,calc(100vw-2rem))] overflow-hidden rounded-xl border border-ink-800 bg-ink-950 shadow-xl shadow-black/40 sm:hidden"
+                  onKeyDown={(e) => {
+                    if (e.key === 'Escape') setMenuOpen(false)
+                  }}
+                >
+                  <button
+                    type="button"
+                    role="menuitem"
+                    onClick={() => { setMenuOpen(false); navigate('/akun') }}
+                    className="flex min-h-11 w-full items-center gap-3 px-3.5 text-left text-[13px] font-medium text-ink-100 transition-colors active:bg-ink-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand-amber"
+                  >
+                    <IconUser className="size-4 shrink-0 text-ink-300" /> Akun
+                  </button>
+                  <button
+                    type="button"
+                    role="menuitem"
+                    onClick={() => { setMenuOpen(false); navigate('/rak') }}
+                    className="flex min-h-11 w-full items-center gap-3 border-t border-ink-800 px-3.5 text-left text-[13px] font-medium text-ink-100 transition-colors active:bg-ink-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand-amber"
+                  >
+                    <IconBookHeart className="size-4 shrink-0 text-ink-300" /> Rak buku
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
           <CircleButton label="Rak buku" to="/rak" className="hidden sm:grid">
             <IconBookHeart className="size-4" />
           </CircleButton>

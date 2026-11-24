@@ -8,10 +8,10 @@ import homeSrc from './pages/Home.tsx?raw'
 import searchSrc from './pages/Search.tsx?raw'
 import heartSrc from './components/HeartButton.tsx?raw'
 
-describe('TopBar audit2: HP paling banyak dua ikon', () => {
-  it('logo kiri + Cari/Notifikasi kanan; sisanya sm+', () => {
+describe('TopBar audit2: HP logo + Cari/Notifikasi/Menu; sisanya sm+', () => {
+  it('logo kiri + Cari/Notifikasi/Menu kanan; sisanya sm+', () => {
     const circleTags = appSrc.match(/<CircleButton[^>]*>/g) ?? []
-    const mobile = circleTags.filter((tag) => !tag.includes('hidden sm:grid'))
+    const mobile = circleTags.filter((tag) => !tag.includes('hidden sm:grid') && !tag.includes('sm:hidden'))
     expect(mobile).toHaveLength(2)
     expect(appSrc).toContain('<CircleButton label="Cari" to="/cari">')
     expect(appSrc).toContain('<CircleButton label="Rak buku" to="/rak" className="hidden sm:grid">')
@@ -19,6 +19,18 @@ describe('TopBar audit2: HP paling banyak dua ikon', () => {
     expect(appSrc.match(/<div className="hidden sm:flex">/g)?.length).toBe(1)
     expect(appSrc).toContain('<SourceHealthBadge />')
     expect(appSrc).toContain('<ThemeToggle />')
+  })
+
+  it('tombol Menu HP membuka dropdown Akun + Rak', () => {
+    expect(appSrc).toContain('label="Menu"')
+    expect(appSrc).toContain('className="sm:hidden"')
+    expect(appSrc).toContain('role="menu"')
+    expect(appSrc).toContain('aria-label="Menu utama"')
+    expect(appSrc).toContain("navigate('/akun')")
+    expect(appSrc).toContain('> Akun')
+    expect(appSrc).toContain("navigate('/rak')")
+    expect(appSrc).toContain('> Rak buku')
+    expect(appSrc).toContain('if (e.key === \'Escape\') setMenuOpen(false)')
   })
 
   it('panel notifikasi dan target 44px tidak berubah', () => {
