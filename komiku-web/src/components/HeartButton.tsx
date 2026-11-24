@@ -79,7 +79,7 @@ export default function HeartButton({ manga, className = '', labeled = false }: 
         aria-label={loved ? 'Hapus dari favorit' : 'Tambah ke favorit'}
         aria-pressed={loved}
         onClick={onToggle}
-        className={`flex min-h-11 shrink-0 items-center justify-center gap-1.5 rounded-xl border px-3 py-2.5 text-[13px] font-semibold transition-colors active:scale-[0.97] active:transition-transform active:duration-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber ${
+        className={`flex min-h-11 min-w-11 touch-manipulation select-none shrink-0 items-center justify-center gap-1.5 rounded-xl border px-3 py-2.5 text-[13px] font-semibold transition-colors active:scale-[0.97] active:transition-transform active:duration-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber ${
           loved
             ? 'border-brand-amber-dim bg-brand-amber/15 text-brand-amber'
             : 'border-ink-700 text-ink-300 [@media(hover:hover)_and_(pointer:fine)]:hover:bg-ink-850'

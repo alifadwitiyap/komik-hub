@@ -483,7 +483,7 @@ export default function SeriesUnified() {
                   href={m.url}
                   target="_blank"
                   rel="noreferrer noopener"
-                  className="mt-2.5 inline-block text-[11.5px] font-semibold text-brand-amber"
+                  className="mt-2.5 inline-flex min-h-11 items-center text-[11.5px] font-semibold text-brand-amber"
                 >
                   Buka halaman asli ↗
                 </a>
@@ -589,7 +589,7 @@ export default function SeriesUnified() {
       </div>
 
       {/* Daftar chapter */}
-      <section className="px-4 pb-6" data-series-list>
+      <section className="px-4 pb-6 pt-4" data-series-list>
         <h2 className="mb-2 text-[13px] font-semibold text-ink-100">
           Chapter <span className="text-ink-500">({chapters.length})</span>
           {readTotal > 0 && (
@@ -607,7 +607,9 @@ export default function SeriesUnified() {
             placeholder="Cari nomor chapter…"
             value={chapterQuery}
             onChange={(e) => setChapterQuery(e.target.value)}
-            className="min-h-11 min-w-0 flex-1 rounded-xl border border-ink-700 bg-ink-900 px-3 text-[12.5px] text-ink-100 placeholder:text-ink-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber"
+            inputMode="decimal"
+            enterKeyHint="search"
+            className="min-h-11 min-w-0 flex-1 rounded-xl border border-ink-700 bg-ink-900 px-3 text-base text-ink-100 placeholder:text-ink-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber sm:text-[12.5px]"
           />
           {chapterQuery.trim() && (
             <button
@@ -932,7 +934,7 @@ export default function SeriesUnified() {
                           ? `${chapterLabel(c)} — sudah dibaca`
                           : `${chapterLabel(c)} — belum dibaca`
                       }
-                      className="flex min-h-11 min-w-0 flex-1 items-center justify-between gap-3 py-3 pr-3.5 transition-colors [@media(hover:hover)]:hover:bg-ink-850 active:bg-ink-850"
+                      className="flex min-h-11 min-w-0 flex-1 items-center justify-between gap-3 px-3.5 py-3 transition-colors [@media(hover:hover)]:hover:bg-ink-850 active:bg-ink-850"
                     >
                       <span className={titleCls}>{chapterLabel(c)}</span>
                       {c.source !== m.source && (

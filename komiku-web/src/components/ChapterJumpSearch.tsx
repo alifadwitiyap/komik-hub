@@ -163,7 +163,7 @@ export default function ChapterJumpSearch({
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder="mis. 00.1"
-          inputMode="search"
+          inputMode="decimal"
           enterKeyHint="search"
           className="min-h-11 min-w-0 flex-1 rounded-full border border-ink-300 bg-ink-900 px-3.5 text-base text-ink-100 placeholder:text-ink-500 focus:border-brand-amber focus:outline-none"
         />
