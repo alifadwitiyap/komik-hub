@@ -521,6 +521,8 @@ export default function Search() {
             placeholder="Judul, mis. Solo Leveling"
             inputMode="search"
             enterKeyHint="search"
+            autoCapitalize="none"
+            autoCorrect="off"
             aria-label="Cari komik"
             className="min-h-11 min-w-0 flex-1 rounded-full border border-ink-300 bg-ink-900 py-2.5 pl-10 pr-10 text-base text-ink-100 placeholder:text-ink-500 focus:border-brand-amber focus:outline-none"
           />
@@ -529,7 +531,7 @@ export default function Search() {
               type="button"
               aria-label="Hapus teks"
               onClick={() => setInput('')}
-              className="absolute right-2 min-h-11 min-w-11 rounded-full text-ink-500 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber active:text-ink-300"
+              className="absolute right-2 min-h-11 min-w-11 touch-manipulation select-none rounded-full text-ink-500 transition-[transform,background-color,border-color,color] duration-150 ease-[var(--ease-out)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber active:scale-[0.97] active:text-ink-300"
             >
               ×
             </button>
@@ -538,7 +540,7 @@ export default function Search() {
         <button
           type="submit"
           aria-label="Cari"
-          className="shrink-0 min-h-11 rounded-full bg-brand-amber px-3.5 py-2 text-[13px] font-bold text-white transition-colors active:bg-brand-amber/80 active:scale-[0.97] touch-manipulation focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber focus-visible:ring-offset-2 [@media(hover:hover)]:hover:bg-brand-amber-soft"
+          className="shrink-0 min-h-11 rounded-full bg-brand-amber px-3.5 py-2 text-[13px] font-bold text-white transition-[transform,background-color,border-color,color] duration-150 ease-[var(--ease-out)] active:bg-brand-amber/80 active:scale-[0.97] touch-manipulation select-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber focus-visible:ring-offset-2 [@media(hover:hover)_and_(pointer:fine)]:hover:bg-brand-amber-soft"
         >
           Cari
         </button>
@@ -552,7 +554,7 @@ export default function Search() {
           aria-expanded={filterOpen}
           aria-controls="panel-filter-cari"
           onClick={openFilter}
-          className={`kh-tap inline-flex min-h-11 flex-1 touch-manipulation items-center justify-center gap-1.5 rounded-full px-2.5 py-1.5 text-[12.5px] font-bold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber focus-visible:ring-offset-2 active:scale-[0.97] ${
+          className={`kh-tap inline-flex min-h-11 flex-1 touch-manipulation select-none items-center justify-center gap-1.5 rounded-full px-2.5 py-1.5 text-[12.5px] font-bold transition-[transform,background-color,border-color,color] duration-150 ease-[var(--ease-out)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber focus-visible:ring-offset-2 active:scale-[0.97] ${
             filterOpen || activeChips.length > 0
               ? 'bg-brand-amber text-white'
               : 'border border-ink-700 bg-ink-900 text-ink-300'
@@ -570,7 +572,7 @@ export default function Search() {
           onClick={() =>
             setFilter('status', status === COMPLETED_STATUS ? null : COMPLETED_STATUS)
           }
-          className={`kh-tap inline-flex min-h-11 shrink-0 touch-manipulation items-center justify-center rounded-full px-3 py-1.5 text-[12.5px] font-bold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber focus-visible:ring-offset-2 active:scale-[0.97] ${
+          className={`kh-tap inline-flex min-h-11 shrink-0 touch-manipulation select-none items-center justify-center rounded-full px-3 py-1.5 text-[12.5px] font-bold transition-[transform,background-color,border-color,color] duration-150 ease-[var(--ease-out)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber focus-visible:ring-offset-2 active:scale-[0.97] ${
             status === COMPLETED_STATUS
               ? 'bg-brand-amber text-white'
               : 'border border-ink-700 bg-ink-900 text-ink-300'
@@ -583,7 +585,7 @@ export default function Search() {
             aria-label="Urutkan hasil"
             value={srt ?? 'terbaru'}
             onChange={(e) => setFilter('sort', e.target.value)}
-            className="min-h-11 w-full appearance-none rounded-full border border-ink-700 bg-ink-900 py-1 pl-3 pr-7 text-[12.5px] font-semibold text-ink-300 focus:border-brand-amber focus:outline-none"
+            className="min-h-11 w-full appearance-none rounded-full border border-ink-700 bg-ink-900 py-1 pl-3 pr-7 text-[12.5px] font-semibold text-ink-300 text-base focus:border-brand-amber focus:outline-none sm:text-[12.5px]"
           >
             {SORTS.map((s) => (
               <option key={s.value} value={s.value}>{s.label}</option>
@@ -652,7 +654,7 @@ export default function Search() {
             tabIndex={-1}
             onKeyDown={trapFocus}
             onClick={(e) => e.stopPropagation()}
-            className={`sheet-panel flex max-h-[88dvh] w-full max-w-md flex-col overflow-y-auto rounded-t-2xl border-t border-ink-700 bg-ink-900 pb-[calc(1.5rem+env(safe-area-inset-bottom))] outline-none ${
+            className={`sheet-panel flex max-h-[88dvh] w-full max-w-md flex-col overflow-y-auto overscroll-contain rounded-t-2xl border-t border-ink-700 bg-ink-900 pb-[calc(1.5rem+env(safe-area-inset-bottom))] outline-none ${
               filterOpen ? '' : 'sheet-closing'
             }`}
           >
@@ -661,7 +663,7 @@ export default function Search() {
               aria-hidden="true"
               className="pointer-events-auto flex h-11 shrink-0 touch-none select-none items-start justify-center pt-2"
             >
-              <span className="h-1 w-9 rounded-full bg-white/20" />
+              <span className="h-1 w-9 rounded-full bg-ink-500/40 dark:bg-white/20" />
             </div>
             <div
               {...drag}
@@ -673,7 +675,7 @@ export default function Search() {
                 type="button"
                 aria-label="Tutup filter"
                 onClick={() => setFilterOpen(false)}
-                className="grid size-11 place-items-center rounded-full text-ink-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber"
+                className="grid size-11 touch-manipulation select-none place-items-center rounded-full text-ink-300 transition-[transform,background-color,border-color,color] duration-150 ease-[var(--ease-out)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber active:scale-[0.97]"
               >
                 <IconXmark className="size-5" />
               </button>
@@ -708,7 +710,7 @@ export default function Search() {
                   </select>
                   <SelectChevron />
                 </div>
-                <div className="relative flex min-w-0">
+                <div className="relative col-span-2 flex min-w-0">
                   <select
                     aria-label="Filter genre"
                     value={draft.genre}
@@ -752,7 +754,7 @@ export default function Search() {
                         type="button"
                         aria-pressed={active}
                         onClick={() => setDraft((d) => ({ ...d, min_ch: opt.value }))}
-                        className={`kh-tap inline-flex min-h-11 touch-manipulation items-center justify-center rounded-full border px-1.5 text-[12px] font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber ${
+                        className={`kh-tap inline-flex min-h-11 touch-manipulation select-none items-center justify-center rounded-full border px-1.5 text-[12px] font-semibold transition-[transform,background-color,border-color,color] duration-150 ease-[var(--ease-out)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber active:scale-[0.97] ${
                           active
                             ? 'border-brand-amber bg-brand-amber text-white'
                             : 'border-ink-800 bg-ink-850 text-ink-300'
@@ -768,14 +770,14 @@ export default function Search() {
                 <button
                   type="button"
                   onClick={applyFilters}
-                  className="min-h-11 flex-1 rounded-full bg-brand-amber px-5 py-2.5 text-[13px] font-bold text-white transition-colors active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber focus-visible:ring-offset-2"
+                  className="touch-manipulation select-none min-h-11 flex-1 rounded-full bg-brand-amber px-5 py-2.5 text-[13px] font-bold text-white transition-[transform,background-color,border-color,color] duration-150 ease-[var(--ease-out)] active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber focus-visible:ring-offset-2"
                 >
                   Terapkan
                 </button>
                 <button
                   type="button"
                   onClick={() => setDraft(defaults)}
-                  className="min-h-11 flex-1 rounded-full border border-ink-700 px-5 py-2.5 text-[13px] font-semibold text-ink-300 transition-colors active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber focus-visible:ring-offset-2"
+                  className="touch-manipulation select-none min-h-11 flex-1 rounded-full border border-ink-700 px-5 py-2.5 text-[13px] font-semibold text-ink-300 transition-[transform,background-color,border-color,color] duration-150 ease-[var(--ease-out)] active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber focus-visible:ring-offset-2"
                 >
                   Reset
                 </button>
@@ -795,7 +797,7 @@ export default function Search() {
               type="button"
               aria-label={`Hapus ${chip.label}`}
               onClick={() => setFilter(chip.key, null)}
-              className="min-h-11 rounded-full border border-brand-amber/40 bg-brand-amber/10 px-3 py-1.5 text-[12px] font-semibold text-brand-amber transition-colors active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber"
+              className="touch-manipulation select-none min-h-11 rounded-full border border-brand-amber/40 bg-brand-amber/10 px-3 py-1.5 text-[12px] font-semibold text-brand-amber transition-[transform,background-color,border-color,color] duration-150 ease-[var(--ease-out)] active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber"
             >
               {chip.label} ×
             </button>
@@ -830,7 +832,7 @@ export default function Search() {
                   <button
                     type="button"
                     onClick={() => commitQuery(r)}
-                    className="min-h-11 px-3 py-1.5 text-[12px] font-medium text-ink-300 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber [@media(hover:hover)]:hover:text-ink-100"
+                    className="min-h-11 touch-manipulation select-none px-3 py-1.5 text-[12px] font-medium text-ink-300 transition-[transform,background-color,border-color,color] duration-150 ease-[var(--ease-out)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber active:scale-[0.97] [@media(hover:hover)_and_(pointer:fine)]:hover:text-ink-100"
                   >
                     {r}
                   </button>
@@ -838,7 +840,7 @@ export default function Search() {
                     type="button"
                     aria-label={`Hapus ${r}`}
                     onClick={() => setRecent(forgetRecent(r))}
-                    className="grid min-h-11 min-w-11 shrink-0 place-items-center border-l border-ink-800 text-[14px] leading-none text-ink-500 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand-amber [@media(hover:hover)]:hover:bg-ink-850 [@media(hover:hover)]:hover:text-ink-200"
+                    className="grid min-h-11 min-w-11 shrink-0 place-items-center touch-manipulation select-none border-l border-ink-800 text-[14px] leading-none text-ink-500 transition-[transform,background-color,border-color,color] duration-150 ease-[var(--ease-out)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand-amber active:scale-[0.97] [@media(hover:hover)_and_(pointer:fine)]:hover:bg-ink-850 [@media(hover:hover)_and_(pointer:fine)]:hover:text-ink-200"
                   >
                     ×
                   </button>
@@ -849,7 +851,7 @@ export default function Search() {
                   type="button"
                   aria-label="Hapus riwayat pencarian"
                   onClick={() => setRecent(clearRecent())}
-                  className="min-h-11 shrink-0 rounded-full border border-ink-800 px-3 py-1.5 text-[12px] font-medium text-ink-500 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber [@media(hover:hover)]:hover:border-ink-700 [@media(hover:hover)]:hover:text-ink-300"
+                  className="min-h-11 shrink-0 touch-manipulation select-none rounded-full border border-ink-800 px-3 py-1.5 text-[12px] font-medium text-ink-500 transition-[transform,background-color,border-color,color] duration-150 ease-[var(--ease-out)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber active:scale-[0.97] [@media(hover:hover)_and_(pointer:fine)]:hover:border-ink-700 [@media(hover:hover)_and_(pointer:fine)]:hover:text-ink-300"
                 >
                   Hapus riwayat
                 </button>
@@ -864,7 +866,7 @@ export default function Search() {
                   key={k}
                   type="button"
                   onClick={() => commitQuery(k)}
-                  className="min-h-11 shrink-0 rounded-full border border-ink-800 bg-ink-900 px-3 py-1.5 text-[12px] font-medium text-ink-300 transition-colors [@media(hover:hover)]:hover:border-ink-700"
+                  className="min-h-11 shrink-0 touch-manipulation select-none rounded-full border border-ink-800 bg-ink-900 px-3 py-1.5 text-[12px] font-medium text-ink-300 transition-[transform,background-color,border-color,color] duration-150 ease-[var(--ease-out)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber active:scale-[0.97] [@media(hover:hover)_and_(pointer:fine)]:hover:border-ink-700"
                 >
                   {k}
                 </button>
@@ -884,7 +886,7 @@ export default function Search() {
               <button
                 type="button"
                 onClick={() => search.refresh()}
-                className="mt-4 min-h-11 rounded-full bg-brand-amber px-5 py-2.5 text-[13px] font-bold text-white transition-colors active:scale-[0.97] active:duration-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber focus-visible:ring-offset-2 [@media(hover:hover)]:hover:bg-brand-amber-soft"
+                className="touch-manipulation select-none mt-4 min-h-11 rounded-full bg-brand-amber px-5 py-2.5 text-[13px] font-bold text-white transition-[transform,background-color,border-color,color] duration-150 ease-[var(--ease-out)] active:scale-[0.97] active:duration-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber focus-visible:ring-offset-2 [@media(hover:hover)_and_(pointer:fine)]:hover:bg-brand-amber-soft"
               >
                 Coba lagi
               </button>
@@ -922,7 +924,7 @@ export default function Search() {
                     <button
                       type="button"
                       onClick={() => commitQuery('')}
-                      className="min-h-11 rounded-full border border-ink-700 px-5 py-2.5 text-[13px] font-semibold text-ink-300 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber focus-visible:ring-offset-2 [@media(hover:hover)]:hover:border-brand-amber [@media(hover:hover)]:hover:text-brand-amber"
+                      className="min-h-11 touch-manipulation select-none rounded-full border border-ink-700 px-5 py-2.5 text-[13px] font-semibold text-ink-300 transition-[transform,background-color,border-color,color] duration-150 ease-[var(--ease-out)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber focus-visible:ring-offset-2 active:scale-[0.97] [@media(hover:hover)_and_(pointer:fine)]:hover:border-brand-amber [@media(hover:hover)_and_(pointer:fine)]:hover:text-brand-amber"
                     >
                       Bersihkan pencarian
                     </button>
@@ -930,7 +932,7 @@ export default function Search() {
                       <button
                         type="button"
                         onClick={resetFilters}
-                        className="min-h-11 rounded-full bg-brand-amber px-5 py-2.5 text-[13px] font-bold text-white transition-colors active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber focus-visible:ring-offset-2"
+                        className="touch-manipulation select-none min-h-11 rounded-full bg-brand-amber px-5 py-2.5 text-[13px] font-bold text-white transition-[transform,background-color,border-color,color] duration-150 ease-[var(--ease-out)] active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber focus-visible:ring-offset-2"
                       >
                         Reset filter
                       </button>
@@ -957,7 +959,7 @@ export default function Search() {
                   <button
                     disabled={page <= 1}
                     onClick={() => setPage((p) => Math.max(1, p - 1))}
-                    className="min-h-11 min-w-11 rounded-lg border border-ink-700 px-3.5 py-2 text-[13px] font-medium text-ink-300 transition-colors active:scale-[0.97] active:bg-ink-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber disabled:opacity-40"
+                    className="touch-manipulation select-none min-h-11 min-w-11 rounded-lg border border-ink-700 px-3.5 py-2 text-[13px] font-medium text-ink-300 transition-[transform,background-color,border-color,color] duration-150 ease-[var(--ease-out)] active:scale-[0.97] active:bg-ink-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber disabled:opacity-40"
                   >
                     Sebelumnya
                   </button>
@@ -965,7 +967,7 @@ export default function Search() {
                   <button
                     disabled={!search.hasMore}
                     onClick={() => setPage((p) => p + 1)}
-                    className="min-h-11 min-w-11 rounded-lg border border-ink-700 px-3.5 py-2 text-[13px] font-medium text-ink-300 transition-colors active:scale-[0.97] active:bg-ink-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber disabled:opacity-40"
+                    className="touch-manipulation select-none min-h-11 min-w-11 rounded-lg border border-ink-700 px-3.5 py-2 text-[13px] font-medium text-ink-300 transition-[transform,background-color,border-color,color] duration-150 ease-[var(--ease-out)] active:scale-[0.97] active:bg-ink-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber disabled:opacity-40"
                   >
                     Berikutnya
                   </button>
@@ -984,7 +986,7 @@ export default function Search() {
               <button
                 type="button"
                 onClick={() => setListReloadKey((k) => k + 1)}
-                className="mt-4 min-h-11 rounded-full bg-brand-amber px-5 py-2.5 text-[13px] font-bold text-white transition-colors active:scale-[0.97] active:duration-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber focus-visible:ring-offset-2 [@media(hover:hover)]:hover:bg-brand-amber-soft"
+                className="touch-manipulation select-none mt-4 min-h-11 rounded-full bg-brand-amber px-5 py-2.5 text-[13px] font-bold text-white transition-[transform,background-color,border-color,color] duration-150 ease-[var(--ease-out)] active:scale-[0.97] active:duration-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber focus-visible:ring-offset-2 [@media(hover:hover)_and_(pointer:fine)]:hover:bg-brand-amber-soft"
               >
                 Coba lagi
               </button>
@@ -1009,7 +1011,7 @@ export default function Search() {
                     <button
                       type="button"
                       onClick={resetFilters}
-                      className="mt-4 min-h-11 rounded-full bg-brand-amber px-5 py-2.5 text-[13px] font-bold text-white transition-colors active:scale-[0.97] active:duration-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber focus-visible:ring-offset-2"
+                      className="touch-manipulation select-none mt-4 min-h-11 rounded-full bg-brand-amber px-5 py-2.5 text-[13px] font-bold text-white transition-[transform,background-color,border-color,color] duration-150 ease-[var(--ease-out)] active:scale-[0.97] active:duration-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber focus-visible:ring-offset-2"
                     >
                       Reset filter
                     </button>
@@ -1026,7 +1028,7 @@ export default function Search() {
                   <button
                     disabled={more}
                     onClick={loadMore}
-                    className="min-h-11 rounded-full border border-ink-700 px-5 py-2.5 text-[13px] font-medium text-ink-300 transition-colors active:scale-[0.97] active:duration-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber focus-visible:ring-offset-2 [@media(hover:hover)]:hover:border-brand-amber [@media(hover:hover)]:hover:text-brand-amber disabled:opacity-40"
+                    className="touch-manipulation select-none min-h-11 rounded-full border border-ink-700 px-5 py-2.5 text-[13px] font-medium text-ink-300 transition-[transform,background-color,border-color,color] duration-150 ease-[var(--ease-out)] active:scale-[0.97] active:duration-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber focus-visible:ring-offset-2 [@media(hover:hover)_and_(pointer:fine)]:hover:border-brand-amber [@media(hover:hover)_and_(pointer:fine)]:hover:text-brand-amber disabled:opacity-40"
                   >
                     {more ? 'Memuat…' : 'Muat lebih'}
                   </button>
@@ -1075,7 +1077,7 @@ function LowResultNote({
             type="button"
             disabled={busy}
             onClick={onNext}
-            className="kh-tap min-h-11 rounded-full border border-ink-700 px-4 py-2 text-[12px] font-semibold text-ink-300 transition-colors active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber disabled:opacity-40"
+            className="touch-manipulation select-none kh-tap min-h-11 rounded-full border border-ink-700 px-4 py-2 text-[12px] font-semibold text-ink-300 transition-[transform,background-color,border-color,color] duration-150 ease-[var(--ease-out)] active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber disabled:opacity-40"
           >
             Muat halaman berikutnya
           </button>
@@ -1083,7 +1085,7 @@ function LowResultNote({
         <button
           type="button"
           onClick={onRelax}
-          className="kh-tap min-h-11 rounded-full px-4 py-2 text-[12px] font-semibold text-ink-400 transition-colors active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber [@media(hover:hover)]:hover:text-ink-200"
+          className="touch-manipulation select-none kh-tap min-h-11 rounded-full px-4 py-2 text-[12px] font-semibold text-ink-400 transition-[transform,background-color,border-color,color] duration-150 ease-[var(--ease-out)] active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber [@media(hover:hover)_and_(pointer:fine)]:hover:text-ink-200"
         >
           Longgarkan filter
         </button>
@@ -1125,7 +1127,7 @@ function filtersEqual(a: SearchReturnState['filter'], b: SearchReturnState['filt
  */
 function ResultGrid({ items }: { items: Manga[] }) {
   return (
-    <div className="grid grid-cols-2 gap-2 [&>ul]:contents [&>ul>li]:min-w-0 [&>ul>li>a]:relative [&>ul>li>a]:block [&>ul>li>a>div:first-child]:w-full [&>ul>li>a>div:last-child]:mt-1.5 [&>ul>li>a>div:last-child>p:first-child]:text-[12.5px] [&>ul>li>a>div:last-child>p.font-bold]:absolute [&>ul>li>a>div:last-child>p.font-bold]:right-1 [&>ul>li>a>div:last-child>p.font-bold]:top-1 [&>ul>li>a>div:last-child>p.font-bold]:z-10 [&>ul>li>a>div:last-child>p.font-bold]:m-0 [&>ul>li>a>div:last-child>p.font-bold]:rounded [&>ul>li>a>div:last-child>p.font-bold]:bg-black/70 [&>ul>li>a>div:last-child>p.font-bold]:px-1.5 [&>ul>li>a>div:last-child>p.font-bold]:py-0.5 [&>ul>li>a>div:last-child>p.font-bold]:text-white">
+    <div className="grid grid-cols-2 gap-2 [&>ul]:contents [&>ul>li]:min-w-0 [&>ul>li>a]:relative [&>ul>li>a]:block [&>ul>li>a>div:first-child]:w-full [&>ul>li>a>div:last-child]:mt-1.5 [&>ul>li>a>div:last-child>p:first-child]:text-[12.5px] [&>ul>li>a>div:last-child>p.font-bold]:absolute [&>ul>li>a>div:last-child>p.font-bold]:left-1 [&>ul>li>a>div:last-child>p.font-bold]:top-1 [&>ul>li>a>div:last-child>p.font-bold]:z-10 [&>ul>li>a>div:last-child>p.font-bold]:m-0 [&>ul>li>a>div:last-child>p.font-bold]:rounded [&>ul>li>a>div:last-child>p.font-bold]:bg-black/70 [&>ul>li>a>div:last-child>p.font-bold]:px-1.5 [&>ul>li>a>div:last-child>p.font-bold]:py-0.5 [&>ul>li>a>div:last-child>p.font-bold]:text-white">
       <ul data-search-results className="flex flex-col gap-2">
         {items.map((m) => (
           <li key={m.id}>

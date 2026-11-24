@@ -20,9 +20,9 @@
   touch-action: manipulation;
   -webkit-tap-highlight-color: transparent;
   transition:
-    transform var(--sh-dur-press) ease-out,
-    background-color 140ms ease-out,
-    border-color 140ms ease-out;
+    transform var(--sh-dur-press) var(--sh-ease),
+    background-color 140ms var(--sh-ease),
+    border-color 140ms var(--sh-ease);
 }
 .sh-tap:active {
   transform: scale(0.965);
@@ -77,6 +77,23 @@
   will-change: transform, opacity;
 }
 
+/* Clean exit states — 160ms, dipakai saat useSheetPresence menandai `open=false`. */
+@keyframes sh-sheet-out {
+  from { transform: translate3d(0, 0, 0); }
+  to { transform: translate3d(0, 100%, 0); }
+}
+.sh-sheet-closing {
+  animation: sh-sheet-out 160ms var(--sh-ease) both;
+}
+@keyframes sh-popover-out {
+  from { opacity: 1; transform: translate3d(0, 0, 0) scale(1); }
+  to { opacity: 0; transform: translate3d(0, -4px, 0) scale(0.96); }
+}
+.sh-popover-closing {
+  transform-origin: top right;
+  animation: sh-popover-out 160ms var(--sh-ease) both;
+}
+
 /* Row reveal — set --row-i: 0..3 inline di tiap baris. */
 @keyframes sh-row-in {
   from {
@@ -124,14 +141,16 @@
   }
 }
 .sh-spin {
-  animation: sh-spin var(--sh-dur-spin) var(--sh-ease) infinite;
+  animation: sh-spin var(--sh-dur-spin) linear infinite;
 }
 
 /* Reduced motion: matikan gerak spasial, tapi jangan hapus scaleX bar. */
 @media (prefers-reduced-motion: reduce) {
   .sh-beacon-ring,
   .sh-sheet-enter,
+  .sh-sheet-closing,
   .sh-popover-enter,
+  .sh-popover-closing,
   .sh-row-enter,
   .sh-probing-bar,
   .sh-spin {

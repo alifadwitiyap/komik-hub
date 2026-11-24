@@ -10,7 +10,7 @@
  */
 
 import { useMemo } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { IconAngleLeft, IconXmark } from '../icons'
 import { useNotifCounts } from '../notifCounts'
 import { groupNotifsByTitle, type NotifTitleGroup } from '../hooks/useNotifications'
@@ -42,7 +42,7 @@ export default function Notifikasi() {
         <button
           onClick={() => navigate(-1)}
           aria-label="Kembali"
-          className="-ml-2 grid size-11 place-items-center rounded-lg text-ink-400 transition-colors [@media(hover:hover)]:hover:bg-ink-850 [@media(hover:hover)]:hover:text-ink-200"
+          className="-ml-2 grid size-11 touch-manipulation select-none place-items-center rounded-lg text-ink-400 transition-[transform,background-color,border-color,color] duration-150 ease-[var(--ease-out)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber active:scale-[0.97] [@media(hover:hover)_and_(pointer:fine)]:hover:bg-ink-850 [@media(hover:hover)_and_(pointer:fine)]:hover:text-ink-200"
         >
           <IconAngleLeft className="size-5" />
         </button>
@@ -55,7 +55,7 @@ export default function Notifikasi() {
         <button
           onClick={() => notif.markRead('all')}
           disabled={notif.unread === 0}
-          className="ml-auto inline-flex min-h-11 items-center text-[12px] font-bold text-brand-amber transition-colors [@media(hover:hover)]:hover:underline disabled:text-ink-500 disabled:[@media(hover:hover)]:hover:no-underline"
+          className="ml-auto inline-flex min-h-11 touch-manipulation select-none items-center text-[12px] font-bold text-brand-amber transition-[transform,background-color,border-color,color] duration-150 ease-[var(--ease-out)] active:scale-[0.97] disabled:opacity-50 disabled:text-ink-500 [@media(hover:hover)_and_(pointer:fine)]:hover:underline disabled:[@media(hover:hover)_and_(pointer:fine)]:hover:no-underline"
         >
           Tandai semua dibaca
         </button>
@@ -67,12 +67,12 @@ export default function Notifikasi() {
             {notif.loading ? 'Memuat…' : 'Belum ada notifikasi.'}
           </p>
           {!notif.loading && (
-            <a
-              href="/"
-              className="inline-flex min-h-11 items-center rounded-xl bg-brand-amber px-4 py-2.5 text-[12px] font-bold text-white"
+            <Link
+              to="/"
+              className="inline-flex min-h-11 touch-manipulation select-none items-center rounded-xl bg-brand-amber px-4 py-2.5 text-[12px] font-bold text-white transition-[transform,background-color,border-color,color] duration-150 ease-[var(--ease-out)] active:scale-[0.97]"
             >
               Jelajahi komik
-            </a>
+            </Link>
           )}
         </div>
       ) : (
@@ -91,7 +91,7 @@ export default function Notifikasi() {
                           navigate(`/manga/${g.latest.handle}`)
                           notif.markRead(g.ids)
                         }}
-                        className="min-w-0 flex-1 text-left"
+                        className="min-w-0 flex-1 touch-manipulation select-none text-left"
                       >
                         <span className="flex items-center gap-1.5">
                           {g.unread > 0 && (
@@ -122,7 +122,7 @@ export default function Notifikasi() {
                           for (const id of g.ids) notif.dismiss(id)
                         }}
                         aria-label={`Hapus notifikasi ${g.latest.title}`}
-                        className="grid size-11 shrink-0 place-items-center rounded-lg text-ink-500 transition-colors [@media(hover:hover)]:hover:bg-ink-850 [@media(hover:hover)]:hover:text-ink-200"
+                        className="grid size-11 shrink-0 touch-manipulation select-none place-items-center rounded-lg text-ink-500 transition-[transform,background-color,border-color,color] duration-150 ease-[var(--ease-out)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber active:scale-[0.97] [@media(hover:hover)_and_(pointer:fine)]:hover:bg-ink-850 [@media(hover:hover)_and_(pointer:fine)]:hover:text-ink-200"
                       >
                         <IconXmark className="size-3.5" />
                       </button>

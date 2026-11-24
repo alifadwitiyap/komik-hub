@@ -110,7 +110,9 @@ export default function SourceHealthSheet({ open, onClose }: SourceHealthSheetPr
         tabIndex={-1}
         onClick={(e) => e.stopPropagation()}
         className={`absolute max-h-[85dvh] overflow-y-auto overscroll-contain border-ink-700 bg-ink-900 shadow-2xl outline-none inset-x-0 bottom-0 rounded-t-2xl border-t sm:inset-x-auto sm:bottom-auto sm:right-3 sm:top-14 sm:max-h-[calc(100dvh-4.5rem)] sm:w-[360px] sm:rounded-2xl sm:border ${
-          desktop ? 'sh-popover-enter' : 'sh-sheet-enter'
+          !open
+            ? desktop ? 'sh-popover-closing' : 'sh-sheet-closing'
+            : desktop ? 'sh-popover-enter' : 'sh-sheet-enter'
         }`}
       >
         {!desktop && (

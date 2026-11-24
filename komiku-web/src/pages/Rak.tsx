@@ -161,7 +161,7 @@ export default function Rak() {
               goTab(nextKey)
               document.getElementById(tabDomId(nextKey))?.focus()
             }}
-            className={`min-h-11 shrink-0 rounded-xl px-3.5 py-2.5 text-[12px] font-bold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber focus-visible:ring-offset-2 ${
+            className={`min-h-11 shrink-0 select-none touch-manipulation rounded-xl px-3 py-2.5 text-[12px] font-bold transition-[transform,background-color,color] duration-150 ease-[var(--ease-out)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber focus-visible:ring-offset-2 active:scale-[0.97] ${
               tab === key
                 ? 'bg-brand-amber text-white'
                 : 'border border-ink-800 bg-ink-900 text-ink-300'
@@ -304,7 +304,7 @@ function LibraryTab({
           <li key={r.key}>
             <Link
               to={r.href}
-              className="relative flex items-center gap-3 rounded-xl border border-ink-800 bg-ink-900 p-2.5 transition-colors [@media(hover:hover)]:hover:border-ink-700 active:scale-[0.98]"
+              className="relative flex items-center gap-3 rounded-xl border border-ink-800 bg-ink-900 p-2.5 transition-colors [@media(hover:hover)_and_(pointer:fine)]:hover:border-ink-700 active:scale-[0.98]"
             >
               <Cover src={r.cover} title={r.title} />
               <div className="min-w-0 flex-1">
@@ -372,7 +372,7 @@ function HistoryTab({ entries }: { entries: rakStore.HistoryEntry[] }) {
         <li key={r.key}>
           <Link
             to={r.href}
-            className="flex items-center gap-3 rounded-xl border border-ink-800 bg-ink-900 p-2.5 transition-colors [@media(hover:hover)]:hover:border-ink-700 active:scale-[0.98]"
+            className="flex items-center gap-3 rounded-xl border border-ink-800 bg-ink-900 p-2.5 transition-colors [@media(hover:hover)_and_(pointer:fine)]:hover:border-ink-700 active:scale-[0.98]"
           >
             <Cover src={r.entry.cover_url} title={r.entry.title} />
             <div className="min-w-0 flex-1">
@@ -420,7 +420,7 @@ function FavoritesTab({ entries }: { entries: rakStore.FavoriteEntry[] }) {
           <li key={e.title_key} className="flex items-center gap-2">
             <Link
               to={`/manga/${e.handle}`}
-              className="relative flex min-w-0 flex-1 items-center gap-3 rounded-xl border border-ink-800 bg-ink-900 p-2.5 transition-colors [@media(hover:hover)]:hover:border-ink-700 active:scale-[0.98]"
+              className="relative flex min-w-0 flex-1 items-center gap-3 rounded-xl border border-ink-800 bg-ink-900 p-2.5 transition-colors [@media(hover:hover)_and_(pointer:fine)]:hover:border-ink-700 active:scale-[0.98]"
             >
               <Cover src={e.cover_url} title={e.title} />
               <div className="min-w-0 flex-1">
@@ -569,7 +569,7 @@ function ActiveDownloads({ runs }: { runs: DlRun[] }) {
                 disabled={isCancelling}
                 onClick={() => requestCancel(run.handle)}
                 aria-label={isCancelling ? `Membatalkan unduhan ${run.seriesTitle}` : `Batalkan unduhan ${run.seriesTitle}`}
-                className="min-h-11 min-w-11 shrink-0 rounded-lg border border-ink-700 px-4 py-2.5 text-[12px] font-semibold text-ink-300 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 [@media(hover:hover)]:hover:bg-ink-800"
+                className="min-h-11 min-w-11 shrink-0 rounded-lg border border-ink-700 px-4 py-2.5 text-[12px] font-semibold text-ink-300 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 [@media(hover:hover)_and_(pointer:fine)]:hover:bg-ink-800"
               >
                 {isCancelling ? 'Membatalkan…' : 'Batal'}
               </button>
@@ -844,7 +844,7 @@ function DownloadsTab() {
               <button
                 onClick={() => setOpenOverride((o) => ({ ...o, [g.handle]: !open }))}
                 aria-expanded={open}
-                className="flex w-full items-center gap-2.5 p-3 text-left"
+                className="flex min-h-11 w-full touch-manipulation select-none items-center gap-2.5 p-3 text-left"
               >
                 <IconArrowRight
                   className={`size-3.5 shrink-0 text-ink-400 transition-transform duration-200 ease-[var(--ease-out)] ${
@@ -921,7 +921,7 @@ function DownloadsTab() {
                         type="button"
                         aria-expanded={expanded}
                         onClick={() => setExpandedGroups((m) => ({ ...m, [g.handle]: !expanded }))}
-                        className="min-h-11 rounded-lg px-4 text-[11.5px] font-semibold text-ink-400 underline-offset-2 hover:text-ink-200 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber"
+                        className="min-h-11 rounded-lg px-4 text-[11.5px] font-semibold text-ink-400 underline-offset-2 transition-[transform,background-color,color] duration-150 ease-[var(--ease-out)] active:scale-[0.97] [@media(hover:hover)_and_(pointer:fine)]:hover:text-ink-200 [@media(hover:hover)_and_(pointer:fine)]:hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber"
                       >
                         {expanded ? 'Sembunyikan chapter lain' : `Tampilkan ${hiddenCount} chapter lainnya`}
                       </button>

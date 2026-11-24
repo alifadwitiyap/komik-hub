@@ -64,7 +64,7 @@ export default function QueueDrawer({ open, items, currentIndex, onClose, onPick
         aria-modal="true"
         aria-label="Daftar antrean baca"
         data-open={open}
-        className="kh-sheet absolute inset-x-0 bottom-0 max-h-[75dvh] overflow-y-auto rounded-t-2xl border-t border-ink-700 bg-night-dark px-4 pb-[calc(16px+env(safe-area-inset-bottom))] pt-4 text-ink-100"
+        className="kh-sheet absolute inset-x-0 bottom-0 max-h-[75dvh] overflow-y-auto overscroll-contain rounded-t-2xl border-t border-ink-700 bg-night-dark px-4 pb-[calc(16px+env(safe-area-inset-bottom))] pt-4 text-white"
       >
         <div className="mb-3 flex items-center justify-between gap-3">
           <h2 className="text-[14px] font-bold">Sisa antrean</h2>
@@ -72,7 +72,7 @@ export default function QueueDrawer({ open, items, currentIndex, onClose, onPick
             type="button"
             onClick={onClose}
             aria-label="Tutup"
-            className="kh-tap min-h-11 rounded-lg px-3 text-[13px] font-semibold text-ink-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber"
+            className="kh-tap min-h-11 rounded-lg px-3 text-[13px] font-semibold text-neutral-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber"
           >
             Tutup
           </button>
@@ -88,9 +88,9 @@ export default function QueueDrawer({ open, items, currentIndex, onClose, onPick
                   index === currentIndex ? 'bg-brand-amber/15 font-bold' : 'font-medium'
                 }`}
               >
-                <span className="w-6 shrink-0 text-ink-300">{index + 1}</span>
+                <span className="w-6 shrink-0 text-neutral-400">{index + 1}</span>
                 <span className="min-w-0 flex-1 truncate">{item.title}</span>
-                <span className="shrink-0 text-[11px] text-ink-300">Ch. {item.targetChapter}</span>
+                <span className="shrink-0 text-[11px] text-neutral-400">Ch. {item.targetChapter}</span>
               </button>
             </li>
           ))}
@@ -98,7 +98,7 @@ export default function QueueDrawer({ open, items, currentIndex, onClose, onPick
         <button
           type="button"
           onClick={onExit}
-          className="kh-tap mt-3 flex min-h-11 w-full items-center justify-center rounded-xl border border-ink-700 text-[13px] font-semibold text-ink-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber"
+          className="kh-tap mt-3 flex min-h-11 w-full items-center justify-center rounded-xl border border-ink-700 text-[13px] font-semibold text-neutral-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber"
         >
           Keluar dari mode antrean
         </button>
