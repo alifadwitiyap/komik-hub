@@ -518,6 +518,15 @@ export default function Search() {
               setRiwayatDimatikan(false)
             }}
             onFocus={() => setRiwayatDimatikan(false)}
+            onKeyDown={(e) => {
+              // Safari iOS / keyboard mobile kadang tidak menaikkan submit
+              // form dari single-line input. Tangani Enter eksplisit supaya
+              // perilaku sama dengan tombol "Cari" (satu jalur commitQuery).
+              if (e.key === 'Enter') {
+                e.preventDefault()
+                commitQuery(input.trim())
+              }
+            }}
             placeholder="Judul, mis. Solo Leveling"
             inputMode="search"
             enterKeyHint="search"
