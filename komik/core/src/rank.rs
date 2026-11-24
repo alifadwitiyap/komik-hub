@@ -436,6 +436,7 @@ pub(crate) fn neighbor_refs(detail: &SeriesDetail, pos: usize) -> (Option<Chapte
 ///
 /// Kandidat dengan nomor sama di beberapa sumber: yang pertama (urutan
 /// prioritas sumber) menang.
+#[allow(dead_code)]
 pub(crate) fn pick_cross_source_neighbors(
     lists: &[crate::union::SourceChapterList],
     current: &str,

@@ -15,32 +15,132 @@
 //!  - parser HTML std (tanpa crate regex/scraper) mengikuti kiryuu.rs.
 use crate::model::*;
 use crate::source::{classified, Source, SourceError, SourceResult};
+use serde_json::Value;
 use std::collections::HashSet;
+use std::net::{IpAddr, SocketAddr};
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
+use tokio::sync::{OnceCell, RwLock};
 
 const UA: &str = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 \
                   (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36";
 const ID: &str = "komikindo";
+const DOH_ENDPOINT: &str = "https://cloudflare-dns.com/dns-query";
+const DOH_TIMEOUT: Duration = Duration::from_secs(6);
+const PINNED_CONNECT_TIMEOUT: Duration = Duration::from_secs(5);
+const PINNED_REQUEST_TIMEOUT: Duration = Duration::from_secs(20);
 
 pub struct KomikindoSource {
-    client: reqwest::Client,
+    /// Dipakai untuk query DoH (host cloudflare-dns.com tidak terkena block).
+    shared: reqwest::Client,
     base: String,
+    host: String,
+    /// IP hasil DoH, di-cache sampai proses restart (sama seperti kiryuu.rs).
+    ips: RwLock<Vec<IpAddr>>,
+    /// Client dengan `resolve_to_addrs` ke IP DoH — dibangun sekali.
+    pinned: OnceCell<reqwest::Client>,
 }
 
 impl KomikindoSource {
     pub fn new(client: reqwest::Client) -> Self {
         let base =
             std::env::var("KOMIKINDO_BASE").unwrap_or_else(|_| "https://komikindo.ch".into());
+        let host = host_of(&base);
         KomikindoSource {
-            client,
+            shared: client,
             base: base.trim_end_matches('/').to_string(),
+            host,
+            ips: RwLock::new(Vec::new()),
+            pinned: OnceCell::new(),
         }
     }
 
-    async fn fetch_text(&self, url: &str) -> SourceResult<String> {
+    /// Resolve host base via Cloudflare DoH lalu pin ke IP asli. Router lokal
+    /// melakukan DNS poisoning `komikindo.ch` → `blocking.asus.hns.tm` (cert
+    /// salah / halaman 404), jadi resolver sistem tidak bisa dipakai.
+    async fn resolve_ips(&self) -> SourceResult<Vec<IpAddr>> {
+        let cached = self.ips.read().await.clone();
+        if !cached.is_empty() {
+            return Ok(cached);
+        }
+        let url = format!("{}?name={}&type=A", DOH_ENDPOINT, self.host);
+        let resp = self
+            .shared
+            .get(&url)
+            .header("accept", "application/dns-json")
+            .timeout(DOH_TIMEOUT)
+            .send()
+            .await
+            .map_err(|e| anyhow::anyhow!("DoH request gagal untuk {}: {}", self.host, e))?;
+        let status = resp.status();
+        let body = resp.text().await.unwrap_or_default();
+        if !status.is_success() {
+            anyhow::bail!(
+                "DoH balas {} untuk {}: {}",
+                status,
+                self.host,
+                body.chars().take(120).collect::<String>()
+            );
+        }
+        let v: Value = serde_json::from_str(&body)
+            .map_err(|e| anyhow::anyhow!("DoH bukan JSON ({}): {}", e, body.chars().take(120).collect::<String>()))?;
+        // Tolak jawaban DoH yang sudah terpollusi (IP block page router).
+        // `IpAddr::is_global` masih unstable di rustc 1.99, jadi pakai pemeriksaan
+        // eksplisit: satu saja alamat special-use tidak boleh masuk kandidat.
+        let mut ips = Vec::new();
+        if let Some(ans) = v["Answer"].as_array() {
+            for a in ans {
+                if a["type"].as_u64() == Some(1) {
+                    if let Some(d) = a["data"].as_str() {
+                        if let Ok(ip) = d.parse::<IpAddr>() {
+                            if is_public_doh_ip(ip) {
+                                ips.push(ip);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        if ips.is_empty() {
+            anyhow::bail!(
+                "DoH tak kembalikan A record publik untuk {} (DNS poisoning + DoH gagal?)",
+                self.host
+            );
+        }
+        *self.ips.write().await = ips.clone();
+        Ok(ips)
+    }
+
+    async fn http(&self) -> SourceResult<reqwest::Client> {
+        self.pinned
+            .get_or_try_init(|| async {
+                // reqwest mewarisi HTTPS_PROXY dari environment; 127.0.0.1:37837
+                // ikut menebus TLS ke host block page. Matikan proxy hanya untuk
+                // client yang dipin — DoH tetap memakai `shared`.
+                #[allow(clippy::redundant_closure)]
+                let addrs: Vec<SocketAddr> = self
+                    .resolve_ips()
+                    .await?
+                    .into_iter()
+                    .map(|ip| SocketAddr::new(ip, 0))
+                    .collect();
+                let mut b = reqwest::Client::builder()
+                    .user_agent(UA)
+                    .no_proxy()
+                    .connect_timeout(PINNED_CONNECT_TIMEOUT)
+                    .timeout(PINNED_REQUEST_TIMEOUT);
+                for d in [format!("{}:443", self.host), format!("{}:80", self.host)] {
+                    b = b.resolve_to_addrs(&d, &addrs);
+                }
+                b.build().map_err(Into::into)
+            })
+            .await
+            .cloned()
+    }
+
+    async fn fetch_with(&self, client: &reqwest::Client, url: &str) -> SourceResult<String> {
         let mut attempt = 0u32;
         loop {
-            match self.client.get(url).header("user-agent", UA).send().await {
+            match client.get(url).header("user-agent", UA).send().await {
                 Ok(r) => {
                     let sc = r.status().as_u16();
                     if (sc == 429 || sc >= 500) && attempt < 2 {
@@ -62,6 +162,24 @@ impl KomikindoSource {
                 }
                 Err(e) => anyhow::bail!("network error {}: {}", url, e),
             }
+        }
+    }
+
+    /// Utamakan client yang dipin ke IP DoH (anti DNS poisoning router).
+    /// Kalau jaringan masih mem-blok TLS langsung ke IP Cloudflare, jatuh ke
+    /// client bawaan yang memakai proxy/DNS sistem — ini yang dipakai Kiryuu
+    /// dan akan langsung sehat begitu user pindah jaringan bersih.
+    async fn fetch_text(&self, url: &str) -> SourceResult<String> {
+        let pinned_err = match self.http().await {
+            Ok(client) => match self.fetch_with(&client, url).await {
+                Ok(body) => return Ok(body),
+                Err(e) => e.to_string(),
+            },
+            Err(e) => e.to_string(),
+        };
+        match self.fetch_with(&self.shared, url).await {
+            Ok(body) => Ok(body),
+            Err(shared) => anyhow::bail!("DoH-pin gagal: {}; fallback gagal: {}", pinned_err, shared),
         }
     }
 
@@ -171,6 +289,53 @@ impl Source for KomikindoSource {
             number: chapter.number.clone(),
             images,
         })
+    }
+}
+
+/// Host tanpa skema/port, dipakai untuk query DoH dan `resolve_to_addrs`.
+fn host_of(base: &str) -> String {
+    let after = base.split_once("://").map(|(_, h)| h).unwrap_or(base);
+    after.split(['/', ':']).next().unwrap_or(after).to_string()
+}
+
+/// Satu alamat A/AAAA DoH boleh dipin hanya bila benar-benar publik.
+/// `IpAddr::is_global` masih unstable pada toolchain repo (rustc 1.99),
+/// jadi special-use address ditolak eksplisit satu per satu.
+fn is_public_doh_ip(ip: IpAddr) -> bool {
+    match ip {
+        IpAddr::V4(v4) => {
+            let o = v4.octets();
+            !v4.is_unspecified()
+                && !v4.is_loopback()
+                && !v4.is_private()
+                && !v4.is_link_local()
+                && !v4.is_multicast()
+                && !v4.is_broadcast()
+                && !(o[0] == 100 && (0x40..=0x7f).contains(&o[1])) // 100.64.0.0/10 CGNAT
+                && !(o[0] >= 240) // 240.0.0.0/4 reserved
+        }
+        IpAddr::V6(v6) => {
+            let s = v6.segments();
+            !v6.is_unspecified()
+                && !v6.is_loopback()
+                && !v6.is_multicast()
+                && !(s[0] & 0xfe00 == 0xfc00) // fc00::/7 unique local
+                // fe80::/10 link local
+                && !(s[0] & 0xffc0 == 0xfe80)
+                // ::ffff:0:0/96 IPv4-mapped: evaluasi alamat IPv4-nya
+                && !(s[0] == 0
+                    && s[1] == 0
+                    && s[2] == 0
+                    && s[3] == 0
+                    && s[4] == 0
+                    && s[5] == 0xffff
+                    && !is_public_doh_ip(IpAddr::V4(std::net::Ipv4Addr::from([
+                        (s[6] >> 8) as u8,
+                        s[6] as u8,
+                        (s[7] >> 8) as u8,
+                        s[7] as u8,
+                    ]))))
+        }
     }
 }
 
@@ -292,7 +457,7 @@ fn parse_series(html: &str, native_id: &str, url: &str) -> SeriesDetail {
     m.url = Some(url.to_string());
 
     // Metadata di <div class="spe"><span><b>Label:</b>nilai</span>...
-    for block in sections(html, "class=\"spe\"") {
+    if let Some(block) = sections(html, "class=\"spe\"").into_iter().next() {
         let mut from = 0usize;
         while let Some((_, span, end)) = tag_at(block, "span", from) {
             from = end.max(from + 1);
@@ -309,14 +474,13 @@ fn parse_series(html: &str, native_id: &str, url: &str) -> SeriesDetail {
                 _ => {}
             }
         }
-        break;
     }
     // Rating: <i itemprop="ratingValue">8.58</i>
     if let Some(k) = html.find("itemprop=\"ratingValue\"") {
         if let Some((raw, _, _)) = tag_at(html, "i", k.saturating_sub(8)) {
             if raw.contains("ratingValue") {
                 m.rating = normalize_score(&strip_html(
-                    &html[k + "itemprop=\"ratingValue\"".len()..]
+                    html[k + "itemprop=\"ratingValue\"".len()..]
                         .split('<')
                         .next()
                         .unwrap_or(""),
@@ -391,7 +555,7 @@ fn parse_chapters(html: &str, base_url: &str) -> Vec<Chapter> {
 fn parse_reader_images(html: &str, base: &str) -> Vec<String> {
     let mut out = Vec::new();
     let mut seen = HashSet::new();
-    for block in sections(html, "class=\"chapter-content\"") {
+    if let Some(block) = sections(html, "class=\"chapter-content\"").into_iter().next() {
         let mut from = 0usize;
         while let Some((raw, _, end)) = tag_at(block, "img", from) {
             from = end.max(from + 1);
@@ -407,7 +571,6 @@ fn parse_reader_images(html: &str, base: &str) -> Vec<String> {
                 out.push(u);
             }
         }
-        break;
     }
     out
 }
@@ -443,7 +606,7 @@ fn tag_at<'a>(html: &'a str, tag: &str, from: usize) -> Option<(&'a str, &'a str
         let boundary = html
             .as_bytes()
             .get(after)
-            .map_or(true, |b| b.is_ascii_whitespace() || *b == b'>');
+            .is_none_or(|b| b.is_ascii_whitespace() || *b == b'>');
         if boundary {
             let gt = after + html.get(after..)?.find('>')?;
             let raw = &html[start..=gt];
@@ -671,6 +834,35 @@ fn strip_html(s: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn doh_ip_filter_menolak_semua_alamat_special_use() {
+        let public = ["172.67.189.191", "104.21.49.106", "2606:4700:3030::6815:312a"];
+        for s in public {
+            assert!(is_public_doh_ip(s.parse().unwrap()), "{s} harus diterima");
+        }
+        let private = [
+            "0.0.0.0",
+            "127.0.0.1",
+            "10.0.0.1",
+            "192.168.1.1",
+            "169.254.169.254",
+            "100.64.0.1",
+            "224.0.0.1",
+            "240.0.0.1",
+            "255.255.255.255",
+            "::",
+            "::1",
+            "fd00::1",
+            "fe80::1",
+            "ff02::1",
+            "::ffff:169.254.169.254",
+            "::ffff:127.0.0.1",
+        ];
+        for s in private {
+            assert!(!is_public_doh_ip(s.parse().unwrap()), "{s} harus ditolak");
+        }
+    }
 
     #[test]
     fn item_listing_dari_kartu_animposx() {

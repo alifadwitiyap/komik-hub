@@ -321,7 +321,7 @@ export default function SeriesUnified() {
       <button
         type="button"
         onClick={() => setReloadKey((k) => k + 1)}
-        className="mt-4 min-h-11 rounded-xl bg-brand-amber px-5 py-2.5 text-[13px] font-bold text-white transition-colors active:scale-[0.97] active:duration-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber focus-visible:ring-offset-2 [@media(hover:hover)]:hover:bg-brand-amber-soft"
+        className="mt-4 min-h-11 rounded-xl bg-brand-amber px-5 py-2.5 text-[13px] font-bold text-white transition-colors active:scale-[0.97] active:duration-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber focus-visible:ring-offset-2 [@media(hover:hover)_and_(pointer:fine)]:hover:bg-brand-amber-soft"
       >
         Muat ulang
       </button>
@@ -380,7 +380,7 @@ export default function SeriesUnified() {
             <button
               type="button"
               onClick={goBack}
-              className="inline-flex min-h-11 items-center py-3.5 text-[12px] font-medium text-ink-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber focus-visible:ring-offset-2 [@media(hover:hover)]:hover:text-ink-200"
+              className="inline-flex min-h-11 items-center py-3.5 text-[12px] font-medium text-ink-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber focus-visible:ring-offset-2 [@media(hover:hover)_and_(pointer:fine)]:hover:text-ink-200"
             >
               ← Kembali
             </button>
@@ -389,7 +389,7 @@ export default function SeriesUnified() {
               type="button"
               onClick={copySeriesLink}
               aria-label={copied ? 'Tautan tersalin' : 'Salin tautan series'}
-              className="-mr-3 flex h-11 w-11 shrink-0 touch-manipulation items-center justify-center rounded-xl text-ink-400 transition-transform duration-150 [@media(hover:hover)]:hover:text-ink-100 active:scale-[0.97] active:duration-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber focus-visible:ring-offset-2"
+              className="-mr-3 flex h-11 w-11 shrink-0 touch-manipulation items-center justify-center rounded-xl text-ink-400 transition-transform duration-150 [@media(hover:hover)_and_(pointer:fine)]:hover:text-ink-100 active:scale-[0.97] active:duration-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber focus-visible:ring-offset-2"
             >
               {copied ? (
                 <svg viewBox="0 0 24 24" className="size-5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -458,7 +458,7 @@ export default function SeriesUnified() {
                     <Link
                       key={`${g.id ?? g.name}-${i}`}
                       to={genreHref(g.id, g.name)}
-                      className="inline-flex min-h-11 items-center rounded-full bg-brand-amber/10 px-2.5 py-1.5 text-[10.5px] font-semibold text-brand-amber transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber [@media(hover:hover)]:hover:bg-brand-amber/20"
+                      className="inline-flex min-h-11 items-center rounded-full bg-brand-amber/10 px-2.5 py-1.5 text-[10.5px] font-semibold text-brand-amber transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber [@media(hover:hover)_and_(pointer:fine)]:hover:bg-brand-amber/20"
                     >
                       {g.name}
                     </Link>
@@ -500,7 +500,7 @@ export default function SeriesUnified() {
             <>
               <Link
                 to={resumeHref ?? `/baca/${handle}/${oldest.number}`}
-                className="flex min-h-11 flex-1 items-center justify-center rounded-xl bg-brand-amber py-2.5 text-center text-[13px] font-bold text-white transition-colors active:scale-[0.97] active:duration-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber focus-visible:ring-offset-2 [@media(hover:hover)]:hover:bg-brand-amber-soft"
+                className="flex min-h-11 flex-1 items-center justify-center rounded-xl bg-brand-amber py-2.5 text-center text-[13px] font-bold text-white transition-colors active:scale-[0.97] active:duration-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber focus-visible:ring-offset-2 [@media(hover:hover)_and_(pointer:fine)]:hover:bg-brand-amber-soft"
               >
                 {lanjut ? (
                   <span className="flex flex-col items-center">
@@ -534,7 +534,7 @@ export default function SeriesUnified() {
                     ? 'Lanjutkan maraton dari posisi terakhir'
                     : `Mulai maraton dari ${chapterLabel(oldest)}`
                 }
-                className="flex min-h-11 items-center justify-center rounded-xl border border-brand-amber-dim px-3.5 py-2.5 text-center text-[13px] font-semibold text-brand-amber transition-colors active:scale-[0.97] active:duration-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber focus-visible:ring-offset-2 [@media(hover:hover)]:hover:bg-brand-amber-dim/20"
+                className="flex min-h-11 items-center justify-center rounded-xl border border-brand-amber-dim px-3.5 py-2.5 text-center text-[13px] font-semibold text-brand-amber transition-colors active:scale-[0.97] active:duration-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber focus-visible:ring-offset-2 [@media(hover:hover)_and_(pointer:fine)]:hover:bg-brand-amber-dim/20"
               >
                 Maraton
               </Link>
@@ -553,7 +553,7 @@ export default function SeriesUnified() {
                   className={`flex min-h-11 shrink-0 items-center justify-center gap-1.5 rounded-xl border px-3 py-2.5 text-center text-[13px] font-semibold transition-colors active:scale-[0.97] active:duration-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber focus-visible:ring-offset-2 ${
                     pickMode
                       ? 'border-brand-amber bg-brand-amber/15 text-brand-amber'
-                      : 'border-ink-700 text-ink-300 [@media(hover:hover)]:hover:bg-ink-850'
+                      : 'border-ink-700 text-ink-300 [@media(hover:hover)_and_(pointer:fine)]:hover:bg-ink-850'
                   }`}
                 >
                   <svg
@@ -647,7 +647,7 @@ export default function SeriesUnified() {
               type="button"
               aria-label="Tutup ringkasan unduhan"
               onClick={() => { setDlSummary(null); downloadTriggerRef.current?.focus() }}
-              className="absolute right-1 top-1 grid size-11 place-items-center rounded-full text-current opacity-60 transition-opacity [@media(hover:hover)]:hover:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber"
+              className="absolute right-1 top-1 grid size-11 place-items-center rounded-full text-current opacity-60 transition-opacity [@media(hover:hover)_and_(pointer:fine)]:hover:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber"
             >
               <span aria-hidden className="text-base leading-none">×</span>
             </button>
@@ -689,7 +689,7 @@ export default function SeriesUnified() {
               <button
                 type="button"
                 onClick={() => { setDlSummary(null); retryRun(handle) }}
-                className="mt-2 min-h-11 w-full rounded-lg border border-ink-700 py-1.5 text-[11.5px] font-semibold text-ink-300 transition-colors active:scale-[0.97] active:duration-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber focus-visible:ring-offset-2 [@media(hover:hover)]:hover:border-brand-amber/60 [@media(hover:hover)]:hover:text-brand-amber"
+                className="mt-2 min-h-11 w-full rounded-lg border border-ink-700 py-1.5 text-[11.5px] font-semibold text-ink-300 transition-colors active:scale-[0.97] active:duration-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber focus-visible:ring-offset-2 [@media(hover:hover)_and_(pointer:fine)]:hover:border-brand-amber/60 [@media(hover:hover)_and_(pointer:fine)]:hover:text-brand-amber"
               >
                 Coba lagi chapter gagal
               </button>
@@ -811,7 +811,7 @@ export default function SeriesUnified() {
               <button
                 type="button"
                 onClick={() => cancelRun(handle)}
-                className="mt-2 min-h-11 w-full rounded-lg border border-ink-700 py-1.5 text-[11.5px] font-semibold text-ink-300 transition-colors active:scale-[0.97] active:duration-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber focus-visible:ring-offset-2 [@media(hover:hover)]:hover:border-danger/60 [@media(hover:hover)]:hover:text-danger"
+                className="mt-2 min-h-11 w-full rounded-lg border border-ink-700 py-1.5 text-[11.5px] font-semibold text-ink-300 transition-colors active:scale-[0.97] active:duration-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber focus-visible:ring-offset-2 [@media(hover:hover)_and_(pointer:fine)]:hover:border-danger/60 [@media(hover:hover)_and_(pointer:fine)]:hover:text-danger"
               >
                 Batalkan sisa unduhan
               </button>
@@ -864,7 +864,7 @@ export default function SeriesUnified() {
             </p>
             <Link
               to="/cari"
-              className="mt-3 inline-flex min-h-11 items-center rounded-xl bg-brand-amber px-5 py-2.5 text-[13px] font-bold text-white transition-colors active:scale-[0.97] active:duration-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber focus-visible:ring-offset-2 [@media(hover:hover)]:hover:bg-brand-amber-soft"
+              className="mt-3 inline-flex min-h-11 items-center rounded-xl bg-brand-amber px-5 py-2.5 text-[13px] font-bold text-white transition-colors active:scale-[0.97] active:duration-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber focus-visible:ring-offset-2 [@media(hover:hover)_and_(pointer:fine)]:hover:bg-brand-amber-soft"
             >
               Cari judul lain
             </Link>
@@ -911,7 +911,7 @@ export default function SeriesUnified() {
                             : `Pilih chapter ${c.number}${read ? ' — sudah dibaca' : ''}`
                       }
                       onClick={() => range.select(i)}
-                      className="flex min-h-11 w-full items-center gap-3 px-3.5 py-3 text-left transition-colors [@media(hover:hover)]:hover:bg-ink-850 active:bg-ink-850"
+                      className="flex min-h-11 w-full items-center gap-3 px-3.5 py-3 text-left transition-colors [@media(hover:hover)_and_(pointer:fine)]:hover:bg-ink-850 active:bg-ink-850"
                     >
                       <span
                         aria-hidden
@@ -934,7 +934,7 @@ export default function SeriesUnified() {
                           ? `${chapterLabel(c)} — sudah dibaca`
                           : `${chapterLabel(c)} — belum dibaca`
                       }
-                      className="flex min-h-11 min-w-0 flex-1 items-center justify-between gap-3 px-3.5 py-3 transition-colors [@media(hover:hover)]:hover:bg-ink-850 active:bg-ink-850"
+                      className="flex min-h-11 min-w-0 flex-1 items-center justify-between gap-3 px-3.5 py-3 transition-colors [@media(hover:hover)_and_(pointer:fine)]:hover:bg-ink-850 active:bg-ink-850"
                     >
                       <span className={titleCls}>{chapterLabel(c)}</span>
                       {c.source !== m.source && (

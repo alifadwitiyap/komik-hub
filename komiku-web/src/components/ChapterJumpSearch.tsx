@@ -220,7 +220,7 @@ export default function ChapterJumpSearch({
             <li key={r.key}>
               <Link
                 to={r.href}
-                className="flex min-h-11 items-center justify-between gap-2 rounded-lg px-2 py-1.5 text-[13px] text-ink-200 transition-colors active:bg-ink-800 [@media(hover:hover)]:hover:bg-ink-800"
+                className="flex min-h-11 items-center justify-between gap-2 rounded-lg px-2 py-1.5 text-[13px] text-ink-200 transition-colors active:bg-ink-800 [@media(hover:hover)_and_(pointer:fine)]:hover:bg-ink-800"
               >
                 <span className="min-w-0 truncate">
                   <b className="text-ink-100">{r.number || '—'}</b>

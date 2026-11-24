@@ -58,7 +58,7 @@ export function writeStoredTheme(t: Theme): void {
 
 /** Warna status bar, sama persis dengan dua meta `theme-color` di index.html. */
 const STATUS_BAR_COLOR: Record<Theme, string> = {
-  dark: '#0b0b0d',
+  dark: '#0a0c0f',
   light: '#f1f4f7',
 }
 

@@ -148,7 +148,7 @@ impl TtlCache {
     /// entri segar. Tambahkan LRU/evict kalau TtlCache dipakai menyimpan data
     /// dengan umur panjang (mis. `remember_title` 30 hari) dalam jumlah besar.
     fn sweep_expired(&self, map: &mut HashMap<String, Entry>) {
-        if map.len() < SWEEP_THRESHOLD || map.len() % SWEEP_STEP != 0 {
+        if map.len() < SWEEP_THRESHOLD || !map.len().is_multiple_of(SWEEP_STEP) {
             return;
         }
         let now = (self.clock)();

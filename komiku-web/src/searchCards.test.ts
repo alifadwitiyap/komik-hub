@@ -22,7 +22,7 @@ describe('Search kompak 320px', () => {
     expect(searchSrc).toContain('inline-flex min-h-11 flex-1 touch-manipulation')
     expect(searchSrc).toContain('px-2.5 py-1.5 text-[12.5px] font-bold')
     expect(searchSrc).toContain('aria-label="Urutkan hasil"')
-    expect(searchSrc).toContain('pr-7 text-[12.5px] font-semibold')
+    expect(searchSrc).toContain('pr-7 text-base font-semibold')
     // Riwayat tidak lagi mengambil ruang sebelum hasil.
     expect(searchSrc).not.toContain('mt-5">\n          {loading && <SkeletonCards />}')
   })

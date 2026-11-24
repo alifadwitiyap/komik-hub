@@ -585,7 +585,7 @@ export default function Search() {
             aria-label="Urutkan hasil"
             value={srt ?? 'terbaru'}
             onChange={(e) => setFilter('sort', e.target.value)}
-            className="min-h-11 w-full appearance-none rounded-full border border-ink-700 bg-ink-900 py-1 pl-3 pr-7 text-[12.5px] font-semibold text-ink-300 text-base focus:border-brand-amber focus:outline-none sm:text-[12.5px]"
+            className="min-h-11 w-full appearance-none rounded-full border border-ink-700 bg-ink-900 py-1 pl-3 pr-7 text-base font-semibold text-ink-300 focus:border-brand-amber focus:outline-none"
           >
             {SORTS.map((s) => (
               <option key={s.value} value={s.value}>{s.label}</option>

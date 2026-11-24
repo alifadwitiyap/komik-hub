@@ -235,7 +235,7 @@ export default function Series() {
       <button
         type="button"
         onClick={() => setReloadKey((k) => k + 1)}
-        className="mt-4 min-h-11 rounded-xl bg-brand-amber px-5 py-2.5 text-[13px] font-bold text-white transition-colors active:scale-[0.97] active:duration-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber focus-visible:ring-offset-2 [@media(hover:hover)]:hover:bg-brand-amber-soft"
+        className="mt-4 min-h-11 rounded-xl bg-brand-amber px-5 py-2.5 text-[13px] font-bold text-white transition-colors active:scale-[0.97] active:duration-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber focus-visible:ring-offset-2 [@media(hover:hover)_and_(pointer:fine)]:hover:bg-brand-amber-soft"
       >
         Muat ulang
       </button>
@@ -402,7 +402,7 @@ export default function Series() {
           <button
             type="button"
             onClick={goBack}
-            className="inline-flex min-h-11 items-center py-3.5 text-[13px] font-medium text-ink-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber focus-visible:ring-offset-2 [@media(hover:hover)]:hover:text-ink-200"
+            className="inline-flex min-h-11 items-center py-3.5 text-[13px] font-medium text-ink-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber focus-visible:ring-offset-2 [@media(hover:hover)_and_(pointer:fine)]:hover:text-ink-200"
           >
             ← Kembali
           </button>
@@ -439,7 +439,7 @@ export default function Series() {
                     <Link
                       key={g.id}
                       to={genreHref(g.id, g.name)}
-                      className="inline-flex min-h-11 items-center rounded-full bg-brand-amber/10 px-2.5 py-1.5 text-[10.5px] font-semibold text-brand-amber transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber [@media(hover:hover)]:hover:bg-brand-amber/20"
+                      className="inline-flex min-h-11 items-center rounded-full bg-brand-amber/10 px-2.5 py-1.5 text-[10.5px] font-semibold text-brand-amber transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber [@media(hover:hover)_and_(pointer:fine)]:hover:bg-brand-amber/20"
                     >
                       {g.name}
                     </Link>
@@ -458,7 +458,7 @@ export default function Series() {
             <>
               <Link
                 to={cta.to}
-                className="flex min-h-11 flex-1 items-center justify-center rounded-xl bg-brand-amber py-2.5 text-center text-[13px] font-bold text-white transition-colors active:scale-[0.97] active:duration-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber focus-visible:ring-offset-2 [@media(hover:hover)]:hover:bg-brand-amber-soft"
+                className="flex min-h-11 flex-1 items-center justify-center rounded-xl bg-brand-amber py-2.5 text-center text-[13px] font-bold text-white transition-colors active:scale-[0.97] active:duration-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber focus-visible:ring-offset-2 [@media(hover:hover)_and_(pointer:fine)]:hover:bg-brand-amber-soft"
               >
                 <span className="flex flex-col items-center">
                   <span>{cta.label}</span>
@@ -481,7 +481,7 @@ export default function Series() {
                       ? 'Lanjutkan maraton dari posisi terakhir'
                       : `Mulai maraton dari ${oldest.name}`
                   }
-                  className="flex min-h-11 items-center justify-center rounded-xl border border-brand-amber-dim px-3.5 py-2.5 text-center text-[13px] font-semibold text-brand-amber transition-colors active:scale-[0.97] active:duration-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber focus-visible:ring-offset-2 [@media(hover:hover)]:hover:bg-brand-amber-dim/20"
+                  className="flex min-h-11 items-center justify-center rounded-xl border border-brand-amber-dim px-3.5 py-2.5 text-center text-[13px] font-semibold text-brand-amber transition-colors active:scale-[0.97] active:duration-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber focus-visible:ring-offset-2 [@media(hover:hover)_and_(pointer:fine)]:hover:bg-brand-amber-dim/20"
                 >
                   Maraton
                 </Link>
@@ -498,7 +498,7 @@ export default function Series() {
                   className={`flex min-h-11 items-center justify-center gap-1.5 rounded-xl border px-3.5 py-2.5 text-[13px] font-semibold transition-colors active:scale-[0.97] active:duration-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber focus-visible:ring-offset-2 disabled:opacity-50 ${
                     pickMode
                       ? 'border-brand-amber bg-brand-amber/15 text-brand-amber'
-                      : 'border-ink-700 text-ink-300 [@media(hover:hover)]:hover:bg-ink-850'
+                      : 'border-ink-700 text-ink-300 [@media(hover:hover)_and_(pointer:fine)]:hover:bg-ink-850'
                   }`}
                 >
                   <IconDownload className="size-4" />
@@ -524,7 +524,7 @@ export default function Series() {
         {resume && (
           <Link
             to={resumeHref as string}
-            className="mt-2 block min-h-11 content-center text-center text-[12px] font-medium text-ink-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber focus-visible:ring-offset-2 [@media(hover:hover)]:hover:text-brand-amber"
+            className="mt-2 block min-h-11 content-center text-center text-[12px] font-medium text-ink-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber focus-visible:ring-offset-2 [@media(hover:hover)_and_(pointer:fine)]:hover:text-brand-amber"
           >
             Lanjut dari {label ?? `${resume.chapterName}`} · halaman {resume.page + 1}
           </Link>
@@ -633,7 +633,7 @@ export default function Series() {
                         startDownloadPdf()
                       }}
                       disabled={dlBusy}
-                      className="min-h-11 min-w-11 rounded-lg border border-ink-600 px-4 py-2.5 text-[12px] font-semibold text-ink-200 transition-colors active:scale-[0.97] active:duration-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber focus-visible:ring-offset-2 [@media(hover:hover)]:hover:bg-ink-850 disabled:opacity-50"
+                      className="min-h-11 min-w-11 rounded-lg border border-ink-600 px-4 py-2.5 text-[12px] font-semibold text-ink-200 transition-colors active:scale-[0.97] active:duration-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber focus-visible:ring-offset-2 [@media(hover:hover)_and_(pointer:fine)]:hover:bg-ink-850 disabled:opacity-50"
                     >
                       PDF
                     </button>
@@ -689,7 +689,7 @@ export default function Series() {
                   <button
                     type="button"
                     onClick={() => dlHandle && cancelRun(dlHandle)}
-                    className="min-h-11 shrink-0 rounded-lg border border-ink-700 px-4 py-2.5 text-[12px] font-bold text-ink-200 transition-colors active:scale-[0.97] active:duration-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber focus-visible:ring-offset-2 [@media(hover:hover)]:hover:bg-ink-800"
+                    className="min-h-11 shrink-0 rounded-lg border border-ink-700 px-4 py-2.5 text-[12px] font-bold text-ink-200 transition-colors active:scale-[0.97] active:duration-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber focus-visible:ring-offset-2 [@media(hover:hover)_and_(pointer:fine)]:hover:bg-ink-800"
                   >
                     Batal
                   </button>
@@ -772,7 +772,7 @@ export default function Series() {
             <p className="text-[12.5px] text-ink-500">Belum ada chapter.</p>
             <Link
               to="/cari"
-              className="mt-3 inline-flex min-h-11 items-center rounded-xl bg-brand-amber px-5 py-2.5 text-[13px] font-bold text-white transition-colors active:scale-[0.97] active:duration-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber focus-visible:ring-offset-2 [@media(hover:hover)]:hover:bg-brand-amber-soft"
+              className="mt-3 inline-flex min-h-11 items-center rounded-xl bg-brand-amber px-5 py-2.5 text-[13px] font-bold text-white transition-colors active:scale-[0.97] active:duration-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber focus-visible:ring-offset-2 [@media(hover:hover)_and_(pointer:fine)]:hover:bg-brand-amber-soft"
             >
               Cari judul lain
             </Link>
@@ -852,7 +852,7 @@ function ChapterRow({
       ? 'bg-brand-amber/15 ring-1 ring-inset ring-brand-amber/50'
       : mark === 'mid'
         ? 'bg-brand-amber/10'
-        : '[@media(hover:hover)]:hover:bg-ink-850 active:bg-ink-850'
+        : '[@media(hover:hover)_and_(pointer:fine)]:hover:bg-ink-850 active:bg-ink-850'
   }`
   const titleCls = read
     ? 'min-w-0 flex-1 truncate text-[13px] font-medium text-ink-500'

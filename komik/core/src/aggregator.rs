@@ -2312,6 +2312,13 @@ fn has_usable_images(pages: &ChapterPages) -> bool {
     pages.images.iter().any(|u| !u.trim().is_empty())
 }
 
+/// Tambah sumber ke daftar urutan kalau belum ada (dedup by SourceId).
+fn push_unique(list: &mut Vec<Arc<dyn Source>>, src: Arc<dyn Source>) {
+    if !list.iter().any(|s| s.id() == src.id()) {
+        list.push(src);
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -2398,7 +2405,7 @@ mod tests {
             .collect();
         let detail = SeriesDetail { manga, chapters };
         agg.cache_put(
-            &agg.cache_key("series", None, &format!("stub:native1:native1")),
+            &agg.cache_key("series", None, "stub:native1:native1"),
             &detail,
         );
 
@@ -2409,13 +2416,6 @@ mod tests {
         // Hasil di-truncate ke cap.
         let SeriesLoad::Ok(_, detail) = second else { unreachable!() };
         assert_eq!(detail.chapters.len(), 50);
-    }
-}
-
-/// Tambah sumber ke daftar urutan kalau belum ada (dedup by SourceId).
-fn push_unique(list: &mut Vec<Arc<dyn Source>>, src: Arc<dyn Source>) {
-    if !list.iter().any(|s| s.id() == src.id()) {
-        list.push(src);
     }
 }
 
