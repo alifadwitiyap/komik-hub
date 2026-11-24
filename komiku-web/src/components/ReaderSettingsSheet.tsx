@@ -96,7 +96,7 @@ export default function ReaderSettingsSheet({
         aria-hidden={!open}
         inert={!open}
         tabIndex={-1}
-        className={`sheet-panel flex max-h-[92dvh] w-full flex-col overflow-hidden rounded-t-2xl bg-ink-900 outline-none ${open ? '' : 'sheet-closing'}`}
+        className={`sheet-panel flex max-h-[85dvh] max-w-md w-full flex-col overflow-hidden rounded-t-2xl bg-ink-900 outline-none ${open ? '' : 'sheet-closing'}`}
         onClick={(e) => e.stopPropagation()}
         onKeyDown={trapFocus}
       >
@@ -108,7 +108,7 @@ export default function ReaderSettingsSheet({
           aria-hidden="true"
           className="pointer-events-auto flex h-11 shrink-0 touch-none select-none items-start justify-center pt-2"
         >
-          <span className="h-1 w-9 rounded-full bg-white/20" />
+          <span className="h-1 w-9 rounded-full bg-ink-400/40 dark:bg-white/20" />
         </div>
         <div
           {...drag}
@@ -126,7 +126,7 @@ export default function ReaderSettingsSheet({
           </button>
         </div>
 
-        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain pb-[env(safe-area-inset-bottom)]">
+        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain pb-[calc(1rem+env(safe-area-inset-bottom))]">
         <Row
           icon={<IconBars className="size-4" />}
           label="Mode Baca"
