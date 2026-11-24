@@ -1,4 +1,6 @@
 import { describe, expect, it } from 'vitest'
+import { readFileSync } from 'node:fs'
+import { fileURLToPath } from 'node:url'
 import { genreHref, resumeCta } from './pages/Series'
 import searchSrc from './pages/Search.tsx?raw'
 import seriesSrc from './pages/Series.tsx?raw'
@@ -46,6 +48,8 @@ describe('detail: CTA lanjut baca', () => {
     expect(seriesSrc).toContain('marathonLink ?? marathonHref(String(oldest.id))')
     expect(unifiedSrc).toContain("marathonLink ?? `/maraton/${handle}/${oldest.number}`")
     expect(unifiedSrc).toContain('`Baca ${chapterLabel(oldest)}`')
+    expect(unifiedSrc).toContain('`/baca/${handle}/${newest.number}`')
+    expect(unifiedSrc).toContain('setPendingSources(r.pending ?? [])')
   })
 })
 
@@ -61,6 +65,12 @@ describe('search: history 6 chip + trending statis + grid 2 kolom', () => {
   it('label trending tidak mengaku data live', () => {
     expect(searchSrc).toContain('Sedang Ramai Dicari')
     expect(searchSrc).not.toContain('Coba cari')
+  })
+
+  it('decode entity HTML sebelum judul masuk kartu', () => {
+    const apiSrc = readFileSync(fileURLToPath(new URL('./api.ts', import.meta.url)), 'utf8')
+    expect(apiSrc).toContain('export function decodeEntities(')
+    expect(apiSrc).toContain('title: decodeEntities(m.title)')
   })
 
   it('2 kolom kartu ringkas tetap memakai cover 2:3 dan judul 2 baris', () => {

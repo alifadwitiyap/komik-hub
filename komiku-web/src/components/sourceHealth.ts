@@ -38,9 +38,27 @@ export function healthSummary(healthy: number, total: number): string {
   return `${healthy}/${total} sumber sehat`
 }
 
-/** Satu baris tooltip untuk sumber mati: "Mangaku — timeout 8s". */
+/**
+ * Ringkasan error sumber mati untuk tooltip/panel. Error probe berulang kali
+ * menyisipkan URL yang sama pada `"DoH-pin gagal…; fallback gagal…"`
+ * sehingga teks aslinya 2-3 baris di HP. Kita ambil satu frase inti, buang
+ * duplikat URL, dan hentikan sebelum penjelasan `error sending request…`.
+ */
+export function summarizeHealthError(raw: string | null | undefined): string {
+  const text = raw?.trim()
+  if (!text) return ''
+  // Pola umum: "<tahap>: <jenis> <url>: <detail>; <tahap2>: ...".
+  // ambil sebelum `<url>:` pertama supaya tidak ada duplikasi/jargon.
+  const urlAt = text.search(/https?:\/\/[^\s:;]+/)
+  let summary = urlAt > 0 ? text.slice(0, urlAt).trim() : text
+  summary = summary.replace(/\s*[:;]\s*$/, '').trim()
+  // Kalau error pendek (mis. "timeout 8s") biarkan apa adanya.
+  return summary || text
+}
+
+/** Satu baris tooltip untuk sumber mati: "komikindo — Mati: gagal terhubung". */
 export function deadRowText(row: SourceHealthRow): string {
-  const err = row.error?.trim()
+  const err = summarizeHealthError(row.error)
   return err ? `${rowLabel(row)} — ${err}` : rowLabel(row)
 }
 

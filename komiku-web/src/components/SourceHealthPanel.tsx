@@ -16,6 +16,7 @@ import {
   panelSummary,
   relativeChecked,
   rowLabel,
+  summarizeHealthError,
 } from './sourceHealth'
 
 type Tone = 'ok' | 'warn' | 'danger' | 'dead' | 'muted'
@@ -73,7 +74,7 @@ export default function SourceHealthPanel() {
         {health.rows.map((row, index) => {
           const tone = toneOf(row)
           const ratio = row.ok ? latencyScale(row.latency_ms) : 0
-          const error = row.ok ? '' : row.error?.trim() ?? ''
+          const error = row.ok ? '' : summarizeHealthError(row.error)
           return (
             <li
               key={row.source}

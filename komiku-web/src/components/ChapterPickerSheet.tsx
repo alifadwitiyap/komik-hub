@@ -2,6 +2,7 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { usePickableChapters } from '../hooks/usePickableChapters'
 import { useSheetPresence } from '../hooks/useSheetPresence'
+import { SourceStatus } from './SourceStatus'
 import { useSheetDrag } from '../hooks/useSheetDrag'
 import '../styles/sheets.css'
 import { sortByChapterNumber, chapterEditionLabel } from '../chapterOrder'
@@ -54,7 +55,7 @@ export default function ChapterPickerSheet({
 }: ChapterPickerSheetProps) {
   const [q, setQ] = useState('')
   const mounted = useSheetPresence(open)
-  const { chapters, loading, error } = usePickableChapters({
+  const { chapters, loading, error, pending, failed } = usePickableChapters({
     enabled: open,
     chapterKey,
     legacySeriesId,
@@ -234,6 +235,7 @@ export default function ChapterPickerSheet({
             <p id="chapter-picker-desc" className="truncate text-[11.5px] text-white/55">
               {seriesTitle ? seriesTitle : 'Series ini'}
               {chapters.length > 0 ? ` · ${chapters.length} chapter` : ''}
+              {(pending.length > 0 || failed.length > 0) ? ' · sebagian sumber' : ''}
             </p>
           </div>
           <button
@@ -246,6 +248,10 @@ export default function ChapterPickerSheet({
               <path d="M6 6l12 12M18 6L6 18" strokeLinecap="round" />
             </svg>
           </button>
+        </div>
+
+        <div className="shrink-0 px-4 pb-2">
+          <SourceStatus failed={failed} pending={pending} />
         </div>
 
         <div className="shrink-0 px-4 pb-3">

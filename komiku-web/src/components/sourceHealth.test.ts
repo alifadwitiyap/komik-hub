@@ -3,11 +3,14 @@ import { readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import type { SourceHealthRow } from '../types'
 import {
+  deadRowText,
+  healthDescription,
   latencyLabel,
   latencyScale,
   latencyTier,
   panelSummary,
   relativeChecked,
+  summarizeHealthError,
 } from './sourceHealth'
 
 const src = (p: string) => readFileSync(fileURLToPath(new URL(p, import.meta.url)), 'utf8')
@@ -62,6 +65,17 @@ describe('sourceHealth — display helpers murni', () => {
     expect(panelSummary(3, 4)).toBe('3/4 sehat · 1 gangguan')
     expect(panelSummary(2, 4)).toBe('2/4 sehat · 2 gangguan')
     expect(panelSummary(0, 0)).toBe('Kesehatan sumber belum diketahui')
+  })
+
+  it('summarizeHealthError: satu baris, tanpa URL/jargon berulang', () => {
+    const raw = 'DoH-pin gagal: network error https://komikindo.ch/daftar-manga/: error sending request for url (https://komikindo.ch/daftar-manga/); fallback gagal: network error https://komikindo.ch/daftar-manga/: error sending request for url (https://komikindo.ch/daftar-manga/)'
+    expect(summarizeHealthError(raw)).toBe('DoH-pin gagal: network error')
+    expect(summarizeHealthError('timeout 8s')).toBe('timeout 8s')
+    expect(summarizeHealthError(null)).toBe('')
+    expect(deadRowText({ source: 'komikindo', ok: false, error: raw }))
+      .toBe('Komikindo — DoH-pin gagal: network error')
+    expect(healthDescription(4, 5, [{ source: 'komikindo', ok: false, error: raw }]))
+      .toBe('4/5 sumber sehat — sumber mati: Komikindo — DoH-pin gagal: network error')
   })
 })
 

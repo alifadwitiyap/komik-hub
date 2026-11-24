@@ -54,6 +54,8 @@ export default function SeriesUnified() {
    * yang ia lihat lebih tipis dari seharusnya.
    */
   const [failedSources, setFailedSources] = useState<string[]>([])
+  /** Sumber yang masih di-merge server saat respons parsial dikirim. */
+  const [pendingSources, setPendingSources] = useState<string[]>([])
   /** Naikkan untuk memicu muat ulang (tombol "Coba lagi" di SourceStatus). */
   const [reloadKey, setReloadKey] = useState(0)
   const [error, setError] = useState<string | null>(null)
@@ -134,6 +136,7 @@ export default function SeriesUnified() {
           representative_source: r.representative_source ?? null,
         })
         setFailedSources(r.failed_sources ?? [])
+        setPendingSources(r.pending ?? [])
       })
       .catch((e: Error) => {
         if (e.name === 'AbortError') return
@@ -182,6 +185,9 @@ export default function SeriesUnified() {
   }, [data, chapters, selectionKey, resetRange, selectRange])
 
   const oldest = chapters.length > 0 ? chapters[chapters.length - 1] : null
+  // Chapter terbaru = elemen pertama sesudah urutan "terbaru" (dipakai CTA
+  // "Lanjut ke terbaru" untuk fresh user, bukan asumsi Chapter 01).
+  const newest = chapters.length > 0 ? chapters[0] : null
   // Mark "sudah dibaca" per akun: chapter yang pernah dibuka user jadi abu.
   // Kunci = title_key series + nomor chapter (lihat readMarks.ts).
   const titleKey = data?.manga.title_key ?? null
@@ -524,19 +530,26 @@ export default function SeriesUnified() {
               </Link>
               <Link
                 to={
-                  // Sesi maraton tersimpan menang: tombol "Maraton" harus
-                  // MELANJUTKAN rantai, bukan mengulang dari chapter paling awal
-                  // (itu keluhan aslinya: klik maraton → balik ke awal).
-                  marathonLink ?? `/maraton/${handle}/${oldest.number}`
+                  // Fresh user: tawarkan chapter terbaru di samping "Baca dari
+                  // awal", supaya tidak perlu menelusur ratusan chapter.
+                  // User dengan progres tetap melihat tombol Maraton seperti
+                  // sebelumnya (lanjut sesi, bukan balik ke awal).
+                  !lanjut && !resumeKey && newest
+                    ? `/baca/${handle}/${newest.number}`
+                    : marathonLink ?? `/maraton/${handle}/${oldest.number}`
                 }
                 title={
-                  marathonPos
-                    ? 'Lanjutkan maraton dari posisi terakhir'
-                    : `Mulai maraton dari ${chapterLabel(oldest)}`
+                  !lanjut && !resumeKey && newest
+                    ? `Baca chapter terbaru ${chapterLabel(newest)}`
+                    : marathonPos
+                      ? 'Lanjutkan maraton dari posisi terakhir'
+                      : `Mulai maraton dari ${chapterLabel(oldest)}`
                 }
                 className="flex min-h-11 items-center justify-center rounded-xl border border-brand-amber-dim px-3.5 py-2.5 text-center text-[13px] font-semibold text-brand-amber transition-colors active:scale-[0.97] active:duration-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber focus-visible:ring-offset-2 [@media(hover:hover)_and_(pointer:fine)]:hover:bg-brand-amber-dim/20"
               >
-                Maraton
+                {!lanjut && !resumeKey && newest && newest.number !== oldest.number
+                  ? `Terbaru · ${chapterLabel(newest)}`
+                  : 'Maraton'}
               </Link>
               {/* unduh PDF: aktifkan mode range 2-tap rentang pada daftar chapter */}
               {chapters.length > 0 && (
@@ -583,6 +596,21 @@ export default function SeriesUnified() {
                   }}
                 />
               )}
+              {/* Fresh user tetap punya maraton; dipindah ke baris sendiri
+                  supaya dua CTA utama (awal/terbaru) tidak tertutup. */}
+              {!lanjut && !resumeKey && newest && (
+                <Link
+                  to={marathonLink ?? `/maraton/${handle}/${oldest.number}`}
+                  title={
+                    marathonPos
+                      ? 'Lanjutkan maraton dari posisi terakhir'
+                      : `Mulai maraton dari ${chapterLabel(oldest)}`
+                  }
+                  className="col-span-2 flex min-h-11 items-center justify-center rounded-xl border border-ink-700 px-3.5 py-2.5 text-center text-[13px] font-medium text-ink-200 transition-colors active:scale-[0.97] active:duration-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber focus-visible:ring-offset-2 [@media(hover:hover)_and_(pointer:fine)]:hover:bg-ink-850"
+                >
+                  Maraton dari awal
+                </Link>
+              )}
             </>
           )}
         </div>
@@ -627,6 +655,7 @@ export default function SeriesUnified() {
             menyimpulkan series-nya memang cuma segini. */}
         <SourceStatus
           failed={failedSources}
+          pending={pendingSources}
           onRetry={() => setReloadKey((k) => k + 1)}
           className="mb-3"
         />

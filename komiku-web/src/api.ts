@@ -334,6 +334,44 @@ export const readApi = {
     send<{ ok: boolean; count: number }>('PUT', '/read', { marks }, signal),
 }
 
+/** Regex entity HTML yang sering bocor dari judul hasil scraping sumber. */
+const HTML_ENTITY = /&(#x[0-9a-f]+|#\d+|amp|lt|gt|quot|apos|nbsp|ndash|mdash|hellip|rsquo|lsquo|rdquo|ldquo|trade|copy|reg|times|divide|middot|bull|laquo|raquo|sbquo|bdquo|prime|Prime|euro|pound|yen|cent|deg|plusmn|frac12|frac14|frac34|sup1|sup2|sup3|micro|para|sect|uml|macr|cedil|tilde|szlig|aelig|AElig|oelig|Oelig|scaron|Scaron|yuml|Yuml|circ|acute|grave|ock|Ock);/gi
+const NAMED_ENTITY: Record<string, string> = {
+  amp: '&', lt: '<', gt: '>', quot: '"', apos: "'", nbsp: ' ',
+  ndash: '–', mdash: '—', hellip: '…', rsquo: '’', lsquo: '‘',
+  rdquo: '”', ldquo: '“', trade: '™', copy: '©', reg: '®',
+  times: '×', divide: '÷', middot: '·', bull: '•', laquo: '«', raquo: '»',
+  sbquo: '‚', bdquo: '„', prime: '′', Prime: '″', euro: '€', pound: '£',
+  yen: '¥', cent: '¢', deg: '°', plusmn: '±', frac12: '½', frac14: '¼',
+  frac34: '¾', sup1: '¹', sup2: '²', sup3: '³', micro: 'µ', para: '¶',
+  sect: '§', uml: '¨', macr: '¯', cedil: '¸', tilde: '˜', szlig: 'ß',
+  aelig: 'æ', AElig: 'Æ', oelig: 'œ', Oelig: 'Œ', scaron: 'š', Scaron: 'Š',
+  yuml: 'ÿ', Yuml: 'Ÿ', circ: 'ˆ', acute: '´', grave: '`', ock: 'œ', Ock: 'Œ',
+}
+
+/**
+ * Decode entity HTML (numeric & nama umum) tanpa dependency baru. Sumber
+ * scraping kadang mengirim `&#8211;` dsb. apa adanya; kalau dipasangkan
+ * langsung ke teks React, browser menampilkannya literal — ini merusak judul
+ * di kartu cari/home. Non-entity dibiarkan apa adanya.
+ */
+export function decodeEntities(input: string | null | undefined): string {
+  if (!input) return ''
+  return input.replace(HTML_ENTITY, (match, code: string) => {
+    let value: string | undefined
+    if (code[0] === '#') {
+      const hex = code[1]?.toLowerCase() === 'x'
+      const n = Number.parseInt(code.slice(hex ? 2 : 1), hex ? 16 : 10)
+      if (Number.isFinite(n) && n > 0 && n <= 0x10ffff) {
+        try { value = String.fromCodePoint(n) } catch { value = undefined }
+      }
+    } else {
+      value = NAMED_ENTITY[code]
+    }
+    return value ?? match
+  })
+}
+
 /**
  * MangaOut (unified) → bentuk kartu `Manga` yang sudah dipakai komponen
  * existing (Row/MangaCard). Dirata di sini supaya TIDAK ada komponen duplikat:
@@ -342,7 +380,7 @@ export const readApi = {
 export function toMangaCard(m: MangaOut): Manga {
   return {
     id: m.handle,
-    title: m.title,
+    title: decodeEntities(m.title),
     // server kirim rating sebagai string; "-" berarti tanpa skor
     score: m.rating && m.rating !== '-' ? m.rating : null,
     thumbnail: m.cover_url,

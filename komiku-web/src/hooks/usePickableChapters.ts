@@ -28,6 +28,10 @@ export interface PickableChaptersState {
   chapters: PickableChapter[]
   loading: boolean
   error: string | null
+  /** sumber yang masih di-merge server (respons parsial). */
+  pending: string[]
+  /** sumber yang gagal diambil server. */
+  failed: string[]
 }
 
 export interface PickableChaptersInput {
@@ -68,6 +72,8 @@ export function usePickableChapters({
     sig: string
     chapters: PickableChapter[]
     error: string | null
+    pending: string[]
+    failed: string[]
   } | null>(null)
 
   useEffect(() => {
@@ -76,34 +82,38 @@ export function usePickableChapters({
     const unified = parseUnifiedKey(chapterKey)
 
     const job = unified
-      ? unifiedApi.series(unified.handle, ctrl.signal).then((r) =>
-          (r.chapters ?? []).map((c) => ({
+      ? unifiedApi.series(unified.handle, ctrl.signal).then((r) => ({
+          chapters: (r.chapters ?? []).map((c) => ({
             key: `${c.handle || unified.handle}:${c.number}`,
             number: c.number,
             source: c.source || (c.handle || unified.handle).split(':')[0],
             title: c.title || `Chapter ${c.number}`,
           })),
-        )
+          pending: r.pending ?? [],
+          failed: r.failed_sources ?? [],
+        }))
       : legacySeriesId != null
-        ? api.series(legacySeriesId, ctrl.signal).then((r) =>
-            (r.chapters ?? []).map((c) => ({
+        ? api.series(legacySeriesId, ctrl.signal).then((r) => ({
+            chapters: (r.chapters ?? []).map((c) => ({
               key: String(c.id),
               number: legacyNumber(c),
               title: c.name,
             })),
-          )
-        : Promise.resolve([] as PickableChapter[])
+            pending: [] as string[],
+            failed: [] as string[],
+          }))
+        : Promise.resolve({ chapters: [] as PickableChapter[], pending: [], failed: [] })
 
     job
-      .then((list) => {
+      .then(({ chapters: list, pending, failed }) => {
         // request sudah dibatalkan (sheet ditutup / chapter berganti) →
         // jangan timpa hasil permintaan yang lebih baru.
         if (ctrl.signal.aborted) return
-        setResult({ sig, chapters: sortAscending(list), error: null })
+        setResult({ sig, chapters: sortAscending(list), error: null, pending, failed })
       })
       .catch((e: Error) => {
         if (e.name === 'AbortError' || ctrl.signal.aborted) return
-        setResult({ sig, chapters: [], error: e.message })
+        setResult({ sig, chapters: [], error: e.message, pending: [], failed: [] })
       })
 
     return () => ctrl.abort()
@@ -115,6 +125,8 @@ export function usePickableChapters({
     chapters: active?.chapters ?? [],
     loading: sig !== '' && active === null,
     error: active?.error ?? null,
+    pending: active?.pending ?? [],
+    failed: active?.failed ?? [],
   }
 }
 
