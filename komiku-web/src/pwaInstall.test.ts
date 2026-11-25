@@ -79,11 +79,7 @@ describe('UX install + update', () => {
 
   it('banner + kartu Akun memakai hook yang sama, update toast dipasang global', () => {
     expect(bannerSrc).toContain("from '../hooks/usePwaInstall'")
-    expect(bannerSrc).toContain('Ketuk ikon Bagikan → Pilih &quot;Tambah ke Layar Utama&quot;')
-    expect(bannerSrc).toContain('kh-tap')
-    expect(bannerSrc).toContain('size-11')
-    expect(bannerSrc).toContain('Pasang')
-    expect(homeSrc).toContain('<PwaInstallBanner />')
+    expect(homeSrc).not.toContain('<PwaInstallBanner />')
     expect(akunSrc).toContain("from '../hooks/usePwaInstall'")
     expect(akunSrc).toContain('{!isStandalone && (')
     expect(appSrc).toContain('<SwUpdateToast />')
