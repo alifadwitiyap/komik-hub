@@ -8,6 +8,7 @@ import swSrc from '../public/sw.js?raw'
 import toastSrc from './components/SwUpdateToast.tsx?raw'
 import appSrc from './App.tsx?raw'
 import homeSrc from './pages/Home.tsx?raw'
+import searchSrc from './pages/Search.tsx?raw'
 import akunSrc from './pages/Akun.tsx?raw'
 
 const root = join(process.cwd())
@@ -81,6 +82,15 @@ describe('UX install + update', () => {
     expect(homeSrc).toContain('.map(toMangaCard).filter((m) => Boolean(m.cover))')
     expect(homeSrc).toContain('hideIfNoCover />')
     expect(homeSrc).toContain('if (hide) return null')
+  })
+
+  it('Eksplorasi Cari memuat halaman berikutnya otomatis saat mendekat', () => {
+    expect(searchSrc).toContain('const loadMoreRef = useRef<HTMLDivElement>(null)')
+    expect(searchSrc).toContain('new IntersectionObserver(')
+    expect(searchSrc).toContain("{ rootMargin: '600px 0px' }")
+    expect(searchSrc).toContain('if (entries.some((e) => e.isIntersecting)) loadMore()')
+    expect(searchSrc).toContain('<div ref={loadMoreRef}')
+    expect(searchSrc).toContain("Gulir untuk memuat komik berikutnya")
   })
 
   it('toast ditahan di reader dan mengirim SKIP_WAITING sebelum reload', () => {

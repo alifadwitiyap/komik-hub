@@ -282,6 +282,8 @@ export default function Search() {
   /** total sumber dari server untuk chip mode eksplorasi (0 = belum dilaporkan) */
   const [listSourcesTotal, setListSourcesTotal] = useState(0)
   const [listReloadKey, setListReloadKey] = useState(0)
+  /** Penanda bawah feed: memuat halaman berikutnya otomatis saat mendekat. */
+  const loadMoreRef = useRef<HTMLDivElement>(null)
   /** handle yang sudah masuk daftar — cegah duplikat lintas halaman. */
   const seen = useRef<Set<string>>(new Set())
   /** filter aktif → feed pindah ke katalog (bukan populer). Termasuk
@@ -343,7 +345,9 @@ export default function Search() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searching, filtered, tipe, status, genreSlug, src, srt, minCh, listReloadKey])
 
-  // "Muat lebih" menambah halaman berikutnya (append + dedup).
+  // Tombol "Muat lebih" menambah halaman berikutnya (append + dedup).
+  // Dipanggil oleh klik ATAU IntersectionObserver saat penanda bawah feed
+  // mendekat — user tidak perlu menekan tombol sampai habis.
   const loadMore = () => {
     if (more || !hasMore || listLoading) return
     setMore(true)
@@ -364,6 +368,26 @@ export default function Search() {
       })
       .catch(() => setMore(false))
   }
+
+  // Auto-load: begitu penanda bawah masuk ~600px sebelum viewport, halaman
+  // berikutnya diambil sendiri. Observer dipasang ulang setiap kali daftar/
+  // status berubah supaya penanda selalu teramati setelah kartu bertambah.
+  useEffect(() => {
+    if (searching || listLoading || listError || !hasMore || items.length === 0) return
+    const el = loadMoreRef.current
+    if (!el || typeof IntersectionObserver === 'undefined') return
+    const io = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((e) => e.isIntersecting)) loadMore()
+      },
+      { rootMargin: '600px 0px' },
+    )
+    io.observe(el)
+    return () => io.disconnect()
+    // loadMore dibuat ulang tiap render; state yang dipakainya sudah tercakup
+    // di dep-array (items.length, more, listPage, filter args).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searching, listLoading, listError, hasMore, items.length, more, listPage, filtered, tipe, status, genreSlug, src, srt, minCh])
 
   // ---- filter ------------------------------------------------------------
   // Satu setFilter: tulis ke query string (single source of truth filter).
@@ -1032,8 +1056,8 @@ export default function Search() {
                 </div>
               )}
 
-              {hasMore && items.length > 0 && (
-                <div className="mt-5 flex justify-center">
+              <div ref={loadMoreRef} className="mt-5 flex flex-col items-center gap-2">
+                {hasMore && items.length > 0 && (
                   <button
                     disabled={more}
                     onClick={loadMore}
@@ -1041,8 +1065,11 @@ export default function Search() {
                   >
                     {more ? 'Memuat…' : 'Muat lebih'}
                   </button>
-                </div>
-              )}
+                )}
+                <span aria-live="polite" className="sr-only">
+                  {more ? 'Memuat komik berikutnya…' : hasMore ? 'Gulir untuk memuat komik berikutnya' : ''}
+                </span>
+              </div>
               {(minCh !== null || status === COMPLETED_STATUS) && items.length < 6 && (
                 <LowResultNote
                   count={items.length}
