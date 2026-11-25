@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { usePickableChapters } from '../hooks/usePickableChapters'
 import { useSheetPresence } from '../hooks/useSheetPresence'
 import { SourceStatus } from './SourceStatus'
+import SourceBadge, { sourceLabel } from './SourceBadge'
 import { useSheetDrag } from '../hooks/useSheetDrag'
 import '../styles/sheets.css'
 import { sortByChapterNumber, chapterEditionLabel } from '../chapterOrder'
@@ -63,6 +64,14 @@ export default function ChapterPickerSheet({
   // Chapter yang sudah pernah dibuka → abu, sama seperti di halaman series.
   const { isRead } = useReadMarks(titleKey)
   const markedKey = currentKey ?? chapterKey
+  // Badge sumber di daftar hanya perlu kalau ada >1 sumber. Kalau semua
+  // chapter dari sumber yang sama, label di header sudah cukup.
+  const distinctSources = useMemo(
+    () => [...new Set(chapters.map((c) => c.source).filter((s): s is string => Boolean(s)))],
+    [chapters],
+  )
+  const showSourceBadge = distinctSources.length > 1
+  const singleSourceLabel = distinctSources.length === 1 ? sourceLabel(distinctSources[0]) : null
   const listRef = useRef<HTMLUListElement | null>(null)
   const currentRef = useRef<HTMLAnchorElement | null>(null)
   const panelRef = useRef<HTMLDivElement | null>(null)
@@ -235,6 +244,7 @@ export default function ChapterPickerSheet({
             <p id="chapter-picker-desc" className="truncate text-[11.5px] text-white/55">
               {seriesTitle ? seriesTitle : 'Series ini'}
               {chapters.length > 0 ? ` · ${chapters.length} chapter` : ''}
+              {singleSourceLabel ? ` · ${singleSourceLabel}` : ''}
               {(pending.length > 0 || failed.length > 0) ? ' · sebagian sumber' : ''}
             </p>
           </div>
@@ -369,6 +379,12 @@ export default function ChapterPickerSheet({
                     >
                       {c.title === chapterEditionLabel(c) ? '' : c.title}
                     </span>
+                    {showSourceBadge && c.source && (
+                      <SourceBadge
+                        source={c.source}
+                        className="shrink-0 bg-black/25 text-[9px]"
+                      />
+                    )}
                     {isCurrent && (
                       <span className="shrink-0 rounded-full bg-brand-amber px-2 py-0.5 text-[9.5px] font-bold text-white">
                         Dibaca

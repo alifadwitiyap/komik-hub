@@ -91,6 +91,9 @@ describe('P2 animasi — durasi & sifat sesuai rentang rencana', () => {
     }
     // fokus dikembalikan ke pembuka tanpa menggulir halaman (preventScroll)
     expect(chapterSheetSrc).toContain('opener?.focus({ preventScroll: true })')
+    expect(chapterSheetSrc).toContain('singleSourceLabel')
+    expect(chapterSheetSrc).toContain('<SourceBadge')
+    expect(chapterSheetSrc).toContain('showSourceBadge && c.source')
     expect(modeSheetSrc).toContain('prev?.focus({ preventScroll: true })')
     expect(settingsSheetSrc).toContain('openerRef.current?.focus({ preventScroll: true })')
   })
