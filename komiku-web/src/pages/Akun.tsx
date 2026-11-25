@@ -26,7 +26,6 @@ import {
 } from '../account'
 import { userApi } from '../api'
 import { IconUser } from '../icons'
-import SourceHealthPanel from '../components/SourceHealthPanel'
 
 export default function Akun() {
   // Link akun (?u=…) sudah ditangkap di App (boot) SEBELUM halaman ini render,
@@ -92,10 +91,6 @@ export default function Akun() {
         Identitas dipakai supaya favorit, notifikasi, unduhan, dan posisi baca
         tersimpan per orang — bukan per device.
       </p>
-
-      <section aria-label="Status sumber" className="mb-6 border-y border-ink-800">
-        <SourceHealthPanel />
-      </section>
 
       {username === null ? (
         <form onSubmit={submit} className="rounded-2xl border border-ink-800 bg-ink-900 p-4">

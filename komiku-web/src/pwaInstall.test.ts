@@ -64,11 +64,14 @@ describe('PWA manifest + ikon', () => {
 })
 
 describe('UX install + update', () => {
-  it('tidak ada ajakan pasang di beranda maupun Akun; update toast dipasang global', () => {
+  it('beranda/Akun bebas ajakan pasang & panel health; update toast global', () => {
     expect(homeSrc).not.toContain('<PwaInstallBanner />')
     expect(homeSrc).not.toContain('Pasang Komik Hub')
     expect(akunSrc).not.toContain('usePwaInstall')
     expect(akunSrc).not.toContain('Pasang Komik Hub')
+    expect(akunSrc).not.toContain('Status Sumber')
+    expect(akunSrc).not.toContain('SourceHealthPanel')
+    expect(appSrc).toContain('<SourceHealthBadge />')
     expect(appSrc).toContain('<SwUpdateToast />')
     expect(appSrc.indexOf('<SwUpdateToast />')).toBeGreaterThan(appSrc.indexOf('</Routes>'))
   })
