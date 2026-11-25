@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { imgUrl } from '../imgUrl'
+import { imgSrc } from '../imgUrl'
 import type { QueueItem } from '../readingQueue'
 
 interface Props {
@@ -13,7 +13,7 @@ interface Props {
 
 /** Kartu transisi antar-seri: murni 1 ketuk, TANPA auto-redirect. */
 export default function QueueNextCard({ item, index, total, onNext, onOpenDrawer, onFinish }: Props) {
-  const cover = item.coverUrl ? imgUrl(item.coverUrl) : ''
+  const cover = item.coverUrl ? imgSrc(item.coverUrl, 200) : ''
   const imgRef = useRef<HTMLImageElement | null>(null)
   const [coverFailed, setCoverFailed] = useState(false)
 

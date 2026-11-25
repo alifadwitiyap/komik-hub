@@ -133,9 +133,8 @@ export default function Home() {
     ).values(),
   ).slice(0, 12)
 
-  // Cover host mati (komikindo.ch) sudah dibuang di toMangaCard, jadi ambil 2
-  // item populer pertama yang masih punya cover. Fallback ke seksi komiku
-  // kalau unified mati — carousel tak pernah kosong.
+  // Ambil 2 item populer pertama yang punya cover valid. Fallback ke seksi
+  // komiku kalau unified mati — carousel tak pernah kosong.
   const featured = (popular ?? [])
     .filter((m) => Boolean(coverOf(m)))
     .slice(0, 2)

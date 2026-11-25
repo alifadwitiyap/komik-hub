@@ -25,7 +25,7 @@
 const ALLOWED_HOSTS: &[&str] = &[
     "img.komiku.org",
     "thumbnail.komiku.org",
-            "thumbnail.komiku.to",
+    "thumbnail.komiku.to",
     "image2.komiku.to",
     "image3.komiku.to",
     "image4.komiku.to",
@@ -44,6 +44,8 @@ const ALLOWED_HOSTS: &[&str] = &[
     "v2.yuucdn.net",
     "v7.kiryuu.to",
     "cdn.kiryuu.io",
+    "komikindo.ch",
+    "www.komikindo.ch",
 ];
 
 /// Ambil host dari `https://host/...` tanpa crate `url` (cukup allowlist).
@@ -84,6 +86,8 @@ mod tests {
             "image2.komiku.to",
             "image11.komiku.to",
             "cdn.shinigami.gg",
+            "komikindo.ch",
+            "www.komikindo.ch",
         ] {
             assert!(
                 host_allowed(&format!("https://{h}/x/1.webp")),

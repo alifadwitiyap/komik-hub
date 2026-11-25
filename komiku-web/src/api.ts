@@ -378,12 +378,12 @@ export function decodeEntities(input: string | null | undefined): string {
  * existing (Row/MangaCard). Dirata di sini supaya TIDAK ada komponen duplikat:
  * user melihat UI yang sama untuk 5 sumber, hanya beda badge.
  */
-/** Host yang dikenal menolak hotlink cover dari browser (TLS reset / 403).
- *  Jangan jadikan `src` <img>: carousel eager akan menampilkan ikon rusak.
- *  Daftar ini sengaja di web — keputusan render Usability, bukan validitas
- *  sumber; server tetap boleh mengembalikan metadata komikindo apa adanya.
+/** Host yang dikenal menolak hotlink cover dari browser dan tidak di-proxy.
+ *  komikindo.ch kini dilayani same-origin lewat proxy `/img` (dengan DoH pinning
+ *  + fallback Photon di backend), sehingga aman dipakai untuk Hero Carousel,
+ *  kartu katalog, dan halaman series.
  */
-const DEAD_COVER_HOSTS = new Set(['komikindo.ch', 'www.komikindo.ch'])
+const DEAD_COVER_HOSTS = new Set<string>()
 
 /** Cover null kalau berasal dari host yang hotlink-nya gagal di browser. */
 export function usableCoverUrl(url: string | null | undefined): string | null {

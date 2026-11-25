@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { SourceStatus } from '../components/SourceStatus'
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
-import { imgUrl } from '../imgUrl'
+import { imgSrc } from '../imgUrl'
 import { decodeEntities, usableCoverUrl, unifiedApi } from '../api'
 import { getUser } from '../account'
 import type { MangaOut, UnifiedChapterOut } from '../types'
@@ -116,6 +116,7 @@ export default function SeriesUnified() {
     setChapterOrder('terbaru')
     setUnreadOnly(false)
     setSynopsisOpen(false)
+    setCoverFailed(false)
   }, [handle])
 
   // Sticky B+C — server coba sumber terakhir-dibaca untuk judul ini dulu
@@ -429,7 +430,7 @@ export default function SeriesUnified() {
       <div className="relative">
         {m.cover_url && !coverFailed && (
           <div className="absolute inset-0 h-56 overflow-hidden">
-            <img referrerPolicy="no-referrer" src={imgUrl(m.cover_url)} alt="" loading="lazy" width={225} height={300} onError={() => setCoverFailed(true)} className="size-full object-cover opacity-25 blur-md" />
+            <img referrerPolicy="no-referrer" src={imgSrc(m.cover_url, 400)} alt="" loading="lazy" width={225} height={300} onError={() => setCoverFailed(true)} className="size-full object-cover opacity-25 blur-md" />
             <div className="absolute inset-0 bg-gradient-to-b from-ink-950/60 to-ink-950" />
           </div>
         )}
@@ -469,7 +470,7 @@ export default function SeriesUnified() {
             <div className="w-24 shrink-0 sm:w-32">
               <div className="aspect-[3/4] overflow-hidden rounded-xl border border-ink-700 bg-ink-850 shadow-lg">
                 {m.cover_url && !coverFailed ? (
-                  <img referrerPolicy="no-referrer" src={imgUrl(m.cover_url)} alt={m.title} onError={() => setCoverFailed(true)} className="size-full object-cover" />
+                  <img referrerPolicy="no-referrer" src={imgSrc(m.cover_url, 400)} alt={m.title} onError={() => setCoverFailed(true)} className="size-full object-cover" />
                 ) : (
                   <span className="grid size-full place-items-center p-2 text-center text-[11px] text-ink-500">
                     {m.title}
