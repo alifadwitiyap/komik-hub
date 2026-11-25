@@ -1,4 +1,4 @@
-import { imgUrl } from '../imgUrl'
+import { imgSrc, imgUrl } from '../imgUrl'
 import { memo, useEffect, useRef, useState, type MouseEvent as ReactMouseEvent, type PointerEvent as ReactPointerEvent } from 'react'
 import { Link } from 'react-router-dom'
 import { api, coverOf, thumbOf, toMangaCard, unifiedApi } from '../api'
@@ -130,12 +130,13 @@ export default function Home() {
     ).values(),
   ).slice(0, 12)
 
-  // (a) backdrop carousel: 2 populer pertama (cukup sebagai pintu visual;
-  // 5 slide membuat katalog baru terlihat di layar pertama). Fallback ke
-  // seksi komiku pertama kalau unified mati — carousel tak pernah kosong.
-  const featured = (popular ?? []).length > 0
-    ? popular!.slice(0, 2)
-    : (sections[0]?.data.slice(0, 2) ?? [])
+  // Cover host mati (komikindo.ch) sudah dibuang di toMangaCard, jadi ambil 2
+  // item populer pertama yang masih punya cover. Fallback ke seksi komiku
+  // kalau unified mati — carousel tak pernah kosong.
+  const featured = (popular ?? [])
+    .filter((m) => Boolean(coverOf(m)))
+    .slice(0, 2)
+  if (featured.length === 0) featured.push(...(sections[0]?.data.slice(0, 2) ?? []))
 
   // Bila ada riwayat, "Lanjut membaca" tampil paling atas (tepat di bawah
   // header) supaya pembaca yang kembali bisa langsung melanjutkan bacaan.
@@ -215,9 +216,30 @@ export default function Home() {
  * rounded-xl (tanpa celah abu-abu), scrim gelap 85% di bawah untuk
  * judul/tipe/chapter. Auto-advance 4s + dots + scroll-snap; target 44px.
  */
-/** Carousel eager: kalau URL gagal dimuat, jangan biarkan ikon broken muncul. */
-function CarouselImage({ src, title }: { src: string; title: string }) {
+/** Carousel eager: pakai proxy same-origin (lebih ringan & bisa di-cache SW),
+ *  jatuh ke CDN asli kalau proxy gagal, baru teks kalau keduanya gagal. */
+function CarouselImage({
+  src,
+  fallbackSrc,
+  title,
+}: {
+  src: string
+  fallbackSrc: string
+  title: string
+}) {
   const [failed, setFailed] = useState(false)
+  const [current, setCurrent] = useState(src)
+  useEffect(() => {
+    setCurrent(src)
+    setFailed(false)
+  }, [src])
+  const onError = () => {
+    if (!failed && fallbackSrc && current !== fallbackSrc) {
+      setCurrent(fallbackSrc)
+    } else {
+      setFailed(true)
+    }
+  }
   if (failed) {
     return (
       <span className="absolute inset-0 grid place-items-center px-4 text-center font-display text-[15px] font-semibold text-ink-300">
@@ -228,14 +250,14 @@ function CarouselImage({ src, title }: { src: string; title: string }) {
   return (
     <img
       referrerPolicy="no-referrer"
-      src={src}
+      src={current}
       alt=""
       role="presentation"
       aria-hidden="true"
       className="size-full object-cover"
       loading="eager"
       decoding="async"
-      onError={() => setFailed(true)}
+      onError={onError}
     />
   )
 }
@@ -313,7 +335,11 @@ function BackdropCarousel({ items }: { items: Manga[] }) {
               {/* Sampul mengisi seluruh kartu — tidak ada ruang abu-abu. */}
               <div className="relative aspect-[4/3] overflow-hidden bg-ink-900">
                 {img ? (
-                  <CarouselImage src={imgUrl(img)} title={m.title} />
+                  <CarouselImage
+                    src={imgSrc(img, 640)}
+                    fallbackSrc={imgUrl(img)}
+                    title={m.title}
+                  />
                 ) : (
                   <span className="absolute inset-0 grid place-items-center px-4 text-center font-display text-[15px] font-semibold text-ink-300">
                     {m.title}
@@ -551,7 +577,7 @@ export const MangaCard = memo(function MangaCard({
     >
       {img && !failed ? (
         <img referrerPolicy="no-referrer"
-          src={imgUrl(img)}
+          src={imgSrc(img, 400)}
           alt={manga.title}
           loading="lazy"
           decoding="async"
@@ -645,7 +671,7 @@ export function Row({ manga }: { manga: Manga }) {
       <div className="size-12 shrink-0 overflow-hidden rounded-xl bg-ink-850">
         {img && !failed && (
           <img referrerPolicy="no-referrer"
-            src={imgUrl(img)}
+            src={imgSrc(img, 200)}
             alt=""
             loading="lazy"
             onError={() => setFailed(true)}
