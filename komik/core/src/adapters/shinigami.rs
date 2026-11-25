@@ -17,7 +17,7 @@ const UA: &str = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 \
 /// `page_size` diabaikan server / dipaksa `limit=12`. `limit` maksimal 100.
 const LIST_LIMIT: u32 = 100;
 /// Chapter list sekali tarik (One Piece 1219 chapter masuk satu request).
-const CHAPTER_LIST_LIMIT: u32 = 3000;
+const CHAPTER_LIST_LIMIT: u32 = 500;
 /// Page 1-based (kontrak `Source`) -> offset upstream; saturating agar aman.
 fn list_offset(page: u32) -> u32 {
     page.max(1).saturating_sub(1).saturating_mul(LIST_LIMIT)
