@@ -5,8 +5,6 @@ import { join } from 'node:path'
 import manifestRaw from '../public/manifest.webmanifest?raw'
 import indexHtml from '../index.html?raw'
 import swSrc from '../public/sw.js?raw'
-import hookSrc from './hooks/usePwaInstall.ts?raw'
-import bannerSrc from './components/PwaInstallBanner.tsx?raw'
 import toastSrc from './components/SwUpdateToast.tsx?raw'
 import appSrc from './App.tsx?raw'
 import homeSrc from './pages/Home.tsx?raw'
@@ -66,22 +64,11 @@ describe('PWA manifest + ikon', () => {
 })
 
 describe('UX install + update', () => {
-  it('hook mendeteksi standalone, menahan prompt, dan mengingat dismiss 14 hari', () => {
-    expect(hookSrc).toContain("matchMedia('(display-mode: standalone)')")
-    expect(hookSrc).toContain("navigator as Navigator & { standalone?: boolean }")
-    expect(hookSrc).toContain("'beforeinstallprompt'")
-    expect(hookSrc).toContain('event.preventDefault()')
-    expect(hookSrc).toContain('komik-pwa-dismissed')
-    expect(hookSrc).toContain('14 * 24 * 60 * 60 * 1000')
-    expect(hookSrc).toContain('Safari\\//')
-    expect(hookSrc).not.toContain('(navigator as any)')
-  })
-
-  it('banner + kartu Akun memakai hook yang sama, update toast dipasang global', () => {
-    expect(bannerSrc).toContain("from '../hooks/usePwaInstall'")
+  it('tidak ada ajakan pasang di beranda maupun Akun; update toast dipasang global', () => {
     expect(homeSrc).not.toContain('<PwaInstallBanner />')
-    expect(akunSrc).toContain("from '../hooks/usePwaInstall'")
-    expect(akunSrc).toContain('{!isStandalone && (')
+    expect(homeSrc).not.toContain('Pasang Komik Hub')
+    expect(akunSrc).not.toContain('usePwaInstall')
+    expect(akunSrc).not.toContain('Pasang Komik Hub')
     expect(appSrc).toContain('<SwUpdateToast />')
     expect(appSrc.indexOf('<SwUpdateToast />')).toBeGreaterThan(appSrc.indexOf('</Routes>'))
   })
