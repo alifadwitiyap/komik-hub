@@ -13,10 +13,15 @@ const API: &str = "https://api.shinigami.io/v1"; // s1.shinigami.mx (uptime: shn
 const WEB: &str = "https://s1.shinigami.mx";
 const UA: &str = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 \
                   (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36";
-/// page_size daftar katalog: server hormati sampai 500 (referensi).
-const PAGE_SIZE: u32 = 30;
+/// Daftar `manga/list` pakai offset pagination (`limit` + `offset`); `page` dan
+/// `page_size` diabaikan server / dipaksa `limit=12`. `limit` maksimal 100.
+const LIST_LIMIT: u32 = 100;
 /// Chapter list sekali tarik (One Piece 1219 chapter masuk satu request).
-const CHAPTER_PAGE_SIZE: u32 = 3000;
+const CHAPTER_LIST_LIMIT: u32 = 3000;
+/// Page 1-based (kontrak `Source`) -> offset upstream; saturating agar aman.
+fn list_offset(page: u32) -> u32 {
+    page.max(1).saturating_sub(1).saturating_mul(LIST_LIMIT)
+}
 const RETRIES: u32 = 2;
 const REQ_TIMEOUT_SECS: u64 = 30;
 
@@ -261,8 +266,8 @@ impl Source for ShinigamiSource {
             .get(
                 "/manga/list",
                 &[
-                    ("page", page.max(1).to_string()),
-                    ("page_size", PAGE_SIZE.to_string()),
+                    ("offset", list_offset(page).to_string()),
+                    ("limit", LIST_LIMIT.to_string()),
                     ("sort", "popularity".to_string()),
                 ],
             )
@@ -275,8 +280,8 @@ impl Source for ShinigamiSource {
             .get(
                 "/manga/list",
                 &[
-                    ("page", page.max(1).to_string()),
-                    ("page_size", PAGE_SIZE.to_string()),
+                    ("offset", list_offset(page).to_string()),
+                    ("limit", LIST_LIMIT.to_string()),
                     ("sort", "latest".to_string()),
                 ],
             )
@@ -289,8 +294,8 @@ impl Source for ShinigamiSource {
             .get(
                 "/manga/list",
                 &[
-                    ("page", page.max(1).to_string()),
-                    ("page_size", PAGE_SIZE.to_string()),
+                    ("offset", list_offset(page).to_string()),
+                    ("limit", LIST_LIMIT.to_string()),
                     ("q", query.to_string()),
                 ],
             )
@@ -308,8 +313,8 @@ impl Source for ShinigamiSource {
         genre: Option<&str>,
     ) -> SourceResult<Vec<Manga>> {
         let mut params: Vec<(&str, String)> = vec![
-            ("page", page.max(1).to_string()),
-            ("page_size", PAGE_SIZE.to_string()),
+            ("offset", list_offset(page).to_string()),
+            ("limit", LIST_LIMIT.to_string()),
             ("q", query.to_string()),
         ];
         if let Some(g) = genre.map(str::trim).filter(|g| !g.is_empty()) {
@@ -321,8 +326,8 @@ impl Source for ShinigamiSource {
 
     async fn list(&self, genre: Option<&str>, page: u32) -> SourceResult<Vec<Manga>> {
         let mut params: Vec<(&str, String)> = vec![
-            ("page", page.max(1).to_string()),
-            ("page_size", PAGE_SIZE.to_string()),
+            ("offset", list_offset(page).to_string()),
+            ("limit", LIST_LIMIT.to_string()),
         ];
         if let Some(g) = genre.map(str::trim).filter(|g| !g.is_empty()) {
             // DEVIASI dari referensi: `taxonomy.Genre.name=<Nama>` terverifikasi
@@ -365,8 +370,8 @@ impl Source for ShinigamiSource {
         let detail_url = format!("/manga/detail/{native_id}");
         let list_url = format!("/chapter/{native_id}/list");
         let list_query = [
-            ("page", "1".to_string()),
-            ("page_size", CHAPTER_PAGE_SIZE.to_string()),
+            ("offset", "0".to_string()),
+            ("limit", CHAPTER_LIST_LIMIT.to_string()),
         ];
         let (detail, list) = tokio::try_join!(
             self.get(&detail_url, &[]),
@@ -524,6 +529,15 @@ mod tests {
         assert_eq!(fmt_status(Some(2)).as_deref(), Some("Completed"));
         assert_eq!(fmt_status(Some(3)), None);
         assert_eq!(fmt_status(None), None);
+    }
+
+    #[test]
+    fn list_offset_dari_page() {
+        // page 1-based -> offset = (page-1) * limit
+        assert_eq!(list_offset(0), 0);
+        assert_eq!(list_offset(1), 0);
+        assert_eq!(list_offset(2), LIST_LIMIT);
+        assert_eq!(list_offset(3), LIST_LIMIT * 2);
     }
 
     #[test]
