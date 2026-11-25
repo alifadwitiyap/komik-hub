@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { SourceStatus } from '../components/SourceStatus'
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
 import { imgUrl } from '../imgUrl'
+import { usableCoverUrl } from '../api'
 import { unifiedApi } from '../api'
 import { getUser } from '../account'
 import type { MangaOut, UnifiedChapterOut } from '../types'
@@ -130,8 +131,9 @@ export default function SeriesUnified() {
     unifiedApi
       .series(handle, ctrl.signal, lastSourceRef.current)
       .then((r) => {
+        const cover = usableCoverUrl(r.manga.cover_url)
         setData({
-          manga: r.manga,
+          manga: { ...r.manga, cover_url: cover },
           chapters: r.chapters ?? [],
           representative_source: r.representative_source ?? null,
         })
@@ -373,9 +375,9 @@ export default function SeriesUnified() {
     <div className="mx-auto max-w-3xl">
       {/* Hero sampul */}
       <div className="relative">
-        {m.cover_url && (
+        {m.cover_url && !coverFailed && (
           <div className="absolute inset-0 h-56 overflow-hidden">
-            <img referrerPolicy="no-referrer" src={imgUrl(m.cover_url)} alt="" loading="lazy" width={225} height={300} className="size-full object-cover opacity-25 blur-md" />
+            <img referrerPolicy="no-referrer" src={imgUrl(m.cover_url)} alt="" loading="lazy" width={225} height={300} onError={() => setCoverFailed(true)} className="size-full object-cover opacity-25 blur-md" />
             <div className="absolute inset-0 bg-gradient-to-b from-ink-950/60 to-ink-950" />
           </div>
         )}

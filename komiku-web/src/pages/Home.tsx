@@ -216,6 +216,31 @@ export default function Home() {
  * rounded-xl (tanpa celah abu-abu), scrim gelap 85% di bawah untuk
  * judul/tipe/chapter. Auto-advance 4s + dots + scroll-snap; target 44px.
  */
+/** Carousel eager: kalau URL gagal dimuat, jangan biarkan ikon broken muncul. */
+function CarouselImage({ src, title }: { src: string; title: string }) {
+  const [failed, setFailed] = useState(false)
+  if (failed) {
+    return (
+      <span className="absolute inset-0 grid place-items-center px-4 text-center font-display text-[15px] font-semibold text-ink-300">
+        {title}
+      </span>
+    )
+  }
+  return (
+    <img
+      referrerPolicy="no-referrer"
+      src={src}
+      alt=""
+      role="presentation"
+      aria-hidden="true"
+      className="size-full object-cover"
+      loading="eager"
+      decoding="async"
+      onError={() => setFailed(true)}
+    />
+  )
+}
+
 function BackdropCarousel({ items }: { items: Manga[] }) {
   const [idx, setIdx] = useState(0)
   // autoplay = izin putar otomatis; jeda/henti user mematikannya permanen.
@@ -287,17 +312,13 @@ function BackdropCarousel({ items }: { items: Manga[] }) {
               className="relative w-[94%] shrink-0 snap-start overflow-hidden rounded-xl border-[0.8px] border-ink-800 active:scale-[0.97] active:duration-100"
             >
               {/* Sampul mengisi seluruh kartu — tidak ada ruang abu-abu. */}
-              <div className="relative aspect-[4/3] overflow-hidden bg-black">
-                {img && (
-                  <img referrerPolicy="no-referrer"
-                    src={imgUrl(img)}
-                    alt=""
-                    role="presentation"
-                    aria-hidden="true"
-                    className="size-full object-cover"
-                    loading="eager"
-                    decoding="async"
-                  />
+              <div className="relative aspect-[4/3] overflow-hidden bg-ink-900">
+                {img ? (
+                  <CarouselImage src={imgUrl(img)} title={m.title} />
+                ) : (
+                  <span className="absolute inset-0 grid place-items-center px-4 text-center font-display text-[15px] font-semibold text-ink-300">
+                    {m.title}
+                  </span>
                 )}
                 {/* scrim bawah ~85% untuk judul, tipe, dan chapter */}
                 <div className="absolute inset-x-0 bottom-0 h-3/4 bg-gradient-to-t from-black/85 via-black/60 to-transparent" />

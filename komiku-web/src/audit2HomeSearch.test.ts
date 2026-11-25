@@ -45,7 +45,7 @@ describe('TopBar audit2: HP logo + Menu/Notifikasi (Cari masuk burger); sisanya 
 
 describe('Hero audit2: sampul penuh, tidak setengah kosong', () => {
   it('cover full-bleed + scrim 85% berisi judul/tipe/chapter', () => {
-    expect(homeSrc).toContain('relative aspect-[4/3] overflow-hidden bg-black')
+    expect(homeSrc).toContain('relative aspect-[4/3] overflow-hidden bg-ink-900')
     expect(homeSrc).not.toContain('aspect-[16/7]')
     expect(homeSrc).not.toContain('max-h-[170px]')
     expect(homeSrc).toContain('className="size-full object-cover"')

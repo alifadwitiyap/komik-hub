@@ -1,6 +1,6 @@
 import { useEffect, useId, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { unifiedApi } from '../api'
+import { unifiedApi, usableCoverUrl } from '../api'
 import { imgUrl } from '../imgUrl'
 import type { SimilarItem } from '../types'
 
@@ -49,8 +49,12 @@ export default function SimilarSeriesAccordion({ handle }: SimilarSeriesAccordio
     setError(false)
     unifiedApi.similar(handle, controller.signal)
       .then((response) => {
-        setItems(response.items)
-        writeCached(handle, response.items)
+        const items = response.items.map((item) => ({
+          ...item,
+          cover_url: usableCoverUrl(item.cover_url),
+        }))
+        setItems(items)
+        writeCached(handle, items)
       })
       .catch((reason: unknown) => {
         if (reason instanceof Error && reason.name === 'AbortError') return
