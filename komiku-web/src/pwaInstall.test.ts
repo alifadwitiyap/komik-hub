@@ -76,6 +76,13 @@ describe('UX install + update', () => {
     expect(appSrc.indexOf('<SwUpdateToast />')).toBeGreaterThan(appSrc.indexOf('</Routes>'))
   })
 
+  it('Update terbaru hanya memuat kartu yang punya cover', () => {
+    expect(homeSrc).toContain('.latest(1, ctrl.signal)')
+    expect(homeSrc).toContain('.map(toMangaCard).filter((m) => Boolean(m.cover))')
+    expect(homeSrc).toContain('hideIfNoCover />')
+    expect(homeSrc).toContain('if (hide) return null')
+  })
+
   it('toast ditahan di reader dan mengirim SKIP_WAITING sebelum reload', () => {
     expect(toastSrc).toContain("pathname.startsWith('/baca/')")
     expect(toastSrc).toContain("pathname.startsWith('/maraton/')")

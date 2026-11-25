@@ -58,7 +58,10 @@ export default function Home() {
       .catch(() => setPopular([]))
     unifiedApi
       .latest(1, ctrl.signal)
-      .then((r) => setLatest(r.items.map(toMangaCard)))
+      // "Update terbaru" hanya menampilkan card yang punya cover/banner yang
+      // bisa dipakai. Item tanpa cover (atau host cover mati) disembunyikan;
+      // hero carousel tetap memakai feed popular seperti biasa.
+      .then((r) => setLatest(r.items.map(toMangaCard).filter((m) => Boolean(m.cover))))
       .catch(() => setLatest([]))
     return () => ctrl.abort()
   }, [reloadKey])
@@ -187,7 +190,7 @@ export default function Home() {
         {latest && latest.length > 0 && (
           <Section id="terbaru" title="Update terbaru (semua sumber)">
             {latest.map((m) => (
-              <MangaCard key={`new-${m.id}`} manga={m} />
+              <MangaCard key={`new-${m.id}`} manga={m} hideIfNoCover />
             ))}
           </Section>
         )}
@@ -432,13 +435,17 @@ export function chapterLabel(manga: Manga): string | null {
 export const MangaCard = memo(function MangaCard({
   manga,
   compact = false,
+  hideIfNoCover = false,
 }: {
   manga: Manga
   /** Baris hasil pencarian: cover 2:3 kecil, 4–6 judul per layar. */
   compact?: boolean
+  /** Sembunyikan kartu kalau cover gagal dimuat (dipakai feed "Update terbaru"). */
+  hideIfNoCover?: boolean
 }) {
   const [failed, setFailed] = useState(false)
   const img = coverOf(manga)
+  const hide = hideIfNoCover && (!img || failed)
   // kartu unified (handle 'sumber:id') → route handle; kartu komiku → id lama.
   const to = manga.handle ? `/manga/${manga.handle}` : `/manga/${manga.id}`
   const label = chapterLabel(manga)
@@ -535,6 +542,7 @@ export const MangaCard = memo(function MangaCard({
   // Cover dipakai dua layout: rail Home (132px) dan baris Search (72px).
   // HeartButton sudah preventDefault + stopPropagation, jadi tidak membuka
   // series meski tombolnya bersarang di Link.
+  if (hide) return null
   const cover = (
     <div
       className={`relative aspect-[2/3] overflow-hidden rounded-xl border border-ink-800 bg-ink-850 ${
