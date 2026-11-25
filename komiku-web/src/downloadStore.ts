@@ -362,17 +362,10 @@ export function startRunCache(handle: string, seriesTitle: string, numbers: stri
     emit()
   })
 
-  // Hangatkan chunk rute baca yang MASIH lazy (ReaderMarathon) lewat service
+  // Hangatkan chunk rute baca yang lazy (Reader & ReaderMarathon) lewat service
   // worker. Kalau user mengunduh dari halaman Series lalu langsung offline
-  // SEBELUM pernah membuka maraton, chunk-nya belum ada di cache SW → navigasi
-  // offline gagal dgn "Failed to fetch dynamically imported module". Dengan
-  // me-import chunk di sini (saat masih online), SW men-cache-nya
-  // (cache-first aset same-origin), sehingga baca offline dari unduhan series
-  // tetap berfungsi.
-  //
-  // `Reader` TIDAK di-import di sini lagi: sejak perbaikan dead-gap 300 ms ia
-  // di-import STATIS di `App.tsx` (sudah ada di bundle awal, tidak pernah
-  // jadi lazy chunk). `import('./pages/Reader')` di sini dulu hanya memicu
-  // warning build INEFFECTIVE_DYNAMIC_IMPORT tanpa efek apa pun.
+  // SEBELUM pernah membuka reader/maraton, chunk-nya belum ada di cache SW →
+  // navigasi offline gagal dgn "Failed to fetch dynamically imported module".
+  void import('./pages/Reader')
   void import('./pages/ReaderMarathon')
 }

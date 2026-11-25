@@ -578,3 +578,10 @@ nav a {
   from { opacity: 0.55; }
   to { opacity: 1; }
 }
+
+/* Shared chapter-row layout containment so /manga/* pages get content-visibility
+   even before Reader CSS chunk is loaded. */
+.reader-chapter-row {
+  content-visibility: auto;
+  contain-intrinsic-size: 56px;
+}

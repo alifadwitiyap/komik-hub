@@ -1,16 +1,16 @@
 import { Link, NavLink, Route, Routes, useLocation, useNavigate, useParams } from 'react-router-dom'
 import { lazy, Suspense, useEffect, useRef, useState } from 'react'
 import Home from './pages/Home'
-import Search from './pages/Search'
-import Series from './pages/Series'
-import Rak from './pages/Rak'
+const Search = lazy(() => import('./pages/Search'))
+const Series = lazy(() => import('./pages/Series'))
+const Rak = lazy(() => import('./pages/Rak'))
 const SeriesUnified = lazy(() => import('./pages/SeriesUnified'))
 const Reader = lazy(() => import('./pages/Reader'))
 const ReaderMarathon = lazy(() => import('./pages/ReaderMarathon'))
 const Akun = lazy(() => import('./pages/Akun'))
 const Notifikasi = lazy(() => import('./pages/Notifikasi'))
 import { IconHouse, IconRectangleHistory, IconMoon, IconSun, IconMagnifyingGlass, IconBookHeart, IconBell, IconUser, IconBars, IconXmark } from './icons'
-import NotifPanel from './components/NotifPanel'
+const NotifPanel = lazy(() => import('./components/NotifPanel'))
 import SourceHealthBadge from './components/SourceHealthBadge'
 import SwUpdateToast from './components/SwUpdateToast'
 import { startFavoritesSync } from './notifStore'
@@ -45,6 +45,7 @@ export default function App() {
   // sinkron mark "sudah dibaca" → server per-akun (PUT /api/read, union)
   useState(() => startReadMarksSync())
   const [bellOpen, setBellOpen] = useState(false)
+  const [bellMounted, setBellMounted] = useState(false)
 
   // Boot skeleton hidup di LUAR #root: fade setelah React mount, hapus setelahnya.
   useEffect(() => {
@@ -71,7 +72,15 @@ export default function App() {
           Lewati ke konten
         </a>
         {!immersive && (
-          <TopBar bellOpen={bellOpen} onToggleBell={() => setBellOpen((o) => !o)} onClosePanel={() => setBellOpen(false)} />
+          <TopBar
+            bellOpen={bellOpen}
+            bellMounted={bellMounted}
+            onToggleBell={() => {
+              setBellMounted(true)
+              setBellOpen((o) => !o)
+            }}
+            onClosePanel={() => setBellOpen(false)}
+          />
         )}
 
         <main id="konten" tabIndex={-1} className={immersive ? '' : 'pb-[calc(6rem+env(safe-area-inset-bottom))] pt-[calc(3.5rem+env(safe-area-inset-top))] outline-none'}>
@@ -125,10 +134,12 @@ function SeriesRoute() {
  */
 function TopBar({
   bellOpen,
+  bellMounted,
   onToggleBell,
   onClosePanel,
 }: {
   bellOpen: boolean
+  bellMounted: boolean
   onToggleBell: () => void
   onClosePanel: () => void
 }) {
@@ -170,19 +181,11 @@ function TopBar({
       <div className="mx-auto flex h-[calc(3.5rem+env(safe-area-inset-top))] max-w-3xl items-center gap-1 px-4 pl-[max(1rem,env(safe-area-inset-left))] pr-[max(1rem,env(safe-area-inset-right))] pt-[env(safe-area-inset-top)]">
         <Link to="/" className="flex min-h-11 items-center py-2.5" aria-label="Komik Hub">
           <img
-            src="/logo-komik-hub.png"
+            src={dark ? '/logo-komik-hub-light.png' : '/logo-komik-hub.png'}
             alt="Komik Hub"
             width={125}
             height={23}
-            className="logo-light h-[23px] w-auto"
-          />
-          <img
-            src="/logo-komik-hub-light.png"
-            alt=""
-            width={125}
-            height={23}
-            className="logo-dark h-[23px] w-auto"
-            aria-hidden="true"
+            className="h-[23px] w-auto"
           />
         </Link>
         <div className="ml-auto flex items-center gap-1.5">
@@ -284,16 +287,20 @@ function TopBar({
                 {notif.unread > 99 ? '99+' : notif.unread}
               </span>
             )}
-            <NotifPanel
-              open={bellOpen}
-              items={notif.items}
-              unread={notif.unread}
-              loading={notif.loading}
-              onClose={onClosePanel}
-              onMarkRead={notif.markRead}
-              onDismiss={notif.dismiss}
-              boundaryRef={bellWrap}
-            />
+            {(bellOpen || bellMounted) && (
+              <Suspense fallback={null}>
+                <NotifPanel
+                  open={bellOpen}
+                  items={notif.items}
+                  unread={notif.unread}
+                  loading={notif.loading}
+                  onClose={onClosePanel}
+                  onMarkRead={notif.markRead}
+                  onDismiss={notif.dismiss}
+                  boundaryRef={bellWrap}
+                />
+              </Suspense>
+            )}
           </div>
         </div>
       </div>

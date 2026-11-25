@@ -55,11 +55,14 @@ export const IMG_HOSTS = [
   'image11.komiku.to',
   'assets.shngm.id',
   'storage.shngm.id',
+  'cdn.shinigami.gg',
   'cdnkuma.my.id',
   'cdn.jsdelivr.net',
   'v2.yuucdn.net',
   'v7.kiryuu.to',
   'cdn.kiryuu.io',
+  'komikindo.ch',
+  'www.komikindo.ch',
 ] as const
 
 /** Lebar yang dilayani proxy `/img` (px). Harus di dalam rentang server 96..1400. */

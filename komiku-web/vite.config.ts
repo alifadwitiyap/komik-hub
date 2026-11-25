@@ -40,15 +40,19 @@ function precacheInjectPlugin() {
         return
       }
       // Aset kritis: entry js/css + react-vendor + runtime.
-      const files = []
+      // Chunk route lazy tetap masuk perhitungan hash `version` agar deploy baru
+      // membuang cache lama, tapi baru di-cache SW on-demand saat route dibuka.
+      const allFiles = []
       for (const f of readdirSync(join(outDir, 'assets'))) {
-        if (/\.(js|css)$/.test(f) && !/_\.(mjs|js)$/.test(f)) files.push(f)
+        if (/\.(js|css)$/.test(f) && !/_\.(mjs|js)$/.test(f)) allFiles.push(f)
       }
-      const precache = files
-        .sort()
+      allFiles.sort()
+      const shellAsset = /^(index|react-vendor|vendor|rolldown-runtime)-.*\.(js|css)$/
+      const precache = allFiles
+        .filter((f) => shellAsset.test(f))
         .map((f) => `/assets/${f}`)
         .sort((a, b) => (a.includes('react-vendor') ? -1 : b.includes('react-vendor') ? 1 : 0))
-      const version = 'v' + createHash('sha1').update(files.join('|')).digest('hex').slice(0, 8)
+      const version = 'v' + createHash('sha1').update(allFiles.join('|')).digest('hex').slice(0, 8)
       writeFileSync(
         swPath,
         sw

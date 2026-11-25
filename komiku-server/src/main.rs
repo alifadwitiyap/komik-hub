@@ -50,20 +50,15 @@ async fn main() -> anyhow::Result<()> {
     let state = Arc::new(AppState::new());
     // Warm-up feed latest/popular + health saat startup. Cache cold 2-5s,
     // panaskan sekali supaya request pertama user adalah cache hit. Di-spawn
-    // di SINI (sebelum bind/serve) supaya probe health mulai sedini mungkin
-    // dan selesai sebelum request pertama tiba; `spawn` tidak memblokir.
+    // non-blocking sebelum serve agar server langsung menerima koneksi dalam ~ms.
     let state_warm = state.unified.clone();
-    let warm_up_handle = tokio::spawn(async move { unified::warm_up(state_warm).await });
+    tokio::spawn(async move { unified::warm_up(state_warm).await });
     // Warm-up homepage memakai jalur yang SAMA dengan handler (homepage_payload)
     // supaya pengunjung pertama setelah restart tidak membayar 0,75–0,88 s.
-    let homepage_handle = tokio::spawn(async move {
+    tokio::spawn(async move {
         let t = std::time::Instant::now();
         match routes::homepage_payload().await {
-            Ok(v) => {
-                let n = v
-                    .as_object()
-                    .map(|o| o.keys().filter(|k| k.as_str() != "success").count())
-                    .unwrap_or(0);
+            Ok((_, n)) => {
                 tracing::info!("warm-up homepage: {n} seksi dalam {:?}", t.elapsed());
             }
             Err(e) => tracing::warn!("warm-up homepage gagal: {e:?}"),
@@ -80,11 +75,13 @@ async fn main() -> anyhow::Result<()> {
     // supaya push dari device lain tidak menimpa mark chapter lain.
     let app = app.merge(read::read_routes());
     let app = if dist.is_dir() {
-        let dist = dist.to_path_buf();
+        let dist = Arc::new(dist.to_path_buf());
+        let root = Arc::new(dist.canonicalize().unwrap_or_else(|_| dist.to_path_buf()));
         app.fallback_service(tower::service_fn(
             move |req: axum::http::Request<axum::body::Body>| {
                 let dist = dist.clone();
-                async move { Ok::<_, std::convert::Infallible>(spa_fallback(&dist, req).await) }
+                let root = root.clone();
+                async move { Ok::<_, std::convert::Infallible>(spa_fallback(&dist, &root, req).await) }
             },
         ))
     } else {
@@ -117,16 +114,19 @@ async fn main() -> anyhow::Result<()> {
         tracing::info!("juga menyajikan frontend dari {}", dist.display());
     }
 
-    // Tunggu warm-up selesai (dengan deadline) supaya request pertama user tidak
-    // ikut membayar cold fetch di--> mengkompetisi dengan warm-up. Setelah
-    // deadline (8 s) server tetap jalan dengan cache sebagian hangat — tidak
-    // pernah menahan bind selamanya walau upstream lambat.
-    let warmup_deadline = std::time::Duration::from_secs(8);
-    if tokio::time::timeout(warmup_deadline, warm_up_handle).await.is_err() {
-        tracing::warn!("warm-up series melewati deadline {warmup_deadline:?}, lanjut serve");
-    }
-    if tokio::time::timeout(warmup_deadline, homepage_handle).await.is_err() {
-        tracing::warn!("warm-up homepage melewati deadline {warmup_deadline:?}, lanjut serve");
+    // Bind IPv6 pendamping (best-effort) supaya koneksi `localhost` -> [::1]
+    // di Windows tidak membayar penalti TCP SYN timeout ~2 detik.
+    let v6_listener = match tokio::net::TcpListener::bind((std::net::Ipv6Addr::UNSPECIFIED, port)).await {
+        Ok(l) => Some(l),
+        Err(_) => tokio::net::TcpListener::bind((std::net::Ipv6Addr::LOCALHOST, port)).await.ok(),
+    };
+    if let Some(v6) = v6_listener {
+        let app_v6 = app.clone();
+        tokio::spawn(async move {
+            if let Err(e) = axum::serve(v6, app_v6).await {
+                tracing::warn!("listener IPv6 berhenti: {e}");
+            }
+        });
     }
 
     axum::serve(listener, app).await?;
@@ -137,6 +137,7 @@ async fn main() -> anyhow::Result<()> {
 /// supaya React Router (dan refresh langsung di /manga/:id) tetap jalan.
 async fn spa_fallback(
     dist: &std::path::Path,
+    root: &std::path::Path,
     req: axum::http::Request<axum::body::Body>,
 ) -> axum::response::Response {
     use axum::body::Body;
@@ -177,19 +178,18 @@ async fn spa_fallback(
         dist.join("index.html")
     };
 
-    // cegah path traversal (../../etc/passwd) — canonicalisasi lalu pastikan
-    // masih berada di dalam dist.
-    let resolved = match file.canonicalize() {
-        Ok(p) => p,
-        Err(_) => {
+    // cegah path traversal (../../etc/passwd) — canonicalisasi di blocking pool
+    // lalu pastikan masih berada di dalam root dist yang sudah di-canonicalize.
+    let resolved = match tokio::task::spawn_blocking(move || file.canonicalize()).await {
+        Ok(Ok(p)) => p,
+        _ => {
             return axum::response::Response::builder()
                 .status(StatusCode::NOT_FOUND)
                 .body(Body::from("not found"))
                 .unwrap()
         }
     };
-    let root = dist.canonicalize().unwrap_or_else(|_| dist.to_path_buf());
-    if !resolved.starts_with(&root) {
+    if !resolved.starts_with(root) {
         return axum::response::Response::builder()
             .status(StatusCode::FORBIDDEN)
             .body(Body::from("forbidden"))

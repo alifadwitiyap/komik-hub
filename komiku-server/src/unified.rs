@@ -65,7 +65,7 @@ use komik_core::source::Source;
 
 use crate::downloads::{self, DownloadEntry, DownloadStore, PdfMeta};
 use crate::pdf;
-use crate::routes::{AppError, Res};
+use crate::routes::{acquire_key_gate, if_none_match, release_key_gate, AppError, CachedJson, KeyGateMap, Res};
 use crate::user::{require_user, users_dir};
 
 /// UA Android: adapter komiku/mangaku/shinigami WAJIB UA mobile (kalau tidak,
@@ -94,6 +94,10 @@ const UNIFIED_REQUEST_BUDGET: std::time::Duration = std::time::Duration::from_se
 fn build_aggregator() -> Aggregator {
     let client = reqwest::Client::builder()
         .user_agent(UA_MOBILE)
+        .connect_timeout(std::time::Duration::from_secs(5))
+        .pool_idle_timeout(std::time::Duration::from_secs(90))
+        .pool_max_idle_per_host(16)
+        .tcp_keepalive(std::time::Duration::from_secs(60))
         .timeout(std::time::Duration::from_secs(
             2 * crate::resilience::SOURCE_TIMEOUT_SECS,
         ))
@@ -123,14 +127,16 @@ fn build_aggregator() -> Aggregator {
 pub struct UnifiedState {
     pub aggregator: Aggregator,
     pub search_cache: SearchCache,
-    pub search_gate: tokio::sync::Mutex<()>,
+    pub search_gates: KeyGateMap<String>,
+    pub feed_cache: std::sync::Mutex<FeedCache>,
+    pub feed_gates: KeyGateMap<String>,
     pub health_cache: tokio::sync::Mutex<Option<(std::time::Instant, HealthOut)>>,
     pub health_refresh_gate: tokio::sync::Mutex<()>,
     pub series_cache: std::sync::Mutex<SeriesCache>,
-    pub series_gates: std::sync::Mutex<std::collections::HashMap<String, Arc<tokio::sync::Mutex<()>>>>,
+    pub series_gates: KeyGateMap<String>,
     pub series_fanout_permits: tokio::sync::Semaphore,
     pub similar_cache: std::sync::Mutex<SimilarCache>,
-    pub similar_gates: std::sync::Mutex<std::collections::HashMap<String, Arc<tokio::sync::Mutex<()>>>>,
+    pub similar_gates: KeyGateMap<String>,
     /// Single-flight PER CHAPTER (`handle` + nomor ternormalisasi) untuk
     /// `/api/unified/chapter/*`. Terpisah dari `series_gates`: request chapter
     /// TIDAK boleh ikut mengantre di gerbang series (fan-out series jauh lebih
@@ -152,7 +158,9 @@ impl UnifiedState {
         let st = UnifiedState {
             aggregator: build_aggregator(),
             search_cache: std::sync::Mutex::new(std::collections::HashMap::new()),
-            search_gate: tokio::sync::Mutex::new(()),
+            search_gates: std::sync::Mutex::new(std::collections::HashMap::new()),
+            feed_cache: std::sync::Mutex::new(std::collections::HashMap::new()),
+            feed_gates: std::sync::Mutex::new(std::collections::HashMap::new()),
             health_cache: tokio::sync::Mutex::new(None),
             health_refresh_gate: tokio::sync::Mutex::new(()),
             series_cache: std::sync::Mutex::new(std::collections::HashMap::new()),
@@ -165,7 +173,10 @@ impl UnifiedState {
             synopsis_cache: std::sync::Mutex::new(std::collections::HashMap::new()),
             image_client: reqwest::Client::builder()
                 .user_agent(UA_MOBILE)
+                .connect_timeout(std::time::Duration::from_secs(8))
                 .pool_idle_timeout(std::time::Duration::from_secs(90))
+                .pool_max_idle_per_host(16)
+                .tcp_keepalive(std::time::Duration::from_secs(60))
                 .build()
                 .unwrap_or_default(),
             download_store,
@@ -202,70 +213,129 @@ impl Default for UnifiedState {
 /// Pre-fetch health + feed latest/popular saat startup. Urutan sengaja:
 /// health DULU dan sendirian — probe health adalah pintu pertama (poll
 /// container/bench), jadi jangan berebut sumber dengan warm-up feed yang bisa
-/// memperlambat request /health pertama. Setelah health, feed latest/popular
-/// dipanaskan untuk user pertama (cache hit alih-alih fan-out dingin 2-5s).
-/// Semua async & non-blocking — dipanggil via `tokio::spawn` dari main
-/// supaya TIDAK menunda bind/`serve`.
+/// memperlambat request /health pertama. Setelah health, feed latest & popular
+/// dipanaskan PARALEL melalui jalur single-flight yang SAMA dengan handler
+/// (`feed_cache` + `feed_gates`), sehingga request pertama user ikut gerbang
+/// yang sama tanpa duplikasi fan-out.
 pub async fn warm_up(state: std::sync::Arc<UnifiedState>) {
     let t0 = std::time::Instant::now();
-    match probe_health_and_store(&state).await {
-        Ok(out) => tracing::info!(
-            "warm-up health: {}/{} sehat dalam {:?}",
-            out.healthy, out.total, t0.elapsed()
-        ),
-        Err(e) => tracing::warn!("warm-up health gagal: {e:#}"),
+    {
+        let _gate = state.health_refresh_gate.lock().await;
+        let already_fresh = {
+            let cache = state.health_cache.lock().await;
+            cache
+                .as_ref()
+                .is_some_and(|(at, _)| classify_age(at.elapsed()) == CacheAge::Fresh)
+        };
+        if !already_fresh {
+            match probe_health_and_store(&state).await {
+                Ok(out) => tracing::info!(
+                    "warm-up health: {}/{} sehat dalam {:?}",
+                    out.healthy,
+                    out.total,
+                    t0.elapsed()
+                ),
+                Err(e) => tracing::warn!("warm-up health gagal: {e:#}"),
+            }
+        }
     }
 
-    let t1 = std::time::Instant::now();
-    let m = state.aggregator.latest(1, 20, None, SortMode::Latest).await;
-    tracing::info!(
-        "warm-up latest: {} item dalam {:?}",
-        m.items.len(),
-        t1.elapsed()
-    );
-    // Popular juga dipanaskan: endpoint ini tidak di-warm sebelumnya sehingga
-    // user pertama popular membayar fan-out dingin penuh (~5s) sama seperti
-    // latest sebelum warm-up ada. Cache disk menahan hasil lintas restart,
-    // tapi warm-up ini menutup kasus disk kosong pertama kali.
-    let t2 = std::time::Instant::now();
-    let p = state.aggregator.popular(1, 20, None, SortMode::Latest).await;
-    tracing::info!(
-        "warm-up popular: {} item dalam {:?}",
-        p.items.len(),
-        t2.elapsed()
-    );
+    let latest_key = feed_list_key("latest", 1, 20, None, SortMode::Latest);
+    let popular_key = feed_list_key("popular", 1, 20, None, SortMode::Latest);
+
+    let state_l = state.clone();
+    let state_p = state.clone();
+    let warm_latest = async move {
+        let t1 = std::time::Instant::now();
+        let handles_cell = std::sync::Arc::new(std::sync::Mutex::new(Vec::<String>::new()));
+        let hc = handles_cell.clone();
+        let st_in = state_l.clone();
+        let _ = fetch_or_cached_feed(&state_l, &latest_key, move || {
+            let state = st_in.clone();
+            let hc = hc.clone();
+            async move {
+                let m = state.aggregator.latest(1, 20, None, SortMode::Latest).await;
+                let mut out: ListOut = m.into();
+                out.has_more = out.items.len() >= 20;
+                tracing::info!(
+                    "warm-up latest: {} item dalam {:?}",
+                    out.items.len(),
+                    t1.elapsed()
+                );
+                let handles: Vec<String> = out
+                    .items
+                    .iter()
+                    .filter(|it| !it.handle.is_empty())
+                    .map(|it| it.handle.clone())
+                    .take(8)
+                    .collect();
+                *hc.lock().unwrap_or_else(|e| e.into_inner()) = handles;
+                let cacheable = out.failed_sources.is_empty();
+                (CachedJson::from_value(&out), cacheable)
+            }
+        })
+        .await;
+        let handles = handles_cell.lock().unwrap_or_else(|e| e.into_inner()).clone();
+        handles
+    };
+
+    let warm_popular = async move {
+        let t2 = std::time::Instant::now();
+        let st_in = state_p.clone();
+        let _ = fetch_or_cached_feed(&state_p, &popular_key, move || {
+            let state = st_in.clone();
+            async move {
+                let p = state.aggregator.popular(1, 20, None, SortMode::Latest).await;
+                let mut out: ListOut = p.into();
+                out.has_more = out.items.len() >= 20;
+                tracing::info!(
+                    "warm-up popular: {} item dalam {:?}",
+                    out.items.len(),
+                    t2.elapsed()
+                );
+                let cacheable = out.failed_sources.is_empty();
+                (CachedJson::from_value(&out), cacheable)
+            }
+        })
+        .await;
+    };
+
+    let (handles, _) = tokio::join!(warm_latest, warm_popular);
 
     // Panaskan subset series top agar request series pertama user = cache hit.
-    // Ambil handle dari hasil latest (segar) → kunci series_key(handle, None).
-    // Ambil N kecil (8) supaya tidak menahan boot; kegagalan satu series
-    // di-toleransi (cache tetap terisi untuk yang sukses).
-    let handles: Vec<String> = m
-        .items
-        .iter()
-        .filter_map(|it| {
-            let h = it.handle();
-            (!h.is_empty()).then_some(h)
-        })
-        .take(8)
-        .collect();
     let t3 = std::time::Instant::now();
     let mut warmed = 0usize;
     for handle in handles {
         let key = series_key(&handle, None);
-        // Hanya isi kalau belum ada cache segar (jangan timpa/duplikat).
-        if let Some((CacheAge::Fresh, _)) = series_cache_read(&state.series_cache, &key) {
+        if let Some((CacheAge::Fresh, _)) = series_cache_read_async(&state.series_cache, &key).await
+        {
             continue;
         }
-        let _permit = match state.series_fanout_permits.acquire().await {
-            Ok(p) => p,
-            Err(_) => break,
-        };
-        match compute_series(&state, &handle, None).await {
-            Ok(out) => {
-                series_cache_put(&state.series_cache, key, out);
-                warmed += 1;
+        let gate = acquire_key_gate(&state.series_gates, &key);
+        let ok = {
+            let _guard = gate.lock().await;
+            if let Some((CacheAge::Fresh, _)) =
+                series_cache_read_async(&state.series_cache, &key).await
+            {
+                false
+            } else if let Ok(_permit) = state.series_fanout_permits.acquire().await {
+                match compute_series(&state, &handle, None).await {
+                    Ok(out) => {
+                        series_cache_put(&state.series_cache, key.clone(), &out);
+                        true
+                    }
+                    Err(_) => {
+                        tracing::debug!("warm-up series {handle} gagal, dilewati");
+                        false
+                    }
+                }
+            } else {
+                false
             }
-            Err(_) => tracing::debug!("warm-up series {handle} gagal, dilewati"),
+        };
+        release_key_gate(&state.series_gates, &key, gate);
+        if ok {
+            warmed += 1;
         }
     }
     tracing::info!("warm-up series: {warmed} handle dalam {:?}", t3.elapsed());
@@ -760,7 +830,7 @@ const SEARCH_CACHE_TTL: std::time::Duration = std::time::Duration::from_secs(120
 /// saat penuh). Pencarian = kunci tak terbatas, jadi cap wajib.
 const SEARCH_CACHE_MAX: usize = 128;
 
-type SearchCache = std::sync::Mutex<std::collections::HashMap<String, (std::time::Instant, ListOut)>>;
+type SearchCache = std::sync::Mutex<std::collections::HashMap<String, (std::time::Instant, CachedJson)>>;
 
 fn search_key(
     query: &str,
@@ -780,7 +850,7 @@ fn search_key(
 }
 
 /// Ambil hasil dari cache kalau masih segar. `None` = harus fetch upstream.
-fn search_cache_get(cache: &SearchCache, key: &str) -> Option<ListOut> {
+fn search_cache_get(cache: &SearchCache, key: &str) -> Option<CachedJson> {
     let guard = cache.lock().ok()?;
     let (at, out) = guard.get(key)?;
     if at.elapsed() < SEARCH_CACHE_TTL {
@@ -790,7 +860,7 @@ fn search_cache_get(cache: &SearchCache, key: &str) -> Option<ListOut> {
     }
 }
 
-fn search_cache_put(cache: &SearchCache, key: String, out: ListOut) {
+fn search_cache_put(cache: &SearchCache, key: String, out: CachedJson) {
     if let Ok(mut guard) = cache.lock() {
         // Cap kasar: buang satu entri paling tua kalau sudah penuh. HashMap
         // tak berurutan, jadi cari min-by-instant (N kecil = 128, murah).
@@ -830,79 +900,161 @@ async fn u_search(
     let limit = q.limit.unwrap_or(20);
     let min_ch = norm_min_ch(q.min_ch);
     let key = search_key(&query, genre.as_deref(), page, limit, source, sort, min_ch);
+    let inm = if_none_match(&headers);
     if let Some(hit) = search_cache_get(&state.search_cache, &key) {
-        return Ok(crate::routes::json_with_etag(
-            &hit,
-            "public, max-age=15",
-            crate::routes::if_none_match(&headers),
-        ));
+        return Ok(hit.into_response("public, max-age=15", inm));
     }
-    // Cache kosong: satu request per key yang menembak upstream, sisanya
-    // menunggu gerbang lalu membaca cache.
-    let _gate = state.search_gate.lock().await;
-    if let Some(hit) = search_cache_get(&state.search_cache, &key) {
-        return Ok(crate::routes::json_with_etag(
-            &hit,
-            "public, max-age=15",
-            crate::routes::if_none_match(&headers),
-        ));
-    }
-    // Over-fetch: rank relevansi + filter tipe/status bekerja pada set yang
-    // lebih besar dari `limit` tampilan, supaya "30 hasil" tidak diam-diam
-    // menyusut jadi 6 (bug chip client-side yang direncanakan diganti).
-    // DUA FASE hanya untuk pencarian biasa (tanpa filter genre, yang butuh
-    // satu panggilan per adapter dan tidak punya jalur fan-out yang sama).
-    // Deadline 3 s: cukup untuk sumber cepat (shinigami ~60 ms, mangaku
-    // ~1,3 s), sementara komiku (TTFB 5-9 s) diselesaikan di background.
-    let (merged, pending) = match &genre {
-        // Filter genre aktif: satu panggilan per adapter yang menerima
-        // genre + judul bersamaan (bukan menyaring sisa halaman di client).
-        Some(g) => (
-            state
-                .aggregator
-                .search_in_genre(&query, g, page, FILTER_FANOUT_CAP, source, sort)
-                .await,
-            Vec::new(),
-        ),
-        None => {
-            state
-                .aggregator
-                .search_dua_fase(
-                    &query,
-                    page,
-                    FILTER_FANOUT_CAP,
-                    source,
-                    std::time::Duration::from_millis(SEARCH_PHASE1_MILLIS),
-                    sort,
-                )
-                .await
+    // Single-flight PER KEY: query berbeda berjalan paralel; query sama dedup.
+    let gate = acquire_key_gate(&state.search_gates, &key);
+    let resp = {
+        let _guard = gate.lock().await;
+        if let Some(hit) = search_cache_get(&state.search_cache, &key) {
+            hit.into_response("public, max-age=15", inm)
+        } else {
+            let (merged, pending) = match &genre {
+                Some(g) => (
+                    state
+                        .aggregator
+                        .search_in_genre(&query, g, page, FILTER_FANOUT_CAP, source, sort)
+                        .await,
+                    Vec::new(),
+                ),
+                None => {
+                    state
+                        .aggregator
+                        .search_dua_fase(
+                            &query,
+                            page,
+                            FILTER_FANOUT_CAP,
+                            source,
+                            std::time::Duration::from_millis(SEARCH_PHASE1_MILLIS),
+                            sort,
+                        )
+                        .await
+                }
+            };
+            let mut out = list_out_filtered(
+                merged,
+                Some(&query),
+                q.tipe.as_deref(),
+                q.status.as_deref(),
+                min_ch,
+                sort,
+                Some(limit as usize),
+            );
+            out.pending = pending.iter().map(|s| s.as_str().to_string()).collect();
+            if out.pending.is_empty() {
+                let cached = CachedJson::from_value(&out);
+                search_cache_put(&state.search_cache, key.clone(), cached.clone());
+                cached.into_response("public, max-age=15", inm)
+            } else {
+                // Fase 2 masih jalan: JANGAN beri max-age — browser akan menyimpan
+                // hasil separuh 15 detik dan polling fase-2 klien macet.
+                Json(out).into_response()
+            }
         }
     };
-    let mut out = list_out_filtered(
-        merged,
-        Some(&query),
-        q.tipe.as_deref(),
-        q.status.as_deref(),
-        min_ch,
-        sort,
-        Some(limit as usize),
-    );
-    out.pending = pending.iter().map(|s| s.as_str().to_string()).collect();
-    // JANGAN cache kalau masih ada sumber pending: fase 2 yang akan mengisi
-    // cache dengan hasil lengkap. Menyimpan hasil separuh di sini membuat
-    // panggilan berikutnya menyajikan daftar tidak lengkap selama TTL.
-    if out.pending.is_empty() {
-        search_cache_put(&state.search_cache, key, out.clone());
-        Ok(crate::routes::json_with_etag(
-            &out,
-            "public, max-age=15",
-            crate::routes::if_none_match(&headers),
-        ))
-    } else {
-        // Fase 2 masih jalan: JANGAN beri max-age — browser akan menyimpan
-        // hasil separuh 15 detik dan polling fase-2 klien macet.
-        Ok(Json(out).into_response())
+    release_key_gate(&state.search_gates, &key, gate);
+    Ok(resp)
+}
+
+// --------------------------------------------------- cache feed (SWR + gate)
+
+const FEED_CACHE_TTL: std::time::Duration = std::time::Duration::from_secs(120);
+const FEED_CACHE_MAX_STALE: std::time::Duration = std::time::Duration::from_secs(600);
+const FEED_CACHE_MAX: usize = 256;
+
+type FeedCache = std::collections::HashMap<String, (std::time::Instant, CachedJson)>;
+
+fn feed_list_key(
+    kind: &str,
+    page: u32,
+    limit: u32,
+    source: Option<&str>,
+    sort: SortMode,
+) -> String {
+    format!("{kind}:{page}:{limit}:{}:{}", source.unwrap_or("*"), sort.as_str())
+}
+
+fn feed_cache_read(cache: &std::sync::Mutex<FeedCache>, key: &str) -> Option<(CacheAge, CachedJson)> {
+    let guard = cache.lock().ok()?;
+    let (at, cached) = guard.get(key)?;
+    Some((
+        classify_age_with(at.elapsed(), FEED_CACHE_TTL, FEED_CACHE_MAX_STALE),
+        cached.clone(),
+    ))
+}
+
+fn feed_cache_put(cache: &std::sync::Mutex<FeedCache>, key: String, cached: CachedJson) {
+    if let Ok(mut guard) = cache.lock() {
+        if guard.len() >= FEED_CACHE_MAX && !guard.contains_key(&key) {
+            if let Some(old) = guard
+                .iter()
+                .min_by_key(|(_, (at, _))| *at)
+                .map(|(k, _)| k.clone())
+            {
+                guard.remove(&old);
+            }
+        }
+        guard.insert(key, (std::time::Instant::now(), cached));
     }
+}
+
+async fn fetch_or_cached_feed<F, Fut>(
+    state: &Arc<UnifiedState>,
+    key: &str,
+    compute: F,
+) -> CachedJson
+where
+    F: FnOnce() -> Fut + Send + 'static,
+    Fut: std::future::Future<Output = (CachedJson, bool)> + Send + 'static,
+{
+    if let Some((age, hit)) = feed_cache_read(&state.feed_cache, key) {
+        match age {
+            CacheAge::Fresh => return hit,
+            CacheAge::Stale => {
+                let st = state.clone();
+                let k = key.to_string();
+                tokio::spawn(async move {
+                    let gate = acquire_key_gate(&st.feed_gates, &k);
+                    let Ok(_guard) = gate.try_lock() else {
+                        release_key_gate(&st.feed_gates, &k, gate);
+                        return;
+                    };
+                    let still_stale = !matches!(
+                        feed_cache_read(&st.feed_cache, &k),
+                        Some((CacheAge::Fresh, _))
+                    );
+                    if still_stale {
+                        let (cached, cacheable) = compute().await;
+                        if cacheable {
+                            feed_cache_put(&st.feed_cache, k.clone(), cached);
+                        }
+                    }
+                    drop(_guard);
+                    release_key_gate(&st.feed_gates, &k, gate);
+                });
+                return hit;
+            }
+            CacheAge::Expired => {}
+        }
+    }
+
+    let gate = acquire_key_gate(&state.feed_gates, &key.to_string());
+    let out = {
+        let _guard = gate.lock().await;
+        if let Some((CacheAge::Fresh, hit)) = feed_cache_read(&state.feed_cache, key) {
+            hit
+        } else {
+            let (cached, cacheable) = compute().await;
+            if cacheable {
+                feed_cache_put(&state.feed_cache, key.to_string(), cached.clone());
+            }
+            cached
+        }
+    };
+    release_key_gate(&state.feed_gates, &key.to_string(), gate);
+    out
 }
 
 /// Katalog: `Aggregator::list` (katalog LEBIH LUAS dari search) + filter
@@ -915,75 +1067,117 @@ async fn u_catalogue(
     Query(q): Query<CatalogueQuery>,
     headers: HeaderMap,
 ) -> Result<Response, AppError> {
-    let state = &state.unified;
-    let genre = q.genre.as_deref().map(str::trim).filter(|s| !s.is_empty());
-    let source = norm_source(q.source.as_deref());
-    let sort = SortMode::parse(q.sort.as_deref());
-    let merged = state
-        .aggregator
-        .list(genre, q.page.unwrap_or(1).max(1), FILTER_FANOUT_CAP, source, sort)
-        .await;
+    let state = state.unified.clone();
+    let page = q.page.unwrap_or(1).max(1);
     let limit = q.limit.unwrap_or(20);
     let min_ch = norm_min_ch(q.min_ch);
-    Ok(crate::routes::json_with_etag(
-        &list_out_filtered(
+    let sort = SortMode::parse(q.sort.as_deref());
+    let genre = q.genre.as_deref().map(str::trim).filter(|s| !s.is_empty()).map(str::to_string);
+    let source = norm_source(q.source.as_deref()).map(str::to_string);
+    let tipe = q.tipe.as_deref().map(str::trim).filter(|s| !s.is_empty()).map(str::to_string);
+    let status = q.status.as_deref().map(str::trim).filter(|s| !s.is_empty()).map(str::to_string);
+    let key = format!(
+        "catalogue:{page}:{limit}:{}:{}:{}:{}:{}:{min_ch}",
+        genre.as_deref().unwrap_or(""),
+        tipe.as_deref().unwrap_or(""),
+        status.as_deref().unwrap_or(""),
+        source.as_deref().unwrap_or("*"),
+        sort.as_str()
+    );
+    let st = state.clone();
+    let cached = fetch_or_cached_feed(&state, &key, move || async move {
+        let merged = st
+            .aggregator
+            .list(
+                genre.as_deref(),
+                page,
+                FILTER_FANOUT_CAP,
+                source.as_deref(),
+                sort,
+            )
+            .await;
+        let out = list_out_filtered(
             merged,
             None,
-            q.tipe.as_deref(),
-            q.status.as_deref(),
+            tipe.as_deref(),
+            status.as_deref(),
             min_ch,
             sort,
             Some(limit as usize),
-        ),
-        "public, max-age=15",
-        crate::routes::if_none_match(&headers),
-    ))
+        );
+        let cacheable = out.failed_sources.is_empty();
+        (CachedJson::from_value(&out), cacheable)
+    })
+    .await;
+    Ok(cached.into_response("public, max-age=15", if_none_match(&headers)))
 }
 
 async fn u_popular(State(state): State<Arc<crate::routes::AppState>>, Query(q): Query<ListQuery>, headers: HeaderMap) -> Response {
-    let state = &state.unified;
-    let source = norm_source(q.source.as_deref());
+    let state = state.unified.clone();
+    let page = q.page.unwrap_or(1).max(1);
+    let limit = q.limit.unwrap_or(20);
+    let source = norm_source(q.source.as_deref()).map(str::to_string);
     let sort = SortMode::parse(q.sort.as_deref());
-    let merged = state
-        .aggregator
-        .popular(q.page.unwrap_or(1).max(1), q.limit.unwrap_or(20), source, sort)
-        .await;
-    let mut out: ListOut = merged.into();
-    // has_more jujur (sama seperti u_latest): hasil penuh = limit → masih ada
-    // halaman berikutnya. `From<Merged>` hardcode false.
-    let limit = q.limit.unwrap_or(20) as usize;
-    out.has_more = limit > 0 && out.items.len() >= limit;
-    crate::routes::json_with_etag(&out, "public, max-age=15", crate::routes::if_none_match(&headers))
+    let key = feed_list_key("popular", page, limit, source.as_deref(), sort);
+    let st = state.clone();
+    let cached = fetch_or_cached_feed(&state, &key, move || async move {
+        let merged = st
+            .aggregator
+            .popular(page, limit, source.as_deref(), sort)
+            .await;
+        let mut out: ListOut = merged.into();
+        let lim = limit as usize;
+        out.has_more = lim > 0 && out.items.len() >= lim;
+        let cacheable = out.failed_sources.is_empty();
+        (CachedJson::from_value(&out), cacheable)
+    })
+    .await;
+    cached.into_response("public, max-age=15", if_none_match(&headers))
 }
 
 async fn u_latest(State(state): State<Arc<crate::routes::AppState>>, Query(q): Query<ListQuery>, headers: HeaderMap) -> Response {
-    let state = &state.unified;
-    let source = norm_source(q.source.as_deref());
+    let state = state.unified.clone();
+    let page = q.page.unwrap_or(1).max(1);
+    let limit = q.limit.unwrap_or(20);
+    let source = norm_source(q.source.as_deref()).map(str::to_string);
     let sort = SortMode::parse(q.sort.as_deref());
-    let merged = state
-        .aggregator
-        .latest(q.page.unwrap_or(1).max(1), q.limit.unwrap_or(20), source, sort)
-        .await;
-    let mut out: ListOut = merged.into();
-    // has_more jujur: kalau hasil penuh = limit, kemungkinan masih ada halaman
-    // berikutnya (infinite-scroll butuh ini; `From<Merged>` hardcode false).
-    let limit = q.limit.unwrap_or(20) as usize;
-    out.has_more = limit > 0 && out.items.len() >= limit;
-    crate::routes::json_with_etag(&out, "public, max-age=15", crate::routes::if_none_match(&headers))
+    let key = feed_list_key("latest", page, limit, source.as_deref(), sort);
+    let st = state.clone();
+    let cached = fetch_or_cached_feed(&state, &key, move || async move {
+        let merged = st
+            .aggregator
+            .latest(page, limit, source.as_deref(), sort)
+            .await;
+        let mut out: ListOut = merged.into();
+        let lim = limit as usize;
+        out.has_more = lim > 0 && out.items.len() >= lim;
+        let cacheable = out.failed_sources.is_empty();
+        (CachedJson::from_value(&out), cacheable)
+    })
+    .await;
+    cached.into_response("public, max-age=15", if_none_match(&headers))
 }
 
 /// Union genre semua sumber: {items:[{slug,name,sources}]}.
 async fn u_genres(State(state): State<Arc<crate::routes::AppState>>, headers: HeaderMap) -> Result<Response, AppError> {
-    let state = &state.unified;
-    let merged = state.aggregator.genres(None).await;
-    Ok(crate::routes::json_with_etag(
-        &json!({
+    let state = state.unified.clone();
+    let st = state.clone();
+    let cached = fetch_or_cached_feed(&state, "genres:*", move || async move {
+        let merged = st.aggregator.genres(None).await;
+        let failed: Vec<String> = merged
+            .failures
+            .iter()
+            .map(|(s, _)| s.as_str().to_string())
+            .collect();
+        let cacheable = failed.is_empty();
+        let payload = json!({
             "items": merged.items,
-            "failed_sources": merged.failures.iter().map(|(s, _)| s.as_str().to_string()).collect::<Vec<_>>(),
-        }),
-        "public, max-age=15",
-        crate::routes::if_none_match(&headers),
-    ))
+            "failed_sources": failed,
+        });
+        (CachedJson::from_value(&payload), cacheable)
+    })
+    .await;
+    Ok(cached.into_response("public, max-age=15", if_none_match(&headers)))
 }
 
 /// Label tampilan per sumber. PEMETAAN SISI SERVER (kontrak lane web):
@@ -1319,20 +1513,12 @@ const SERIES_CACHE_TTL: std::time::Duration = std::time::Duration::from_secs(300
 const SERIES_CACHE_MAX_STALE: std::time::Duration = std::time::Duration::from_secs(600);
 const SERIES_CACHE_MAX: usize = 256;
 
-type SeriesCache = std::collections::HashMap<String, (std::time::Instant, serde_json::Value)>;
+type SeriesCache = std::collections::HashMap<String, (std::time::Instant, CachedJson)>;
 
 /// Final similar summaries only; target details and chapters never enter this cache.
 const SIMILAR_CACHE_TTL: std::time::Duration = std::time::Duration::from_secs(21600);
 const SIMILAR_CACHE_MAX: usize = 128;
 type SimilarCache = std::collections::HashMap<String, (std::time::Instant, Value)>;
-
-fn similar_gate(
-    gates: &std::sync::Mutex<std::collections::HashMap<String, Arc<tokio::sync::Mutex<()>>>>,
-    key: &str,
-) -> Arc<tokio::sync::Mutex<()>> {
-    let mut guard = gates.lock().unwrap_or_else(|e| e.into_inner());
-    guard.entry(key.to_owned()).or_insert_with(|| Arc::new(tokio::sync::Mutex::new(()))).clone()
-}
 
 fn similar_cache_read(cache: &std::sync::Mutex<SimilarCache>, key: &str) -> Option<Value> {
     let guard = cache.lock().ok()?;
@@ -1357,33 +1543,29 @@ fn series_key(handle: &str, last_source: Option<&str>) -> String {
     format!("{handle}\u{1}{}", last_source.unwrap_or(""))
 }
 
-/// Gerbang single-flight PER HANDLE: N request bersamaan pada handle sama
-/// hanya menembak fan-out SEKALI; sisanya menunggu lalu membaca cache.
-fn series_gate(
-    gates: &std::sync::Mutex<std::collections::HashMap<String, Arc<tokio::sync::Mutex<()>>>>,
+/// Baca cache memory saja (cepat, tanpa blocking I/O).
+fn series_cache_read_mem(
+    cache: &std::sync::Mutex<SeriesCache>,
     key: &str,
-) -> Arc<tokio::sync::Mutex<()>> {
-    let mut guard = gates.lock().unwrap_or_else(|e| e.into_inner());
-    guard
-        .entry(key.to_string())
-        .or_insert_with(|| std::sync::Arc::new(tokio::sync::Mutex::new(())))
-        .clone()
+) -> Option<(CacheAge, CachedJson)> {
+    let guard = cache.lock().ok()?;
+    let (at, out) = guard.get(key)?;
+    let age = classify_age_with(at.elapsed(), SERIES_CACHE_TTL, SERIES_CACHE_MAX_STALE);
+    Some((age, out.clone()))
 }
 
-/// Baca cache + klasifikasi umur (SWR). `None` = belum ada entri.
-/// Miss memory → fallback disk (`epp-series/`): hit disk dipromosikan ke
-/// memory (biaya berikutnya ~0) dan langsung dilayani (Fresh/Stale) — hanya
-/// radioired/absen yang dipaksa hitung inline. Urutan: memory dulu (50x lebih
-/// cepat dari fs), lalu disk.
-fn series_cache_read(cache: &std::sync::Mutex<SeriesCache>, key: &str) -> Option<(CacheAge, serde_json::Value)> {
-    {
-        let guard = cache.lock().ok()?;
-        if let Some((at, out)) = guard.get(key) {
-            let age = classify_age_with(at.elapsed(), SERIES_CACHE_TTL, SERIES_CACHE_MAX_STALE);
-            return Some((age, out.clone()));
-        }
+/// Baca cache memory lalu fallback disk secara non-blocking (`spawn_blocking`).
+async fn series_cache_read_async(
+    cache: &std::sync::Mutex<SeriesCache>,
+    key: &str,
+) -> Option<(CacheAge, CachedJson)> {
+    if let Some(hit) = series_cache_read_mem(cache, key) {
+        return Some(hit);
     }
-    let (age, out) = series_disk_read(key)?;
+    let key_owned = key.to_string();
+    let (age, out) = tokio::task::spawn_blocking(move || series_disk_read(&key_owned))
+        .await
+        .ok()??;
     if let Ok(mut guard) = cache.lock() {
         guard.insert(key.to_string(), (std::time::Instant::now(), out.clone()));
     }
@@ -1422,16 +1604,21 @@ fn now_ms() -> u64 {
 
 /// Tulis respons series final ke disk (atomic tmp+rename). Best-effort:
 /// kegagalan disk dibuang — cache memory tetap berfungsi tanpa itu.
-fn series_disk_write(key: &str, out: &serde_json::Value) {
+/// Format: `<at_ms>\n<raw json bytes>` supaya pembacaan ulang zero-re-serialize.
+fn series_disk_write(key: &str, json_bytes: &[u8]) {
     let dir = series_disk_dir();
     if std::fs::create_dir_all(&dir).is_err() {
         return;
     }
+    static SEQ: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
+    let seq = SEQ.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
     let path = series_disk_path(key);
-    let tmp = dir.join(format!(".tmp-{}-{}", std::process::id(), now_ms()));
-    let payload = (now_ms(), out);
-    let r = std::fs::write(&tmp, serde_json::to_vec(&payload).unwrap_or_default())
-        .and_then(|_| std::fs::rename(&tmp, &path));
+    let tmp = dir.join(format!(".tmp-{}-{}", std::process::id(), seq));
+    let header = format!("{}\n", now_ms());
+    let mut buf = Vec::with_capacity(header.len() + json_bytes.len());
+    buf.extend_from_slice(header.as_bytes());
+    buf.extend_from_slice(json_bytes);
+    let r = std::fs::write(&tmp, &buf).and_then(|_| std::fs::rename(&tmp, &path));
     if r.is_err() {
         let _ = std::fs::remove_file(&tmp);
     }
@@ -1439,17 +1626,30 @@ fn series_disk_write(key: &str, out: &serde_json::Value) {
 
 /// Baca respons series dari disk. `None` = tidak ada / korup / terlalu basi
 /// (Expired → biarkan hitung inline). Fresh/Stale dipromosikan ke memory.
-fn series_disk_read(key: &str) -> Option<(CacheAge, serde_json::Value)> {
-    let raw = std::fs::read_to_string(series_disk_path(key)).ok()?;
-    let (at_ms, out): (u64, serde_json::Value) = serde_json::from_str(&raw).ok()?;
+fn series_disk_read(key: &str) -> Option<(CacheAge, CachedJson)> {
+    let raw = std::fs::read(series_disk_path(key)).ok()?;
+    let (at_ms, cached) = if let Some(nl) = raw.iter().position(|&b| b == b'\n') {
+        let ts = std::str::from_utf8(&raw[..nl]).ok()?.trim().parse::<u64>().ok()?;
+        let body = raw[nl + 1..].to_vec();
+        (ts, CachedJson::from_bytes(body))
+    } else {
+        // Fallback format lama `(at_ms, Value)` jika masih ada di volume disk.
+        let (ts, out): (u64, serde_json::Value) = serde_json::from_slice(&raw).ok()?;
+        (ts, CachedJson::from_value(&out))
+    };
     let age = std::time::Duration::from_millis(now_ms().saturating_sub(at_ms));
     match classify_age_with(age, SERIES_CACHE_TTL, SERIES_CACHE_MAX_STALE) {
         CacheAge::Expired => None,
-        a => Some((a, out)),
+        a => Some((a, cached)),
     }
 }
 
-fn series_cache_put(cache: &std::sync::Mutex<SeriesCache>, key: String, out: serde_json::Value) {
+fn series_cache_put(
+    cache: &std::sync::Mutex<SeriesCache>,
+    key: String,
+    out: &serde_json::Value,
+) -> CachedJson {
+    let cached = CachedJson::from_value(out);
     if let Ok(mut guard) = cache.lock() {
         if guard.len() >= SERIES_CACHE_MAX && !guard.contains_key(&key) {
             if let Some(old) = guard
@@ -1460,9 +1660,15 @@ fn series_cache_put(cache: &std::sync::Mutex<SeriesCache>, key: String, out: ser
                 guard.remove(&old);
             }
         }
-        guard.insert(key.clone(), (std::time::Instant::now(), out.clone()));
+        guard.insert(key.clone(), (std::time::Instant::now(), cached.clone()));
     }
-    series_disk_write(&key, &out);
+    let bytes = cached.bytes.clone();
+    if tokio::runtime::Handle::try_current().is_ok() {
+        tokio::task::spawn_blocking(move || series_disk_write(&key, &bytes));
+    } else {
+        series_disk_write(&key, &bytes);
+    }
+    cached
 }
 
 // ------------------------------------------- single-flight PER CHAPTER (baca)
@@ -1477,7 +1683,7 @@ type ChapterGates =
 /// yang membuat burst beruntun tetap satu fan-out, dan juga yang membuat
 /// double-check setelah gerbang bermakna.
 type ChapterCache =
-    std::collections::HashMap<String, (std::time::Instant, serde_json::Value)>;
+    std::collections::HashMap<String, (std::time::Instant, CachedJson)>;
 
 /// TTL respons chapter. Pendek dengan sengaja: halaman chapter nyaris statis
 /// (gambar + prev/next), tapi chapter yang baru terbit bisa berubah susunan
@@ -1506,7 +1712,7 @@ fn chapter_gate(gates: &ChapterGates, handle: &str, number: &str) -> Arc<tokio::
 fn chapter_cache_get(
     cache: &std::sync::Mutex<ChapterCache>,
     key: &str,
-) -> Option<(CacheAge, serde_json::Value)> {
+) -> Option<(CacheAge, CachedJson)> {
     let guard = cache.lock().ok()?;
     let (at, out) = guard.get(key)?;
     let age = classify_age_with(at.elapsed(), CHAPTER_CACHE_TTL, CHAPTER_CACHE_TTL);
@@ -1516,7 +1722,7 @@ fn chapter_cache_get(
 fn chapter_cache_put(
     cache: &std::sync::Mutex<ChapterCache>,
     key: String,
-    out: serde_json::Value,
+    out: CachedJson,
 ) {
     if let Ok(mut guard) = cache.lock() {
         if guard.len() >= CHAPTER_CACHE_MAX && !guard.contains_key(&key) {
@@ -1533,39 +1739,30 @@ fn chapter_cache_put(
 }
 
 /// Jalankan `fanout` SEKALI untuk N request paralel pada chapter yang sama.
-///
-/// Pola sama dengan `series_gate`: ambil gerbang per key, lock, lalu
-/// double-check cache (request yang menunggu mungkin mendapat hasil dari
-/// pemenang gerbang). Kegagalan tidak di-cache — gerbang dilepas oleh drop
-/// guard sehingga request berikutnya boleh mencoba lagi.
-///
-/// Double-check WAJIB ada di DALAM helper ini, bukan hanya di closure
-/// pemanggil: mutex hanya MENYERIALKAN, ia tidak mendedupe. Tanpa cek di sini,
-/// 16 task yang menunggu gerbang akan tetap menjalankan `fanout` satu per satu
-/// setelah gerbang bebas (terbukti: test `chapter_paralel_sama_hanya_satu_fanout`
-/// membaca 16, bukan 1). Karena itu `cached` disuntikkan sebagai parameter:
-/// helper membaca ulang cache setelah memperoleh gerbang, sebelum memutuskan
-/// memanggil `fanout`.
-async fn chapter_single_flight<F, Fut, C>(
+async fn chapter_single_flight<F, Fut, C, T>(
     gates: &ChapterGates,
     handle: &str,
     number: &str,
     cached: C,
     fanout: F,
-) -> Result<Value, AppError>
+) -> Result<T, AppError>
 where
-    C: Fn() -> Option<Value>,
+    C: Fn() -> Option<T>,
     F: FnOnce() -> Fut,
-    Fut: std::future::Future<Output = Result<Value, AppError>>,
+    Fut: std::future::Future<Output = Result<T, AppError>>,
 {
     let gate = chapter_gate(gates, handle, number);
-    let _guard = gate.lock().await;
-    // Request yang menunggu gerbang: kalau pemenang sudah mengisi cache,
-    // pakai hasilnya dan JANGAN fan-out lagi. Inilah dedup sesungguhnya.
-    if let Some(hit) = cached() {
-        return Ok(hit);
-    }
-    fanout().await
+    let res = {
+        let _guard = gate.lock().await;
+        if let Some(hit) = cached() {
+            Ok(hit)
+        } else {
+            fanout().await
+        }
+    };
+    let key = chapter_gate_key(handle, number);
+    release_key_gate(gates, &key, gate);
+    res
 }
 
 fn genre_slug(name: &str) -> String {
@@ -1800,21 +1997,27 @@ async fn compute_series_dua_fase(
 /// melayani stale, jadi endpoint tetap responsif.
 fn spawn_series_refresh(state: Arc<UnifiedState>, handle: String, last_source: Option<String>, key: String) {
     tokio::spawn(async move {
-        let gate = series_gate(&state.series_gates, &key);
-        let _guard = gate.lock().await;
+        let gate = acquire_key_gate(&state.series_gates, &key);
         {
-            if let Some((CacheAge::Fresh, _)) = series_cache_read(&state.series_cache, &key) {
-                return; // sudah di-refresh request lain saat menunggu gerbang
+            let _guard = gate.lock().await;
+            let fresh = matches!(
+                series_cache_read_async(&state.series_cache, &key).await,
+                Some((CacheAge::Fresh, _))
+            );
+            if !fresh {
+                if let Ok(_permit) = state.series_fanout_permits.acquire().await {
+                    match compute_series(&state, &handle, last_source.as_deref()).await {
+                        Ok(out) => {
+                            series_cache_put(&state.series_cache, key.clone(), &out);
+                        }
+                        Err(_) => tracing::warn!(
+                            "refresh series latar gagal (dibiarkan, stale tetap dilayani)"
+                        ),
+                    }
+                }
             }
         }
-        let _permit = match state.series_fanout_permits.acquire().await {
-            Ok(p) => p,
-            Err(_) => return,
-        };
-        match compute_series(&state, &handle, last_source.as_deref()).await {
-            Ok(out) => series_cache_put(&state.series_cache, key, out),
-            Err(_) => tracing::warn!("refresh series latar gagal (dibiarkan, stale tetap dilayani)"),
-        }
+        release_key_gate(&state.series_gates, &key, gate);
     });
 }
 
@@ -1840,46 +2043,50 @@ async fn u_similar(
     if let Some(items) = similar_cache_read(&unified.similar_cache, &handle) {
         return Ok(Json(json!({"handle": handle, "from_cache": true, "items": items})));
     }
-    let gate = similar_gate(&unified.similar_gates, &handle);
-    let _guard = gate.lock().await;
-    if let Some(items) = similar_cache_read(&unified.similar_cache, &handle) {
-        return Ok(Json(json!({"handle": handle, "from_cache": true, "items": items})));
-    }
-
-    let outcome = unified
-        .aggregator
-        .series_resolve_pref(&handle, SERIES_CHAPTER_LIMIT, None, None)
-        .await
-        .map_err(classify_core_err)?;
-    let target = outcome.detail.manga;
-    let source = unified
-        .aggregator
-        .sources
-        .iter()
-        .find(|source| source.id() == target.source)
-        .ok_or_else(|| AppError::internal(format!("sumber {} tidak tersedia", target.source.as_str())))?;
-    let candidates = if let Some(genre) = target.genres.first() {
-        source.list(Some(genre), 1).await
-    } else {
-        source.popular(1).await
-    }
-    .map_err(|e| AppError::new(anyhow::anyhow!("gagal memuat kandidat serupa: {e:#}")))?;
-    let items: Vec<SimilarItemOut> = komik_core::similar::rank(&target, candidates, 10)
-        .into_iter()
-        .map(|hit| SimilarItemOut {
-            handle: hit.handle,
-            title: hit.title,
-            cover_url: hit.cover_url,
-            manga_type: hit.manga_type,
-            last_chapter: hit.last_chapter,
-            reason: hit.reason,
-            score: hit.score,
-        })
-        .collect();
-    let items = serde_json::to_value(items)
-        .map_err(|e| AppError::internal(format!("gagal membentuk similar: {e}")))?;
-    similar_cache_put(&unified.similar_cache, handle.clone(), items.clone());
-    Ok(Json(json!({"handle": handle, "from_cache": false, "items": items})))
+    let gate = acquire_key_gate(&unified.similar_gates, &handle);
+    let res = {
+        let _guard = gate.lock().await;
+        if let Some(items) = similar_cache_read(&unified.similar_cache, &handle) {
+            Ok(Json(json!({"handle": handle, "from_cache": true, "items": items})))
+        } else {
+            let outcome = unified
+                .aggregator
+                .series_resolve_pref(&handle, SERIES_CHAPTER_LIMIT, None, None)
+                .await
+                .map_err(classify_core_err)?;
+            let target = outcome.detail.manga;
+            let source = unified
+                .aggregator
+                .sources
+                .iter()
+                .find(|source| source.id() == target.source)
+                .ok_or_else(|| AppError::internal(format!("sumber {} tidak tersedia", target.source.as_str())))?;
+            let candidates = if let Some(genre) = target.genres.first() {
+                source.list(Some(genre), 1).await
+            } else {
+                source.popular(1).await
+            }
+            .map_err(|e| AppError::new(anyhow::anyhow!("gagal memuat kandidat serupa: {e:#}")))?;
+            let items: Vec<SimilarItemOut> = komik_core::similar::rank(&target, candidates, 10)
+                .into_iter()
+                .map(|hit| SimilarItemOut {
+                    handle: hit.handle,
+                    title: hit.title,
+                    cover_url: hit.cover_url,
+                    manga_type: hit.manga_type,
+                    last_chapter: hit.last_chapter,
+                    reason: hit.reason,
+                    score: hit.score,
+                })
+                .collect();
+            let items = serde_json::to_value(items)
+                .map_err(|e| AppError::internal(format!("gagal membentuk similar: {e}")))?;
+            similar_cache_put(&unified.similar_cache, handle.clone(), items.clone());
+            Ok(Json(json!({"handle": handle, "from_cache": false, "items": items})))
+        }
+    };
+    release_key_gate(&unified.similar_gates, &handle, gate);
+    res
 }
 
 
@@ -1893,33 +2100,29 @@ async fn u_series(
     Query(q): Query<SeriesQuery>,
     headers: HeaderMap,
 ) -> Result<Response, AppError> {
-    let (value, has_pending) = u_series_inner(state, handle, q).await?;
+    let (cached, has_pending) = u_series_inner(state, handle, q).await?;
     // Respons dua-fase (masih ada sumber di-merge di background): tanpa
     // max-age supaya browser/tidak disimpan — teladani, fase-2 search.
     let cache_control = if has_pending { "no-cache" } else { "public, max-age=15" };
-    Ok(crate::routes::json_with_etag(
-        &value,
-        cache_control,
-        crate::routes::if_none_match(&headers),
-    ))
+    Ok(cached.into_response(cache_control, if_none_match(&headers)))
 }
 
 /// Isi penuh `u_series` (SWR + single-flight + fan-out). Dipisah jadi fungsi
 /// dalam supaya handler tipis tinggal menempelkan ETag/Cache-Control.
-/// Mengembalikan `(json, has_pending)`: `has_pending` = masih ada sumber lain
+/// Mengembalikan `(CachedJson, has_pending)`: `has_pending` = masih ada sumber lain
 /// yang di-merge di background (respons parsial → jangan cache).
 async fn u_series_inner(
     state: Arc<crate::routes::AppState>,
     handle: String,
     q: SeriesQuery,
-) -> Result<(Value, bool), AppError> {
+) -> Result<(CachedJson, bool), AppError> {
     validate_handle(&handle)?;
     let unified = state.unified.clone();
     let key = series_key(&handle, q.last_source.as_deref());
 
     // 1. SWR: segar -> seketika; basi -> sajikan stale + refresh latar;
     //    sangat basi / belum ada -> hitung inline di bawah.
-    if let Some((age, hit)) = series_cache_read(&unified.series_cache, &key) {
+    if let Some((age, hit)) = series_cache_read_async(&unified.series_cache, &key).await {
         match age {
             CacheAge::Fresh => return Ok((hit, false)),
             CacheAge::Stale => {
@@ -1932,30 +2135,36 @@ async fn u_series_inner(
 
     // 2. Single-flight per handle: yang menang gerbang menghitung, sisanya
     //    menunggu lalu membaca cache yang baru diisi (bukan fan-out sendiri).
-    let gate = series_gate(&unified.series_gates, &key);
-    let _guard = gate.lock().await;
+    let gate = acquire_key_gate(&unified.series_gates, &key);
+    let res = {
+        let _guard = gate.lock().await;
 
-    // Double-check: bisa jadi request lain mengisi cache saat kita menunggu.
-    if let Some((CacheAge::Fresh, hit)) = series_cache_read(&unified.series_cache, &key) {
-        return Ok((hit, false));
-    }
+        // Double-check: bisa jadi request lain mengisi cache saat kita menunggu.
+        if let Some((CacheAge::Fresh, hit)) =
+            series_cache_read_async(&unified.series_cache, &key).await
+        {
+            Ok((hit, false))
+        } else {
+            // 3. Batasi fan-out serentak lintas handle (antre, bukan tolak).
+            let _permit = unified
+                .series_fanout_permits
+                .acquire()
+                .await
+                .map_err(|_| AppError::new(anyhow::anyhow!("gerbang fan-out series ditutup")))?;
 
-    // 3. Batasi fan-out serentak lintas handle (antre, bukan tolak).
-    let _permit = unified
-        .series_fanout_permits
-        .acquire()
-        .await
-        .map_err(|_| AppError::new(anyhow::anyhow!("gerbang fan-out series ditutup")))?;
-
-    // 4. Dua-fase: sajikan primary seketika, union di-merge di background.
-    //    Kalau masih ada `pending` (sumber belum tercermin) → JANGAN cache
-    //    hasil separuh; panggilan berikutnya menghitung ulang sampai penuh.
-    let out = compute_series_dua_fase(&unified, &handle, q.last_source.as_deref()).await?;
-    let has_pending = out["pending"].as_array().map(|a| !a.is_empty()).unwrap_or(false);
-    if !has_pending {
-        series_cache_put(&unified.series_cache, key, out.clone());
-    }
-    Ok((out, has_pending))
+            // 4. Dua-fase: sajikan primary seketika, union di-merge di background.
+            let out = compute_series_dua_fase(&unified, &handle, q.last_source.as_deref()).await?;
+            let has_pending = out["pending"].as_array().map(|a| !a.is_empty()).unwrap_or(false);
+            let cached = if !has_pending {
+                series_cache_put(&unified.series_cache, key.clone(), &out)
+            } else {
+                CachedJson::from_value(&out)
+            };
+            Ok((cached, has_pending))
+        }
+    };
+    release_key_gate(&unified.series_gates, &key, gate);
+    res
 }
 
 /// Klasifikasi galat core: "tidak ditemukan"/"tidak ada" = entitas absen
@@ -1998,19 +2207,15 @@ async fn u_chapter(
     // Budget total: series_resolve + read_chapter_any berurutan, masing-masing
     // bisa fallback antar sumber. Tanpa batas, dua jalur ini bisa menumpuk
     // timeout jauh melewati 6 s per sumber.
-    let res = match tokio::time::timeout(UNIFIED_REQUEST_BUDGET, u_chapter_inner(state, handle, number)).await {
-        Ok(r) => r,
-        Err(_) => Err(budget_err("chapter")),
+    let cached = match tokio::time::timeout(UNIFIED_REQUEST_BUDGET, u_chapter_inner(state, handle, number)).await {
+        Ok(r) => r?,
+        Err(_) => return Err(budget_err("chapter")),
     };
-    Ok(crate::routes::json_with_etag(
-        &res?.0,
-        "public, max-age=15",
-        crate::routes::if_none_match(&headers),
-    ))
+    Ok(cached.into_response("public, max-age=15", if_none_match(&headers)))
 }
 
 
-async fn u_chapter_inner(state: Arc<UnifiedState>, handle: String, number: String) -> Res<Value> {
+async fn u_chapter_inner(state: Arc<UnifiedState>, handle: String, number: String) -> Result<CachedJson, AppError> {
     // TODO(BE-2): prefetch chapter N+1 — butuh kebijakan eviction + backpressure
     // sebelum aktif (risiko thundering herd).
     let key = chapter_gate_key(&handle, &number);
@@ -2018,15 +2223,13 @@ async fn u_chapter_inner(state: Arc<UnifiedState>, handle: String, number: Strin
     // 1. Cache segar -> seketika. Burst beruntun (request ke-17 datang setelah
     //    fan-out pertama selesai) tetap satu fan-out karena cabang ini.
     if let Some((CacheAge::Fresh, hit)) = chapter_cache_get(&state.chapter_cache, &key) {
-        return Ok(Json(hit));
+        return Ok(hit);
     }
 
     // 2. Single-flight per chapter. Pemenang gerbang menghitung; sisanya
     //    menunggu, lalu `chapter_single_flight` membaca ulang cache SEBELUM
     //    memutuskan fan-out (itu dedup sesungguhnya — mutex hanya menyerialkan).
-    //    Tanpa ini 16 request paralel = 16 fan-out: terukur komiku +32 /
-    //    kiryuu +16 untuk satu chapter.
-    let out = chapter_single_flight(
+    chapter_single_flight(
         &state.chapter_gates,
         &handle,
         &number,
@@ -2042,16 +2245,13 @@ async fn u_chapter_inner(state: Arc<UnifiedState>, handle: String, number: Strin
             let number = number.clone();
             async move {
                 let out = fetch_chapter_payload(&state, &handle, &number).await?;
-                chapter_cache_put(&state.chapter_cache, key, out.clone());
-                Ok(out)
+                let cached = CachedJson::from_value(&out);
+                chapter_cache_put(&state.chapter_cache, key, cached.clone());
+                Ok(cached)
             }
         },
     )
-    .await?;
-
-    // `chapter_single_flight` mengembalikan `Value` MENTAH; handler yang
-    // membungkusnya jadi `Json` (satu kali, di sini).
-    Ok(Json(out))
+    .await
 }
 
 /// Fan-out chapter sesungguhnya: SATU `read_chapter_any` + bentuk JSON final.
@@ -2087,12 +2287,7 @@ async fn fetch_chapter_payload(
     // HIT → Some((w,h)); MISS → None (frontend fallback rasio 0.685). Ini
     // memperbaiki CLS residual tanpa biaya network (probe range-GET upstream
     // yang dulu sia-sia dihapus).
-    let image_sizes: Vec<Option<[u32; 2]>> = out
-        .pages
-        .images
-        .iter()
-        .map(|u| crate::img::known_orig_dims(u).map(|(w, h)| [w, h]))
-        .collect();
+    let image_sizes = crate::img::known_orig_dims_batch(&out.pages.images).await;
     Ok(json!({
         "title": out.pages.title,
         "number": out.pages.number,
@@ -2205,7 +2400,7 @@ async fn fetch_image(client: &reqwest::Client, url: &str) -> anyhow::Result<Vec<
     // pernah dibuka tidak menyentuh CDN sama sekali (0 round-trip/halaman).
     // Byte-nya identik dengan yang dikirim /img, jadi PDF tetap lossless
     // untuk halaman JPEG.
-    if let Some(bytes) = crate::img::cached_raw(url) {
+    if let Some(bytes) = crate::img::cached_raw_async(url).await {
         return Ok(bytes);
     }
     // Referer di header REQUEST (bukan client): ClientBuilder tanpa fitur
@@ -2368,19 +2563,25 @@ async fn generate_pdf(
     handle: &str,
     number: &str,
 ) -> Result<DownloadEntry, AppError> {
-    let series = state
-        .aggregator
-        .series_resolve(handle, SERIES_CHAPTER_LIMIT, None)
-        .await
-        .map_err(classify_core_err)?;
-    let series_title = series.detail.manga.title.clone();
-    let series_key = series.detail.manga.title_key.clone();
-
     let out = state
         .aggregator
         .read_chapter_any(handle, number, None, SERIES_CHAPTER_LIMIT)
         .await
         .map_err(classify_core_err)?;
+    let (series_title, series_key) = match (
+        out.series_title.as_deref().filter(|t| !t.is_empty()),
+        out.series_title_key.as_deref().filter(|k| !k.is_empty()),
+    ) {
+        (Some(t), Some(k)) => (t.to_string(), k.to_string()),
+        _ => {
+            let series = state
+                .aggregator
+                .series_resolve(handle, SERIES_CHAPTER_LIMIT, None)
+                .await
+                .map_err(classify_core_err)?;
+            (series.detail.manga.title, series.detail.manga.title_key)
+        }
+    };
     if out.pages.images.is_empty() {
         return Err(AppError::bad_request(format!(
             "chapter {number} tidak punya gambar"
@@ -3480,5 +3681,27 @@ mod tests {
         let bare_json = serde_json::to_value(bare).unwrap();
         assert!(bare_json.get("synopsis").is_none());
         assert!(bare_json.get("genre").is_none());
+    }
+
+    #[tokio::test]
+    async fn feed_cache_swr_dan_single_flight() {
+        let state = Arc::new(UnifiedState::new());
+        let calls = Arc::new(std::sync::atomic::AtomicUsize::new(0));
+        let c1 = calls.clone();
+        let res1 = fetch_or_cached_feed(&state, "latest:1:20:*:latest", move || async move {
+            c1.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+            (CachedJson::from_value(&serde_json::json!({"items": [1]})), true)
+        })
+        .await;
+        assert_eq!(res1.bytes.as_ref(), br#"{"items":[1]}"#);
+
+        let c2 = calls.clone();
+        let res2 = fetch_or_cached_feed(&state, "latest:1:20:*:latest", move || async move {
+            c2.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+            (CachedJson::from_value(&serde_json::json!({"items": [2]})), true)
+        })
+        .await;
+        assert_eq!(res2.bytes.as_ref(), br#"{"items":[1]}"#);
+        assert_eq!(calls.load(std::sync::atomic::Ordering::SeqCst), 1);
     }
 }

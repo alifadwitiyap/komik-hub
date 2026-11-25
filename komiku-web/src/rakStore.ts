@@ -92,16 +92,34 @@ function cleanRecord<T>(v: unknown, clean: (x: unknown) => T | null): Record<str
   return out
 }
 
+let parsedCache: { key: string; raw: string; data: RakData } | null = null
+
+function cloneRakData(data: RakData): RakData {
+  return {
+    favorites: { ...data.favorites },
+    history: { ...data.history },
+  }
+}
+
 function load(): RakData {
   try {
-    const raw = localStorage.getItem(rakKey())
-    if (!raw) return { favorites: {}, history: {} }
+    const key = rakKey()
+    const raw = localStorage.getItem(key)
+    if (!raw) {
+      parsedCache = null
+      return { favorites: {}, history: {} }
+    }
+    if (parsedCache && parsedCache.key === key && parsedCache.raw === raw) {
+      return cloneRakData(parsedCache.data)
+    }
     const parsed: unknown = JSON.parse(raw)
     if (!isPlainObject(parsed)) return { favorites: {}, history: {} }
-    return {
+    const data: RakData = {
       favorites: cleanRecord(parsed.favorites, cleanFavorite),
       history: cleanRecord(parsed.history, cleanHistory),
     }
+    parsedCache = { key, raw, data }
+    return cloneRakData(data)
   } catch {
     return { favorites: {}, history: {} }
   }
@@ -109,7 +127,10 @@ function load(): RakData {
 
 function save(data: RakData): void {
   try {
-    localStorage.setItem(rakKey(), JSON.stringify(data))
+    const key = rakKey()
+    const raw = JSON.stringify(data)
+    localStorage.setItem(key, raw)
+    parsedCache = { key, raw, data: cloneRakData(data) }
   } catch {
     /* storage penuh / mode privat */
   }

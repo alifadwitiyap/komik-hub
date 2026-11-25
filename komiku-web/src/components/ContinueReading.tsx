@@ -5,6 +5,7 @@ import { sourceLabel } from './SourceBadge'
 import { resolveResumeTarget } from '../progressResume'
 import { useMarathonMemory } from '../hooks/useMarathonMemory'
 import type { MarathonPosition } from '../marathonMemory'
+import { imgSrc } from '../imgUrl'
 import { marathonHref, resumeHref } from '../readerSource'
 import * as rakStore from '../rakStore'
 
@@ -97,7 +98,7 @@ function ResumeCard({ item, first }: { item: Item; first: boolean }) {
   const [failed, setFailed] = useState(false)
   const source = sourceLabel(item.source)
   const showSource = Boolean(item.source && item.source !== item.localSource)
-  const coverUrl = item.cover ? (item.cover.startsWith('data:') ? item.cover : item.cover) : null
+  const coverUrl = item.cover ? (item.cover.startsWith('data:') ? item.cover : imgSrc(item.cover, 200)) : null
   // Kontrak probe lama: atribut literal ini harus ada di kartu PERTAMA.
   const body = (
     <>

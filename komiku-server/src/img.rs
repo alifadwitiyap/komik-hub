@@ -52,6 +52,10 @@ const CACHE_CAP_BYTES: u64 = 512 * 1024 * 1024;
 const CACHE_CAP_TRIGGER_BYTES: u64 = CACHE_CAP_BYTES * 19 / 20;
 const TIMEOUT: Duration = Duration::from_secs(25);
 const RETRIES: u32 = 2;
+const UA: &str = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 \
+                  (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36";
+const DOH_ENDPOINT: &str = "https://cloudflare-dns.com/dns-query";
+const DOH_TIMEOUT: Duration = Duration::from_secs(6);
 
 #[derive(Deserialize)]
 pub struct ImgQuery {
@@ -65,8 +69,12 @@ fn client() -> &'static reqwest::Client {
     static C: OnceCell<reqwest::Client> = OnceCell::new();
     C.get_or_init(|| {
         reqwest::Client::builder()
+            .user_agent(UA)
+            .connect_timeout(Duration::from_secs(8))
             .timeout(TIMEOUT)
+            .pool_idle_timeout(Duration::from_secs(90))
             .pool_max_idle_per_host(8)
+            .tcp_keepalive(Duration::from_secs(60))
             .build()
             .unwrap_or_default()
     })
@@ -151,7 +159,7 @@ fn cache_path_fmt(key: &str, fmt: ImgFormat) -> PathBuf {
 }
 
 /// Path byte asli hasil fetch upstream (kunci = URL saja, bukan URL+lebar).
-fn raw_cache_path(key: &str) -> PathBuf {
+pub(crate) fn raw_cache_path(key: &str) -> PathBuf {
     let shard = &key[0..2];
     cache_dir().join("raw").join(shard).join(format!("{key}.bin"))
 }
@@ -162,6 +170,7 @@ fn raw_cache_path(key: &str) -> PathBuf {
 /// mengisi cache raw) tidak perlu diunduh ulang dari CDN — hemat satu
 /// round-trip per halaman, dan tetap benar karena kuncinya URL (byte identik
 /// dengan yang diterima /img). None = belum ada di cache.
+#[allow(dead_code)]
 pub fn cached_raw(url: &str) -> Option<Vec<u8>> {
     let path = raw_cache_path(&sha1_hex(url));
     match std::fs::read(&path) {
@@ -170,13 +179,24 @@ pub fn cached_raw(url: &str) -> Option<Vec<u8>> {
     }
 }
 
-/// Tulis file lewat temp UNIK lalu rename. Di Windows `rename` gagal kalau
-/// tujuan sedang dibuka proses lain (GET paralel), jadi dicoba beberapa kali.
-fn write_atomic(path: &PathBuf, bytes: &[u8]) {
+/// Versi async non-blocking dari `cached_raw` untuk handler runtime.
+pub async fn cached_raw_async(url: &str) -> Option<Vec<u8>> {
+    let path = raw_cache_path(&sha1_hex(url));
+    match tokio::fs::read(&path).await {
+        Ok(b) if !b.is_empty() => Some(b),
+        _ => None,
+    }
+}
+
+/// Tulis file lewat temp UNIK (pid + counter) lalu rename. Di Windows `rename`
+/// gagal kalau tujuan sedang dibuka proses lain (GET paralel), jadi dicoba beberapa kali.
+fn write_atomic(path: &Path, bytes: &[u8]) {
     if let Some(dir) = path.parent() {
         let _ = std::fs::create_dir_all(dir);
     }
-    let tmp = path.with_extension(format!("tmp{}", std::process::id()));
+    static TMP_SEQ: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
+    let seq = TMP_SEQ.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+    let tmp = path.with_extension(format!("tmp.{}.{}", std::process::id(), seq));
     if std::fs::write(&tmp, bytes).is_ok() {
         for _ in 0..3 {
             if std::fs::rename(&tmp, path).is_ok() {
@@ -271,6 +291,7 @@ fn record_orig_dims(url: &str, w: u32, h: u32) {
 /// dan tanpa decode piksel, lalu hasilnya disimpan di (1) supaya 56 halaman
 /// chapter tidak membuka 56 file berulang kali. `None` = benar-benar belum
 /// ada byte-nya (frontend fallback rasio 0.685).
+#[allow(dead_code)]
 pub fn known_orig_dims(url: &str) -> Option<(u32, u32)> {
     let map = ORIG_DIMS.get_or_init(|| std::sync::Mutex::new(HashMap::new()));
     if let Ok(m) = map.lock() {
@@ -283,6 +304,47 @@ pub fn known_orig_dims(url: &str) -> Option<(u32, u32)> {
         m.insert(url.to_string(), dims);
     }
     Some(dims)
+}
+
+/// Query batch dimensi asli untuk daftar URL chapter: cek map in-memory dulu,
+/// lalu baca header disk untuk yang miss di dalam satu `spawn_blocking`.
+pub async fn known_orig_dims_batch(urls: &[String]) -> Vec<Option<[u32; 2]>> {
+    let mut out = vec![None; urls.len()];
+    let mut misses: Vec<(usize, String)> = Vec::new();
+    let map = ORIG_DIMS.get_or_init(|| std::sync::Mutex::new(HashMap::new()));
+    if let Ok(m) = map.lock() {
+        for (i, u) in urls.iter().enumerate() {
+            if let Some(&(w, h)) = m.get(u.as_str()) {
+                out[i] = Some([w, h]);
+            } else {
+                misses.push((i, u.clone()));
+            }
+        }
+    } else {
+        for (i, u) in urls.iter().enumerate() {
+            misses.push((i, u.clone()));
+        }
+    }
+    if misses.is_empty() {
+        return out;
+    }
+    let resolved = tokio::task::spawn_blocking(move || {
+        misses
+            .into_iter()
+            .filter_map(|(i, u)| dims_from_raw_cache(&u).map(|d| (i, u, d)))
+            .collect::<Vec<_>>()
+    })
+    .await
+    .unwrap_or_default();
+    if !resolved.is_empty() {
+        if let Ok(mut m) = map.lock() {
+            for (i, u, (w, h)) in resolved {
+                out[i] = Some([w, h]);
+                m.insert(u, (w, h));
+            }
+        }
+    }
+    out
 }
 
 /// Dimensi dari byte ASLI di `data/imgcache/raw/<sha1>.bin`.
@@ -415,13 +477,166 @@ fn resize_encode_avif(src: &[u8], target_w: u32) -> Result<Vec<u8>, String> {
     Ok(res.avif_file)
 }
 
-async fn fetch_upstream(url: &str) -> Result<(String, Vec<u8>), String> {
+fn https_host_of(url: &str) -> Option<&str> {
+    let rest = url.strip_prefix("https://")?;
+    let host = rest.split(['/', '?', '#']).next()?;
+    if host.is_empty() {
+        None
+    } else {
+        Some(host)
+    }
+}
+
+fn is_komikindo_host(url: &str) -> bool {
+    https_host_of(url)
+        .is_some_and(|h| h.eq_ignore_ascii_case("komikindo.ch") || h.eq_ignore_ascii_case("www.komikindo.ch"))
+}
+
+/// Hilangkan sufiks ukuran WordPress (`-220x319.jpg`) pada sampul Komikindo
+/// agar Hero Banner dan kartu memakai gambar resolusi penuh jika tersedia.
+fn wp_fullres_url(url: &str) -> Option<String> {
+    if !is_komikindo_host(url) || !url.contains("/wp-content/uploads/") {
+        return None;
+    }
+    let (path, query) = match url.find('?') {
+        Some(i) => (&url[..i], &url[i..]),
+        None => (url, ""),
+    };
+    let lower = path.to_ascii_lowercase();
+    let ext_len = [".jpeg", ".webp", ".jpg", ".png"]
+        .into_iter()
+        .find(|ext| lower.ends_with(ext))?
+        .len();
+    let split_ext = path.len() - ext_len;
+    let stem = &path[..split_ext];
+    let ext = &path[split_ext..];
+    let dash = stem.rfind('-')?;
+    if dash == 0 || stem.as_bytes()[dash - 1] == b'/' {
+        return None;
+    }
+    let dim = &stem[dash + 1..];
+    let (w_str, h_str) = dim.split_once('x')?;
+    if !(2..=4).contains(&w_str.len())
+        || !(2..=4).contains(&h_str.len())
+        || !w_str.bytes().all(|b| b.is_ascii_digit())
+        || !h_str.bytes().all(|b| b.is_ascii_digit())
+    {
+        return None;
+    }
+    let w: u32 = w_str.parse().ok()?;
+    let h: u32 = h_str.parse().ok()?;
+    if !(100..=4000).contains(&w) || !(100..=4000).contains(&h) {
+        return None;
+    }
+    Some(format!("{}{}{}", &stem[..dash], ext, query))
+}
+
+/// Mirror Jetpack/WordPress Photon untuk fallback saat origin Cloudflare
+/// menolak IP server.
+fn wp_photon_url(url: &str) -> Option<String> {
+    if !is_komikindo_host(url) {
+        return None;
+    }
+    let rest = url.strip_prefix("https://")?;
+    Some(format!("https://i0.wp.com/{rest}"))
+}
+
+fn is_public_doh_ip(ip: std::net::IpAddr) -> bool {
+    match ip {
+        std::net::IpAddr::V4(v4) => {
+            let o = v4.octets();
+            !v4.is_unspecified()
+                && !v4.is_loopback()
+                && !v4.is_private()
+                && !v4.is_link_local()
+                && !v4.is_multicast()
+                && !v4.is_broadcast()
+                && !(o[0] == 100 && (0x40..=0x7f).contains(&o[1]))
+                && !(o[0] >= 240)
+        }
+        std::net::IpAddr::V6(v6) => {
+            let s = v6.segments();
+            !v6.is_unspecified()
+                && !v6.is_loopback()
+                && !v6.is_multicast()
+                && !(s[0] & 0xfe00 == 0xfc00)
+                && !(s[0] & 0xffc0 == 0xfe80)
+                && !(s[0] == 0
+                    && s[1] == 0
+                    && s[2] == 0
+                    && s[3] == 0
+                    && s[4] == 0
+                    && s[5] == 0xffff
+                    && !is_public_doh_ip(std::net::IpAddr::V4(std::net::Ipv4Addr::from([
+                        (s[6] >> 8) as u8,
+                        s[6] as u8,
+                        (s[7] >> 8) as u8,
+                        s[7] as u8,
+                    ]))))
+        }
+    }
+}
+
+async fn komikindo_pinned_client() -> Result<&'static reqwest::Client, String> {
+    static PINNED: tokio::sync::OnceCell<reqwest::Client> = tokio::sync::OnceCell::const_new();
+    PINNED
+        .get_or_try_init(|| async {
+            let url = format!("{DOH_ENDPOINT}?name=komikindo.ch&type=A");
+            let resp = client()
+                .get(&url)
+                .header("accept", "application/dns-json")
+                .timeout(DOH_TIMEOUT)
+                .send()
+                .await
+                .map_err(|e| format!("DoH komikindo gagal: {e}"))?;
+            if !resp.status().is_success() {
+                return Err(format!("DoH komikindo HTTP {}", resp.status()));
+            }
+            let v: serde_json::Value = resp
+                .json()
+                .await
+                .map_err(|e| format!("DoH komikindo bukan JSON: {e}"))?;
+            let mut addrs = Vec::new();
+            if let Some(ans) = v["Answer"].as_array() {
+                for a in ans {
+                    if a["type"].as_u64() == Some(1) {
+                        if let Some(d) = a["data"].as_str() {
+                            if let Ok(ip) = d.parse::<std::net::IpAddr>() {
+                                if is_public_doh_ip(ip) {
+                                    addrs.push(std::net::SocketAddr::new(ip, 0));
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            if addrs.is_empty() {
+                return Err("DoH komikindo tidak mengembalikan IP publik".to_string());
+            }
+            reqwest::Client::builder()
+                .user_agent(UA)
+                .no_proxy()
+                .connect_timeout(Duration::from_secs(6))
+                .timeout(TIMEOUT)
+                .resolve_to_addrs("komikindo.ch:443", &addrs)
+                .resolve_to_addrs("www.komikindo.ch:443", &addrs)
+                .build()
+                .map_err(|e| format!("client DoH komikindo gagal: {e}"))
+        })
+        .await
+}
+
+async fn fetch_with_client(
+    c: &reqwest::Client,
+    url: &str,
+    retries: u32,
+) -> Result<(String, Vec<u8>), String> {
     let mut last = String::from("gagal mengambil gambar");
-    for attempt in 0..RETRIES {
+    for attempt in 0..retries {
         if attempt > 0 {
             tokio::time::sleep(Duration::from_millis(250 * (1 << attempt))).await;
         }
-        match client().get(url).send().await {
+        match c.get(url).send().await {
             Ok(r) => {
                 let status = r.status();
                 let ctype = r
@@ -457,6 +672,37 @@ async fn fetch_upstream(url: &str) -> Result<(String, Vec<u8>), String> {
         }
     }
     Err(last)
+}
+
+async fn fetch_komikindo_candidate(target: &str) -> Result<(String, Vec<u8>), String> {
+    if let Ok(pinned) = komikindo_pinned_client().await {
+        if let Ok(res) = fetch_with_client(pinned, target, 1).await {
+            return Ok(res);
+        }
+    }
+    match fetch_with_client(client(), target, 1).await {
+        Ok(res) => Ok(res),
+        Err(last) => {
+            if let Some(photon) = wp_photon_url(target) {
+                if let Ok(res) = fetch_with_client(client(), &photon, 1).await {
+                    return Ok(res);
+                }
+            }
+            Err(last)
+        }
+    }
+}
+
+async fn fetch_upstream(url: &str) -> Result<(String, Vec<u8>), String> {
+    if is_komikindo_host(url) {
+        if let Some(full) = wp_fullres_url(url) {
+            if let Ok(res) = fetch_komikindo_candidate(&full).await {
+                return Ok(res);
+            }
+        }
+        return fetch_komikindo_candidate(url).await;
+    }
+    fetch_with_client(client(), url, RETRIES).await
 }
 
 /// Hapus entri cache terlama sampai total di bawah `cap`. Dipanggil sesekali
@@ -539,29 +785,26 @@ pub async fn img_handler(Query(q): Query<ImgQuery>, headers: HeaderMap) -> Respo
     let path = cache_path_fmt(&key, fmt);
     let etag = format!("\"{key}\"");
 
-    // 304: If-None-Match cocok DAN file varian ada di cache — balas tanpa
-    // membaca byte dari disk. Kalau tidak cocok / file belum ada, lanjut jalur
-    // normal (jangan 304).
-    if path.exists() {
-        if let Some(inm) = headers.get(header::IF_NONE_MATCH).and_then(|v| v.to_str().ok()) {
-            if etag_matches(inm, &etag) {
-                let mut resp = (StatusCode::NOT_MODIFIED, Body::empty()).into_response();
-                let h = resp.headers_mut();
-                h.insert(
-                    header::CACHE_CONTROL,
-                    HeaderValue::from_static("public, max-age=31536000, immutable"),
-                );
-                h.insert("vary", HeaderValue::from_static("Accept"));
-                h.insert("x-img-cache", HeaderValue::from_static("hit"));
-                if let Ok(v) = HeaderValue::from_str(&etag) {
-                    h.insert(header::ETAG, v);
-                }
-                return resp;
+    // 304: cek If-None-Match di memori lebih dulu, baru cek disk bila cocok —
+    // request normal tanpa If-None-Match tidak membayar syscall exists() ekstra.
+    if let Some(inm) = headers.get(header::IF_NONE_MATCH).and_then(|v| v.to_str().ok()) {
+        if etag_matches(inm, &etag) && tokio::fs::try_exists(&path).await.unwrap_or(false) {
+            let mut resp = (StatusCode::NOT_MODIFIED, Body::empty()).into_response();
+            let h = resp.headers_mut();
+            h.insert(
+                header::CACHE_CONTROL,
+                HeaderValue::from_static("public, max-age=31536000, immutable"),
+            );
+            h.insert("vary", HeaderValue::from_static("Accept"));
+            h.insert("x-img-cache", HeaderValue::from_static("hit"));
+            if let Ok(v) = HeaderValue::from_str(&etag) {
+                h.insert(header::ETAG, v);
             }
+            return resp;
         }
     }
 
-    if let Ok(bytes) = std::fs::read(&path) {
+    if let Ok(bytes) = tokio::fs::read(&path).await {
         return immutable(bytes, &etag, "hit", fmt.mime());
     }
 
@@ -575,7 +818,7 @@ pub async fn img_handler(Query(q): Query<ImgQuery>, headers: HeaderMap) -> Respo
     let guard = lock.lock().await;
 
     // re-cek setelah dapat lock: mungkin permintaan lain barusan mengisi cache
-    if let Ok(bytes) = std::fs::read(&path) {
+    if let Ok(bytes) = tokio::fs::read(&path).await {
         drop(guard);
         inflight_release(&key).await;
         return immutable(bytes, &etag, "hit", fmt.mime());
@@ -587,11 +830,13 @@ pub async fn img_handler(Query(q): Query<ImgQuery>, headers: HeaderMap) -> Respo
     // (2-3 s per halaman di jaringan rumah). Dengan cache raw, upstream sekali.
     let raw_path = raw_cache_path(&sha1_hex(&q.u));
     let t_fetch = std::time::Instant::now();
-    let upstream = match std::fs::read(&raw_path) {
+    let upstream = match tokio::fs::read(&raw_path).await {
         Ok(b) if !b.is_empty() => b,
         _ => match fetch_upstream(&q.u).await {
             Ok((_ct, bytes)) => {
-                write_atomic(&raw_path, &bytes);
+                let raw_path_w = raw_path.clone();
+                let bytes_w = bytes.clone();
+                tokio::task::spawn_blocking(move || write_atomic(&raw_path_w, &bytes_w));
                 bytes
             }
             Err(e) => {
@@ -622,21 +867,33 @@ pub async fn img_handler(Query(q): Query<ImgQuery>, headers: HeaderMap) -> Respo
     let _permit = encode_gate().acquire().await.ok();
 
     // Encode sesuai format yang dinegosiasikan; bila encoder gagal, turun ke
-    // WebP lalu ke byte asli — jangan pernah 500.
+    // WebP lalu ke byte asli — jangan pernah 500. Penulisan cache disk
+    // dilakukan di dalam spawn_blocking yang sama agar worker async bebas blokir.
     let (encoded, out_fmt): (Vec<u8>, ImgFormat) = if fmt == ImgFormat::Avif {
+        let avif_path = cache_path_fmt(&key, ImgFormat::Avif);
         let r = tokio::task::spawn_blocking({
             let src = upstream.clone();
-            move || resize_encode_avif(&src, target)
+            move || {
+                let v = resize_encode_avif(&src, target)?;
+                write_atomic(&avif_path, &v);
+                Ok::<Vec<u8>, String>(v)
+            }
         })
         .await;
         match r {
             Ok(Ok(v)) => (v, ImgFormat::Avif),
             _ => {
                 tracing::warn!("img avif gagal — fallback WebP");
+                let write_key = sha1_hex(&format!("{}|{}|{}", q.u, raw_w, ImgFormat::WebP.ext()));
+                let webp_path = cache_path_fmt(&write_key, ImgFormat::WebP);
                 match tokio::task::spawn_blocking({
                     let src = upstream.clone();
                     let u = q.u.clone();
-                    move || resize_encode(&src, target, &u)
+                    move || {
+                        let v = resize_encode(&src, target, &u)?;
+                        write_atomic(&webp_path, &v);
+                        Ok::<Vec<u8>, String>(v)
+                    }
                 })
                 .await
                 {
@@ -649,10 +906,15 @@ pub async fn img_handler(Query(q): Query<ImgQuery>, headers: HeaderMap) -> Respo
             }
         }
     } else {
+        let webp_path = cache_path_fmt(&key, ImgFormat::WebP);
         let r = tokio::task::spawn_blocking({
             let src = upstream.clone();
             let u = q.u.clone();
-            move || resize_encode(&src, target, &u)
+            move || {
+                let v = resize_encode(&src, target, &u)?;
+                write_atomic(&webp_path, &v);
+                Ok::<Vec<u8>, String>(v)
+            }
         })
         .await;
         match r {
@@ -663,17 +925,6 @@ pub async fn img_handler(Query(q): Query<ImgQuery>, headers: HeaderMap) -> Respo
             }
         }
     };
-
-    // Simpan ke cache hanya jika hasilnya format terencode; gunakan kunci cache
-    // format yang benar (bisa beda dari yang diminta saat terjadi fallback).
-    if out_fmt != ImgFormat::Passthrough {
-        let write_key = if out_fmt == fmt {
-            key.clone()
-        } else {
-            sha1_hex(&format!("{}|{}|{}", q.u, raw_w, out_fmt.ext()))
-        };
-        write_atomic(&cache_path_fmt(&write_key, out_fmt), &encoded);
-    }
 
     tracing::info!(
         "img miss w={raw_w} fetch={fetch_ms}ms encode={}ms upstream={}B out={}B fmt={}",
@@ -948,6 +1199,38 @@ mod tests {
             got,
             Some((640, 960)),
             "VP8 lossy harus terbaca dari cache raw"
+        );
+    }
+
+    #[test]
+    fn wp_fullres_url_menghapus_sufiks_dimensi_wordpress() {
+        assert_eq!(
+            wp_fullres_url("https://komikindo.ch/wp-content/uploads/2024/07/Komik-Solo-Leveling-Ragnarok-223x319.jpg").as_deref(),
+            Some("https://komikindo.ch/wp-content/uploads/2024/07/Komik-Solo-Leveling-Ragnarok.jpg")
+        );
+        assert_eq!(
+            wp_fullres_url("https://www.komikindo.ch/wp-content/uploads/2026/11/masterimage-series/461784/5932adfc/komik-temporarily-fostering-a-demon-220x319.jpg?v=1").as_deref(),
+            Some("https://www.komikindo.ch/wp-content/uploads/2026/11/masterimage-series/461784/5932adfc/komik-temporarily-fostering-a-demon.jpg?v=1")
+        );
+        assert_eq!(
+            wp_fullres_url("https://komikindo.ch/wp-content/uploads/2024/07/Komik-Solo-Leveling-Ragnarok.jpg"),
+            None
+        );
+        assert_eq!(
+            wp_fullres_url("https://img.komiku.org/wp-content/uploads/2024/07/a-220x319.jpg"),
+            None
+        );
+    }
+
+    #[test]
+    fn wp_photon_url_membentuk_mirror_jetpack() {
+        assert_eq!(
+            wp_photon_url("https://komikindo.ch/wp-content/uploads/2024/07/a.jpg").as_deref(),
+            Some("https://i0.wp.com/komikindo.ch/wp-content/uploads/2024/07/a.jpg")
+        );
+        assert_eq!(
+            wp_photon_url("https://img.komiku.org/a.jpg"),
+            None
         );
     }
 }

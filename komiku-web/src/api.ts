@@ -378,12 +378,12 @@ export function decodeEntities(input: string | null | undefined): string {
  * existing (Row/MangaCard). Dirata di sini supaya TIDAK ada komponen duplikat:
  * user melihat UI yang sama untuk 5 sumber, hanya beda badge.
  */
-/** Host yang dikenal menolak hotlink cover dari browser (TLS reset / 403).
- *  Jangan jadikan `src` <img>: carousel eager akan menampilkan ikon rusak.
- *  Daftar ini sengaja di web — keputusan render Usability, bukan validitas
- *  sumber; server tetap boleh mengembalikan metadata komikindo apa adanya.
+/** Host yang dikenal menolak hotlink cover dari browser dan tidak di-proxy.
+ *  komikindo.ch kini dilayani same-origin lewat proxy `/img` (dengan DoH pinning
+ *  + fallback Photon di backend), sehingga aman dipakai untuk Hero Carousel,
+ *  kartu katalog, dan halaman series.
  */
-const DEAD_COVER_HOSTS = new Set(['komikindo.ch', 'www.komikindo.ch'])
+const DEAD_COVER_HOSTS = new Set<string>()
 
 /** Cover null kalau berasal dari host yang hotlink-nya gagal di browser. */
 export function usableCoverUrl(url: string | null | undefined): string | null {
@@ -398,6 +398,8 @@ export function usableCoverUrl(url: string | null | undefined): string | null {
   }
 }
 
+const DATE_ID = new Intl.DateTimeFormat('id-ID')
+
 export function toMangaCard(m: MangaOut): Manga {
   const cover = usableCoverUrl(m.cover_url)
   return {
@@ -409,7 +411,7 @@ export function toMangaCard(m: MangaOut): Manga {
     thumbnail: cover,
     cover,
     // updated_at epoch millis → tanggal pendek lokal (samakan dengan kartu komiku)
-    update_date: m.updated_at ? new Date(m.updated_at).toLocaleDateString('id-ID') : null,
+    update_date: m.updated_at ? DATE_ID.format(new Date(m.updated_at)) : null,
     tipe: m.manga_type ? [m.manga_type] : m.status ? [m.status] : null,
     status: m.status ? [m.status] : null,
     other: m.last_chapter ? [m.last_chapter] : [],

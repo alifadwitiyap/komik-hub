@@ -68,7 +68,10 @@ COPY --from=web /build/komiku-web/dist /app/komiku-web/dist
 COPY deploy/Caddyfile /etc/caddy/Caddyfile
 COPY deploy/entrypoint.sh /app/deploy/entrypoint.sh
 COPY deploy/seed/ /seed/
-RUN chmod +x /app/deploy/entrypoint.sh
+# Windows core.autocrlf=true bisa menaruh CRLF di entrypoint.sh di working tree.
+# Normalisasi ke LF DI DALAM image supaya shebang '#!/bin/sh' selalu valid.
+RUN sed -i 's/\r$//' /app/deploy/entrypoint.sh \
+    && chmod +x /app/deploy/entrypoint.sh
 
 ENV RUST_LOG=info \
     KOMIKU_DOWNLOADS_DIR=/data/downloads \

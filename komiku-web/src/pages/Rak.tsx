@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link, useLocation, useSearchParams } from 'react-router-dom'
-import { imgUrl } from '../imgUrl'
+import { imgSrc } from '../imgUrl'
 import { accountHeaders, unifiedApi } from '../api'
 import * as rakStore from '../rakStore'
 import { resolveResumeTarget, resumeLabel } from '../progressResume'
@@ -570,7 +570,7 @@ function Cover({ src, title }: { src: string | null; title: string }) {
   return (
     <div className="size-12 shrink-0 overflow-hidden rounded-lg bg-ink-850">
       {showImg ? (
-        <img referrerPolicy="no-referrer" src={imgUrl(src)} alt="" loading="lazy" onError={() => setFailed(true)} className="size-full object-cover" />
+        <img referrerPolicy="no-referrer" src={imgSrc(src, 200)} alt="" loading="lazy" onError={() => setFailed(true)} className="size-full object-cover" />
       ) : (
         <span className="grid size-full place-items-center text-[15px] font-bold text-ink-500">
           {title.slice(0, 1)}
