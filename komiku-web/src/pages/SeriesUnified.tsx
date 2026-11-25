@@ -1204,6 +1204,8 @@ export function hasScore(rating: string | null | undefined): boolean {
   return !(Number.isFinite(n) && n === 0)
 }
 
+const DATE_ID = new Intl.DateTimeFormat('id-ID')
+
 /**
  * Tanggal chapter untuk daftar: "12 Okt 2026" — atau placeholder "—" kalau
  * `updated_at` null/kosong/tidak valid, supaya baris tidak tampak pincang.
@@ -1213,5 +1215,5 @@ export function chapterDate(c: { updated_at: number | null }): string {
   if (t == null || !Number.isFinite(t)) return DATE_PLACEHOLDER
   const d = new Date(t)
   if (Number.isNaN(d.getTime())) return DATE_PLACEHOLDER
-  return d.toLocaleDateString('id-ID')
+  return DATE_ID.format(d)
 }

@@ -244,8 +244,9 @@ fn chapter_list(v: &Value) -> Vec<Value> {
 /// Upstream `index.komikid.org` lambat (0,25–1,5 s per hit, tanpa cache di sisi
 /// kita) — TTL pendek cukup: katalog bagian berubah lambat.
 const HOMEPAGE_CACHE_TTL: std::time::Duration = std::time::Duration::from_secs(120);
-static HOMEPAGE_CACHE: once_cell::sync::Lazy<std::sync::Mutex<Option<(std::time::Instant, Value)>>> =
-    once_cell::sync::Lazy::new(|| std::sync::Mutex::new(None));
+static HOMEPAGE_CACHE: once_cell::sync::Lazy<
+    std::sync::Mutex<Option<(std::time::Instant, CachedJson, usize)>>,
+> = once_cell::sync::Lazy::new(|| std::sync::Mutex::new(None));
 /// Single-flight untuk refresh: saat TTL habis, hanya satu request yang
 /// menembak upstream; sisanya menunggu lalu membaca cache yang baru.
 static HOMEPAGE_REFRESH: once_cell::sync::Lazy<tokio::sync::Mutex<()>> =
@@ -259,10 +260,10 @@ static HOMEPAGE_LAST_FAIL: once_cell::sync::Lazy<std::sync::Mutex<Option<std::ti
 
 /// Baca cache: `stale_ok=false` hanya entri segar (dalam TTL);
 /// `stale_ok=true` mengembalikan entri berapa pun umurnya (stale-while-revalidate).
-fn homepage_cached(stale_ok: bool) -> Option<Value> {
+fn homepage_cached(stale_ok: bool) -> Option<(CachedJson, usize)> {
     let guard = HOMEPAGE_CACHE.lock().ok()?;
-    let (at, cached) = guard.as_ref()?;
-    (stale_ok || at.elapsed() < HOMEPAGE_CACHE_TTL).then(|| cached.clone())
+    let (at, cached, n) = guard.as_ref()?;
+    (stale_ok || at.elapsed() < HOMEPAGE_CACHE_TTL).then(|| (cached.clone(), *n))
 }
 
 /// Transform raw upstream -> payload homepage (seksi diringkas seragam via
@@ -297,7 +298,7 @@ fn homepage_transform(raw: &Value) -> serde_json::Map<String, Value> {
 /// Fetch + transform + store. PEMANGGIL wajib memegang gate `HOMEPAGE_REFRESH`
 /// (single-flight). Dipakai bersama oleh jalur blocking (cache kosong) dan
 /// background refresh (stale-while-revalidate).
-async fn homepage_fetch_store() -> Result<Value, AppError> {
+async fn homepage_fetch_store() -> Result<(CachedJson, usize), AppError> {
     // double-check di dalam gate: yang kalah balapan ikut memakai hasil leader
     if let Some(cached) = homepage_cached(false) {
         return Ok(cached);
@@ -324,10 +325,12 @@ async fn homepage_fetch_store() -> Result<Value, AppError> {
         }
     };
     let out = homepage_transform(&raw);
+    let n = out.keys().filter(|k| k.as_str() != "success").count();
+    let cached = CachedJson::from_value(&Value::Object(out));
     if let Ok(mut guard) = HOMEPAGE_CACHE.lock() {
-        *guard = Some((std::time::Instant::now(), Value::Object(out.clone())));
+        *guard = Some((std::time::Instant::now(), cached.clone(), n));
     }
-    Ok(Value::Object(out))
+    Ok((cached, n))
 }
 
 /// Payload homepage (cache + single-flight + TTL + stale-while-revalidate) —
@@ -337,7 +340,7 @@ async fn homepage_fetch_store() -> Result<Value, AppError> {
 /// payload stale dan segarkan di background di balik gate single-flight —
 /// request pasca-TTL tidak lagi membayar 0,3–4 s upstream. Hanya hit pertama
 /// sepanjang masa (cache kosong) yang boleh blocking.
-pub(crate) async fn homepage_payload() -> Result<Value, AppError> {
+pub(crate) async fn homepage_payload() -> Result<(CachedJson, usize), AppError> {
     if let Some(cached) = homepage_cached(false) {
         return Ok(cached);
     }
@@ -365,61 +368,117 @@ pub(crate) fn if_none_match(headers: &HeaderMap) -> Option<&str> {
     headers.get(header::IF_NONE_MATCH).and_then(|v| v.to_str().ok())
 }
 
+/// Payload JSON yang sudah diserialisasi & di-hash ETag sekali untuk zero-copy
+/// response pada cache hit dan 304 Not Modified tanpa re-serialisasi.
+#[derive(Clone)]
+pub(crate) struct CachedJson {
+    pub bytes: axum::body::Bytes,
+    pub etag: Arc<str>,
+}
+
+impl CachedJson {
+    pub fn from_bytes(bytes: Vec<u8>) -> Self {
+        use std::collections::hash_map::DefaultHasher;
+        use std::hash::{Hash, Hasher};
+
+        let mut h = DefaultHasher::new();
+        bytes.hash(&mut h);
+        let etag: Arc<str> = Arc::from(format!("W/\"{:016x}\"", h.finish()));
+        Self {
+            bytes: axum::body::Bytes::from(bytes),
+            etag,
+        }
+    }
+
+    pub fn from_value<T: serde::Serialize>(value: &T) -> Self {
+        let bytes = serde_json::to_vec(value).unwrap_or_else(|_| b"null".to_vec());
+        Self::from_bytes(bytes)
+    }
+
+    pub fn into_response(self, cache_control: &str, if_none_match: Option<&str>) -> Response {
+        let server_opaque = self
+            .etag
+            .strip_prefix("W/")
+            .unwrap_or(&self.etag)
+            .trim_matches('"');
+
+        let not_modified = if_none_match
+            .map(|inm| {
+                inm.split(',').map(str::trim).any(|s| {
+                    if s == "*" {
+                        return true;
+                    }
+                    if s.is_empty() {
+                        return false;
+                    }
+                    // RFC 7232: If-None-Match pakai WEAK comparison — strip
+                    // prefix "W/" dan kutip dari KEDUA sisi. Aman untuk string pendek.
+                    let s_opaque = s.strip_prefix("W/").unwrap_or(s).trim_matches('"');
+                    s_opaque == server_opaque
+                })
+            })
+            .unwrap_or(false);
+
+        let builder = Response::builder()
+            .header(header::ETAG, self.etag.as_ref())
+            .header(header::CACHE_CONTROL, cache_control);
+        if not_modified {
+            return builder
+                .status(StatusCode::NOT_MODIFIED)
+                .body(Body::empty())
+                .expect("304 response build");
+        }
+        builder
+            .header(header::CONTENT_TYPE, "application/json")
+            .body(Body::from(self.bytes.clone()))
+            .expect("json response build")
+    }
+}
+
 /// Respons JSON dengan ETag lemah (W/"<hash-hex>" dari byte serde_json,
 /// DefaultHasher — bukan crypto) + Cache-Control. Kalau `If-None-Match`
 /// memuat ETag yang sama (atau `*`) -> 304 tanpa body, header tetap ada.
 /// Dipakai untuk payload yang sudah di-cache supaya client bisa revalidasi.
+#[allow(dead_code)]
 pub(crate) fn json_with_etag<T: serde::Serialize>(
     value: &T,
     cache_control: &str,
     if_none_match: Option<&str>,
 ) -> Response {
-    use std::collections::hash_map::DefaultHasher;
-    use std::hash::{Hash, Hasher};
-
-    let bytes = serde_json::to_vec(value).unwrap_or_else(|_| b"null".to_vec());
-    let mut h = DefaultHasher::new();
-    bytes.hash(&mut h);
-    let etag = format!("W/\"{:016x}\"", h.finish());
-
-    let not_modified = if_none_match
-        .map(|inm| {
-            let server_opaque = etag.strip_prefix("W/\"").unwrap_or(&etag[1..etag.len() - 1]);
-            inm.split(',')
-                .map(str::trim)
-                .any(|s| {
-                    if s == "*" {
-                        return true;
-                    }
-                    // RFC 7232: If-None-Match pakai WEAK comparison — strip
-                    // prefix "W/" dan kutip dari KEDUA sisi. Kalau tidak,
-                    // client yang mengirim strong tag `"hash"` tak akan match
-                    // server weak `W/"hash"` → 200+body, bukan 304.
-                    let s_opaque = s.strip_prefix("W/\"").unwrap_or(&s[1..s.len() - 1]);
-                    s_opaque == server_opaque
-                })
-        })
-        .unwrap_or(false);
-
-    let builder = Response::builder()
-        .header(header::ETAG, &etag)
-        .header(header::CACHE_CONTROL, cache_control);
-    if not_modified {
-        return builder
-            .status(StatusCode::NOT_MODIFIED)
-            .body(Body::empty())
-            .expect("304 response build");
-    }
-    builder
-        .header(header::CONTENT_TYPE, "application/json")
-        .body(Body::from(bytes))
-        .expect("json response build")
+    CachedJson::from_value(value).into_response(cache_control, if_none_match)
 }
 
 async fn homepage(headers: HeaderMap) -> Response {
     match homepage_payload().await {
-        Ok(v) => json_with_etag(&v, "public, max-age=30", if_none_match(&headers)),
+        Ok((cached, _)) => cached.into_response("public, max-age=30", if_none_match(&headers)),
         Err(e) => e.into_response(),
+    }
+}
+
+pub(crate) type KeyGateMap<K> =
+    std::sync::Mutex<std::collections::HashMap<K, Arc<tokio::sync::Mutex<()>>>>;
+
+pub(crate) fn acquire_key_gate<K: Eq + std::hash::Hash + Clone>(
+    gates: &KeyGateMap<K>,
+    key: &K,
+) -> Arc<tokio::sync::Mutex<()>> {
+    let mut guard = gates.lock().unwrap_or_else(|e| e.into_inner());
+    guard
+        .entry(key.clone())
+        .or_insert_with(|| Arc::new(tokio::sync::Mutex::new(())))
+        .clone()
+}
+
+pub(crate) fn release_key_gate<K: Eq + std::hash::Hash>(
+    gates: &KeyGateMap<K>,
+    key: &K,
+    gate: Arc<tokio::sync::Mutex<()>>,
+) {
+    let mut guard = gates.lock().unwrap_or_else(|e| e.into_inner());
+    if let Some(existing) = guard.get(key) {
+        if Arc::ptr_eq(existing, &gate) && Arc::strong_count(existing) <= 2 {
+            guard.remove(key);
+        }
     }
 }
 
@@ -432,53 +491,66 @@ const SEARCH_CACHE_TTL: std::time::Duration = std::time::Duration::from_secs(120
 /// pencarian legacy tidak tumbuh tanpa batas (HashMap murni, tak ada eviction).
 const SEARCH_CACHE_MAX: usize = 128;
 static SEARCH_CACHE: once_cell::sync::Lazy<
-    std::sync::Mutex<std::collections::HashMap<String, (std::time::Instant, Value)>>,
+    std::sync::Mutex<std::collections::HashMap<String, (std::time::Instant, CachedJson)>>,
 > = once_cell::sync::Lazy::new(Default::default);
-/// Single-flight: saat TTL habis hanya satu request yang menembak upstream.
-static SEARCH_REFRESH: once_cell::sync::Lazy<tokio::sync::Mutex<()>> =
-    once_cell::sync::Lazy::new(|| tokio::sync::Mutex::new(()));
+/// Single-flight per key: saat TTL habis hanya satu request per key yang menembak upstream.
+static SEARCH_GATES: once_cell::sync::Lazy<KeyGateMap<String>> =
+    once_cell::sync::Lazy::new(Default::default);
 
-async fn search(Query(q): Query<SearchQuery>) -> Res<Value> {
+async fn search(Query(q): Query<SearchQuery>, headers: HeaderMap) -> Result<Response, AppError> {
     let page = q.page.unwrap_or(1);
     let key = format!("{}:{}", q.q.trim().to_lowercase(), page);
+    let inm = if_none_match(&headers);
     if let Ok(guard) = SEARCH_CACHE.lock() {
         if let Some((at, cached)) = guard.get(&key) {
             if at.elapsed() < SEARCH_CACHE_TTL {
-                return Ok(Json(cached.clone()));
+                return Ok(cached.clone().into_response("public, max-age=15", inm));
             }
         }
     }
-    // double-check di dalam gate
-    let _gate = SEARCH_REFRESH.lock().await;
-    if let Ok(guard) = SEARCH_CACHE.lock() {
-        if let Some((at, cached)) = guard.get(&key) {
-            if at.elapsed() < SEARCH_CACHE_TTL {
-                return Ok(Json(cached.clone()));
+    let gate = acquire_key_gate(&SEARCH_GATES, &key);
+    let res = {
+        let _guard = gate.lock().await;
+        let hit = SEARCH_CACHE.lock().ok().and_then(|guard| {
+            guard
+                .get(&key)
+                .filter(|(at, _)| at.elapsed() < SEARCH_CACHE_TTL)
+                .map(|(_, c)| c.clone())
+        });
+        if let Some(cached) = hit {
+            Ok(cached.into_response("public, max-age=15", inm))
+        } else {
+            match api::search(&q.q, page).await {
+                Ok(raw) => {
+                    let items = manga_list(&raw);
+                    let out = json!({
+                        "page": page,
+                        "count": items.len(),
+                        "manga": items.iter().map(slim).collect::<Vec<_>>(),
+                    });
+                    let cached = CachedJson::from_value(&out);
+                    if let Ok(mut guard) = SEARCH_CACHE.lock() {
+                        // Cap kasar, cermin search_cache_put di unified.rs: buang satu entri
+                        // paling tua kalau penuh dan key belum ada.
+                        if guard.len() >= SEARCH_CACHE_MAX && !guard.contains_key(&key) {
+                            if let Some(old) = guard
+                                .iter()
+                                .min_by_key(|(_, (at, _))| *at)
+                                .map(|(k, _)| k.clone())
+                            {
+                                guard.remove(&old);
+                            }
+                        }
+                        guard.insert(key.clone(), (std::time::Instant::now(), cached.clone()));
+                    }
+                    Ok(cached.into_response("public, max-age=15", inm))
+                }
+                Err(e) => Err(AppError::new(e)),
             }
         }
-    }
-    let raw = api::search(&q.q, page).await?;
-    let items = manga_list(&raw);
-    let out = json!({
-        "page": page,
-        "count": items.len(),
-        "manga": items.iter().map(slim).collect::<Vec<_>>(),
-    });
-    if let Ok(mut guard) = SEARCH_CACHE.lock() {
-        // Cap kasar, cermin search_cache_put di unified.rs: buang satu entri
-        // paling tua kalau penuh dan key belum ada.
-        if guard.len() >= SEARCH_CACHE_MAX && !guard.contains_key(&key) {
-            if let Some(old) = guard
-                .iter()
-                .min_by_key(|(_, (at, _))| *at)
-                .map(|(k, _)| k.clone())
-            {
-                guard.remove(&old);
-            }
-        }
-        guard.insert(key, (std::time::Instant::now(), out.clone()));
-    }
-    Ok(Json(out))
+    };
+    release_key_gate(&SEARCH_GATES, &key, gate);
+    res
 }
 
 #[derive(Deserialize)]
@@ -494,13 +566,13 @@ struct SearchQuery {
 const SERIES_CACHE_TTL: std::time::Duration = std::time::Duration::from_secs(120);
 const SERIES_CACHE_MAX: usize = 128;
 static SERIES_CACHE: once_cell::sync::Lazy<
-    std::sync::Mutex<std::collections::HashMap<i64, (std::time::Instant, Value)>>,
+    std::sync::Mutex<std::collections::HashMap<i64, (std::time::Instant, CachedJson)>>,
 > = once_cell::sync::Lazy::new(Default::default);
-/// Single-flight: saat TTL habis hanya satu request yang menembak upstream.
-static SERIES_REFRESH: once_cell::sync::Lazy<tokio::sync::Mutex<()>> =
-    once_cell::sync::Lazy::new(|| tokio::sync::Mutex::new(()));
+/// Single-flight per id: saat TTL habis hanya satu request per id yang menembak upstream.
+static SERIES_GATES: once_cell::sync::Lazy<KeyGateMap<i64>> =
+    once_cell::sync::Lazy::new(Default::default);
 
-fn series_cached(id: i64) -> Option<Value> {
+fn series_cached(id: i64) -> Option<CachedJson> {
     let guard = SERIES_CACHE.lock().ok()?;
     let (at, cached) = guard.get(&id)?;
     (at.elapsed() < SERIES_CACHE_TTL).then(|| cached.clone())
@@ -534,32 +606,43 @@ fn series_payload(raw: &Value, id: i64) -> Result<Value, AppError> {
     }))
 }
 
-async fn series(Path(id): Path<i64>) -> Res<Value> {
+async fn series(Path(id): Path<i64>, headers: HeaderMap) -> Result<Response, AppError> {
+    let inm = if_none_match(&headers);
     if let Some(cached) = series_cached(id) {
-        return Ok(Json(cached));
+        return Ok(cached.into_response("public, max-age=15", inm));
     }
-    // double-check di dalam gate: yang kalah balapan ikut memakai hasil leader
-    let _gate = SERIES_REFRESH.lock().await;
-    if let Some(cached) = series_cached(id) {
-        return Ok(Json(cached));
-    }
-    let raw = api::series(id).await?;
-    let out = series_payload(&raw, id)?;
-    if let Ok(mut guard) = SERIES_CACHE.lock() {
-        // Cap kasar, cermin search_cache: buang entri paling tua bila penuh dan
-        // key belum ada, supaya cache tidak tumbuh tanpa batas.
-        if guard.len() >= SERIES_CACHE_MAX && !guard.contains_key(&id) {
-            if let Some(old) = guard
-                .iter()
-                .min_by_key(|(_, (at, _))| *at)
-                .map(|(k, _)| *k)
-            {
-                guard.remove(&old);
+    let gate = acquire_key_gate(&SERIES_GATES, &id);
+    let res = {
+        let _guard = gate.lock().await;
+        if let Some(cached) = series_cached(id) {
+            Ok(cached.into_response("public, max-age=15", inm))
+        } else {
+            match api::series(id).await {
+                Ok(raw) => {
+                    let out = series_payload(&raw, id)?;
+                    let cached = CachedJson::from_value(&out);
+                    if let Ok(mut guard) = SERIES_CACHE.lock() {
+                        // Cap kasar, cermin search_cache: buang entri paling tua bila penuh dan
+                        // key belum ada, supaya cache tidak tumbuh tanpa batas.
+                        if guard.len() >= SERIES_CACHE_MAX && !guard.contains_key(&id) {
+                            if let Some(old) = guard
+                                .iter()
+                                .min_by_key(|(_, (at, _))| *at)
+                                .map(|(k, _)| *k)
+                            {
+                                guard.remove(&old);
+                            }
+                        }
+                        guard.insert(id, (std::time::Instant::now(), cached.clone()));
+                    }
+                    Ok(cached.into_response("public, max-age=15", inm))
+                }
+                Err(e) => Err(AppError::new(e)),
             }
         }
-        guard.insert(id, (std::time::Instant::now(), out.clone()));
-    }
-    Ok(Json(out))
+    };
+    release_key_gate(&SERIES_GATES, &id, gate);
+    res
 }
 
 async fn chapter(Path(id): Path<i64>) -> Res<Value> {
@@ -723,6 +806,23 @@ mod tests {
         // If-None-Match tidak cocok -> 200 dengan body
         let r5 = json_with_etag(&a, "public, max-age=30", Some("W/\"deadbeef\""));
         assert_eq!(r5.status(), StatusCode::OK);
+
+        // Header pendek / malformed tidak boleh panic
+        let r6 = CachedJson::from_value(&a).into_response("public, max-age=30", Some("x"));
+        assert_eq!(r6.status(), StatusCode::OK);
+        let r7 = CachedJson::from_value(&a).into_response("public, max-age=30", Some(""));
+        assert_eq!(r7.status(), StatusCode::OK);
+    }
+
+    #[tokio::test]
+    async fn key_gate_cleanup_setelah_release() {
+        let gates: KeyGateMap<String> = std::sync::Mutex::new(std::collections::HashMap::new());
+        let g1 = acquire_key_gate(&gates, &"k1".to_string());
+        let g2 = acquire_key_gate(&gates, &"k2".to_string());
+        assert!(!Arc::ptr_eq(&g1, &g2));
+        release_key_gate(&gates, &"k1".to_string(), g1);
+        release_key_gate(&gates, &"k2".to_string(), g2);
+        assert!(gates.lock().unwrap().is_empty(), "idle gates harus dibersihkan");
     }
 
     #[tokio::test]

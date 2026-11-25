@@ -7,9 +7,9 @@
  * Klik selalu membuka SourceHealthSheet — tidak pernah probe diam-diam.
  */
 
-import { useCallback, useState } from 'react'
+import { lazy, Suspense, useCallback, useState } from 'react'
 import { useSourceHealth } from '../hooks/useSourceHealth'
-import SourceHealthSheet from './SourceHealthSheet'
+const SourceHealthSheet = lazy(() => import('./SourceHealthSheet'))
 import {
   deadSources,
   healthDescription,
@@ -34,6 +34,7 @@ const DOT_CLASS: Record<HealthTier, string> = {
 export default function SourceHealthBadge() {
   const { rows, healthy, total, status } = useSourceHealth()
   const [open, setOpen] = useState(false)
+  const [mounted, setMounted] = useState(false)
   const close = useCallback(() => setOpen(false), [])
   const dead = deadSources(rows)
   const compact = total > 0 && healthy === total && status !== 'stale'
@@ -48,7 +49,10 @@ export default function SourceHealthBadge() {
       <button
         type="button"
         data-source-health=""
-        onClick={() => setOpen(true)}
+        onClick={() => {
+          setMounted(true)
+          setOpen(true)
+        }}
         aria-label={description}
         aria-haspopup="dialog"
         aria-expanded={open}
@@ -62,7 +66,11 @@ export default function SourceHealthBadge() {
           {countText}
         </span>
       </button>
-      <SourceHealthSheet open={open} onClose={close} />
+      {(open || mounted) && (
+        <Suspense fallback={null}>
+          <SourceHealthSheet open={open} onClose={close} />
+        </Suspense>
+      )}
     </>
   )
 }

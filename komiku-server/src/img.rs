@@ -65,8 +65,11 @@ fn client() -> &'static reqwest::Client {
     static C: OnceCell<reqwest::Client> = OnceCell::new();
     C.get_or_init(|| {
         reqwest::Client::builder()
+            .connect_timeout(Duration::from_secs(8))
             .timeout(TIMEOUT)
+            .pool_idle_timeout(Duration::from_secs(90))
             .pool_max_idle_per_host(8)
+            .tcp_keepalive(Duration::from_secs(60))
             .build()
             .unwrap_or_default()
     })
@@ -151,7 +154,7 @@ fn cache_path_fmt(key: &str, fmt: ImgFormat) -> PathBuf {
 }
 
 /// Path byte asli hasil fetch upstream (kunci = URL saja, bukan URL+lebar).
-fn raw_cache_path(key: &str) -> PathBuf {
+pub(crate) fn raw_cache_path(key: &str) -> PathBuf {
     let shard = &key[0..2];
     cache_dir().join("raw").join(shard).join(format!("{key}.bin"))
 }
@@ -162,6 +165,7 @@ fn raw_cache_path(key: &str) -> PathBuf {
 /// mengisi cache raw) tidak perlu diunduh ulang dari CDN — hemat satu
 /// round-trip per halaman, dan tetap benar karena kuncinya URL (byte identik
 /// dengan yang diterima /img). None = belum ada di cache.
+#[allow(dead_code)]
 pub fn cached_raw(url: &str) -> Option<Vec<u8>> {
     let path = raw_cache_path(&sha1_hex(url));
     match std::fs::read(&path) {
@@ -170,13 +174,24 @@ pub fn cached_raw(url: &str) -> Option<Vec<u8>> {
     }
 }
 
-/// Tulis file lewat temp UNIK lalu rename. Di Windows `rename` gagal kalau
-/// tujuan sedang dibuka proses lain (GET paralel), jadi dicoba beberapa kali.
-fn write_atomic(path: &PathBuf, bytes: &[u8]) {
+/// Versi async non-blocking dari `cached_raw` untuk handler runtime.
+pub async fn cached_raw_async(url: &str) -> Option<Vec<u8>> {
+    let path = raw_cache_path(&sha1_hex(url));
+    match tokio::fs::read(&path).await {
+        Ok(b) if !b.is_empty() => Some(b),
+        _ => None,
+    }
+}
+
+/// Tulis file lewat temp UNIK (pid + counter) lalu rename. Di Windows `rename`
+/// gagal kalau tujuan sedang dibuka proses lain (GET paralel), jadi dicoba beberapa kali.
+fn write_atomic(path: &Path, bytes: &[u8]) {
     if let Some(dir) = path.parent() {
         let _ = std::fs::create_dir_all(dir);
     }
-    let tmp = path.with_extension(format!("tmp{}", std::process::id()));
+    static TMP_SEQ: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
+    let seq = TMP_SEQ.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+    let tmp = path.with_extension(format!("tmp.{}.{}", std::process::id(), seq));
     if std::fs::write(&tmp, bytes).is_ok() {
         for _ in 0..3 {
             if std::fs::rename(&tmp, path).is_ok() {
@@ -271,6 +286,7 @@ fn record_orig_dims(url: &str, w: u32, h: u32) {
 /// dan tanpa decode piksel, lalu hasilnya disimpan di (1) supaya 56 halaman
 /// chapter tidak membuka 56 file berulang kali. `None` = benar-benar belum
 /// ada byte-nya (frontend fallback rasio 0.685).
+#[allow(dead_code)]
 pub fn known_orig_dims(url: &str) -> Option<(u32, u32)> {
     let map = ORIG_DIMS.get_or_init(|| std::sync::Mutex::new(HashMap::new()));
     if let Ok(m) = map.lock() {
@@ -283,6 +299,47 @@ pub fn known_orig_dims(url: &str) -> Option<(u32, u32)> {
         m.insert(url.to_string(), dims);
     }
     Some(dims)
+}
+
+/// Query batch dimensi asli untuk daftar URL chapter: cek map in-memory dulu,
+/// lalu baca header disk untuk yang miss di dalam satu `spawn_blocking`.
+pub async fn known_orig_dims_batch(urls: &[String]) -> Vec<Option<[u32; 2]>> {
+    let mut out = vec![None; urls.len()];
+    let mut misses: Vec<(usize, String)> = Vec::new();
+    let map = ORIG_DIMS.get_or_init(|| std::sync::Mutex::new(HashMap::new()));
+    if let Ok(m) = map.lock() {
+        for (i, u) in urls.iter().enumerate() {
+            if let Some(&(w, h)) = m.get(u.as_str()) {
+                out[i] = Some([w, h]);
+            } else {
+                misses.push((i, u.clone()));
+            }
+        }
+    } else {
+        for (i, u) in urls.iter().enumerate() {
+            misses.push((i, u.clone()));
+        }
+    }
+    if misses.is_empty() {
+        return out;
+    }
+    let resolved = tokio::task::spawn_blocking(move || {
+        misses
+            .into_iter()
+            .filter_map(|(i, u)| dims_from_raw_cache(&u).map(|d| (i, u, d)))
+            .collect::<Vec<_>>()
+    })
+    .await
+    .unwrap_or_default();
+    if !resolved.is_empty() {
+        if let Ok(mut m) = map.lock() {
+            for (i, u, (w, h)) in resolved {
+                out[i] = Some([w, h]);
+                m.insert(u, (w, h));
+            }
+        }
+    }
+    out
 }
 
 /// Dimensi dari byte ASLI di `data/imgcache/raw/<sha1>.bin`.
@@ -539,29 +596,26 @@ pub async fn img_handler(Query(q): Query<ImgQuery>, headers: HeaderMap) -> Respo
     let path = cache_path_fmt(&key, fmt);
     let etag = format!("\"{key}\"");
 
-    // 304: If-None-Match cocok DAN file varian ada di cache — balas tanpa
-    // membaca byte dari disk. Kalau tidak cocok / file belum ada, lanjut jalur
-    // normal (jangan 304).
-    if path.exists() {
-        if let Some(inm) = headers.get(header::IF_NONE_MATCH).and_then(|v| v.to_str().ok()) {
-            if etag_matches(inm, &etag) {
-                let mut resp = (StatusCode::NOT_MODIFIED, Body::empty()).into_response();
-                let h = resp.headers_mut();
-                h.insert(
-                    header::CACHE_CONTROL,
-                    HeaderValue::from_static("public, max-age=31536000, immutable"),
-                );
-                h.insert("vary", HeaderValue::from_static("Accept"));
-                h.insert("x-img-cache", HeaderValue::from_static("hit"));
-                if let Ok(v) = HeaderValue::from_str(&etag) {
-                    h.insert(header::ETAG, v);
-                }
-                return resp;
+    // 304: cek If-None-Match di memori lebih dulu, baru cek disk bila cocok —
+    // request normal tanpa If-None-Match tidak membayar syscall exists() ekstra.
+    if let Some(inm) = headers.get(header::IF_NONE_MATCH).and_then(|v| v.to_str().ok()) {
+        if etag_matches(inm, &etag) && tokio::fs::try_exists(&path).await.unwrap_or(false) {
+            let mut resp = (StatusCode::NOT_MODIFIED, Body::empty()).into_response();
+            let h = resp.headers_mut();
+            h.insert(
+                header::CACHE_CONTROL,
+                HeaderValue::from_static("public, max-age=31536000, immutable"),
+            );
+            h.insert("vary", HeaderValue::from_static("Accept"));
+            h.insert("x-img-cache", HeaderValue::from_static("hit"));
+            if let Ok(v) = HeaderValue::from_str(&etag) {
+                h.insert(header::ETAG, v);
             }
+            return resp;
         }
     }
 
-    if let Ok(bytes) = std::fs::read(&path) {
+    if let Ok(bytes) = tokio::fs::read(&path).await {
         return immutable(bytes, &etag, "hit", fmt.mime());
     }
 
@@ -575,7 +629,7 @@ pub async fn img_handler(Query(q): Query<ImgQuery>, headers: HeaderMap) -> Respo
     let guard = lock.lock().await;
 
     // re-cek setelah dapat lock: mungkin permintaan lain barusan mengisi cache
-    if let Ok(bytes) = std::fs::read(&path) {
+    if let Ok(bytes) = tokio::fs::read(&path).await {
         drop(guard);
         inflight_release(&key).await;
         return immutable(bytes, &etag, "hit", fmt.mime());
@@ -587,11 +641,13 @@ pub async fn img_handler(Query(q): Query<ImgQuery>, headers: HeaderMap) -> Respo
     // (2-3 s per halaman di jaringan rumah). Dengan cache raw, upstream sekali.
     let raw_path = raw_cache_path(&sha1_hex(&q.u));
     let t_fetch = std::time::Instant::now();
-    let upstream = match std::fs::read(&raw_path) {
+    let upstream = match tokio::fs::read(&raw_path).await {
         Ok(b) if !b.is_empty() => b,
         _ => match fetch_upstream(&q.u).await {
             Ok((_ct, bytes)) => {
-                write_atomic(&raw_path, &bytes);
+                let raw_path_w = raw_path.clone();
+                let bytes_w = bytes.clone();
+                tokio::task::spawn_blocking(move || write_atomic(&raw_path_w, &bytes_w));
                 bytes
             }
             Err(e) => {
@@ -622,21 +678,33 @@ pub async fn img_handler(Query(q): Query<ImgQuery>, headers: HeaderMap) -> Respo
     let _permit = encode_gate().acquire().await.ok();
 
     // Encode sesuai format yang dinegosiasikan; bila encoder gagal, turun ke
-    // WebP lalu ke byte asli — jangan pernah 500.
+    // WebP lalu ke byte asli — jangan pernah 500. Penulisan cache disk
+    // dilakukan di dalam spawn_blocking yang sama agar worker async bebas blokir.
     let (encoded, out_fmt): (Vec<u8>, ImgFormat) = if fmt == ImgFormat::Avif {
+        let avif_path = cache_path_fmt(&key, ImgFormat::Avif);
         let r = tokio::task::spawn_blocking({
             let src = upstream.clone();
-            move || resize_encode_avif(&src, target)
+            move || {
+                let v = resize_encode_avif(&src, target)?;
+                write_atomic(&avif_path, &v);
+                Ok::<Vec<u8>, String>(v)
+            }
         })
         .await;
         match r {
             Ok(Ok(v)) => (v, ImgFormat::Avif),
             _ => {
                 tracing::warn!("img avif gagal — fallback WebP");
+                let write_key = sha1_hex(&format!("{}|{}|{}", q.u, raw_w, ImgFormat::WebP.ext()));
+                let webp_path = cache_path_fmt(&write_key, ImgFormat::WebP);
                 match tokio::task::spawn_blocking({
                     let src = upstream.clone();
                     let u = q.u.clone();
-                    move || resize_encode(&src, target, &u)
+                    move || {
+                        let v = resize_encode(&src, target, &u)?;
+                        write_atomic(&webp_path, &v);
+                        Ok::<Vec<u8>, String>(v)
+                    }
                 })
                 .await
                 {
@@ -649,10 +717,15 @@ pub async fn img_handler(Query(q): Query<ImgQuery>, headers: HeaderMap) -> Respo
             }
         }
     } else {
+        let webp_path = cache_path_fmt(&key, ImgFormat::WebP);
         let r = tokio::task::spawn_blocking({
             let src = upstream.clone();
             let u = q.u.clone();
-            move || resize_encode(&src, target, &u)
+            move || {
+                let v = resize_encode(&src, target, &u)?;
+                write_atomic(&webp_path, &v);
+                Ok::<Vec<u8>, String>(v)
+            }
         })
         .await;
         match r {
@@ -663,17 +736,6 @@ pub async fn img_handler(Query(q): Query<ImgQuery>, headers: HeaderMap) -> Respo
             }
         }
     };
-
-    // Simpan ke cache hanya jika hasilnya format terencode; gunakan kunci cache
-    // format yang benar (bisa beda dari yang diminta saat terjadi fallback).
-    if out_fmt != ImgFormat::Passthrough {
-        let write_key = if out_fmt == fmt {
-            key.clone()
-        } else {
-            sha1_hex(&format!("{}|{}|{}", q.u, raw_w, out_fmt.ext()))
-        };
-        write_atomic(&cache_path_fmt(&write_key, out_fmt), &encoded);
-    }
 
     tracing::info!(
         "img miss w={raw_w} fetch={fetch_ms}ms encode={}ms upstream={}B out={}B fmt={}",

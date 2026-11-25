@@ -1,5 +1,5 @@
 import { imgSrc, imgUrl } from '../imgUrl'
-import { memo, useEffect, useRef, useState, type MouseEvent as ReactMouseEvent, type PointerEvent as ReactPointerEvent } from 'react'
+import { lazy, memo, Suspense, useEffect, useRef, useState, type MouseEvent as ReactMouseEvent, type PointerEvent as ReactPointerEvent } from 'react'
 import { Link } from 'react-router-dom'
 import { api, coverOf, thumbOf, toMangaCard, unifiedApi } from '../api'
 import type { Homepage, HomeSection, Manga } from '../types'
@@ -8,9 +8,12 @@ import SourceBadge, { sourceLabel } from '../components/SourceBadge'
 import HeartButton from '../components/HeartButton'
 import { IconPlaySolid } from '../icons'
 import ContinueReading from '../components/ContinueReading'
-import QuickActionSheet, { LONG_PRESS_MS, LONG_PRESS_SLOP_PX } from '../components/QuickActionSheet'
 import UpdateQueueStrip from '../components/UpdateQueueStrip'
 import { useProgress } from '../hooks/useProgress'
+
+const QuickActionSheet = lazy(() => import('../components/QuickActionSheet'))
+const LONG_PRESS_MS = 350
+const LONG_PRESS_SLOP_PX = 10
 
 /**
  * Beranda: urutan replika Komiku+ v2.3.0 Home (fragment_home) tapi KONTEN
@@ -236,10 +239,12 @@ function CarouselImage({
   src,
   fallbackSrc,
   title,
+  eager = false,
 }: {
   src: string
   fallbackSrc: string
   title: string
+  eager?: boolean
 }) {
   const [failed, setFailed] = useState(false)
   const [current, setCurrent] = useState(src)
@@ -269,7 +274,8 @@ function CarouselImage({
       role="presentation"
       aria-hidden="true"
       className="size-full object-cover"
-      loading="eager"
+      loading={eager ? 'eager' : 'lazy'}
+      fetchPriority={eager ? 'high' : 'auto'}
       decoding="async"
       onError={onError}
     />
@@ -336,7 +342,7 @@ function BackdropCarousel({ items }: { items: Manga[] }) {
           setIdx(Math.min(Math.max(i, 0), items.length - 1))
         }}
       >
-        {items.map((m) => {
+        {items.map((m, i) => {
           const img = coverOf(m)
           const label = chapterLabel(m)
           const subtitle = [m.tipe?.[0], label ?? m.other?.[0]].filter(Boolean).join(' · ') || 'Manga'
@@ -353,6 +359,7 @@ function BackdropCarousel({ items }: { items: Manga[] }) {
                     src={imgSrc(img, 640)}
                     fallbackSrc={imgUrl(img)}
                     title={m.title}
+                    eager={i === 0}
                   />
                 ) : (
                   <span className="absolute inset-0 grid place-items-center px-4 text-center font-display text-[15px] font-semibold text-ink-300">
@@ -491,6 +498,36 @@ function isCompletedStatus(status: string[] | null | undefined): boolean {
   return Boolean(status?.some((s) => /completed|tamat/i.test(s)))
 }
 
+function CardQuickActionSheet({
+  open,
+  onClose,
+  manga,
+  openerRef,
+}: {
+  open: boolean
+  onClose: () => void
+  manga: Manga
+  openerRef: React.RefObject<HTMLElement | null>
+}) {
+  const { recent } = useProgress()
+  const handle = manga.handle ?? String(manga.id)
+  const progress = recent.find((p) =>
+    [p.handle, p.seriesId, String(p.handle ?? '').split(':').pop()]
+      .some((key) => key != null && (String(key) === handle || String(key) === String(manga.id))),
+  ) ?? null
+  return (
+    <Suspense fallback={null}>
+      <QuickActionSheet
+        open={open}
+        onClose={onClose}
+        manga={manga}
+        progress={progress}
+        openerRef={openerRef}
+      />
+    </Suspense>
+  )
+}
+
 export const MangaCard = memo(function MangaCard({
   manga,
   compact = false,
@@ -523,16 +560,11 @@ export const MangaCard = memo(function MangaCard({
     .filter(Boolean)
     .join(' · ')
   const canFavorite = Boolean(manga.title_key && (manga.handle || manga.id != null))
-  const { recent } = useProgress()
-  const handle = manga.handle ?? String(manga.id)
-  const progress = recent.find((p) =>
-    [p.handle, p.seriesId, String(p.handle ?? '').split(':').pop()]
-      .some((key) => key != null && (String(key) === handle || String(key) === String(manga.id))),
-  ) ?? null
 
   // Long-press 350ms → sheet; geser >10px / pointercancel / lepas lebih awal
   // membatalkan. Klik setelah long-press ditelan supaya kartu tak navigasi.
   const [sheetOpen, setSheetOpen] = useState(false)
+  const [sheetMounted, setSheetMounted] = useState(false)
   const [pressing, setPressing] = useState(false)
   const openerRef = useRef<HTMLElement | null>(null)
   const press = useRef<{ x: number; y: number; timer: number | null } | null>(null)
@@ -551,6 +583,7 @@ export const MangaCard = memo(function MangaCard({
       press.current = null
       setPressing(false)
       suppressClick.current = true
+      setSheetMounted(true)
       setSheetOpen(true)
       try {
         navigator.vibrate?.(10)
@@ -588,6 +621,7 @@ export const MangaCard = memo(function MangaCard({
         e.preventDefault()
         e.stopPropagation()
         openerRef.current = e.currentTarget
+        setSheetMounted(true)
         setSheetOpen(true)
       }}
       className="absolute right-0 top-0 z-10 grid min-h-11 min-w-11 place-items-center rounded-lg bg-transparent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber"
@@ -600,15 +634,14 @@ export const MangaCard = memo(function MangaCard({
       </span>
     </button>
   )
-  const sheet = (
-    <QuickActionSheet
+  const sheet = (sheetOpen || sheetMounted) ? (
+    <CardQuickActionSheet
       open={sheetOpen}
       onClose={() => setSheetOpen(false)}
       manga={manga}
-      progress={progress}
       openerRef={openerRef}
     />
-  )
+  ) : null
 
   // Cover dipakai dua layout: rail Home (132px) dan baris Search (72px).
   // HeartButton sudah preventDefault + stopPropagation, jadi tidak membuka

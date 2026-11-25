@@ -675,8 +675,10 @@ export default function Reader() {
       if (r.height <= 0) return 0
       return Math.max(0, Math.min(1, (window.innerHeight - r.top) / r.height))
     }
-    const onScroll = () => {
+    let prefetchRaf = 0
+    const checkPrefetch = () => {
       if (pending.current) return
+      if (nextId ? prefetchedNext.current : noNextToast.current) return
       const progress = intoLastPage()
       if (!nextId) {
         if (progress >= 0.9 && !noNextToast.current) {
@@ -711,8 +713,18 @@ export default function Reader() {
           /* gagal prefetch — bukan error fatal; user tetap bisa buka manual */
         })
     }
+    const onScroll = () => {
+      if (prefetchRaf) return
+      prefetchRaf = requestAnimationFrame(() => {
+        prefetchRaf = 0
+        checkPrefetch()
+      })
+    }
     window.addEventListener('scroll', onScroll, { passive: true })
-    return () => window.removeEventListener('scroll', onScroll)
+    return () => {
+      if (prefetchRaf) cancelAnimationFrame(prefetchRaf)
+      window.removeEventListener('scroll', onScroll)
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [data, images.length, chapterId])
 
@@ -723,11 +735,16 @@ export default function Reader() {
   useEffect(() => {
     if (!data || images.length === 0 || !chapterId) return
     const last = { pageId: '', t: 0 }
+    let lastMeasureAt = 0
+    let scrollRaf = 0
     const write = (force: boolean) => {
       // A2 — belum ada gambar yang benar-benar termuat → jangan tulis riwayat
       if (pending.current || !readyRef.current) return
       const flow = flowRef.current
       if (!flow) return
+      const nowMs = performance.now()
+      if (!force && nowMs - lastMeasureAt < 120) return
+      lastMeasureAt = nowMs
       // Identitas halaman diambil dari DATA via `data-page`, bukan atribut
       // `src`: src sudah lewat proxy `/img?u=…`, sementara `pageId`/`images`
       // memakai URL CDN asli. Memakai src membuat findIndex() selalu -1 →
@@ -788,7 +805,13 @@ export default function Reader() {
       })
     }
     writeRef.current = write
-    const onScroll = () => write(false)
+    const onScroll = () => {
+      if (scrollRaf) return
+      scrollRaf = requestAnimationFrame(() => {
+        scrollRaf = 0
+        write(false)
+      })
+    }
     const onHide = () => {
       if (document.visibilityState === 'hidden') write(true)
     }
@@ -797,6 +820,7 @@ export default function Reader() {
     window.addEventListener('pagehide', onHide)
     document.addEventListener('visibilitychange', onHide)
     return () => {
+      if (scrollRaf) cancelAnimationFrame(scrollRaf)
       window.removeEventListener('scroll', onScroll)
       window.removeEventListener('resize', onScroll)
       window.removeEventListener('pagehide', onHide)
@@ -817,6 +841,15 @@ export default function Reader() {
       writeRef.current(true)
     }
   }, [imagesReady, data, images.length, chapterId])
+
+  const handlePageLoad = useCallback((_el: HTMLImageElement, idx?: number) => {
+    if (idx === undefined) return
+    setLoadedPages((s) => (s.has(idx) ? s : new Set(s).add(idx)))
+  }, [])
+  const handlePageSettled = useCallback((ok: boolean, idx?: number) => {
+    if (ok || idx === undefined) return
+    setFailedPages((s) => (s.has(idx) ? s : new Set(s).add(idx)))
+  }, [])
 
   // gambar memuat → tinggi halaman berubah → perbarui anchor (dan simpan
   // pertama kali begitu halaman awal terukur, walau pembaca belum scroll)
@@ -1123,13 +1156,8 @@ export default function Reader() {
               // B4: halaman di belakang frontier fill-ahead dipaksa mount dengan
               // mountAhead raksasa → antre di imgQueue (satu-satu) hingga memuat.
               mountAhead={i <= bgFillIdx ? 500000 : mountAhead}
-              onLoad={() => {
-                setLoadedPages((s) => (s.has(i) ? s : new Set(s).add(i)))
-              }}
-              onSettled={(ok) => {
-                if (ok) return
-                setFailedPages((s) => (s.has(i) ? s : new Set(s).add(i)))
-              }}
+              onLoad={handlePageLoad}
+              onSettled={handlePageSettled}
               // block + w-full: tidak ada baseline gap inline, tidak ada
               // letterbox — lebar gambar selalu = lebar kolom baca.
               className="manga-img block w-full"

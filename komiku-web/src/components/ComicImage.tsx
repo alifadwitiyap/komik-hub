@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { memo, useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { imgSrc, imgSrcSet, imgUrl, pickWidth, READER_SIZES, READER_WIDTHS, slowLink } from '../imgUrl'
 import { acquireImageSlot, recordImageSettle } from '../imgQueue'
@@ -59,10 +59,11 @@ function PageControlLayer({
   } | null>(null)
 
   useEffect(() => {
+    let raf = 0
     const update = () => {
       const el = targetRef.current
       if (!el) {
-        setRect(null)
+        setRect((prev) => (prev === null ? prev : null))
         return
       }
       // tinggi chrome dibaca dari DOM supaya safe-area iPhone ikut terhitung
@@ -77,17 +78,35 @@ function PageControlLayer({
       const right = Math.min(r.right, window.innerWidth)
       const bottom = Math.min(r.bottom, window.innerHeight - bottomInset)
       if (right <= left || bottom - top < minVisible) {
-        setRect(null) // halaman (hampir) di luar area baca → jangan tampilkan
+        setRect((prev) => (prev === null ? prev : null)) // halaman (hampir) di luar area baca → jangan tampilkan
         return
       }
-      setRect({ left, top, width: right - left, height: bottom - top })
+      const width = right - left
+      const height = bottom - top
+      setRect((prev) =>
+        prev &&
+        prev.left === left &&
+        prev.top === top &&
+        prev.width === width &&
+        prev.height === height
+          ? prev
+          : { left, top, width, height },
+      )
+    }
+    const schedule = () => {
+      if (raf) return
+      raf = requestAnimationFrame(() => {
+        raf = 0
+        update()
+      })
     }
     update()
-    window.addEventListener('scroll', update, { passive: true })
-    window.addEventListener('resize', update)
+    window.addEventListener('scroll', schedule, { passive: true })
+    window.addEventListener('resize', schedule)
     return () => {
-      window.removeEventListener('scroll', update)
-      window.removeEventListener('resize', update)
+      if (raf) cancelAnimationFrame(raf)
+      window.removeEventListener('scroll', schedule)
+      window.removeEventListener('resize', schedule)
     }
   }, [targetRef, minVisible])
 
@@ -187,7 +206,7 @@ interface ComicImageProps {
   /** index halaman dalam chapter — jadi atribut `data-page` untuk pengukuran posisi. */
   pageIndex?: number
   className?: string
-  onLoad?: (el: HTMLImageElement) => void
+  onLoad?: (el: HTMLImageElement, pageIndex?: number) => void
   /**
    * Dipanggil sekali setiap kali gambar BERES diselesaikan — baik termuat
    * (ok=true) maupun gagal (ok=false, chip "Coba lagi" muncul). Beda dari
@@ -195,7 +214,7 @@ interface ComicImageProps {
    * "halaman ini sudah ambil bagian" (mis. gerbang chaining marathon) memakai
    * ini supaya satu gambar rusak tidak menahan rantai selamanya.
    */
-  onSettled?: (ok: boolean) => void
+  onSettled?: (ok: boolean, pageIndex?: number) => void
   /** Dipanggil saat decode/error menandakan panel gagal (untuk fallback sumber). */
   onFailed?: () => void
 }
@@ -227,7 +246,7 @@ interface ComicImageProps {
  * Skeleton tetap `bg-ink-800` + fade-in 200 ms: kotak kosong harus terbaca
  * "sedang memuat", bukan "gagal".
  */
-export default function ComicImage({
+const ComicImage = memo(function ComicImage({
   src,
   alt,
   eager,
@@ -390,8 +409,8 @@ export default function ComicImage({
       rememberAspect(url, el.naturalWidth, el.naturalHeight)
       setMeasured({ url, ratio: el.naturalWidth / el.naturalHeight })
       setShown(true)
-      onLoadRef.current?.(el)
-      settledRef.current?.(true)
+      onLoadRef.current?.(el, pageIndex)
+      settledRef.current?.(true, pageIndex)
       settle()
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -542,15 +561,15 @@ export default function ComicImage({
           setMeasured({ url, ratio: el.naturalWidth / el.naturalHeight })
         }
         setShown(true)
-        onLoad?.(el)
-        settledRef.current?.(true)
+        onLoadRef.current?.(el, pageIndex)
+        settledRef.current?.(true, pageIndex)
         settle()
       }}
       onError={() => {
         setStuck(false)
         setFailed(true)
         failedCallbackRef.current?.()
-        settledRef.current?.(false)
+        settledRef.current?.(false, pageIndex)
         settle()
       }}
       // Fade 120ms (`comic-image-fade`) HANYA untuk decode jaringan; cache
@@ -561,4 +580,6 @@ export default function ComicImage({
     />
     </div>
   )
-}
+})
+
+export default ComicImage

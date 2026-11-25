@@ -398,6 +398,8 @@ export function usableCoverUrl(url: string | null | undefined): string | null {
   }
 }
 
+const DATE_ID = new Intl.DateTimeFormat('id-ID')
+
 export function toMangaCard(m: MangaOut): Manga {
   const cover = usableCoverUrl(m.cover_url)
   return {
@@ -409,7 +411,7 @@ export function toMangaCard(m: MangaOut): Manga {
     thumbnail: cover,
     cover,
     // updated_at epoch millis → tanggal pendek lokal (samakan dengan kartu komiku)
-    update_date: m.updated_at ? new Date(m.updated_at).toLocaleDateString('id-ID') : null,
+    update_date: m.updated_at ? DATE_ID.format(new Date(m.updated_at)) : null,
     tipe: m.manga_type ? [m.manga_type] : m.status ? [m.status] : null,
     status: m.status ? [m.status] : null,
     other: m.last_chapter ? [m.last_chapter] : [],
