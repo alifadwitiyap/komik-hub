@@ -202,6 +202,16 @@ export function listHistory(): HistoryEntry[] {
   return Object.values(data.history).sort((a, b) => b.updated_at - a.updated_at)
 }
 
+export function removeHistory(title_key: string): void {
+  const data = load()
+  delete data.history[title_key]
+  for (const [k, v] of Object.entries(data.history)) {
+    if (v.title_key === title_key) delete data.history[k]
+  }
+  save(data)
+  emit()
+}
+
 export function listFavorites(): FavoriteEntry[] {
   const data = load()
   return Object.values(data.favorites).sort((a, b) => b.loved_at - a.loved_at)

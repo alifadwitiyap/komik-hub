@@ -6,14 +6,20 @@ import { Empty } from '../App'
 import { MangaCard } from './Home'
 import { clearRecent, forgetRecent, listRecent, rememberSearch } from '../recentSearches'
 import { useUnifiedSearch } from '../hooks/useUnifiedSearch'
+import { useSourceHealth } from '../hooks/useSourceHealth'
 import { useSheetDrag } from '../hooks/useSheetDrag'
 import { useSheetPresence } from '../hooks/useSheetPresence'
 import { SOURCES, SORTS, useSortFilter, useSourceFilter } from '../components/SourceSortBar'
+import { deadSources } from '../components/sourceHealth'
 import '../styles/sheets.css'
 import { IconMagnifyingGlass, IconSliders, IconXmark } from '../icons'
 import {
   clearSearchReturn,
+  deleteExploreCache,
+  exploreCacheKey,
+  readExploreCache,
   readSearchReturn,
+  writeExploreCache,
   writeSearchReturn,
   type SearchReturnState,
 } from '../searchReturn'
@@ -57,6 +63,13 @@ function parseMinCh(raw: string | null): number | null {
   return n > 0 && n <= 5000 ? n : null
 }
 
+/** URL page → number (>= 1); nilai cacat/<= 1 kembali ke 1. */
+function parsePage(raw: string | null): number {
+  if (!raw || !/^\d+$/.test(raw)) return 1
+  const n = Number(raw)
+  return Number.isSafeInteger(n) && n > 1 ? n : 1
+}
+
 /** Preset "Minimal Chapter" di sheet: '' = Semua (param dihapus). */
 const MIN_CH_OPTIONS = [
   { label: 'Semua', value: '' },
@@ -65,8 +78,21 @@ const MIN_CH_OPTIONS = [
   { label: '100+', value: '100' },
 ]
 
-/** Chip kata kunci cepat, diturunkan dari nama genre yang tersedia. */
+/** Maksimal chip genre populer terkurasi di bawah kolom cari. */
 const QUICK_KEYWORDS = 6
+const POPULAR_GENRE_ORDER = [
+  'action',
+  'fantasy',
+  'romance',
+  'isekai',
+  'comedy',
+  'martial arts',
+  'adventure',
+  'drama',
+  'slice of life',
+  'sci-fi',
+]
+const EXCLUDED_POPULAR_GENRES = new Set(['adult', 'hentai', 'ecchi', 'advanture'])
 
 /** text-base + min-h-11: cegah auto-zoom iOS saat fokus dan jaga target sentuh 44px. */
 const selectBase =
@@ -90,10 +116,8 @@ function SelectChevron() {
   )
 }
 
-/** Filter yang benar-benar mengubah hasil (default tidak dihitung aktif). */
+/** Filter yang ada di dalam bottom sheet (default tidak dihitung aktif). */
 type FilterValues = {
-  source: string
-  sort: string
   tipe: string
   status: string
   genre: string
@@ -121,7 +145,20 @@ export default function Search() {
   const srt = srtRaw === 'terbaru' ? null : srtRaw
 
   const [input, setInput] = useState(query)
-  const [page, setPage] = useState(1)
+  const inputRef = useRef<HTMLInputElement>(null)
+  const page = parsePage(params.get('page'))
+  const setPage = (nextPage: number | ((p: number) => number)) => {
+    pendingScrollRef.current = null
+    setParams((prev) => {
+      const current = parsePage(prev.get('page'))
+      const resolved = typeof nextPage === 'function' ? nextPage(current) : nextPage
+      const clamped = Number.isSafeInteger(resolved) && resolved > 1 ? resolved : 1
+      const next = new URLSearchParams(prev)
+      if (clamped <= 1) next.delete('page')
+      else next.set('page', String(clamped))
+      return next
+    })
+  }
   const [recent, setRecent] = useState<string[]>(() => listRecent())
   const [filterOpen, setFilterOpen] = useState(false)
   // Filter bukan panel inline: bottom sheet fixed, tetap digeser (drag) dan
@@ -155,27 +192,13 @@ export default function Search() {
   // input mengikuti URL (termasuk navigasi back/forward)
   useEffect(() => setInput(query), [query])
 
-  /**
-   * Query atau filter baru selalu mulai dari halaman 1. Reset dilakukan SAAT
-   * RENDER (pola "menyesuaikan state saat input berubah"), BUKAN lewat effect
-   * terpisah: kalau page direset di effect, render pertama sesudah filter
-   * berubah masih membawa page lama sehingga pencarian ter-fire DUA kali
-   * (page lama + filter baru, lalu page 1 + filter baru) — dua fan-out ke
-   * server per satu aksi filter. React me-render ulang sebelum commit, jadi
-   * effect pencarian hanya pernah melihat page 1.
-   */
-  const searchSig = `${query}\u0000${tipe ?? ''}\u0000${status ?? ''}\u0000${genreSlug ?? ''}\u0000${src ?? ''}\u0000${srt ?? ''}\u0000${minCh ?? ''}`
-  const searchSigRef = useRef(searchSig)
-  if (searchSigRef.current !== searchSig) {
-    searchSigRef.current = searchSig
-    setPage(1)
-  }
+  // Target scroll dari state navigasi/hash, dieksekusi sekali setelah hasil siap.
+  const scrollCheckedRef = useRef(false)
+  const pendingScrollRef = useRef<number | null>(null)
 
-  // Pulihkan posisi scroll saat kembali dari detail (state navigasi), atau
-  // explode URL '/cari?...#p1-scroll-1234' kalau halaman di-refresh.
-  // requestAnimationFrame menunggu kartu selesai layout supaya tinggi halaman
-  // sudah final sebelum window.scrollTo.
   useEffect(() => {
+    if (scrollCheckedRef.current) return
+    scrollCheckedRef.current = true
     const fromHash = /^#p1-scroll-(\d+)$/.exec(location.hash)
     // Hash dipakai HANYA kalau state navigasi tidak ada — kalau tidak, state
     // lama (dari kunjungan detail sebelumnya) kalah prioritas dari hash.
@@ -192,38 +215,10 @@ export default function Search() {
       window.scrollTo(0, 0)
       return
     }
-    // Kartu hasil (mode eksplorasi) bisa tiba asynchronously: satu rAF saja
-    // sering kelewat sebelum grid selesai layout. Ulangi sekali setelah data
-    // sempat dirender.
-    const raf = requestAnimationFrame(() => {
-      window.scrollTo(0, scroll!)
-      window.setTimeout(() => window.scrollTo(0, scroll!), 120)
-    })
-    return () => cancelAnimationFrame(raf)
+    pendingScrollRef.current = scroll
     // Hanya saat mount: filter/query di sini dipakai untuk validasi state.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
-
-  // Simpan query+filter+scroll tiap kali kartu diklik (bukan pas unmount:
-  // unmount juga jalan saat pindah tab, dan scroll bisa tertimpa layout baru).
-  useEffect(() => {
-    const root = document.querySelector('[data-search-results]')
-    if (!root) return
-    const onClick = (e: Event) => {
-      const target = e.target
-      if (!(target instanceof Element)) return
-      const link = target.closest('a[href^="/manga/"]')
-      if (!link) return
-      writeSearchReturn({
-        query,
-        filter: cloneFilters(params),
-        scrollY: window.scrollY,
-        href: link.getAttribute('href') ?? '',
-      })
-    }
-    root.addEventListener('click', onClick)
-    return () => root.removeEventListener('click', onClick)
-  }, [query, params])
 
   /**
    * Tulis q ke URL dengan REPLACE (bukan push) supaya history tidak dibanjiri.
@@ -234,10 +229,12 @@ export default function Search() {
    * ada efek debounce yang menulis URL saat mengetik.
    */
   const commitQuery = (v: string) => {
+    pendingScrollRef.current = null
     setRiwayatDimatikan(true)
     setInputActive(false)
     setParams((prev) => {
       const next = new URLSearchParams(prev)
+      next.delete('page')
       if (v) next.set('q', v)
       else next.delete('q')
       return next
@@ -271,21 +268,30 @@ export default function Search() {
   const failedSources = search.failedSources
 
   // ---- mode eksplorasi ---------------------------------------------------
+  const exploreKey = exploreCacheKey({ tipe, status, genre: genreSlug, src, srt, minCh })
+  const activeExploreKeyRef = useRef(exploreKey)
+  activeExploreKeyRef.current = exploreKey
+  const [initialExplore] = useState(() => (!searching ? readExploreCache(exploreKey) : null))
+
   const [genres, setGenres] = useState<UnifiedGenre[]>([])
-  const [items, setItems] = useState<Manga[]>([])
-  const [listPage, setListPage] = useState(1)
+  const [items, setItems] = useState<Manga[]>(() => initialExplore?.items ?? [])
+  const [listPage, setListPage] = useState(() => initialExplore?.listPage ?? 1)
   const [more, setMore] = useState(false)
-  const [hasMore, setHasMore] = useState(false)
-  const [listLoading, setListLoading] = useState(true)
+  const [hasMore, setHasMore] = useState(() => initialExplore?.hasMore ?? false)
+  const [listLoading, setListLoading] = useState(() => !initialExplore)
   const [listError, setListError] = useState<string | null>(null)
-  const [listFailed, setListFailed] = useState(0)
+  const [listFailed, setListFailed] = useState(() => initialExplore?.listFailed ?? 0)
   /** total sumber dari server untuk chip mode eksplorasi (0 = belum dilaporkan) */
-  const [listSourcesTotal, setListSourcesTotal] = useState(0)
+  const [listSourcesTotal, setListSourcesTotal] = useState(
+    () => initialExplore?.listSourcesTotal ?? 0,
+  )
   const [listReloadKey, setListReloadKey] = useState(0)
   /** Penanda bawah feed: memuat halaman berikutnya otomatis saat mendekat. */
   const loadMoreRef = useRef<HTMLDivElement>(null)
   /** handle yang sudah masuk daftar — cegah duplikat lintas halaman. */
-  const seen = useRef<Set<string>>(new Set())
+  const seen = useRef<Set<string>>(
+    new Set(initialExplore?.items.map((m) => String(m.id)) ?? []),
+  )
   /** filter aktif → feed pindah ke katalog (bukan populer). Termasuk
    *  sumber/urutan pilihan user (dulu diabaikan: klik sort tidak mengubah
    *  gambar karena tetap mengambil feed popular yang sama). */
@@ -309,6 +315,19 @@ export default function Search() {
   // filter berubah); "Muat lebih" menambah halaman berikutnya.
   useEffect(() => {
     if (searching) return
+    setMore(false)
+    const cached = readExploreCache(exploreKey)
+    if (cached) {
+      seen.current = new Set(cached.items.map((m) => String(m.id)))
+      setItems(cached.items)
+      setListPage(cached.listPage)
+      setHasMore(cached.hasMore)
+      setListFailed(cached.listFailed)
+      setListSourcesTotal(cached.listSourcesTotal)
+      setListError(null)
+      setListLoading(false)
+      return
+    }
     const ctrl = new AbortController()
     setListLoading(true)
     setListError(null)
@@ -325,13 +344,23 @@ export default function Search() {
           seen.current.add(String(m.id))
           return true
         })
+        const nextHasMore = mapped.length > 0
+        const nextFailed = r.failed_sources?.length ?? 0
+        const nextSourcesTotal = r.sources_total ?? (r.sources_ok ?? 0) + nextFailed
         setItems(mapped)
-        setHasMore(mapped.length > 0)
-        setListFailed(r.failed_sources?.length ?? 0)
-        setListSourcesTotal(
-          r.sources_total ?? (r.sources_ok ?? 0) + (r.failed_sources?.length ?? 0),
-        )
+        setHasMore(nextHasMore)
+        setListFailed(nextFailed)
+        setListSourcesTotal(nextSourcesTotal)
         setListLoading(false)
+        if (mapped.length > 0) {
+          writeExploreCache(exploreKey, {
+            items: mapped,
+            listPage: 1,
+            hasMore: nextHasMore,
+            listFailed: nextFailed,
+            listSourcesTotal: nextSourcesTotal,
+          })
+        }
       })
       .catch((e: unknown) => {
         if (e instanceof Error && e.name === 'AbortError') return
@@ -341,9 +370,9 @@ export default function Search() {
       })
     return () => ctrl.abort()
     // filterArg sengaja tidak jadi dependensi: nilainya sudah terwakili oleh
-    // tipe/status/genreSlug/src/srt/minCh di bawah (objek baru tiap render akan loop).
+    // exploreKey (tipe/status/genreSlug/src/srt/minCh).
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searching, filtered, tipe, status, genreSlug, src, srt, minCh, listReloadKey])
+  }, [searching, filtered, exploreKey, listReloadKey])
 
   // Tombol "Muat lebih" menambah halaman berikutnya (append + dedup).
   // Dipanggil oleh klik ATAU IntersectionObserver saat penanda bawah feed
@@ -351,23 +380,74 @@ export default function Search() {
   const loadMore = () => {
     if (more || !hasMore || listLoading) return
     setMore(true)
+    const requestKey = exploreKey
+    const nextPage = listPage + 1
     const feed = filtered
-      ? unifiedApi.catalogue(listPage + 1, undefined, filterArg)
-      : unifiedApi.popular(listPage + 1)
+      ? unifiedApi.catalogue(nextPage, undefined, filterArg)
+      : unifiedApi.popular(nextPage)
     feed
       .then((r) => {
+        if (activeExploreKeyRef.current !== requestKey) return
         const mapped = r.items.map(toMangaCard).filter((m) => {
           if (seen.current.has(String(m.id))) return false
           seen.current.add(String(m.id))
           return true
         })
-        setItems((prev) => [...prev, ...mapped])
-        setListPage((p) => p + 1)
-        setHasMore(mapped.length > 0)
+        const nextHasMore = mapped.length > 0
+        setItems((prev) => {
+          const nextItems = [...prev, ...mapped]
+          writeExploreCache(requestKey, {
+            items: nextItems,
+            listPage: nextPage,
+            hasMore: nextHasMore,
+            listFailed,
+            listSourcesTotal,
+          })
+          return nextItems
+        })
+        setListPage(nextPage)
+        setHasMore(nextHasMore)
         setMore(false)
       })
       .catch(() => setMore(false))
   }
+
+  // Jalankan pemulihan scroll SETELAH loading selesai dan kartu ter-render.
+  const isReady = searching ? !loading : !listLoading
+  const renderedCount = searching ? results.length : items.length
+  useEffect(() => {
+    if (pendingScrollRef.current === null || !isReady || renderedCount === 0) return
+    const raf = requestAnimationFrame(() => {
+      const target = pendingScrollRef.current
+      if (target !== null) {
+        window.scrollTo(0, target)
+        pendingScrollRef.current = null
+      }
+    })
+    return () => cancelAnimationFrame(raf)
+  }, [isReady, renderedCount])
+
+  // Simpan query+filter+scroll tiap kali kartu diklik (bukan pas unmount:
+  // unmount juga jalan saat pindah tab, dan scroll bisa tertimpa layout baru).
+  useEffect(() => {
+    const root = document.querySelector('[data-search-results]')
+    if (!root) return
+    const onClick = (e: Event) => {
+      const target = e.target
+      if (!(target instanceof Element)) return
+      const link = target.closest('a[href^="/manga/"]')
+      if (!link) return
+      writeSearchReturn({
+        query,
+        filter: cloneFilters(params),
+        ...(searching && page > 1 ? { page } : {}),
+        scrollY: window.scrollY,
+        href: link.getAttribute('href') ?? '',
+      })
+    }
+    root.addEventListener('click', onClick)
+    return () => root.removeEventListener('click', onClick)
+  }, [query, params, searching, page, isReady, renderedCount])
 
   // Auto-load: begitu penanda bawah masuk ~600px sebelum viewport, halaman
   // berikutnya diambil sendiri. Observer dipasang ulang setiap kali daftar/
@@ -390,19 +470,34 @@ export default function Search() {
   }, [searching, listLoading, listError, hasMore, items.length, more, listPage, filtered, tipe, status, genreSlug, src, srt, minCh])
 
   // ---- filter ------------------------------------------------------------
+  const health = useSourceHealth()
+  const deadIds = useMemo(
+    () => new Set(deadSources(health.rows).map((r) => r.source.toLowerCase())),
+    [health.rows],
+  )
+  const selectedSourceDead = Boolean(src && deadIds.has(src.toLowerCase()))
+  const selectedSourceName = src ? (SOURCES.find((s) => s.id === src)?.label ?? src) : ''
+
   // Satu setFilter: tulis ke query string (single source of truth filter).
   const setFilter = (key: string, value: string | null) => {
-    const next = new URLSearchParams(params)
-    if (value) next.set(key, value)
-    else next.delete(key)
-    setParams(next)
+    pendingScrollRef.current = null
+    setParams((prev) => {
+      const next = new URLSearchParams(prev)
+      next.delete('page')
+      if (value) next.set(key, value)
+      else next.delete(key)
+      return next
+    })
   }
 
   /** Reset filter tanpa mengubah query (dipakai tombol Reset di panel & empty). */
   const resetFilters = () => {
+    pendingScrollRef.current = null
     setParams((prev) => {
       const next = new URLSearchParams(prev)
-      for (const key of ['source', 'sort', 'tipe', 'status', 'genre', 'min_ch']) next.delete(key)
+      for (const key of ['source', 'sort', 'tipe', 'status', 'genre', 'min_ch', 'page']) {
+        next.delete(key)
+      }
       return next
     })
     setFilterOpen(false)
@@ -432,9 +527,33 @@ export default function Search() {
     return [...byName.values()].sort((a, b) => a.name.localeCompare(b.name))
   }, [genres])
 
-  // Kata kunci cepat diturunkan dari nama genre yang tersedia (bukan judul
-  // hardcode) supaya tetap relevan dengan isi katalog.
-  const quickKeywords = genreList.slice(0, QUICK_KEYWORDS).map((g) => g.name)
+  // Genre populer terkurasi untuk chip cepat di bawah kolom cari.
+  const popularGenres = useMemo(() => {
+    const eligible = genreList.filter(
+      (g) => !EXCLUDED_POPULAR_GENRES.has(g.name.trim().toLowerCase()),
+    )
+    const byLower = new Map(eligible.map((g) => [g.name.trim().toLowerCase(), g]))
+    const picked: UnifiedGenre[] = []
+    const usedSlugs = new Set<string>()
+    for (const name of POPULAR_GENRE_ORDER) {
+      const hit = byLower.get(name)
+      if (hit && !usedSlugs.has(hit.slug)) {
+        picked.push(hit)
+        usedSlugs.add(hit.slug)
+        if (picked.length >= QUICK_KEYWORDS) return picked
+      }
+    }
+    const fallback = [...eligible].sort(
+      (a, b) => b.sources.length - a.sources.length || a.name.localeCompare(b.name),
+    )
+    for (const g of fallback) {
+      if (usedSlugs.has(g.slug)) continue
+      picked.push(g)
+      usedSlugs.add(g.slug)
+      if (picked.length >= QUICK_KEYWORDS) break
+    }
+    return picked
+  }, [genreList])
   const activeGenre = genreList.find((g) => g.slug === genreSlug)
   const filterSuffix = [
     tipe ? ` · ${tipe}` : '',
@@ -443,17 +562,7 @@ export default function Search() {
     activeGenre ? ` · ${activeGenre.name}` : '',
   ].join('')
 
-  const defaults: FilterValues = {
-    source: 'semua',
-    sort: 'terbaru',
-    tipe: '',
-    status: '',
-    genre: '',
-    min_ch: '',
-  }
   const activeFilters: FilterValues = {
-    source: srcRaw,
-    sort: srtRaw,
     tipe: tipe ?? '',
     status: status ?? '',
     genre: genreSlug ?? '',
@@ -469,17 +578,17 @@ export default function Search() {
 
   /** Terapkan semua field sekaligus — satu aksi = satu request. */
   const applyFilters = () => {
+    pendingScrollRef.current = null
     setParams((prev) => {
       const next = new URLSearchParams(prev)
+      next.delete('page')
       for (const [key, value] of Object.entries(draft)) {
-        const isDefault =
-          (key === 'source' && value === 'semua') || (key === 'sort' && value === 'terbaru')
         // min_ch datang dari pill; tetap jaga boundary URL dari nilai cacat.
         if (key === 'min_ch' && parseMinCh(value) === null) {
           next.delete(key)
           continue
         }
-        if (!value || isDefault) next.delete(key)
+        if (!value) next.delete(key)
         else next.set(key, value)
       }
       return next
@@ -489,24 +598,12 @@ export default function Search() {
 
   const activeChips = useMemo(() => {
     const chips: { key: keyof FilterValues; label: string }[] = []
-    if (srcRaw !== 'semua') {
-      chips.push({
-        key: 'source',
-        label: `Sumber: ${SOURCES.find((s) => s.id === srcRaw)?.label ?? srcRaw}`,
-      })
-    }
-    if (srtRaw !== 'terbaru') {
-      chips.push({
-        key: 'sort',
-        label: `Urutan: ${SORTS.find((s) => s.value === srtRaw)?.label ?? srtRaw}`,
-      })
-    }
     if (tipe) chips.push({ key: 'tipe', label: `Tipe: ${tipe}` })
     if (status) chips.push({ key: 'status', label: `Status: ${status}` })
     if (minCh) chips.push({ key: 'min_ch', label: `≥ ${minCh} Ch.` })
     if (genreSlug) chips.push({ key: 'genre', label: `Genre: ${activeGenre?.name ?? genreSlug}` })
     return chips
-  }, [srcRaw, srtRaw, tipe, status, genreSlug, activeGenre, minCh])
+  }, [tipe, status, genreSlug, activeGenre, minCh])
 
   return (
     <div className="mx-auto max-w-3xl px-3 py-3">
@@ -534,14 +631,17 @@ export default function Search() {
           <IconMagnifyingGlass className="pointer-events-none absolute left-3.5 size-4 text-ink-500" />
           {/* text-base (16px): di bawah 16px iOS Safari auto-zoom saat input difokuskan. */}
           <input
-            autoFocus
+            ref={inputRef}
             value={input}
             onChange={(e) => {
               setInput(e.target.value)
               setInputActive(true)
               setRiwayatDimatikan(false)
             }}
-            onFocus={() => setRiwayatDimatikan(false)}
+            onFocus={() => {
+              setInputActive(true)
+              setRiwayatDimatikan(false)
+            }}
             onKeyDown={(e) => {
               // Safari iOS / keyboard mobile kadang tidak menaikkan submit
               // form dari single-line input. Tangani Enter eksplisit supaya
@@ -563,7 +663,13 @@ export default function Search() {
             <button
               type="button"
               aria-label="Hapus teks"
-              onClick={() => setInput('')}
+              onClick={() => {
+                setInput('')
+                if (searching) commitQuery('')
+                setInputActive(true)
+                setRiwayatDimatikan(false)
+                inputRef.current?.focus()
+              }}
               className="absolute right-2 min-h-11 min-w-11 touch-manipulation select-none rounded-full text-ink-500 transition-[transform,background-color,border-color,color] duration-150 ease-[var(--ease-out)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber active:scale-[0.97] active:text-ink-300"
             >
               ×
@@ -596,32 +702,17 @@ export default function Search() {
           <IconSliders className="size-3.5" />
           <span className="truncate">Filter{activeChips.length > 0 ? ` (${activeChips.length})` : ''}</span>
         </button>
-        {/* Chip cepat "Tamat": satu ketukan = toggle status Completed (nilai
-            canonical yang sama dengan panel), tanpa buka sheet. */}
-        <button
-          type="button"
-          data-tamat-chip
-          aria-pressed={status === COMPLETED_STATUS}
-          onClick={() =>
-            setFilter('status', status === COMPLETED_STATUS ? null : COMPLETED_STATUS)
-          }
-          className={`kh-tap inline-flex min-h-11 shrink-0 touch-manipulation select-none items-center justify-center rounded-full px-3 py-1.5 text-[12.5px] font-bold transition-[transform,background-color,border-color,color] duration-150 ease-[var(--ease-out)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber focus-visible:ring-offset-2 active:scale-[0.97] ${
-            status === COMPLETED_STATUS
-              ? 'bg-brand-amber text-white'
-              : 'border border-ink-700 bg-ink-900 text-ink-300'
-          }`}
-        >
-          Tamat
-        </button>
         <div className="relative flex min-h-11 min-w-0 flex-1 items-center">
           <select
             aria-label="Urutkan hasil"
             value={srt ?? 'terbaru'}
-            onChange={(e) => setFilter('sort', e.target.value)}
+            onChange={(e) => setFilter('sort', e.target.value === 'terbaru' ? null : e.target.value)}
             className="min-h-11 w-full appearance-none rounded-full border border-ink-700 bg-ink-900 py-1 pl-3 pr-7 text-base font-semibold text-ink-300 focus:border-brand-amber focus:outline-none"
           >
             {SORTS.map((s) => (
-              <option key={s.value} value={s.value}>{s.label}</option>
+              <option key={s.value} value={s.value}>
+                {s.value === 'terbaru' && !searching && !filtered ? 'Populer' : s.label}
+              </option>
             ))}
           </select>
           <SelectChevron />
@@ -632,41 +723,56 @@ export default function Search() {
       {/* Chip sumber dipindah dari panel filter ke baris ringkas di atas hasil:
           satu ketukan = satu filter, tanpa buka panel. Hit area 44px, visual
           chip 28px supaya kartu pertama tetap dekat atas di 320×432. */}
-      <div
-        data-source-chips
-        role="group"
-        aria-label="Filter sumber cepat"
-        className="-mx-3 mt-1 flex gap-0.5 overflow-x-auto px-3 [scrollbar-width:none]"
-      >
-        {SOURCES.map((s) => {
-          const active = srcRaw === s.id
-          return (
-            <button
-              key={s.id}
-              type="button"
-              aria-pressed={active}
-              onClick={() => {
-                setFilter('source', s.id === 'semua' ? null : s.id)
-                setDraft((d) => ({ ...d, source: s.id }))
-              }}
-              className="flex min-h-11 min-w-11 shrink-0 touch-manipulation items-center justify-center rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber"
-            >
-              <span
-                style={{
-                  transition:
-                    'background-color 220ms var(--ease-out-quint), color 220ms var(--ease-out-quint), border-color 220ms var(--ease-out-quint)',
+      <div className="relative -mx-3 mt-1">
+        <div
+          data-source-chips
+          role="group"
+          aria-label="Filter sumber cepat"
+          className="flex gap-0.5 overflow-x-auto pl-3 pr-8 [scrollbar-width:none]"
+        >
+          {SOURCES.map((s) => {
+            const active = srcRaw === s.id
+            const isDead = s.id !== 'semua' && deadIds.has(s.id)
+            return (
+              <button
+                key={s.id}
+                type="button"
+                aria-pressed={active}
+                title={isDead ? 'Sumber sedang tidak dapat diakses' : undefined}
+                onClick={() => {
+                  setFilter('source', s.id === 'semua' ? null : s.id)
                 }}
-                className={`inline-flex h-7 items-center rounded-full border px-2.5 text-[12px] font-semibold ${
-                  active
-                    ? 'border-brand-amber bg-brand-amber text-white'
-                    : 'border-ink-800 bg-ink-900 text-ink-300'
-                }`}
+                className="flex min-h-11 min-w-11 shrink-0 touch-manipulation items-center justify-center rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber"
               >
-                {s.label}
-              </span>
-            </button>
-          )
-        })}
+                <span
+                  style={{
+                    transition:
+                      'background-color 220ms var(--ease-out-quint), color 220ms var(--ease-out-quint), border-color 220ms var(--ease-out-quint)',
+                  }}
+                  className={`inline-flex h-7 items-center gap-1.5 rounded-full border px-2.5 text-[12px] font-semibold ${
+                    active
+                      ? 'border-brand-amber bg-brand-amber text-white'
+                      : isDead
+                        ? 'border-ink-800 bg-ink-900 text-ink-500'
+                        : 'border-ink-800 bg-ink-900 text-ink-300'
+                  }`}
+                >
+                  {isDead && (
+                    <span
+                      aria-hidden="true"
+                      className={`size-1.5 shrink-0 rounded-full ${active ? 'bg-white/80' : 'bg-danger/70'}`}
+                    />
+                  )}
+                  {s.label}
+                </span>
+              </button>
+            )
+          })}
+        </div>
+        <span
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-y-0 right-0 w-8 bg-gradient-to-l from-ink-950 via-ink-950/80 to-transparent"
+        />
       </div>
 
       {/* Filter type/status/genre/source jadi bottom sheet draggable — tidak
@@ -762,19 +868,6 @@ export default function Search() {
                   </select>
                   <SelectChevron />
                 </div>
-                <div className="relative col-span-2 flex min-w-0">
-                  <select
-                    aria-label="Filter sumber"
-                    value={draft.source}
-                    onChange={(e) => setDraft((d) => ({ ...d, source: e.target.value }))}
-                    className={selectBase}
-                  >
-                    {SOURCES.map((s) => (
-                      <option key={s.id} value={s.id}>{s.label}</option>
-                    ))}
-                  </select>
-                  <SelectChevron />
-                </div>
               </div>
               <div>
                 <p className="mb-1.5 text-[12px] font-semibold text-ink-300">Minimal Chapter</p>
@@ -809,7 +902,7 @@ export default function Search() {
                 </button>
                 <button
                   type="button"
-                  onClick={() => setDraft(defaults)}
+                  onClick={resetFilters}
                   className="touch-manipulation select-none min-h-11 flex-1 rounded-full border border-ink-700 px-5 py-2.5 text-[13px] font-semibold text-ink-300 transition-[transform,background-color,border-color,color] duration-150 ease-[var(--ease-out)] active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber focus-visible:ring-offset-2"
                 >
                   Reset
@@ -823,18 +916,34 @@ export default function Search() {
       {/* Chip filter aktif — sebelum jumlah hasil (urutan HP P1). Tiap chip
           bisa dilepas tanpa membuka panel. */}
       {activeChips.length > 0 && (
-        <div data-active-filters className="mt-3 flex flex-wrap gap-2">
+        <div
+          data-active-filters
+          className="-mx-3 mt-1.5 flex flex-nowrap items-center gap-1 overflow-x-auto px-3 [scrollbar-width:none]"
+        >
           {activeChips.map((chip) => (
             <button
               key={chip.key}
               type="button"
               aria-label={`Hapus ${chip.label}`}
               onClick={() => setFilter(chip.key, null)}
-              className="touch-manipulation select-none min-h-11 rounded-full border border-brand-amber/40 bg-brand-amber/10 px-3 py-1.5 text-[12px] font-semibold text-brand-amber transition-[transform,background-color,border-color,color] duration-150 ease-[var(--ease-out)] active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber"
+              className="inline-flex min-h-11 shrink-0 touch-manipulation select-none items-center rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber active:scale-[0.97]"
             >
-              {chip.label} ×
+              <span className="inline-flex h-7 items-center whitespace-nowrap rounded-full border border-brand-amber/40 bg-brand-amber/10 px-2.5 text-[12px] font-semibold text-brand-amber">
+                {chip.label} ×
+              </span>
             </button>
           ))}
+          {activeChips.length > 1 && (
+            <button
+              type="button"
+              onClick={resetFilters}
+              className="inline-flex min-h-11 shrink-0 touch-manipulation select-none items-center rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber active:scale-[0.97]"
+            >
+              <span className="inline-flex h-7 items-center whitespace-nowrap rounded-full border border-ink-700 bg-ink-900 px-2.5 text-[12px] font-semibold text-ink-300">
+                Reset
+              </span>
+            </button>
+          )}
         </div>
       )}
 
@@ -891,19 +1000,26 @@ export default function Search() {
               )}
             </div>
           )}
-          {quickKeywords.length > 0 && (
-            <div className="mt-2 flex flex-wrap items-center gap-2">
-              <span className="text-[11.5px] text-ink-500">Sedang Ramai Dicari</span>
-              {quickKeywords.map((k) => (
-                <button
-                  key={k}
-                  type="button"
-                  onClick={() => commitQuery(k)}
-                  className="min-h-11 shrink-0 touch-manipulation select-none rounded-full border border-ink-800 bg-ink-900 px-3 py-1.5 text-[12px] font-medium text-ink-300 transition-[transform,background-color,border-color,color] duration-150 ease-[var(--ease-out)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber active:scale-[0.97] [@media(hover:hover)_and_(pointer:fine)]:hover:border-ink-700"
-                >
-                  {k}
-                </button>
-              ))}
+          {popularGenres.length > 0 && (
+            <div className="mt-2">
+              <span className="text-[11.5px] text-ink-500">Genre Populer</span>
+              <div className="-mx-3 mt-1 flex flex-nowrap items-center gap-1 overflow-x-auto px-3 [scrollbar-width:none]">
+                {popularGenres.map((g) => (
+                  <button
+                    key={g.slug}
+                    type="button"
+                    onClick={() => {
+                      setFilter('genre', g.slug)
+                      setInputActive(false)
+                    }}
+                    className="inline-flex min-h-11 shrink-0 touch-manipulation select-none items-center rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber active:scale-[0.97]"
+                  >
+                    <span className="inline-flex h-7 items-center whitespace-nowrap rounded-full border border-ink-800 bg-ink-900 px-2.5 text-[12px] font-medium text-ink-300">
+                      {g.name}
+                    </span>
+                  </button>
+                ))}
+              </div>
             </div>
           )}
         </div>
@@ -943,34 +1059,64 @@ export default function Search() {
                     Masih mencari di sumber lain
                   </span>
                 )}
-                {failedSources > 0 && (
-                  <FailedSourceChip count={failedSources} total={search.sourcesTotal} />
+                {sourcesTotal > 0 && (
+                  <SourceSuccessChip
+                    ok={Math.max(0, sourcesTotal - failedSources)}
+                    total={sourcesTotal}
+                  />
                 )}
               </div>
               {results.length === 0 ? (
                 <div className="mx-auto max-w-3xl px-4 py-16 text-center">
-                  <Empty
-                    title="Tidak ada hasil"
-                    body={`Tidak menemukan apa pun untuk “${query}”.`}
-                  />
-                  <div className="mt-4 flex flex-wrap justify-center gap-2">
-                    <button
-                      type="button"
-                      onClick={() => commitQuery('')}
-                      className="min-h-11 touch-manipulation select-none rounded-full border border-ink-700 px-5 py-2.5 text-[13px] font-semibold text-ink-300 transition-[transform,background-color,border-color,color] duration-150 ease-[var(--ease-out)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber focus-visible:ring-offset-2 active:scale-[0.97] [@media(hover:hover)_and_(pointer:fine)]:hover:border-brand-amber [@media(hover:hover)_and_(pointer:fine)]:hover:text-brand-amber"
-                    >
-                      Bersihkan pencarian
-                    </button>
-                    {filtered && (
-                      <button
-                        type="button"
-                        onClick={resetFilters}
-                        className="touch-manipulation select-none min-h-11 rounded-full bg-brand-amber px-5 py-2.5 text-[13px] font-bold text-white transition-[transform,background-color,border-color,color] duration-150 ease-[var(--ease-out)] active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber focus-visible:ring-offset-2"
-                      >
-                        Reset filter
-                      </button>
-                    )}
-                  </div>
+                  {selectedSourceDead ? (
+                    <>
+                      <Empty
+                        title={`Sumber ${selectedSourceName} sedang tidak dapat diakses`}
+                        body="Coba lagi nanti atau tampilkan komik dari semua sumber."
+                      />
+                      <div className="mt-4 flex flex-wrap justify-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setFilter('source', null)}
+                          className="touch-manipulation select-none min-h-11 rounded-full bg-brand-amber px-5 py-2.5 text-[13px] font-bold text-white transition-[transform,background-color,border-color,color] duration-150 ease-[var(--ease-out)] active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber focus-visible:ring-offset-2"
+                        >
+                          Tampilkan semua sumber
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => commitQuery('')}
+                          className="min-h-11 touch-manipulation select-none rounded-full border border-ink-700 px-5 py-2.5 text-[13px] font-semibold text-ink-300 transition-[transform,background-color,border-color,color] duration-150 ease-[var(--ease-out)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber focus-visible:ring-offset-2 active:scale-[0.97] [@media(hover:hover)_and_(pointer:fine)]:hover:border-brand-amber [@media(hover:hover)_and_(pointer:fine)]:hover:text-brand-amber"
+                        >
+                          Bersihkan pencarian
+                        </button>
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <Empty
+                        title="Tidak ada hasil"
+                        body={`Tidak menemukan apa pun untuk “${query}”.`}
+                      />
+                      <div className="mt-4 flex flex-wrap justify-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => commitQuery('')}
+                          className="min-h-11 touch-manipulation select-none rounded-full border border-ink-700 px-5 py-2.5 text-[13px] font-semibold text-ink-300 transition-[transform,background-color,border-color,color] duration-150 ease-[var(--ease-out)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber focus-visible:ring-offset-2 active:scale-[0.97] [@media(hover:hover)_and_(pointer:fine)]:hover:border-brand-amber [@media(hover:hover)_and_(pointer:fine)]:hover:text-brand-amber"
+                        >
+                          Bersihkan pencarian
+                        </button>
+                        {filtered && (
+                          <button
+                            type="button"
+                            onClick={resetFilters}
+                            className="touch-manipulation select-none min-h-11 rounded-full bg-brand-amber px-5 py-2.5 text-[13px] font-bold text-white transition-[transform,background-color,border-color,color] duration-150 ease-[var(--ease-out)] active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber focus-visible:ring-offset-2"
+                          >
+                            Reset filter
+                          </button>
+                        )}
+                      </div>
+                    </>
+                  )}
                 </div>
               ) : (
                 <div className="search-results-fade">
@@ -1018,7 +1164,10 @@ export default function Search() {
               <Empty title="Gagal memuat daftar" body="Coba lagi." />
               <button
                 type="button"
-                onClick={() => setListReloadKey((k) => k + 1)}
+                onClick={() => {
+                  deleteExploreCache(exploreKey)
+                  setListReloadKey((k) => k + 1)
+                }}
                 className="touch-manipulation select-none mt-4 min-h-11 rounded-full bg-brand-amber px-5 py-2.5 text-[13px] font-bold text-white transition-[transform,background-color,border-color,color] duration-150 ease-[var(--ease-out)] active:scale-[0.97] active:duration-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber focus-visible:ring-offset-2 [@media(hover:hover)_and_(pointer:fine)]:hover:bg-brand-amber-soft"
               >
                 Coba lagi
@@ -1032,22 +1181,45 @@ export default function Search() {
                   {items.length} komik{filterSuffix}
                   {listSourcesTotal > 1 ? ` · dari ${listSourcesTotal} sumber` : ''}
                 </p>
-                {listFailed > 0 && <FailedSourceChip count={listFailed} total={listSourcesTotal} />}
+                {listSourcesTotal > 0 && (
+                  <SourceSuccessChip
+                    ok={Math.max(0, listSourcesTotal - listFailed)}
+                    total={listSourcesTotal}
+                  />
+                )}
               </div>
               {items.length === 0 ? (
                 <div className="mx-auto max-w-3xl px-4 py-16 text-center">
-                  <Empty
-                    title="Tidak ada hasil"
-                    body="Belum ada komik yang cocok dengan filter ini."
-                  />
-                  {filtered && (
-                    <button
-                      type="button"
-                      onClick={resetFilters}
-                      className="touch-manipulation select-none mt-4 min-h-11 rounded-full bg-brand-amber px-5 py-2.5 text-[13px] font-bold text-white transition-[transform,background-color,border-color,color] duration-150 ease-[var(--ease-out)] active:scale-[0.97] active:duration-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber focus-visible:ring-offset-2"
-                    >
-                      Reset filter
-                    </button>
+                  {selectedSourceDead ? (
+                    <>
+                      <Empty
+                        title={`Sumber ${selectedSourceName} sedang tidak dapat diakses`}
+                        body="Coba lagi nanti atau tampilkan komik dari semua sumber."
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setFilter('source', null)}
+                        className="touch-manipulation select-none mt-4 min-h-11 rounded-full bg-brand-amber px-5 py-2.5 text-[13px] font-bold text-white transition-[transform,background-color,border-color,color] duration-150 ease-[var(--ease-out)] active:scale-[0.97] active:duration-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber focus-visible:ring-offset-2"
+                      >
+                        Tampilkan semua sumber
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      <Empty
+                        title="Tidak ada hasil"
+                        body="Belum ada komik yang cocok dengan filter ini."
+                      />
+                      {filtered && (
+                        <button
+                          type="button"
+                          onClick={resetFilters}
+                          className="touch-manipulation select-none mt-4 min-h-11 rounded-full bg-brand-amber px-5 py-2.5 text-[13px] font-bold text-white transition-[transform,background-color,border-color,color] duration-150 ease-[var(--ease-out)] active:scale-[0.97] active:duration-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber focus-visible:ring-offset-2"
+                        >
+                          Reset filter
+                        </button>
+                      )}
+                    </>
                   )}
                 </div>
               ) : (
@@ -1163,7 +1335,7 @@ function filtersEqual(a: SearchReturnState['filter'], b: SearchReturnState['filt
  */
 function ResultGrid({ items }: { items: Manga[] }) {
   return (
-    <div className="grid grid-cols-2 gap-2 [&>ul]:contents [&>ul>li]:min-w-0 [&>ul>li>a]:relative [&>ul>li>a]:block [&>ul>li>a>div:first-child]:w-full [&>ul>li>a>div:last-child]:mt-1.5 [&>ul>li>a>div:last-child>p:first-child]:text-[12.5px] [&>ul>li>a>div:last-child>p.font-bold]:absolute [&>ul>li>a>div:last-child>p.font-bold]:left-1 [&>ul>li>a>div:last-child>p.font-bold]:top-1 [&>ul>li>a>div:last-child>p.font-bold]:z-10 [&>ul>li>a>div:last-child>p.font-bold]:m-0 [&>ul>li>a>div:last-child>p.font-bold]:rounded [&>ul>li>a>div:last-child>p.font-bold]:bg-black/70 [&>ul>li>a>div:last-child>p.font-bold]:px-1.5 [&>ul>li>a>div:last-child>p.font-bold]:py-0.5 [&>ul>li>a>div:last-child>p.font-bold]:text-white">
+    <div className="grid grid-cols-2 gap-2 [&>ul]:contents [&>ul>li]:min-w-0 [&>ul>li>a]:relative [&>ul>li>a]:block [&>ul>li>a>div:first-child]:w-full [&>ul>li>a>div:last-child]:mt-1.5 [&>ul>li>a>div:last-child>p:first-child]:text-[12.5px] [&>ul>li>a>div:last-child>p.font-bold]:absolute [&>ul>li>a>div:last-child>p.font-bold]:left-1 [&>ul>li>a>div:last-child>p.font-bold]:top-1 [&>ul>li>a>div:last-child>p.font-bold]:z-10 [&>ul>li>a>div:last-child>p.font-bold]:m-0 [&>ul>li>a>div:last-child>p.font-bold]:max-w-[calc(100%-3rem)] [&>ul>li>a>div:last-child>p.font-bold]:truncate [&>ul>li>a>div:last-child>p.font-bold]:rounded [&>ul>li>a>div:last-child>p.font-bold]:bg-black/70 [&>ul>li>a>div:last-child>p.font-bold]:px-1.5 [&>ul>li>a>div:last-child>p.font-bold]:py-0.5 [&>ul>li>a>div:last-child>p.font-bold]:text-white">
       <ul data-search-results className="flex flex-col gap-2">
         {items.map((m) => (
           <li key={m.id}>
@@ -1175,18 +1347,18 @@ function ResultGrid({ items }: { items: Manga[] }) {
   )
 }
 
-/** Skeleton mengikuti tinggi baris kompak supaya daftar tidak melompat. */
+/** Skeleton mengikuti grid 2 kolom supaya layout HP tidak melompat saat data masuk. */
 function SkeletonCards() {
   return (
-    <ul className="flex flex-col gap-2" aria-hidden="true">
+    <ul className="grid grid-cols-2 gap-2" aria-hidden="true">
       {Array.from({ length: 6 }).map((_, i) => (
         <li
           key={i}
-          className="flex h-[124px] animate-pulse items-center gap-3 rounded-xl border border-ink-800 bg-ink-900 p-2"
+          className="animate-pulse rounded-xl border border-ink-800 bg-ink-900 p-2"
         >
-          <span className="aspect-[2/3] w-[72px] shrink-0 rounded-xl bg-ink-850" />
-          <span className="flex-1 space-y-2">
-            <span className="block h-3 w-3/4 rounded bg-ink-850" />
+          <span className="block aspect-[2/3] w-full rounded-xl bg-ink-850" />
+          <span className="mt-1.5 block space-y-1.5 py-0.5">
+            <span className="block h-3 w-4/5 rounded bg-ink-850" />
             <span className="block h-3 w-1/2 rounded bg-ink-850" />
           </span>
         </li>
@@ -1196,24 +1368,25 @@ function SkeletonCards() {
 }
 
 /**
- * Chip ringkas sumber yang gagal — pengganti banner "⚠ n/5 sumber gagal
- * dimuat". Warna & bentuknya meniru pill kesehatan sumber di TopBar supaya
- * bahasa visualnya sama.
+ * Chip ringkas sumber yang BERHASIL — pengganti banner "⚠ n/5 sumber gagal
+ * dimuat". User ingin kabar baik yang ditampilkan ("4/5 sumber berhasil"),
+ * bukan kabar buruk. Warna & bentuknya meniru pill kesehatan sumber di TopBar
+ * supaya bahasa visualnya sama.
  */
-function FailedSourceChip({ count, total }: { count: number; total: number }) {
+function SourceSuccessChip({ ok, total }: { ok: number; total: number }) {
   // `total` datang dari server (`sources_total`), bukan konstanta di web:
-  // tambah sumber ke-5 di Rust dan chip ini tetap benar tanpa disentuh.
-  const label = total > 0 ? `${count} dari ${total} sumber gagal` : `${count} sumber gagal`
+  // tambah sumber ke-N di Rust dan chip ini tetap benar tanpa disentuh.
+  const label = total > 0 ? `${ok} dari ${total} sumber berhasil` : `${ok} sumber berhasil`
   return (
     <span
       data-source-failed
       role="status"
       aria-label={label}
       title={label}
-      className="inline-flex items-center gap-1 rounded-full bg-warn/12 px-2 py-0.5 text-[11px] font-bold text-warn ring-1 ring-warn/30"
+      className="inline-flex items-center gap-1 rounded-full bg-healthy/12 px-2 py-0.5 text-[11px] font-bold text-healthy ring-1 ring-healthy/30"
     >
-      <span aria-hidden="true">⚠</span>
-      {total > 0 ? `${count}/${total}` : count} sumber gagal
+      <span aria-hidden="true">✓</span>
+      {total > 0 ? `${ok}/${total}` : ok} sumber berhasil
     </span>
   )
 }

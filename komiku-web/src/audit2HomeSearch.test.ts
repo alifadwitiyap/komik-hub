@@ -72,7 +72,7 @@ describe('Kartu katalog audit2: 2:3, judul rata, favorit di cover', () => {
   })
 
   it('heart 44px di sudut cover dan tidak membuka series', () => {
-    expect(homeSrc).toContain('absolute left-0 top-0 z-10 bg-black/55 text-white backdrop-blur-sm')
+    expect(homeSrc).toContain('absolute bottom-0 left-0 z-10 bg-transparent text-white')
     expect(heartSrc).toContain('min-h-11 min-w-11')
     expect(heartSrc).toContain('e.preventDefault()')
     expect(heartSrc).toContain('e.stopPropagation()')
@@ -93,7 +93,7 @@ describe('Search audit2: sheet filter + hasil kompak', () => {
     expect(searchSrc).toContain('aria-label="Filter tipe"')
     expect(searchSrc).toContain('aria-label="Filter status"')
     expect(searchSrc).toContain('aria-label="Filter genre"')
-    expect(searchSrc).toContain('aria-label="Filter sumber"')
+    expect(searchSrc).not.toContain('aria-label="Filter sumber"')
     expect(searchSrc).not.toContain('mt-3 space-y-3 rounded-2xl border border-ink-800 bg-ink-900/60 p-3')
   })
 
@@ -101,7 +101,7 @@ describe('Search audit2: sheet filter + hasil kompak', () => {
     expect(searchSrc).toContain('<ul data-search-results className="flex flex-col gap-2">')
     expect(searchSrc).toContain('<MangaCard manga={m} compact />')
     expect(searchSrc).toContain('min-h-11 min-w-11 shrink-0 touch-manipulation')
-    expect(searchSrc).toContain('h-[124px] animate-pulse')
+    expect(searchSrc).toContain('aspect-[2/3] w-full rounded-xl bg-ink-850')
     expect(searchSrc).not.toContain('grid grid-cols-2 gap-x-3 gap-y-4')
     expect(searchSrc).not.toContain('aspect-[62/82]')
   })

@@ -15,7 +15,7 @@
  */
 
 import { useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useLocation } from 'react-router-dom'
 import {
   USERNAME_RULE,
   accountLink,
@@ -35,6 +35,19 @@ export default function Akun() {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [copied, setCopied] = useState(false)
+  const [claimOutcome, setClaimOutcome] = useState<'created' | 'existing' | null>(null)
+
+  const location = useLocation()
+  const rawFrom = (location.state as { from?: string } | null)?.from
+  const from =
+    typeof rawFrom === 'string' &&
+    rawFrom.startsWith('/') &&
+    !rawFrom.startsWith('//') &&
+    rawFrom !== '/akun' &&
+    !rawFrom.startsWith('/akun?') &&
+    !rawFrom.startsWith('/akun/')
+      ? rawFrom
+      : null
 
   async function submit(e: React.FormEvent) {
     e.preventDefault()
@@ -50,6 +63,7 @@ export default function Akun() {
       // created menentukan arah sinkronisasi di store favorit/progress.
       setUser(res.username, res.created)
       setUsername(res.username)
+      setClaimOutcome(res.created ? 'created' : 'existing')
       setValue('')
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Gagal masuk — coba lagi.')
@@ -61,6 +75,7 @@ export default function Akun() {
   function logout() {
     setUser(null)
     setUsername(null)
+    setClaimOutcome(null)
     setError(null)
   }
 
@@ -69,6 +84,7 @@ export default function Akun() {
   function switchAccount() {
     setUser(null)
     setUsername(null)
+    setClaimOutcome(null)
     setError(null)
     setValue('')
   }
@@ -93,45 +109,80 @@ export default function Akun() {
       </p>
 
       {username === null ? (
-        <form onSubmit={submit} className="rounded-2xl border border-ink-800 bg-ink-900 p-4">
-          <label htmlFor="akun-username" className="mb-2 block text-sm font-medium text-ink-200">
-            Masuk atau daftar
-          </label>
-          <div className="flex gap-2">
-            {/* text-base (16px): cegah auto-zoom iOS saat input difokuskan. */}
-            <input
-              id="akun-username"
-              type="text"
-              value={value}
-              onChange={(e) => setValue(e.target.value)}
-              autoComplete="username"
-              autoCapitalize="none"
-              spellCheck={false}
-              autoCorrect="off"
-              inputMode="text"
-              enterKeyHint="go"
-              placeholder="username"
-              className="min-h-11 min-w-0 flex-1 rounded-xl border border-ink-700 bg-ink-850 px-3 py-2 text-base text-ink-100 outline-none focus:border-brand-amber"
-            />
-            <button
-              type="submit"
-              disabled={busy}
-              className="min-h-11 rounded-xl bg-brand-amber px-4 py-2 text-sm font-semibold text-white transition-opacity active:opacity-80 disabled:opacity-50"
-            >
-              {busy ? '…' : 'Lanjut'}
-            </button>
-          </div>
-          <p className="mt-2 text-[12px] text-ink-500">
-            Belum punya? Ketik nama baru — langsung dibuat. {USERNAME_RULE}.
-          </p>
-          {error && (
-            <p className="mt-2 rounded-xl border border-brand-red/40 bg-brand-red/10 px-3 py-2 text-[12px] text-brand-red">
-              {error}
+        <div>
+          <form onSubmit={submit} className="rounded-2xl border border-ink-800 bg-ink-900 p-4">
+            <label htmlFor="akun-username" className="mb-2 block text-sm font-medium text-ink-200">
+              Masuk atau daftar
+            </label>
+            <div className="flex gap-2">
+              {/* text-base (16px): cegah auto-zoom iOS saat input difokuskan. */}
+              <input
+                id="akun-username"
+                type="text"
+                value={value}
+                onChange={(e) => setValue(e.target.value)}
+                autoComplete="username"
+                autoCapitalize="none"
+                spellCheck={false}
+                autoCorrect="off"
+                inputMode="text"
+                enterKeyHint="go"
+                placeholder="username"
+                className="min-h-11 min-w-0 flex-1 rounded-xl border border-ink-700 bg-ink-850 px-3 py-2 text-base text-ink-100 outline-none focus:border-brand-amber"
+              />
+              <button
+                type="submit"
+                disabled={busy}
+                className="min-h-11 rounded-xl bg-brand-amber px-4 py-2 text-sm font-semibold text-white transition-opacity active:opacity-80 disabled:opacity-50"
+              >
+                {busy ? '…' : 'Lanjut'}
+              </button>
+            </div>
+            <p className="mt-2 text-[12px] text-ink-500">
+              Belum punya? Ketik nama baru — langsung dibuat. {USERNAME_RULE}.
             </p>
+            {error && (
+              <p className="mt-2 rounded-xl border border-brand-red/40 bg-brand-red/10 px-3 py-2 text-[12px] text-brand-red">
+                {error}
+              </p>
+            )}
+          </form>
+          {from && (
+            <Link
+              to={from}
+              className="mt-4 inline-flex min-h-11 w-full items-center justify-center rounded-xl border border-ink-700 px-4 py-2.5 text-sm font-medium text-ink-200 active:bg-ink-850 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber focus-visible:ring-offset-2 sm:w-auto"
+            >
+              ← Kembali ke halaman sebelumnya
+            </Link>
           )}
-        </form>
+        </div>
       ) : (
         <div className="rounded-2xl border border-ink-800 bg-ink-900 p-4">
+          {claimOutcome === 'created' && (
+            <div
+              role="status"
+              aria-live="polite"
+              className="mb-4 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-brand-amber-dim bg-brand-amber/10 px-3 py-2.5 text-[12.5px] text-ink-100"
+            >
+              <span>Akun baru '{username}' berhasil dibuat.</span>
+              <button
+                type="button"
+                onClick={switchAccount}
+                className="min-h-11 shrink-0 rounded-lg px-2 text-[12px] font-semibold text-brand-amber underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber"
+              >
+                Salah ketik? Ganti akun
+              </button>
+            </div>
+          )}
+          {claimOutcome === 'existing' && (
+            <p
+              role="status"
+              aria-live="polite"
+              className="mb-4 rounded-xl border border-ink-700 bg-ink-850 px-3 py-2.5 text-[12.5px] text-ink-200"
+            >
+              Selamat datang kembali, '{username}' — Rak &amp; progres disinkronkan.
+            </p>
+          )}
           <div className="flex items-center gap-3">
             <span className="grid size-10 place-items-center rounded-full bg-ink-850 text-ink-300">
               <IconUser className="size-5" />
@@ -174,6 +225,14 @@ export default function Akun() {
               Keluar
             </button>
           </div>
+          {from && (
+            <Link
+              to={from}
+              className="mt-4 inline-flex min-h-11 w-full items-center justify-center rounded-xl bg-brand-amber px-4 py-2.5 text-sm font-semibold text-white transition-opacity active:opacity-80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber focus-visible:ring-offset-2 sm:w-auto"
+            >
+              ← Kembali ke halaman sebelumnya
+            </Link>
+          )}
           {error && (
             <p className="mt-2 rounded-xl border border-brand-red/40 bg-brand-red/10 px-3 py-2 text-[12px] text-brand-red">
               {error}

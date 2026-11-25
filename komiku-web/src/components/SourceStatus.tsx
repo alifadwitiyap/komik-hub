@@ -43,6 +43,8 @@ export interface SourceStatusProps {
   sourcesTotal?: number
   /** Kalau diberikan, tombol "Coba lagi" dirender. */
   onRetry?: () => void
+  /** Mode ringkas 1 baris tenang (saat daftar chapter sudah tersedia). */
+  compact?: boolean
   className?: string
 }
 
@@ -51,6 +53,7 @@ export function SourceStatus({
   pending = [],
   sourcesTotal,
   onRetry,
+  compact = false,
   className = '',
 }: SourceStatusProps) {
   const hasFailed = failed.length > 0
@@ -68,6 +71,35 @@ export function SourceStatus({
     if (okCount !== null) message += ` — tampil ${okCount} dari ${sourcesTotal} sumber`
   } else {
     message = `Melengkapi hasil dari ${joinNames(pending)}…`
+  }
+
+  if (compact) {
+    const calmMessage = hasPending
+      ? `Melengkapi hasil dari ${joinNames(pending)}…`
+      : message
+    return (
+      <div
+        role="status"
+        aria-live="polite"
+        data-source-status
+        className={`flex items-center gap-1.5 text-[11px] text-ink-400 ${className}`}
+      >
+        {hasPending && <span aria-hidden="true" className="shrink-0">⏳</span>}
+        <span className="min-w-0 truncate">{calmMessage}</span>
+        {onRetry && !hasPending && (
+          <>
+            <span aria-hidden="true" className="shrink-0 text-ink-600">·</span>
+            <button
+              type="button"
+              onClick={onRetry}
+              className="-my-2 inline-flex min-h-11 shrink-0 touch-manipulation items-center rounded px-1.5 text-[11px] font-semibold text-brand-amber transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber [@media(hover:hover)_and_(pointer:fine)]:hover:underline"
+            >
+              Coba lagi
+            </button>
+          </>
+        )}
+      </div>
+    )
   }
 
   return (

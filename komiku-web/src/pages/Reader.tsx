@@ -912,6 +912,33 @@ export default function Reader() {
     })
   }
 
+  const rawSeriesTitle = series?.title?.trim() ?? ''
+  const seriesTitle =
+    rawSeriesTitle && rawSeriesTitle !== activeHandle && rawSeriesTitle !== String(series?.id ?? '')
+      ? rawSeriesTitle
+      : null
+  const chapterTitle = chapter.name
+  const toolbarTitle =
+    seriesTitle && !chapterTitle.toLowerCase().startsWith(seriesTitle.toLowerCase())
+      ? `${seriesTitle} · ${chapterTitle}`
+      : chapterTitle
+
+  const handleShare = () => {
+    const url = window.location.href
+    if (navigator.share) {
+      navigator.share({ title: toolbarTitle, url }).catch(() => {})
+      return
+    }
+    if (navigator.clipboard?.writeText) {
+      navigator.clipboard
+        .writeText(url)
+        .then(() => setToast('Tautan halaman disalin'))
+        .catch(() => setToast('Bagikan: salin URL halaman ini'))
+      return
+    }
+    setToast('Bagikan: salin URL halaman ini')
+  }
+
   return (
     // overflow-x-clip: jaring pengaman. Kalau satu gambar (mis. spread halaman
     // ganda) meluber ke samping, Chrome mobile menganggap halaman lebih lebar
@@ -985,7 +1012,7 @@ export default function Reader() {
       </p>
 
       <ReaderToolbar
-        title={chapter.name}
+        title={toolbarTitle}
         subtitle={pageStatus}
         loadingLabel={loadingImages ? 'Memuat gambar…' : null}
         progress={visiblePageProgress(activePage, images.length)}
@@ -993,7 +1020,7 @@ export default function Reader() {
         onBack={() => navigate(seriesHref(seriesId) ?? '/')}
         titleHref={seriesHref(seriesId)}
         onHome={() => navigate('/')}
-        onShare={() => setToast('Bagikan: salin URL halaman ini')}
+        onShare={handleShare}
         onMore={() => setMenuOpen(true)}
         chip={settings.marathon ? 'Maraton' : null}
         badge={source && source !== 'komiku' ? <SourceBadge source={source} /> : null}
@@ -1190,6 +1217,8 @@ export default function Reader() {
             chrome.show()
           } else autoFS.requestEnter()
         }}
+        onShare={handleShare}
+        onHome={() => navigate('/')}
       />
 
       <ReaderSettingsSheet

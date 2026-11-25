@@ -91,22 +91,14 @@ export default function ChapterPickerSheet({
       el.clientHeight / 2
   }, [open, chapters.length])
 
-  // A11Y MODAL: saat sheet dibuka, fokus pindah KE DALAM sheet (kotak
-  // pencarian) — tanpa ini, Tab keyboard masih jalan ke tombol di belakang
-  // sheet dan screen reader tidak tahu ini dialog. Saat ditutup, fokus
-  // kembali ke elemen yang membuka sheet.
+  // A11Y MODAL: saat sheet dibuka, fokus pindah ke panel dialog (bukan kotak
+  // pencarian agar keyboard virtual HP tidak otomatis terbuka dan menutupi
+  // daftar chapter). Saat ditutup, fokus kembali ke elemen yang membuka sheet.
   useLayoutEffect(() => {
     if (!open) return
-    // activeElement bisa <body> kalau sheet dibuka lewat tap (iOS tidak
-    // memfokuskan <button> saat disentuh). Menyimpan <body> bikin
-    // "kembali ke pemicu" jadi no-op → fokus pembaca layar jatuh ke awal
-    // dokumen. Kalau bukan elemen nyata, jangan diingat.
     const ae = document.activeElement
     const opener = ae instanceof HTMLElement && ae !== document.body ? ae : null
-    // Fokus SINKRON (layout effect, bukan setTimeout): iOS hanya membuka
-    // keyboard kalau focus() terjadi di task yang sama dengan gesture tap.
-    // Dengan setTimeout, keyboard tidak muncul dan sheet "terasa mati".
-    searchRef.current?.focus({ preventScroll: true })
+    panelRef.current?.focus({ preventScroll: true })
     return () => {
       // preventScroll: mengembalikan fokus ke tombol pemicu tidak boleh
       // menggulir halaman (reader sedang menampilkan chapter baru).
@@ -140,7 +132,7 @@ export default function ChapterPickerSheet({
         first.focus()
         return
       }
-      if (e.shiftKey && active === first) {
+      if (e.shiftKey && (active === first || active === panel)) {
         e.preventDefault()
         last.focus()
       } else if (!e.shiftKey && active === last) {
@@ -215,6 +207,7 @@ export default function ChapterPickerSheet({
           jadi sheet bisa lebih tinggi dari layar dan footer-nya ketutup. */}
       <div
         ref={panelRef}
+        tabIndex={-1}
         role="dialog"
         aria-modal="true"
         aria-labelledby="chapter-picker-title"
@@ -222,7 +215,7 @@ export default function ChapterPickerSheet({
         data-chapter-picker
         aria-hidden={!open}
         inert={!open}
-        className={`sheet-panel flex max-h-[85dvh] w-full max-w-md flex-col overflow-hidden rounded-t-2xl border-t border-white/10 bg-night-dark/97 backdrop-blur ${open ? '' : 'sheet-closing'}`}
+        className={`sheet-panel flex max-h-[85dvh] w-full max-w-md flex-col overflow-hidden rounded-t-2xl border-t border-white/10 bg-night-dark/97 backdrop-blur focus:outline-none ${open ? '' : 'sheet-closing'}`}
         onClick={(e) => e.stopPropagation()}
       >
         {/* 44px hit area, visual 36×4px; hanya handle + header yang touch-none. */}

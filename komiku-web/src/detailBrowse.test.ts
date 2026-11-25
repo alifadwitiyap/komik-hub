@@ -63,7 +63,7 @@ describe('search: history 6 chip + trending statis + grid 2 kolom', () => {
   })
 
   it('label trending tidak mengaku data live', () => {
-    expect(searchSrc).toContain('Sedang Ramai Dicari')
+    expect(searchSrc).toContain('Genre Populer')
     expect(searchSrc).not.toContain('Coba cari')
   })
 

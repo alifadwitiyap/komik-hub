@@ -9,6 +9,8 @@ import {
   IconMoonOverSun,
   IconSliders,
   IconExpand,
+  IconShare,
+  IconHouse,
 } from '../icons'
 
 export type CanvasTheme = 'oled' | 'arang' | 'sepia' | 'terang'
@@ -66,11 +68,13 @@ interface ReaderMenuProps {
   onOpenSettings: () => void
   /** Memanggil useAutoFullscreen().requestEnter()/reset() dari halaman. */
   onToggleFullscreen: () => void
+  onShare?: () => void
+  onHome?: () => void
 }
 
 /**
  * Menu reader — enam aksi dalam satu bilah bawah: Mode Baca, Maraton,
- * Putar Otomatis, Perisai Malam, Layar penuh, Preferensi.
+ * Putar Otomatis, Perisai Malam, Layar penuh, Preferensi (+ Bagikan / Ke Beranda).
  */
 export default function ReaderMenu({
   open,
@@ -80,6 +84,8 @@ export default function ReaderMenu({
   onChange,
   onOpenSettings,
   onToggleFullscreen,
+  onShare,
+  onHome,
 }: ReaderMenuProps) {
   const panelRef = useRef<HTMLDivElement>(null)
   const prevRef = useRef<HTMLElement | null>(null)
@@ -171,6 +177,34 @@ export default function ReaderMenu({
       active: false,
       onClick: onOpenSettings,
     },
+    ...(onShare
+      ? [
+          {
+            key: 'share',
+            label: 'Bagikan',
+            icon: <IconShare className="size-5" />,
+            active: false,
+            onClick: () => {
+              onClose()
+              onShare()
+            },
+          },
+        ]
+      : []),
+    ...(onHome
+      ? [
+          {
+            key: 'home',
+            label: 'Ke Beranda',
+            icon: <IconHouse className="size-5" />,
+            active: false,
+            onClick: () => {
+              onClose()
+              onHome()
+            },
+          },
+        ]
+      : []),
   ]
   // z-50, setara sheet preferensi/pemilih chapter: kontrol halaman
   // ("Muat ulang"/"Coba lagi") di-portal ke <body> dengan z-40 dan selalu

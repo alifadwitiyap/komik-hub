@@ -15,6 +15,8 @@
  * Akses localStorage/sessionStorage dibungkus try/catch (mode private).
  */
 
+import type { Manga } from './types'
+
 const KEY = 'komik-cari-return'
 
 export type SearchReturnFilter = {
@@ -30,6 +32,8 @@ export type SearchReturnFilter = {
 export interface SearchReturnState {
   query: string
   filter: SearchReturnFilter
+  /** Halaman pencarian aktif (> 1); tidak disimpan bila <= 1. */
+  page?: number
   /** Posisi scroll halaman Cari saat kartu diklik. */
   scrollY: number
   /** URL detail yang dituju — dipakai detail untuk cek cocok tidak. */
@@ -102,6 +106,9 @@ export function clearSearchReturn(): void {
 export function searchReturnQuery(payload: SearchReturnState): string {
   const p = new URLSearchParams()
   if (payload.query) p.set('q', payload.query)
+  if (typeof payload.page === 'number' && Number.isSafeInteger(payload.page) && payload.page > 1) {
+    p.set('page', String(payload.page))
+  }
   for (const [key, value] of Object.entries(payload.filter)) {
     const isDefault =
       (key === 'source' && value === 'semua') || (key === 'sort' && value === 'terbaru')
@@ -141,6 +148,14 @@ function parse(raw: string): SearchReturnState | null {
         : typeof rawMin === 'number' && Number.isFinite(rawMin) && rawMin > 0
           ? String(Math.trunc(rawMin))
           : ''
+    const rawPage = (v as { page?: unknown }).page
+    const pageNum =
+      typeof rawPage === 'number'
+        ? rawPage
+        : typeof rawPage === 'string' && /^\d+$/.test(rawPage)
+          ? Number(rawPage)
+          : 0
+    const page = Number.isSafeInteger(pageNum) && pageNum > 1 ? pageNum : undefined
     return {
       query: v.query,
       filter: {
@@ -152,10 +167,62 @@ function parse(raw: string): SearchReturnState | null {
         // Kunci optional: payload lama tanpa min_ch tetap utuh saat dipulihkan.
         ...(minCh ? { min_ch: minCh } : {}),
       },
+      ...(page ? { page } : {}),
       scrollY: typeof v.scrollY === 'number' && Number.isFinite(v.scrollY) ? v.scrollY : 0,
       href: typeof v.href === 'string' ? v.href : '',
     }
   } catch {
     return null
   }
+}
+
+export interface ExploreCacheEntry {
+  items: Manga[]
+  listPage: number
+  hasMore: boolean
+  listFailed: number
+  listSourcesTotal: number
+}
+
+const EXPLORE_CACHE_MAX = 5
+const exploreCache = new Map<string, ExploreCacheEntry>()
+
+export function exploreCacheKey(parts: {
+  tipe: string | null
+  status: string | null
+  genre: string | null
+  src: string | null
+  srt: string | null
+  minCh: number | null
+}): string {
+  return [
+    parts.tipe ?? '',
+    parts.status ?? '',
+    parts.genre ?? '',
+    parts.src ?? '',
+    parts.srt ?? '',
+    parts.minCh ?? '',
+  ].join('|')
+}
+
+export function readExploreCache(key: string): ExploreCacheEntry | null {
+  const entry = exploreCache.get(key)
+  if (!entry) return null
+  exploreCache.delete(key)
+  exploreCache.set(key, entry)
+  return entry
+}
+
+export function writeExploreCache(key: string, entry: ExploreCacheEntry): void {
+  if (exploreCache.has(key)) exploreCache.delete(key)
+  exploreCache.set(key, entry)
+  while (exploreCache.size > EXPLORE_CACHE_MAX) {
+    const oldest = exploreCache.keys().next().value
+    if (oldest === undefined) break
+    exploreCache.delete(oldest)
+  }
+}
+
+export function deleteExploreCache(key: string): void {
+  exploreCache.delete(key)
 }

@@ -128,7 +128,7 @@ export default function QuickActionSheet({
   if (!mounted) return null
   return (
     <div
-      className={`sheet-backdrop fixed inset-0 z-30 flex items-end justify-center bg-black/60 ${open ? '' : 'sheet-backdrop-closing'}`}
+      className={`sheet-backdrop fixed inset-0 z-50 flex items-end justify-center bg-black/60 ${open ? '' : 'sheet-backdrop-closing'}`}
       onClick={onClose}
     >
       <div

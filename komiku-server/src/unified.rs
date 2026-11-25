@@ -137,6 +137,7 @@ pub struct UnifiedState {
     /// mahal dan sudah punya semaphore sendiri).
     pub chapter_gates: ChapterGates,
     pub chapter_cache: std::sync::Mutex<ChapterCache>,
+    pub synopsis_cache: std::sync::Mutex<std::collections::HashMap<String, Option<String>>>,
     pub image_client: reqwest::Client,
     pub download_store: anyhow::Result<Arc<DownloadStore>, String>,
 }
@@ -161,6 +162,7 @@ impl UnifiedState {
             similar_gates: std::sync::Mutex::new(std::collections::HashMap::new()),
             chapter_gates: ChapterGates::default(),
             chapter_cache: std::sync::Mutex::new(std::collections::HashMap::new()),
+            synopsis_cache: std::sync::Mutex::new(std::collections::HashMap::new()),
             image_client: reqwest::Client::builder()
                 .user_agent(UA_MOBILE)
                 .pool_idle_timeout(std::time::Duration::from_secs(90))
@@ -215,7 +217,7 @@ pub async fn warm_up(state: std::sync::Arc<UnifiedState>) {
     }
 
     let t1 = std::time::Instant::now();
-    let m = state.aggregator.latest(1, 48, None, SortMode::Latest).await;
+    let m = state.aggregator.latest(1, 20, None, SortMode::Latest).await;
     tracing::info!(
         "warm-up latest: {} item dalam {:?}",
         m.items.len(),
@@ -226,7 +228,7 @@ pub async fn warm_up(state: std::sync::Arc<UnifiedState>) {
     // latest sebelum warm-up ada. Cache disk menahan hasil lintas restart,
     // tapi warm-up ini menutup kasus disk kosong pertama kali.
     let t2 = std::time::Instant::now();
-    let p = state.aggregator.popular(1, 48, None, SortMode::Latest).await;
+    let p = state.aggregator.popular(1, 20, None, SortMode::Latest).await;
     tracing::info!(
         "warm-up popular: {} item dalam {:?}",
         p.items.len(),
@@ -271,6 +273,12 @@ pub async fn warm_up(state: std::sync::Arc<UnifiedState>) {
 
 // ------------------------------------------------------------------ DTO
 
+#[derive(serde::Serialize, Clone, PartialEq, Eq, Debug)]
+pub struct GenreChipOut {
+    pub id: String,
+    pub name: String,
+}
+
 /// Kartu manga lintas sumber. Persis kontrak frontend.
 ///
 /// `title_key` DITAMBAH (kontrak lane rak-buku): judul ternormalisasi supaya
@@ -291,6 +299,10 @@ pub struct MangaOut {
     pub last_chapter: Option<String>,
     pub updated_at: Option<i64>,
     pub url: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub synopsis: Option<String>,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub genre: Vec<GenreChipOut>,
 }
 
 impl From<&Manga> for MangaOut {
@@ -309,6 +321,8 @@ impl From<&Manga> for MangaOut {
             last_chapter: m.last_chapter.clone(),
             updated_at: m.updated_at,
             url: m.url.clone(),
+            synopsis: None,
+            genre: Vec::new(),
         }
     }
 }
@@ -391,7 +405,7 @@ impl From<komik_core::aggregator::Merged<Manga>> for ListOut {
 #[derive(Deserialize)]
 pub struct ListQuery {
     page: Option<u32>,
-    /// batas jumlah item (default 48; 0 = tanpa batas)
+    /// batas jumlah item (default 20; 0 = tanpa batas)
     limit: Option<u32>,
     /// filter sumber tunggal (komiku|mangaku|shinigami|kiryuu); kosong = semua
     source: Option<String>,
@@ -422,7 +436,7 @@ pub struct CatalogueQuery {
 pub struct SearchQuery {
     q: Option<String>,
     page: Option<u32>,
-    /// batas jumlah item (default 48; 0 = tanpa batas)
+    /// batas jumlah item (default 20; 0 = tanpa batas)
     limit: Option<u32>,
     /// filter tipe server-side (Manga|Manhwa|Manhua, case-insensitive)
     tipe: Option<String>,
@@ -488,6 +502,197 @@ fn norm_min_ch(raw: Option<u32>) -> u32 {
 /// internal — `limit` respons tetap menghormati parameter client.
 const FILTER_FANOUT_CAP: u32 = 240;
 
+/// Tier relevansi judul terhadap query pencarian (lebih kecil = lebih relevan).
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug)]
+enum SearchMatchTier {
+    Exact,
+    Phrase,
+    AllTokens,
+    Partial,
+    NoMatch,
+}
+
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+struct SearchMatchScore {
+    tier: SearchMatchTier,
+    is_prefix: bool,
+    matched_tokens: usize,
+}
+
+/// Normalisasi judul item dengan `title_key` (fallback ke `m.title_key` jika `m.title` kosong).
+fn normalized_title_key(m: &Manga) -> String {
+    if !m.title.is_empty() {
+        title_key(&m.title)
+    } else {
+        title_key(&m.title_key)
+    }
+}
+
+/// Normalisasi query menjadi frasa spasi-tunggal dan daftar token unik (urutan dipertahankan).
+fn query_phrase_and_tokens(query: &str) -> (String, Vec<String>) {
+    let phrase = title_key(query);
+    let mut seen = std::collections::HashSet::new();
+    let mut tokens = Vec::new();
+    for tok in phrase.split_whitespace() {
+        if seen.insert(tok.to_string()) {
+            tokens.push(tok.to_string());
+        }
+    }
+    if tokens.len() == 1 {
+        (tokens[0].clone(), tokens)
+    } else {
+        (phrase, tokens)
+    }
+}
+
+/// Cocokkan satu token query terhadap satu kata judul pada batas awal kata:
+/// cocok persis, atau awalan kata untuk token >= 3 karakter.
+fn token_matches_word(word: &str, tok: &str) -> bool {
+    word == tok || (tok.len() >= 3 && word.starts_with(tok))
+}
+
+/// Cek apakah `phrase` muncul di `haystack` pada batas kata awal (dan akhir, kecuali
+/// `allow_end_prefix` mengizinkan akhiran kata untuk token terakhir >= 3 karakter).
+fn contains_phrase_at_word_boundary(
+    haystack: &str,
+    phrase: &str,
+    allow_end_prefix: bool,
+) -> bool {
+    if phrase.is_empty() {
+        return false;
+    }
+    let bytes = haystack.as_bytes();
+    for (start, matched) in haystack.match_indices(phrase) {
+        let start_ok = start == 0 || bytes[start - 1] == b' ';
+        let end = start + matched.len();
+        let end_ok = end == haystack.len() || bytes[end] == b' ' || allow_end_prefix;
+        if start_ok && end_ok {
+            return true;
+        }
+    }
+    false
+}
+
+/// Cek apakah `haystack` diawali `phrase` pada batas kata.
+fn starts_with_phrase_at_word_boundary(
+    haystack: &str,
+    phrase: &str,
+    allow_end_prefix: bool,
+) -> bool {
+    if phrase.is_empty() || !haystack.starts_with(phrase) {
+        return false;
+    }
+    let end = phrase.len();
+    end == haystack.len() || haystack.as_bytes()[end] == b' ' || allow_end_prefix
+}
+
+/// Hitung skor relevansi judul ternormalisasi terhadap `phrase` dan `tokens`.
+fn score_search_title(
+    norm_title: &str,
+    phrase: &str,
+    tokens: &[String],
+) -> SearchMatchScore {
+    if norm_title.is_empty() || tokens.is_empty() {
+        return SearchMatchScore {
+            tier: SearchMatchTier::NoMatch,
+            is_prefix: false,
+            matched_tokens: 0,
+        };
+    }
+    if norm_title == phrase {
+        return SearchMatchScore {
+            tier: SearchMatchTier::Exact,
+            is_prefix: true,
+            matched_tokens: tokens.len(),
+        };
+    }
+    let allow_end_prefix = phrase.rsplit(' ').next().map(str::len).unwrap_or(0) >= 3;
+    if contains_phrase_at_word_boundary(norm_title, phrase, allow_end_prefix) {
+        return SearchMatchScore {
+            tier: SearchMatchTier::Phrase,
+            is_prefix: starts_with_phrase_at_word_boundary(norm_title, phrase, allow_end_prefix),
+            matched_tokens: tokens.len(),
+        };
+    }
+
+    let title_words: Vec<&str> = norm_title.split_whitespace().collect();
+    let matched_tokens = tokens
+        .iter()
+        .filter(|tok| title_words.iter().any(|w| token_matches_word(w, tok)))
+        .count();
+
+    let tier = if matched_tokens == tokens.len() {
+        SearchMatchTier::AllTokens
+    } else if matched_tokens > 0 {
+        SearchMatchTier::Partial
+    } else {
+        SearchMatchTier::NoMatch
+    };
+
+    SearchMatchScore {
+        tier,
+        is_prefix: false,
+        matched_tokens,
+    }
+}
+
+/// Tie-break hasil pencarian: `updated_at` terbaru dulu (`None` di bawah),
+/// lalu urutan `SOURCE_PRIORITY`.
+fn search_tiebreak_cmp(a: &Manga, b: &Manga) -> std::cmp::Ordering {
+    match (a.updated_at, b.updated_at) {
+        (Some(x), Some(y)) if x != y => return y.cmp(&x),
+        (Some(_), None) => return std::cmp::Ordering::Less,
+        (None, Some(_)) => return std::cmp::Ordering::Greater,
+        _ => {}
+    }
+    let prio = |m: &Manga| {
+        komik_core::model::SOURCE_PRIORITY
+            .iter()
+            .position(|p| *p == m.source.as_str())
+            .unwrap_or(usize::MAX)
+    };
+    prio(a).cmp(&prio(b))
+}
+
+/// Urutkan dan saring noise pada hasil pencarian:
+/// - Query multi-kata (>= 2 token): bila ada kecocokan Exact/Phrase/AllTokens,
+///   buang Partial & NoMatch agar judul acak yang hanya cocok 1 kata/substring tidak membanjiri hasil.
+/// - Query 1 kata: bila ada kecocokan non-NoMatch, buang NoMatch (dan noise substring tengah kata).
+/// - Fallback aman: bila tidak ada hasil kuat (mis. typo), pertahankan seluruh hasil sumber apa adanya.
+fn rank_and_filter_search_results(items: Vec<Manga>, query: &str) -> Vec<Manga> {
+    let (phrase, tokens) = query_phrase_and_tokens(query);
+    if tokens.is_empty() {
+        return items;
+    }
+
+    let mut scored: Vec<(Manga, SearchMatchScore)> = items
+        .into_iter()
+        .map(|m| {
+            let norm = normalized_title_key(&m);
+            let score = score_search_title(&norm, &phrase, &tokens);
+            (m, score)
+        })
+        .collect();
+
+    if tokens.len() >= 2 {
+        if scored.iter().any(|(_, s)| s.tier <= SearchMatchTier::AllTokens) {
+            scored.retain(|(_, s)| s.tier <= SearchMatchTier::AllTokens);
+        }
+    } else if scored.iter().any(|(_, s)| s.tier != SearchMatchTier::NoMatch) {
+        scored.retain(|(_, s)| s.tier != SearchMatchTier::NoMatch);
+    }
+
+    scored.sort_by(|(a, sa), (b, sb)| {
+        sa.tier
+            .cmp(&sb.tier)
+            .then_with(|| sb.is_prefix.cmp(&sa.is_prefix))
+            .then_with(|| sb.matched_tokens.cmp(&sa.matched_tokens))
+            .then_with(|| search_tiebreak_cmp(a, b))
+    });
+
+    scored.into_iter().map(|(m, _)| m).collect()
+}
+
 /// Paketkan hasil ke `ListOut` SETELAH rank (kalau ada kueri) + filter
 /// tipe/status, lalu potong ke `limit` yang diminta client. `max` = cap
 /// hilang: `None` = "semua yang lolos". Jumlah item yang dikembalikan JUJUR
@@ -502,16 +707,16 @@ fn list_out_filtered(
     max: Option<usize>,
 ) -> ListOut {
     // Jumlah item SEBELUM filter relevansi. Dipakai untuk `has_more`: setelah
-    // `rank_by_query` membuang NoMatch, `items.len()` menyusut dan halaman bisa
+    // filter relevansi membuang noise/NoMatch, `items.len()` menyusut dan halaman bisa
     // terlihat "terakhir" padahal upstream masih punya halaman berikutnya
     // (terukur: "one piece" hal.1 = 27 item mentah -> 15 relevan; tanpa ini
     // tombol "Berikutnya" mati di halaman 1 dan hal.2 tak pernah terjangkau).
     let pre_filter_len = merged.items.len();
-    // rank_by_query dengan kueri kosong = no-op (urut recency dari core).
+    // Query kosong = no-op (urut recency dari core).
     // Sort diterapkan SETELAH rank relevansi supaya `?sort=rating` tidak
     // ditimpa urutan tier relevansi.
     let items: Vec<Manga> = match query {
-        Some(q) => komik_core::aggregator::rank_by_query(merged.items, q),
+        Some(q) => rank_and_filter_search_results(merged.items, q),
         None => merged.items,
     }
     .into_iter()
@@ -622,7 +827,7 @@ async fn u_search(
     let source = norm_source(q.source.as_deref());
     let sort = SortMode::parse(q.sort.as_deref());
     let page = q.page.unwrap_or(1).max(1);
-    let limit = q.limit.unwrap_or(48);
+    let limit = q.limit.unwrap_or(20);
     let min_ch = norm_min_ch(q.min_ch);
     let key = search_key(&query, genre.as_deref(), page, limit, source, sort, min_ch);
     if let Some(hit) = search_cache_get(&state.search_cache, &key) {
@@ -718,7 +923,7 @@ async fn u_catalogue(
         .aggregator
         .list(genre, q.page.unwrap_or(1).max(1), FILTER_FANOUT_CAP, source, sort)
         .await;
-    let limit = q.limit.unwrap_or(48);
+    let limit = q.limit.unwrap_or(20);
     let min_ch = norm_min_ch(q.min_ch);
     Ok(crate::routes::json_with_etag(
         &list_out_filtered(
@@ -741,12 +946,12 @@ async fn u_popular(State(state): State<Arc<crate::routes::AppState>>, Query(q): 
     let sort = SortMode::parse(q.sort.as_deref());
     let merged = state
         .aggregator
-        .popular(q.page.unwrap_or(1).max(1), q.limit.unwrap_or(48), source, sort)
+        .popular(q.page.unwrap_or(1).max(1), q.limit.unwrap_or(20), source, sort)
         .await;
     let mut out: ListOut = merged.into();
     // has_more jujur (sama seperti u_latest): hasil penuh = limit → masih ada
     // halaman berikutnya. `From<Merged>` hardcode false.
-    let limit = q.limit.unwrap_or(48) as usize;
+    let limit = q.limit.unwrap_or(20) as usize;
     out.has_more = limit > 0 && out.items.len() >= limit;
     crate::routes::json_with_etag(&out, "public, max-age=15", crate::routes::if_none_match(&headers))
 }
@@ -757,12 +962,12 @@ async fn u_latest(State(state): State<Arc<crate::routes::AppState>>, Query(q): Q
     let sort = SortMode::parse(q.sort.as_deref());
     let merged = state
         .aggregator
-        .latest(q.page.unwrap_or(1).max(1), q.limit.unwrap_or(48), source, sort)
+        .latest(q.page.unwrap_or(1).max(1), q.limit.unwrap_or(20), source, sort)
         .await;
     let mut out: ListOut = merged.into();
     // has_more jujur: kalau hasil penuh = limit, kemungkinan masih ada halaman
     // berikutnya (infinite-scroll butuh ini; `From<Merged>` hardcode false).
-    let limit = q.limit.unwrap_or(48) as usize;
+    let limit = q.limit.unwrap_or(20) as usize;
     out.has_more = limit > 0 && out.items.len() >= limit;
     crate::routes::json_with_etag(&out, "public, max-age=15", crate::routes::if_none_match(&headers))
 }
@@ -1363,13 +1568,126 @@ where
     fanout().await
 }
 
+fn genre_slug(name: &str) -> String {
+    let mut slug = String::with_capacity(name.len());
+    let mut prev_dash = false;
+    for ch in name.trim().to_lowercase().chars() {
+        if ch.is_ascii_alphanumeric() {
+            slug.push(ch);
+            prev_dash = false;
+        } else if !prev_dash && !slug.is_empty() {
+            slug.push('-');
+            prev_dash = true;
+        }
+    }
+    while slug.ends_with('-') {
+        slug.pop();
+    }
+    slug
+}
+
+fn manga_genre_chips(genres: &[String]) -> Vec<GenreChipOut> {
+    let mut seen = std::collections::HashSet::new();
+    let mut out = Vec::new();
+    for raw in genres {
+        let name = raw.trim();
+        if name.is_empty() {
+            continue;
+        }
+        let id = genre_slug(name);
+        if id.is_empty() || !seen.insert(id.clone()) {
+            continue;
+        }
+        out.push(GenreChipOut {
+            id,
+            name: name.to_string(),
+        });
+    }
+    out
+}
+
+fn extract_komiku_synopsis(raw: &Value) -> Option<String> {
+    let series = raw.get("series")?;
+    if let Some(s) = series.get("synopsis").and_then(Value::as_str) {
+        let trimmed = s.trim();
+        if !trimmed.is_empty() && trimmed != "-" {
+            return Some(trimmed.to_string());
+        }
+    }
+    if let Some(arr) = series.get("summary").and_then(Value::as_array) {
+        let joined: Vec<&str> = arr
+            .iter()
+            .filter_map(Value::as_str)
+            .map(str::trim)
+            .filter(|s| !s.is_empty() && *s != "-")
+            .collect();
+        if !joined.is_empty() {
+            return Some(joined.join("\n\n"));
+        }
+    }
+    None
+}
+
+fn komiku_id_from_handle_or_merged(
+    handle: &str,
+    merged: Option<&komik_core::aggregator::MergedSeries>,
+) -> Option<i64> {
+    if let Some(id) = handle.strip_prefix("komiku:").and_then(|s| s.parse::<i64>().ok()) {
+        return Some(id);
+    }
+    let m = merged?;
+    if m.manga.source.as_str() == "komiku" {
+        if let Ok(id) = m.manga.native_id.parse::<i64>() {
+            return Some(id);
+        }
+    }
+    m.chapters
+        .iter()
+        .find(|c| c.source.as_str() == "komiku")
+        .and_then(|c| c.handle.strip_prefix("komiku:"))
+        .and_then(|s| s.parse::<i64>().ok())
+}
+
+fn synopsis_cache_read(state: &UnifiedState, key: &str) -> Option<Option<String>> {
+    state
+        .synopsis_cache
+        .lock()
+        .ok()
+        .and_then(|g| g.get(key).cloned())
+}
+
+async fn fetch_komiku_synopsis_cached(state: &UnifiedState, id: i64) -> Option<String> {
+    let key = format!("komiku:{id}");
+    if let Some(cached) = synopsis_cache_read(state, &key) {
+        return cached;
+    }
+    let Ok(Ok(raw)) =
+        tokio::time::timeout(std::time::Duration::from_millis(1800), crate::api::series(id)).await
+    else {
+        return None;
+    };
+    let syn = extract_komiku_synopsis(&raw);
+    if let Ok(mut guard) = state.synopsis_cache.lock() {
+        if guard.len() >= SERIES_CACHE_MAX && !guard.contains_key(&key) {
+            if let Some(old) = guard.keys().next().cloned() {
+                guard.remove(&old);
+            }
+        }
+        guard.insert(key, syn.clone());
+    }
+    syn
+}
+
 /// Bentuk JSON final respons series dari hasil union (dipakai jalur inline
 /// dan refresh latar SWR — satu sumber kebenaran, tak ada duplikasi logika).
 fn build_series_json(
     merged: &komik_core::aggregator::MergedSeries,
     pending: &[String],
+    synopsis: Option<String>,
 ) -> serde_json::Value {
-    let manga = MangaOut::from(&merged.manga);
+    let mut manga = MangaOut::from(&merged.manga);
+    manga.genre = manga_genre_chips(&merged.manga.genres);
+    manga.synopsis = synopsis;
     let chapters: Vec<ChapterRow> = merged.chapters.iter().map(ChapterRow::from).collect();
     json!({
         "manga": manga,
@@ -1403,7 +1721,8 @@ async fn compute_series(
     handle: &str,
     last_source: Option<&str>,
 ) -> Result<serde_json::Value, AppError> {
-    let merged = match tokio::time::timeout(
+    let direct_komiku_id = komiku_id_from_handle_or_merged(handle, None);
+    let series_fut = tokio::time::timeout(
         UNIFIED_REQUEST_BUDGET,
         state.aggregator.series_merged(
             handle,
@@ -1411,13 +1730,25 @@ async fn compute_series(
             None,
             last_source,
         ),
-    )
-    .await
-    {
+    );
+    let (series_res, mut synopsis) = if let Some(id) = direct_komiku_id {
+        let (r, syn) = tokio::join!(series_fut, fetch_komiku_synopsis_cached(state, id));
+        (r, syn)
+    } else {
+        (series_fut.await, None)
+    };
+    let merged = match series_res {
         Ok(r) => r.map_err(classify_core_err)?,
         Err(_) => return Err(budget_err("series")),
     };
-    Ok(build_series_json(&merged, &[]))
+    if synopsis.is_none() {
+        if let Some(id) = komiku_id_from_handle_or_merged(handle, Some(&merged)) {
+            if Some(id) != direct_komiku_id {
+                synopsis = fetch_komiku_synopsis_cached(state, id).await;
+            }
+        }
+    }
+    Ok(build_series_json(&merged, &[], synopsis))
 }
 
 /// Versi dua-fase `compute_series`: sajikan manga + daftar chapter SUMBER
@@ -1428,7 +1759,8 @@ async fn compute_series_dua_fase(
     handle: &str,
     last_source: Option<&str>,
 ) -> Result<serde_json::Value, AppError> {
-    let (merged, pending) = match tokio::time::timeout(
+    let direct_komiku_id = komiku_id_from_handle_or_merged(handle, None);
+    let series_fut = tokio::time::timeout(
         UNIFIED_REQUEST_BUDGET,
         state.aggregator.series_dua_fase(
             handle,
@@ -1436,14 +1768,30 @@ async fn compute_series_dua_fase(
             None,
             last_source,
         ),
-    )
-    .await
-    {
+    );
+    let (series_res, mut synopsis) = if let Some(id) = direct_komiku_id {
+        let (r, syn) = tokio::join!(series_fut, fetch_komiku_synopsis_cached(state, id));
+        (r, syn)
+    } else {
+        (series_fut.await, None)
+    };
+    let (merged, pending) = match series_res {
         Ok(r) => r.map_err(classify_core_err)?,
         Err(_) => return Err(budget_err("series")),
     };
     let pending: Vec<String> = pending.iter().map(|s| s.as_str().to_string()).collect();
-    Ok(build_series_json(&merged, &pending))
+    if synopsis.is_none() {
+        if let Some(id) = komiku_id_from_handle_or_merged(handle, Some(&merged)) {
+            if Some(id) != direct_komiku_id {
+                if pending.is_empty() {
+                    synopsis = fetch_komiku_synopsis_cached(state, id).await;
+                } else {
+                    synopsis = synopsis_cache_read(state, &format!("komiku:{id}")).flatten();
+                }
+            }
+        }
+    }
+    Ok(build_series_json(&merged, &pending, synopsis))
 }
 
 /// Jalankan SATU refresh latar per handle (single-flight): ambil gerbang,
@@ -2970,5 +3318,167 @@ mod tests {
         assert_eq!(s.available_permits(), MAX_CONCURRENT_PDF);
         let _p = s.acquire().await.expect("semaphore tidak boleh tertutup");
         assert_eq!(s.available_permits(), MAX_CONCURRENT_PDF - 1);
+    }
+
+    // ----------------------------------------- relevansi pencarian multi-kata
+
+    fn search_sample(id: &str, title: &str, updated_at: Option<i64>) -> Manga {
+        let mut m = komik_core::model::Manga::new(
+            komik_core::model::SourceId::from("komiku"),
+            id,
+            title,
+        );
+        m.updated_at = updated_at;
+        m
+    }
+
+    #[test]
+    fn search_multi_kata_one_piece_prioritas_dan_saring_noise() {
+        let items = vec![
+            search_sample("chaebol", "I Alone Am the True Chaebol", Some(9_000)),
+            search_sample("shamoney", "Shamoneyism", Some(8_500)),
+            search_sample("punch", "One Punch Man", Some(8_000)),
+            search_sample("cake", "Piece of Cake", Some(7_500)),
+            search_sample("all_tokens", "The Piece of One", Some(7_000)),
+            search_sample("mid_phrase", "Episode of One Piece", Some(6_500)),
+            search_sample("academy", "One Piece Academy", Some(5_000)),
+            search_sample("ace", "One Piece: Ace Story", Some(6_000)),
+            search_sample("exact", "One Piece", Some(1_000)),
+        ];
+
+        let ranked = rank_and_filter_search_results(items.clone(), "one piece");
+        let ids: Vec<&str> = ranked.iter().map(|m| m.native_id.as_str()).collect();
+        assert_eq!(
+            ids,
+            vec!["exact", "ace", "academy", "mid_phrase", "all_tokens"]
+        );
+
+        let merged = komik_core::aggregator::Merged {
+            items,
+            failures: vec![],
+            sources_total: 4,
+            sources_ok: 4,
+            from_cache: false,
+        };
+        let out = list_out_filtered(
+            merged,
+            Some("  ONE   Piece! "),
+            None,
+            None,
+            0,
+            SortMode::Latest,
+            Some(20),
+        );
+        let out_ids: Vec<&str> = out.items.iter().map(|m| m.native_id.as_str()).collect();
+        assert_eq!(
+            out_ids,
+            vec!["exact", "ace", "academy", "mid_phrase", "all_tokens"]
+        );
+    }
+
+    #[test]
+    fn search_satu_kata_tetap_bekerja_dan_buang_substring_noise() {
+        let one_items = vec![
+            search_sample("chaebol", "I Alone Am the True Chaebol", Some(9_000)),
+            search_sample("shamoney", "Shamoneyism", Some(8_500)),
+            search_sample("the_one", "The One", Some(7_000)),
+            search_sample("one_piece", "One Piece", Some(6_000)),
+            search_sample("exact", "One", Some(1_000)),
+        ];
+        let one_ranked = rank_and_filter_search_results(one_items, "one");
+        let one_ids: Vec<&str> = one_ranked.iter().map(|m| m.native_id.as_str()).collect();
+        assert_eq!(one_ids, vec!["exact", "one_piece", "the_one"]);
+
+        let naruto_items = vec![
+            search_sample("unrelated", "Bleach", Some(9_000)),
+            search_sample("boruto", "Boruto: Naruto Next Generations", Some(8_000)),
+            search_sample("shippuden", "Naruto Shippuden", Some(7_000)),
+            search_sample("naruto", "Naruto", Some(1_000)),
+        ];
+        let naruto_ranked = rank_and_filter_search_results(naruto_items, "naruto");
+        let naruto_ids: Vec<&str> = naruto_ranked.iter().map(|m| m.native_id.as_str()).collect();
+        assert_eq!(naruto_ids, vec!["naruto", "shippuden", "boruto"]);
+    }
+
+    #[test]
+    fn search_multi_kata_fallback_typo_tidak_kosong() {
+        let partial_typo_items = vec![
+            search_sample("shamoney", "Shamoneyism", Some(9_000)),
+            search_sample("exact", "One Piece", Some(1_000)),
+            search_sample("ace", "One Piece: Ace Story", Some(2_000)),
+        ];
+        let ranked_partial = rank_and_filter_search_results(partial_typo_items, "one peice");
+        let partial_ids: Vec<&str> = ranked_partial.iter().map(|m| m.native_id.as_str()).collect();
+        assert_eq!(partial_ids, vec!["ace", "exact", "shamoney"]);
+
+        let full_typo_items = vec![
+            search_sample("exact", "One Piece", Some(2_000)),
+            search_sample("academy", "One Piece Academy", Some(1_000)),
+        ];
+        let ranked_full = rank_and_filter_search_results(full_typo_items, "wan pis");
+        assert_eq!(ranked_full.len(), 2);
+    }
+
+    #[test]
+    fn series_detail_genre_chips_dan_synopsis() {
+        assert_eq!(genre_slug("Slice of Life"), "slice-of-life");
+        assert_eq!(genre_slug("Boys' Love"), "boys-love");
+        let chips = manga_genre_chips(&[
+            "Action".into(),
+            "Slice of Life".into(),
+            "Action".into(),
+            "  ".into(),
+        ]);
+        assert_eq!(
+            chips,
+            vec![
+                GenreChipOut {
+                    id: "action".into(),
+                    name: "Action".into(),
+                },
+                GenreChipOut {
+                    id: "slice-of-life".into(),
+                    name: "Slice of Life".into(),
+                },
+            ]
+        );
+
+        let raw_syn = serde_json::json!({
+            "series": { "synopsis": "  Cerita bajak laut.  " }
+        });
+        assert_eq!(
+            extract_komiku_synopsis(&raw_syn).as_deref(),
+            Some("Cerita bajak laut.")
+        );
+        let raw_sum = serde_json::json!({
+            "series": { "synopsis": "-", "summary": ["Paragraf 1", "Paragraf 2"] }
+        });
+        assert_eq!(
+            extract_komiku_synopsis(&raw_sum).as_deref(),
+            Some("Paragraf 1\n\nParagraf 2")
+        );
+
+        let mut manga = komik_core::model::Manga::new(
+            komik_core::model::SourceId::from("komiku"),
+            "6426",
+            "One Piece",
+        );
+        manga.genres = vec!["Action".into()];
+        let merged = komik_core::aggregator::MergedSeries {
+            manga,
+            chapters: vec![],
+            failed: vec![],
+            from_cache: false,
+            representative_source: None,
+        };
+        let with_meta = build_series_json(&merged, &[], Some("Sinopsis".into()));
+        assert_eq!(with_meta["manga"]["synopsis"], "Sinopsis");
+        assert_eq!(with_meta["manga"]["genre"][0]["id"], "action");
+        assert_eq!(with_meta["manga"]["genre"][0]["name"], "Action");
+
+        let bare = MangaOut::from(&merged.manga);
+        let bare_json = serde_json::to_value(bare).unwrap();
+        assert!(bare_json.get("synopsis").is_none());
+        assert!(bare_json.get("genre").is_none());
     }
 }

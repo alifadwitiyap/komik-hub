@@ -95,6 +95,7 @@ export default function Rak() {
   const [flash, setFlash] = useState<string | null>(flashFromNav)
   const [history, setHistory] = useState(() => rakStore.listHistory())
   const [favorites, setFavorites] = useState(() => rakStore.listFavorites())
+  const [tabsAtEnd, setTabsAtEnd] = useState(false)
   const activeRuns = useActiveRunCount()
 
   // re-render saat rakStore berubah (heart di series/reader, baca chapter)
@@ -134,55 +135,67 @@ export default function Rak() {
 
       {/* Tab = ARIA tablist (bukan grid tombol): panah kiri/kanan pindah tab,
           aria-selected bawa keadaan aktif ke screen reader (dulu warna saja). */}
-      <div
-        role="tablist"
-        aria-label="Rak"
-        className="no-bar mb-4 flex gap-2 overflow-x-auto pb-1"
-      >
-        {TABS.map(([key, label]) => (
-          <button
-            key={key}
-            role="tab"
-            id={tabDomId(key)}
-            data-testid={`tab-${key}`}
-            aria-selected={tab === key}
-            aria-controls={`panel-${key}`}
-            tabIndex={tab === key ? 0 : -1}
-            onClick={() => goTab(key)}
-            onKeyDown={(e) => {
-              const step =
-                e.key === 'ArrowRight' ? 1 : e.key === 'ArrowLeft' ? -1 : e.key === 'Home' ? -99 : e.key === 'End' ? 99 : 0
-              if (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft' && e.key !== 'Home' && e.key !== 'End') return
-              e.preventDefault()
-              const current = TABS.findIndex(([k]) => k === tab)
-              const next =
-                step === -99 ? 0 : step === 99 ? TABS.length - 1 : (current + step + TABS.length) % TABS.length
-              const nextKey = TABS[next][0]
-              goTab(nextKey)
-              document.getElementById(tabDomId(nextKey))?.focus()
-            }}
-            className={`min-h-11 shrink-0 select-none touch-manipulation rounded-xl px-3 py-2.5 text-[12px] font-bold transition-[transform,background-color,color] duration-150 ease-[var(--ease-out)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber focus-visible:ring-offset-2 active:scale-[0.97] ${
-              tab === key
-                ? 'bg-brand-amber text-white'
-                : 'border border-ink-800 bg-ink-900 text-ink-300'
-            }`}
-          >
-            <span className="inline-flex items-center justify-center gap-1.5">
-              {label}
-              {key === 'unduhan' && activeRuns > 0 && (
-                <span
-                  aria-hidden="true"
-                  className="grid min-h-5 min-w-5 place-items-center rounded-full bg-white px-1 text-[10px] font-bold leading-none text-ink-900"
-                >
-                  {activeRuns > 9 ? '9+' : activeRuns}
-                </span>
-              )}
-              {key === 'unduhan' && activeRuns > 0 && (
-                <span className="sr-only">, {activeRuns} proses berjalan</span>
-              )}
-            </span>
-          </button>
-        ))}
+      <div className="relative mb-4">
+        <div
+          role="tablist"
+          aria-label="Rak"
+          onScroll={(e) => {
+            const el = e.currentTarget
+            setTabsAtEnd(el.scrollLeft + el.clientWidth >= el.scrollWidth - 4)
+          }}
+          className="no-bar flex gap-2 overflow-x-auto pb-1 pr-6"
+        >
+          {TABS.map(([key, label]) => (
+            <button
+              key={key}
+              role="tab"
+              id={tabDomId(key)}
+              data-testid={`tab-${key}`}
+              aria-selected={tab === key}
+              aria-controls={`panel-${key}`}
+              tabIndex={tab === key ? 0 : -1}
+              onClick={() => goTab(key)}
+              onKeyDown={(e) => {
+                const step =
+                  e.key === 'ArrowRight' ? 1 : e.key === 'ArrowLeft' ? -1 : e.key === 'Home' ? -99 : e.key === 'End' ? 99 : 0
+                if (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft' && e.key !== 'Home' && e.key !== 'End') return
+                e.preventDefault()
+                const current = TABS.findIndex(([k]) => k === tab)
+                const next =
+                  step === -99 ? 0 : step === 99 ? TABS.length - 1 : (current + step + TABS.length) % TABS.length
+                const nextKey = TABS[next][0]
+                goTab(nextKey)
+                document.getElementById(tabDomId(nextKey))?.focus()
+              }}
+              className={`min-h-11 shrink-0 select-none touch-manipulation rounded-xl px-3 py-2.5 text-[12px] font-bold transition-[transform,background-color,color] duration-150 ease-[var(--ease-out)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber focus-visible:ring-offset-2 active:scale-[0.97] ${
+                tab === key
+                  ? 'bg-brand-amber text-white'
+                  : 'border border-ink-800 bg-ink-900 text-ink-300'
+              }`}
+            >
+              <span className="inline-flex items-center justify-center gap-1.5">
+                {label}
+                {key === 'unduhan' && activeRuns > 0 && (
+                  <span
+                    aria-hidden="true"
+                    className="grid min-h-5 min-w-5 place-items-center rounded-full bg-white px-1 text-[10px] font-bold leading-none text-ink-900"
+                  >
+                    {activeRuns > 9 ? '9+' : activeRuns}
+                  </span>
+                )}
+                {key === 'unduhan' && activeRuns > 0 && (
+                  <span className="sr-only">, {activeRuns} proses berjalan</span>
+                )}
+              </span>
+            </button>
+          ))}
+        </div>
+        {!tabsAtEnd && (
+          <div
+            aria-hidden="true"
+            className="pointer-events-none absolute inset-y-0 right-0 w-8 bg-gradient-to-l from-ink-950 via-ink-950/75 to-transparent sm:hidden"
+          />
+        )}
       </div>
 
       {tab === 'semua' && (
@@ -215,6 +228,10 @@ type LibraryRow = {
   chapter: string | null
   at: number
   updates: number
+  status: 'sedang' | 'ingin' | 'selesai'
+  inHistory: boolean
+  inFavorites: boolean
+  lastChapterKey?: string
 }
 
 /** Gabungan riwayat + favorit menjadi 5 status Rak. `updates` dan urutan
@@ -229,7 +246,7 @@ function LibraryTab({
   history: rakStore.HistoryEntry[]
   favorites: rakStore.FavoriteEntry[]
 }) {
-  const { recent } = useProgress()
+  const { recent, removeProgress, markSeriesFinished } = useProgress()
   const marathon = useMarathonMemory()
   const { unreadByTitle, latestByTitle } = useNotifCounts()
   const [onlyUpdates, setOnlyUpdates] = useState(false)
@@ -240,6 +257,9 @@ function LibraryTab({
       if (key != null && key !== '') progressByHandle.set(String(key), p)
     }
   }
+
+  const historyKeys = new Set(history.map((h) => h.title_key))
+  const favKeys = new Set(favorites.map((f) => f.title_key))
 
   const seen = new Set<string>()
   const rows: LibraryRow[] = []
@@ -265,13 +285,19 @@ function LibraryTab({
       href: target?.href ?? fallback ?? `/manga/${entry.handle}`,
       chapter: target
         ? resumeLabel({ chapterId: target.chapterId, source: target.source, chapterName: p?.chapterName })
-        : null,
+        : done
+          ? 'Selesai'
+          : null,
       at: Math.max(
         'updated_at' in entry ? entry.updated_at : entry.loved_at,
         p?.at ?? 0,
         notifAt,
       ),
       updates,
+      status,
+      inHistory: historyKeys.has(entry.title_key),
+      inFavorites: favKeys.has(entry.title_key),
+      lastChapterKey: 'last_chapter' in entry ? `${entry.handle}:${entry.last_chapter}` : undefined,
     })
   }
   rows.sort((a, b) => b.at - a.at)
@@ -279,10 +305,37 @@ function LibraryTab({
   const visible = hasUpdates && onlyUpdates ? rows.filter((r) => r.updates > 0) : rows
 
   if (rows.length === 0) {
+    if (mode === 'selesai') {
+      return (
+        <Empty
+          title="Belum ada komik selesai"
+          body='Baca chapter sampai halaman terakhir, atau tekan "Tandai selesai" pada daftar komik di tab Semua atau Sedang Dibaca.'
+        />
+      )
+    }
     return (
       <Empty
-        title={mode === 'selesai' ? 'Belum ada komik selesai' : 'Rak masih kosong'}
-        body={mode === 'selesai' ? 'Tandai komik sebagai selesai dari halaman series.' : 'Simpan komik dari halaman series atau Cari.'}
+        title="Rak masih kosong"
+        body="Simpan komik dari halaman series atau mulai cari bacaan baru."
+        action={
+          <div className="flex flex-wrap items-center justify-center gap-2">
+            <Link
+              to="/cari"
+              className="inline-flex min-h-11 items-center rounded-full bg-brand-amber px-5 text-[12px] font-bold text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber focus-visible:ring-offset-2"
+            >
+              Cari komik
+            </Link>
+            {getUser() === null && (
+              <Link
+                to="/akun"
+                state={{ from: '/rak' }}
+                className="inline-flex min-h-11 items-center rounded-full border border-ink-700 px-5 text-[12px] font-semibold text-ink-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber focus-visible:ring-offset-2"
+              >
+                Masuk akun
+              </Link>
+            )}
+          </div>
+        }
       />
     )
   }
@@ -301,27 +354,59 @@ function LibraryTab({
       )}
       <ul className="space-y-2.5">
         {visible.map((r) => (
-          <li key={r.key}>
-            <Link
-              to={r.href}
-              className="relative flex items-center gap-3 rounded-xl border border-ink-800 bg-ink-900 p-2.5 transition-colors [@media(hover:hover)_and_(pointer:fine)]:hover:border-ink-700 active:scale-[0.98]"
-            >
-              <Cover src={r.cover} title={r.title} />
-              <div className="min-w-0 flex-1">
-                <p className="truncate text-[13px] font-semibold text-ink-100">{r.title}</p>
-                <p className="truncate text-[11px] text-ink-500">
-                  {r.source} · {r.chapter ?? 'Belum dibaca'} · {new Date(r.at).toLocaleDateString('id-ID')}
-                </p>
-              </div>
-              {r.updates > 0 && (
-                <span
-                  aria-label={`${r.updates} chapter update belum dibaca`}
-                  className="shrink-0 rounded-full bg-brand-amber px-2 py-0.5 text-[10px] font-bold text-white"
+          <li key={r.key} className="rounded-xl border border-ink-800 bg-ink-900 p-2.5">
+            <div className="flex items-center gap-2">
+              <Link
+                to={r.href}
+                className="relative flex min-w-0 flex-1 items-center gap-3 transition-colors active:scale-[0.98]"
+              >
+                <Cover src={r.cover} title={r.title} />
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-[13px] font-semibold text-ink-100">{r.title}</p>
+                  <p className="truncate text-[11px] text-ink-500">
+                    {r.source} · {r.chapter ?? 'Belum dibaca'} · {new Date(r.at).toLocaleDateString('id-ID')}
+                  </p>
+                </div>
+                {r.updates > 0 && (
+                  <span
+                    aria-label={`${r.updates} chapter update belum dibaca`}
+                    className="shrink-0 rounded-full bg-brand-amber px-2 py-0.5 text-[10px] font-bold text-white"
+                  >
+                    +{r.updates} Ch.
+                  </span>
+                )}
+              </Link>
+              {r.status !== 'selesai' && (
+                <button
+                  type="button"
+                  aria-label={`Tandai ${r.title} selesai`}
+                  onClick={() =>
+                    markSeriesFinished(r.handle, {
+                      seriesTitle: r.title,
+                      chapterId: r.lastChapterKey,
+                      source: r.source,
+                    })
+                  }
+                  className="min-h-11 shrink-0 rounded-lg border border-ink-700 px-2.5 text-[11px] font-semibold text-ink-300 active:bg-ink-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber"
                 >
-                  +{r.updates} Ch.
-                </span>
+                  Tandai selesai
+                </button>
               )}
-            </Link>
+              {r.inHistory && !r.inFavorites && mode === 'semua' && (
+                <button
+                  type="button"
+                  aria-label={`Hapus ${r.title} dari riwayat`}
+                  onClick={() => {
+                    rakStore.removeHistory(r.key)
+                    removeProgress(r.handle)
+                    marathon.clearSeries(r.handle)
+                  }}
+                  className="grid size-11 shrink-0 place-items-center rounded-lg text-ink-400 active:bg-ink-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber"
+                >
+                  <IconXmark className="size-4" />
+                </button>
+              )}
+            </div>
           </li>
         ))}
       </ul>
@@ -332,7 +417,7 @@ function LibraryTab({
 // ---------------------------------------------------------------- Riwayat baca
 
 function HistoryTab({ entries }: { entries: rakStore.HistoryEntry[] }) {
-  const { recent } = useProgress()
+  const { recent, removeProgress, markSeriesFinished } = useProgress()
   const marathon = useMarathonMemory()
   const byHandle = new Map<string, rakStore.HistoryEntry>()
   for (const e of entries) {
@@ -343,6 +428,7 @@ function HistoryTab({ entries }: { entries: rakStore.HistoryEntry[] }) {
 
   const rows = recent
     .map((p) => {
+      if (p.status === 'Selesai') return null
       const e = byHandle.get(String(p.handle ?? '')) ?? byHandle.get(String(p.seriesId))
       if (!e) return null
       const pos = marathon.forHandle(e.handle)
@@ -351,6 +437,7 @@ function HistoryTab({ entries }: { entries: rakStore.HistoryEntry[] }) {
       return {
         key: e.title_key,
         entry: e,
+        seriesId: p.seriesId,
         href: target.href,
         chapter: resumeLabel({
           chapterId: target.chapterId,
@@ -369,10 +456,10 @@ function HistoryTab({ entries }: { entries: rakStore.HistoryEntry[] }) {
   return (
     <ul className="space-y-2.5">
       {rows.map((r) => (
-        <li key={r.key}>
+        <li key={r.key} className="rounded-xl border border-ink-800 bg-ink-900 p-2.5">
           <Link
             to={r.href}
-            className="flex items-center gap-3 rounded-xl border border-ink-800 bg-ink-900 p-2.5 transition-colors [@media(hover:hover)_and_(pointer:fine)]:hover:border-ink-700 active:scale-[0.98]"
+            className="flex items-center gap-3 transition-colors active:scale-[0.98]"
           >
             <Cover src={r.entry.cover_url} title={r.entry.title} />
             <div className="min-w-0 flex-1">
@@ -386,6 +473,35 @@ function HistoryTab({ entries }: { entries: rakStore.HistoryEntry[] }) {
             </div>
             <span className="shrink-0 text-[11px] font-bold text-brand-amber">Lanjut</span>
           </Link>
+          <div className="mt-2 flex items-center justify-end gap-2 border-t border-ink-800 pt-2">
+            <button
+              type="button"
+              aria-label={`Tandai ${r.entry.title} selesai`}
+              onClick={() =>
+                markSeriesFinished(r.entry.handle, {
+                  seriesTitle: r.entry.title,
+                  source: r.entry.source,
+                })
+              }
+              className="min-h-11 rounded-lg border border-ink-700 px-3 text-[11.5px] font-semibold text-ink-300 active:bg-ink-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber"
+            >
+              Tandai selesai
+            </button>
+            <button
+              type="button"
+              aria-label={`Hapus ${r.entry.title} dari riwayat`}
+              onClick={() => {
+                rakStore.removeHistory(r.key)
+                removeProgress(r.entry.handle)
+                if (String(r.seriesId) !== r.entry.handle) removeProgress(String(r.seriesId))
+                marathon.clearSeries(r.entry.handle)
+              }}
+              className="inline-flex min-h-11 items-center gap-1 rounded-lg border border-brand-red/40 px-3 text-[11.5px] font-semibold text-brand-red active:bg-brand-red/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-red"
+            >
+              <IconXmark className="size-3.5" />
+              Hapus
+            </button>
+          </div>
         </li>
       ))}
     </ul>
@@ -667,6 +783,19 @@ export function groupBySeries(items: DownloadItem[]): SeriesGroup[] {
   return groups.sort((a, b) => newestAt(b) - newestAt(a))
 }
 
+const PDF_TTL_MS = 24 * 60 * 60 * 1000
+
+function remainingTtlLabel(downloadedAt: number | null, expiresAt?: number | null): string | null {
+  const exp = expiresAt ?? (downloadedAt != null ? downloadedAt + PDF_TTL_MS : null)
+  if (exp == null || !Number.isFinite(exp)) return null
+  const remMs = exp - Date.now()
+  if (remMs <= 0) return 'kedaluwarsa'
+  const hours = Math.floor(remMs / (60 * 60 * 1000))
+  if (hours >= 1) return `sisa ~${hours} jam`
+  const mins = Math.max(1, Math.ceil(remMs / (60 * 1000)))
+  return `sisa ~${mins} menit`
+}
+
 function DownloadsTab() {
   const [data, setData] = useState<DownloadsResponse | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -772,6 +901,7 @@ function DownloadsTab() {
           action={
             <Link
               to="/akun"
+              state={{ from: '/rak?tab=unduhan' }}
               className="inline-flex min-h-11 items-center rounded-full bg-brand-amber px-5 text-[12px] font-bold text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber focus-visible:ring-offset-2"
             >
               Masuk
@@ -832,6 +962,12 @@ function DownloadsTab() {
         </div>
       )}
 
+      {getUser() !== null && groups.length > 0 && (
+        <p className="mb-3 rounded-xl border border-ink-800 bg-ink-900/70 px-3 py-2 text-[11.5px] leading-relaxed text-ink-400">
+          File PDF disimpan sementara di server selama 24 jam — gunakan Unduh lagi untuk menyimpan permanen ke perangkat.
+        </p>
+      )}
+
       <ul className="space-y-2.5">
         {groups.map((g) => {
           const open = openOverride[g.handle] ?? defaultOpen(g)
@@ -839,6 +975,14 @@ function DownloadsTab() {
           const ordered = [...g.items].sort(byChapterNumber)
           const shown = ordered.length > 2 && !expanded ? [ordered[0], ordered[ordered.length - 1]] : ordered
           const hiddenCount = ordered.length - shown.length
+          const oldestItem = ordered.reduce<DownloadItem | null>(
+            (min, cur) =>
+              cur.downloaded_at != null && (min == null || (min.downloaded_at ?? Infinity) > cur.downloaded_at)
+                ? cur
+                : min,
+            null,
+          )
+          const groupTtl = oldestItem ? remainingTtlLabel(oldestItem.downloaded_at, oldestItem.expires_at) : null
           return (
             <li key={g.handle} className="rounded-xl border border-ink-800 bg-ink-900">
               <button
@@ -858,6 +1002,7 @@ function DownloadsTab() {
                   <span className="mt-0.5 flex items-center gap-1.5 text-[11.5px] text-ink-400">
                     <SourceBadge source={g.source} />
                     {g.items.length} chapter · {humanSize(g.bytes)}
+                    {groupTtl ? ` · ${groupTtl}` : ''}
                   </span>
                 </span>
               </button>
@@ -865,6 +1010,7 @@ function DownloadsTab() {
                 <ul className="divide-y divide-ink-800 border-t border-ink-800">
                   {shown.map((d) => {
                     const label = d.title || `Chapter ${d.number}`
+                    const ttlLabel = remainingTtlLabel(d.downloaded_at, d.expires_at)
                     return (
                       <li key={d.id} className="flex flex-wrap items-center gap-2 px-3 py-2.5">
                         <span className="min-w-0 flex-1">
@@ -875,6 +1021,7 @@ function DownloadsTab() {
                             {humanSize(d.size_bytes)}
                             {d.downloaded_at != null &&
                               ` · ${new Date(d.downloaded_at).toLocaleDateString('id-ID')}`}
+                            {ttlLabel && ` · ${ttlLabel}`}
                           </span>
                         </span>
                         <button

@@ -64,15 +64,16 @@ export default function ReaderToolbar({
       {title}
     </p>
   )
+  const visibleStatus = status && status !== 'Sedang dibaca' ? status : null
   const metaNode =
-    subtitle || loadingLabel || badge || chip ? (
+    subtitle || visibleStatus || loadingLabel || badge || chip ? (
       <div className="flex min-w-0 items-center gap-1.5 overflow-hidden">
         {subtitle && (
           <p className="min-w-0 truncate text-[11px] tabular-nums leading-tight text-white/85 [text-shadow:0_1px_2px_rgba(0,0,0,0.7)]">
             {subtitle}
           </p>
         )}
-        {status && (
+        {status && status !== 'Sedang dibaca' && (
           <span className="shrink-0 rounded-[5px] bg-white/15 px-1.5 py-[2px] text-[10px] font-semibold leading-tight text-white/90 [text-shadow:0_1px_2px_rgba(0,0,0,0.7)]">
             {status}
           </span>
@@ -124,7 +125,7 @@ export default function ReaderToolbar({
             type="button"
             onClick={onHome}
             aria-label="Beranda"
-            className="grid size-11 shrink-0 touch-manipulation select-none [-webkit-touch-callout:none] place-items-center rounded-full text-white/90 active:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/80"
+            className="hidden sm:grid size-11 shrink-0 touch-manipulation select-none [-webkit-touch-callout:none] place-items-center rounded-full text-white/90 active:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/80"
           >
             <IconHouse className="size-4" aria-hidden="true" />
           </button>
@@ -150,7 +151,7 @@ export default function ReaderToolbar({
           type="button"
           onClick={onShare}
           aria-label="Bagikan"
-          className="grid size-11 shrink-0 touch-manipulation select-none [-webkit-touch-callout:none] place-items-center rounded-full text-white/90 active:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/80"
+          className="hidden sm:grid size-11 shrink-0 touch-manipulation select-none [-webkit-touch-callout:none] place-items-center rounded-full text-white/90 active:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/80"
         >
           <IconShare className="size-4" aria-hidden="true" />
         </button>

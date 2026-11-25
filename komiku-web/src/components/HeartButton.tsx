@@ -8,6 +8,8 @@ interface HeartButtonProps {
   className?: string
   /** true = tombol pil dengan label (buat HP / discoverability); default ikon. */
   labeled?: boolean
+  /** Kelas wrapper visual ringkas di dalam target sentuh 44px transparan (mis. di sampul kartu). */
+  iconClassName?: string
 }
 
 /** Outline heart simetris (viewBox 0 0 24 24), stroke 2 + sudut membulat. */
@@ -27,7 +29,7 @@ const SAVED_MS = 2000
  * 'rak-change' (tanpa Context: satu event per tab cukup). Jumlah chapter
  * baru (unread per title_key) datang dari NotifCounts context.
  */
-export default function HeartButton({ manga, className = '', labeled = false }: HeartButtonProps) {
+export default function HeartButton({ manga, className = '', labeled = false, iconClassName }: HeartButtonProps) {
   const [loved, setLoved] = useState(() => isFavorite(manga.title_key))
   const [pop, setPop] = useState(false)
   const [saved, setSaved] = useState(false)
@@ -67,7 +69,7 @@ export default function HeartButton({ manga, className = '', labeled = false }: 
       strokeLinejoin="round"
       aria-hidden="true"
       onAnimationEnd={() => setPop(false)}
-      className={`${loved ? 'fill-brand-amber stroke-brand-amber' : 'fill-none stroke-current'} ${labeled ? 'size-4' : 'size-5'} ${pop ? 'animate-heart-confirm' : ''}`}
+      className={`${loved ? 'fill-brand-amber stroke-brand-amber' : 'fill-none stroke-current'} ${labeled || iconClassName ? 'size-4' : 'size-5'} ${pop ? 'animate-heart-confirm' : ''}`}
     >
       <path d={HEART_D} />
     </svg>
@@ -92,25 +94,38 @@ export default function HeartButton({ manga, className = '', labeled = false }: 
     )
   }
 
-  // Target 44px: p-3 + ikon 20px; min-* mengatasi size-9 dari pemanggil.
-  return (
-    <button
-      aria-label={loved ? 'Hapus dari favorit' : 'Tambah ke favorit'}
-      aria-pressed={loved}
-      onClick={onToggle}
-      className={`relative grid min-h-11 min-w-11 touch-manipulation place-items-center rounded-full p-3 transition-colors active:scale-[0.97] active:transition-transform active:duration-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber ${className}`}
-    >
+  const hasPosition = /\b(absolute|fixed|sticky)\b/.test(className)
+  const iconBody = (
+    <>
       {heart}
       {count > 0 && (
         <span aria-hidden="true" className={badgeClass()}>
           {count > 9 ? '9+' : count}
         </span>
       )}
+    </>
+  )
+
+  // Target 44px: p-3 + ikon 20px (atau wrapper visual ringkas via iconClassName); min-* mengatasi size-9 dari pemanggil.
+  return (
+    <button
+      aria-label={loved ? 'Hapus dari favorit' : 'Tambah ke favorit'}
+      aria-pressed={loved}
+      onClick={onToggle}
+      className={`${hasPosition ? '' : 'relative '}grid min-h-11 min-w-11 touch-manipulation place-items-center rounded-full ${iconClassName ? '' : 'p-3 '}transition-colors active:scale-[0.97] active:transition-transform active:duration-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber ${className}`}
+    >
+      {iconClassName ? (
+        <span className={`relative grid place-items-center ${iconClassName}`}>{iconBody}</span>
+      ) : (
+        iconBody
+      )}
       <span className="sr-only" aria-live="polite">{saved ? 'Tersimpan di Rak' : ''}</span>
       {saved && (
         <span
           aria-hidden="true"
-          className="pointer-events-none absolute left-1/2 top-full z-10 mt-1 -translate-x-1/2 whitespace-nowrap rounded-md bg-ink-950 px-2 py-1 text-[10px] font-semibold text-brand-amber shadow-lg"
+          className={`pointer-events-none absolute z-10 whitespace-nowrap rounded-md bg-ink-950 px-2 py-1 text-[10px] font-semibold text-brand-amber shadow-lg ${
+            iconClassName ? 'bottom-full left-1 mb-1' : 'left-1/2 top-full mt-1 -translate-x-1/2'
+          }`}
         >
           Tersimpan di Rak
         </span>

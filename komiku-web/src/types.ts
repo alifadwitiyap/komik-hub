@@ -48,6 +48,10 @@ export interface MangaOut {
   url: string | null
   /** judul ter-normalisasi (server) — kunci favorit/sejarah LINTAS-SUMBER */
   title_key: string
+  /** sinopsis/deskripsi seri bila tersedia dari sumber pada detail series */
+  synopsis?: string | null
+  /** daftar chip genre bila dikirim server pada detail series */
+  genre?: { id?: string; name: string }[]
 }
 
 /** search / popular / latest / catalogue punya bentuk identik. */

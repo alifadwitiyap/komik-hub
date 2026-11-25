@@ -61,7 +61,6 @@ export default function ReaderFooter({
     >
       {pageCount > 1 && onSeek && (
         <div className="pointer-events-auto relative flex items-center gap-3 px-4 pb-1 [padding-left:max(1rem,env(safe-area-inset-left))] [padding-right:max(1rem,env(safe-area-inset-right))]">
-          <span className="shrink-0 text-[11px] font-semibold text-white/80">Hal</span>
           <input
             type="range"
             min={1}
@@ -78,8 +77,8 @@ export default function ReaderFooter({
             onBlur={commit}
             className="reader-scrubber min-h-11 flex-1 touch-manipulation"
           />
-          <span className="w-11 shrink-0 text-right text-[11px] font-semibold text-white/85">
-            {max}
+          <span className="shrink-0 rounded-full bg-black/70 px-2 py-0.5 text-[11px] font-semibold tabular-nums text-white">
+            {shown}/{max}
           </span>
           {preview !== null && (
             <span className="reader-scrubber-preview pointer-events-none absolute -top-8 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full bg-black/85 px-3 py-1 text-[11px] font-bold text-white shadow">

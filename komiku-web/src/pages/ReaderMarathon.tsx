@@ -954,6 +954,36 @@ export default function ReaderMarathon() {
     )
   }
 
+  const rawSeriesTitle = (curBlock?.seriesTitle ?? head?.seriesTitle ?? '').trim()
+  const seriesTitle =
+    rawSeriesTitle &&
+    rawSeriesTitle !== curBlock?.handle &&
+    rawSeriesTitle !== head?.handle &&
+    rawSeriesTitle !== String(curBlock?.seriesId ?? '')
+      ? rawSeriesTitle
+      : null
+  const chapterTitle = curBlock?.chapterName?.trim() || 'Maraton'
+  const toolbarTitle =
+    seriesTitle && !chapterTitle.toLowerCase().startsWith(seriesTitle.toLowerCase())
+      ? `${seriesTitle} · ${chapterTitle}`
+      : seriesTitle ?? chapterTitle
+
+  const handleShare = () => {
+    const url = window.location.href
+    if (navigator.share) {
+      navigator.share({ title: toolbarTitle, url }).catch(() => {})
+      return
+    }
+    if (navigator.clipboard?.writeText) {
+      navigator.clipboard
+        .writeText(url)
+        .then(() => setToast('Tautan halaman disalin'))
+        .catch(() => setToast('Bagikan: salin URL halaman ini'))
+      return
+    }
+    setToast('Bagikan: salin URL halaman ini')
+  }
+
   return (
     <div
       className={`relative min-h-dvh overflow-x-clip ${
@@ -999,13 +1029,13 @@ export default function ReaderMarathon() {
       />
 
       <ReaderToolbar
-        title={head?.seriesTitle ?? 'Maraton'}
+        title={toolbarTitle}
         titleHref={seriesHref(head?.seriesId)}
         subtitle={pageStatus}
         loadingLabel={loadingImages ? 'Memuat gambar…' : null}
         onBack={() => navigate(seriesHref(head?.seriesId) ?? '/')}
         onHome={() => navigate('/')}
-        onShare={() => setToast('Bagikan: salin URL halaman ini')}
+        onShare={handleShare}
         onMore={() => setMenuOpen(true)}
         badge={curSource && curSource !== 'komiku' ? <SourceBadge source={curSource} /> : null}
         visible={chrome.visible}
@@ -1261,6 +1291,8 @@ export default function ReaderMarathon() {
             chrome.show()
           } else autoFS.requestEnter()
         }}
+        onShare={handleShare}
+        onHome={() => navigate('/')}
       />
 
       <ReaderSettingsSheet

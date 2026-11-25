@@ -43,6 +43,63 @@ export interface ProgressEntry {
 const KEY = 'komiku.web.progress.v1'
 const MAX = 24
 const PUSH_DEBOUNCE_MS = 2000
+const PROGRESS_EVENT = 'komik-progress-change'
+
+function emitProgressChange(): void {
+  if (typeof window !== 'undefined' && typeof window.dispatchEvent === 'function') {
+    window.dispatchEvent(new CustomEvent(PROGRESS_EVENT))
+  }
+}
+
+export interface MarkFinishedMeta {
+  seriesTitle?: string | null
+  chapterId?: string
+  chapterName?: string
+  source?: string | null
+}
+
+function matchesProgressTarget(p: ProgressEntry, handleOrSeriesId: string): boolean {
+  const needle = String(handleOrSeriesId ?? '').trim()
+  if (!needle) return false
+  const sid = String(p.seriesId)
+  const h = String(p.handle ?? '')
+  if (sid === needle || h === needle) return true
+  if (h.startsWith(`${needle}:`) || String(p.chapterId).startsWith(`${needle}:`)) return true
+  if (!needle.includes(':') && (h.endsWith(`:${needle}`) || sid.endsWith(`:${needle}`))) return true
+  if (needle.includes(':') && !sid.includes(':') && !h.includes(':') && sid === needle.split(':').pop()) return true
+  return false
+}
+
+function removeProgressEntry(list: ProgressEntry[], handleOrSeriesId: string): ProgressEntry[] {
+  return list.filter((p) => !matchesProgressTarget(p, handleOrSeriesId))
+}
+
+function markProgressFinished(
+  list: ProgressEntry[],
+  handleOrSeriesId: string,
+  meta?: MarkFinishedMeta,
+  now = Date.now(),
+): ProgressEntry[] {
+  const existing = list.find((p) => matchesProgressTarget(p, handleOrSeriesId))
+  const rest = removeProgressEntry(list, handleOrSeriesId)
+  if (existing) {
+    return [{ ...existing, status: 'Selesai' as const, progress: 1, at: now }, ...rest].slice(0, MAX)
+  }
+  const hasColon = handleOrSeriesId.includes(':')
+  const created: ProgressEntry = {
+    seriesId: handleOrSeriesId,
+    seriesTitle: meta?.seriesTitle ?? null,
+    chapterId: toChapterId(meta?.chapterId ?? ''),
+    chapterName: meta?.chapterName ?? 'Selesai',
+    page: 0,
+    progress: 1,
+    source: meta?.source ?? (hasColon ? handleOrSeriesId.split(':')[0] : null),
+    handle: hasColon ? handleOrSeriesId : null,
+    status: 'Selesai',
+    at: now,
+  }
+  return [created, ...rest].slice(0, MAX)
+}
 
 /** Key localStorage per-akun: akun beda dapat riwayat baca terpisah. */
 function progressKey(): string {
@@ -159,9 +216,33 @@ export function useProgress() {
   }, [syncFromServer])
 
   useEffect(() => {
+    const onProgress = () => {
+      try {
+        const raw = localStorage.getItem(progressKey())
+        const next = parse(raw)
+        if (JSON.stringify(entriesRef.current) !== JSON.stringify(next)) {
+          apply(next)
+        }
+      } catch {
+        /* ignore */
+      }
+    }
+    window.addEventListener(PROGRESS_EVENT, onProgress)
     return () => {
+      window.removeEventListener(PROGRESS_EVENT, onProgress)
       if (pushTimer.current) clearTimeout(pushTimer.current)
     }
+  }, [apply, entriesRef])
+
+  const pushNow = useCallback((list: ProgressEntry[]) => {
+    if (getUser() === null) return
+    if (pushTimer.current) {
+      clearTimeout(pushTimer.current)
+      pushTimer.current = null
+    }
+    void progressApi
+      .put(list as unknown as Record<string, unknown>[])
+      .catch((err) => console.warn('useProgress: gagal push progres', err))
   }, [])
 
   const save = useCallback(
@@ -180,6 +261,7 @@ export function useProgress() {
         ),
       ].slice(0, MAX)
       apply(next)
+      emitProgressChange()
       push(next)
     },
     [apply, push, entriesRef],
@@ -187,10 +269,67 @@ export function useProgress() {
 
   const clear = useCallback(() => {
     apply([])
+    emitProgressChange()
     push([])
   }, [apply, push])
 
-  return { recent: entries, save, clear }
+  const removeProgressFn = useCallback(
+    (handleOrSeriesId: string) => {
+      const next = removeProgressEntry(entriesRef.current, handleOrSeriesId)
+      apply(next)
+      emitProgressChange()
+      pushNow(next)
+    },
+    [apply, entriesRef, pushNow],
+  )
+
+  const markSeriesFinishedFn = useCallback(
+    (handleOrSeriesId: string, meta?: MarkFinishedMeta) => {
+      const next = markProgressFinished(entriesRef.current, handleOrSeriesId, meta)
+      apply(next)
+      emitProgressChange()
+      pushNow(next)
+    },
+    [apply, entriesRef, pushNow],
+  )
+
+  return {
+    recent: entries,
+    save,
+    clear,
+    removeProgress: removeProgressFn,
+    markSeriesFinished: markSeriesFinishedFn,
+  }
+}
+
+export function removeProgress(handleOrSeriesId: string): void {
+  try {
+    const next = removeProgressEntry(parse(localStorage.getItem(progressKey())), handleOrSeriesId)
+    localStorage.setItem(progressKey(), JSON.stringify(next))
+    emitProgressChange()
+    if (getUser() !== null) {
+      void progressApi
+        .put(next as unknown as Record<string, unknown>[])
+        .catch((err) => console.warn('useProgress: gagal push progres', err))
+    }
+  } catch {
+    /* storage penuh / mode privat */
+  }
+}
+
+export function markSeriesFinished(handleOrSeriesId: string, meta?: MarkFinishedMeta): void {
+  try {
+    const next = markProgressFinished(parse(localStorage.getItem(progressKey())), handleOrSeriesId, meta)
+    localStorage.setItem(progressKey(), JSON.stringify(next))
+    emitProgressChange()
+    if (getUser() !== null) {
+      void progressApi
+        .put(next as unknown as Record<string, unknown>[])
+        .catch((err) => console.warn('useProgress: gagal push progres', err))
+    }
+  } catch {
+    /* storage penuh / mode privat */
+  }
 }
 
 /** Entri untuk satu manga (dipakai tombol "Lanjut"). */

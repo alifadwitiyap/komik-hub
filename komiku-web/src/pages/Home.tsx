@@ -138,6 +138,20 @@ export default function Home() {
     .slice(0, 2)
   if (featured.length === 0) featured.push(...(sections[0]?.data.slice(0, 2) ?? []))
 
+  const featuredIds = new Set(
+    featured.map((m) => (m.id !== '' && m.id != null ? String(m.id) : '')).filter(Boolean),
+  )
+  const featuredHandles = new Set(featured.map((m) => m.handle ?? '').filter(Boolean))
+  const featuredTitleKeys = new Set(featured.map((m) => m.title_key ?? '').filter(Boolean))
+  const filteredPopular = (popular ?? []).filter(
+    (m) =>
+      !(m.id !== '' && m.id != null && featuredIds.has(String(m.id))) &&
+      !(m.handle && featuredHandles.has(m.handle)) &&
+      !(m.title_key && featuredTitleKeys.has(m.title_key)),
+  )
+  const popularItems =
+    popular && filteredPopular.length >= 4 ? filteredPopular : popular
+
   // Bila ada riwayat, "Lanjut membaca" tampil paling atas (tepat di bawah
   // header) supaya pembaca yang kembali bisa langsung melanjutkan bacaan.
   return (
@@ -179,9 +193,9 @@ export default function Home() {
 
       <div className="mx-auto max-w-3xl pb-2">
         {/* (d) Populer (semua sumber) */}
-        {popular && popular.length > 0 && (
-          <Section id="populer" title="Populer (semua sumber)">
-            {popular.map((m) => (
+        {popularItems && popularItems.length > 0 && (
+          <Section id="populer" title="Populer (semua sumber)" moreHref="/cari">
+            {popularItems.map((m) => (
               <MangaCard key={`pop-${m.id}`} manga={m} />
             ))}
           </Section>
@@ -189,7 +203,7 @@ export default function Home() {
 
         {/* (e) Update terbaru (semua sumber) */}
         {latest && latest.length > 0 && (
-          <Section id="terbaru" title="Update terbaru (semua sumber)">
+          <Section id="terbaru" title="Update terbaru (semua sumber)" moreHref="/cari?sort=terbaru">
             {latest.map((m) => (
               <MangaCard key={`new-${m.id}`} manga={m} hideIfNoCover />
             ))}
@@ -421,22 +435,20 @@ function IconPause(p: React.SVGProps<SVGSVGElement>) {
 export function Section({
   id,
   title,
-  moreTo,
+  moreHref,
   children,
 }: {
   id?: string
   title: string
-  moreTo?: string
+  moreHref?: string
   children: React.ReactNode
 }) {
   return (
     <section id={id} className="mt-5 scroll-mt-16">
       <div className="flex items-baseline justify-between px-4">
         <h2 className="font-display text-[14.5px] font-semibold text-ink-100">{title}</h2>
-        {moreTo && (
-          <Link to={moreTo} className="grid min-h-11 min-w-11 place-items-center px-2 py-3 -mx-2 text-[12px] font-semibold text-brand-amber">
-            Lihat semua
-          </Link>
+        {moreHref && (
+          <Link to={moreHref} className="inline-flex min-h-11 items-center text-[12px] font-semibold text-brand-amber">Lihat semua →</Link>
         )}
       </div>
       <div className="no-bar mt-3 flex snap-x snap-proximity gap-3 overflow-x-auto px-4 pb-1">
@@ -458,6 +470,27 @@ export function chapterLabel(manga: Manga): string | null {
   return `Ch. ${number}`
 }
 
+/** Ringkas tanggal update menjadi dd/mm agar muat di kartu 320px–375px. */
+function shortUpdateDate(raw: string | null | undefined): string | null {
+  const trimmed = raw?.replace(/^Update\s+/i, '').trim()
+  if (!trimmed) return null
+  const dmy = trimmed.match(/^(\d{1,2})[/.-](\d{1,2})[/.-](\d{2,4})$/)
+  if (dmy) return `${dmy[1].padStart(2, '0')}/${dmy[2].padStart(2, '0')}`
+  const iso = trimmed.match(/^(\d{4})-(\d{1,2})-(\d{1,2})(?:[T\s].*)?$/)
+  if (iso) return `${iso[3].padStart(2, '0')}/${iso[2].padStart(2, '0')}`
+  if (/[a-zA-Z]/.test(trimmed)) {
+    const parsed = Date.parse(trimmed)
+    if (!Number.isNaN(parsed)) {
+      return new Date(parsed).toLocaleDateString('id-ID', { day: '2-digit', month: '2-digit' })
+    }
+  }
+  return trimmed
+}
+
+function isCompletedStatus(status: string[] | null | undefined): boolean {
+  return Boolean(status?.some((s) => /completed|tamat/i.test(s)))
+}
+
 export const MangaCard = memo(function MangaCard({
   manga,
   compact = false,
@@ -475,10 +508,17 @@ export const MangaCard = memo(function MangaCard({
   // kartu unified (handle 'sumber:id') → route handle; kartu komiku → id lama.
   const to = manga.handle ? `/manga/${manga.handle}` : `/manga/${manga.id}`
   const label = chapterLabel(manga)
+  const completed = isCompletedStatus(manga.status)
+  const rawTipe = manga.tipe?.[0]?.trim() || null
+  const tipeText = rawTipe && !(completed && /completed|tamat/i.test(rawTipe)) ? rawTipe : null
+  const rawScore = manga.score?.trim()
+  const scoreText = rawScore && rawScore !== '-' ? `★ ${rawScore}` : null
   const meta = [
     sourceLabel(manga.source),
-    manga.tipe?.[0],
-    manga.update_date?.trim() ? `Update ${manga.update_date.trim()}` : null,
+    scoreText,
+    completed ? 'Tamat' : null,
+    tipeText,
+    shortUpdateDate(manga.update_date),
   ]
     .filter(Boolean)
     .join(' · ')
@@ -550,9 +590,14 @@ export const MangaCard = memo(function MangaCard({
         openerRef.current = e.currentTarget
         setSheetOpen(true)
       }}
-      className="absolute right-0 top-0 z-10 grid min-h-11 min-w-11 place-items-center rounded-lg bg-black/55 text-[16px] font-bold text-white backdrop-blur-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber"
+      className="absolute right-0 top-0 z-10 grid min-h-11 min-w-11 place-items-center rounded-lg bg-transparent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber"
     >
-      ⋮
+      <span
+        aria-hidden="true"
+        className="grid size-7 place-items-center rounded-lg bg-black/55 text-[15px] font-bold text-white backdrop-blur-sm"
+      >
+        ⋮
+      </span>
     </button>
   )
   const sheet = (
@@ -598,7 +643,8 @@ export const MangaCard = memo(function MangaCard({
             handle: manga.handle ?? String(manga.id),
             source: manga.source ?? 'komiku',
           }}
-          className="absolute left-0 top-0 z-10 bg-black/55 text-white backdrop-blur-sm"
+          className="absolute bottom-0 left-0 z-10 bg-transparent text-white"
+          iconClassName="size-7 rounded-full bg-black/55 backdrop-blur-sm"
         />
       )}
       {moreButton}
@@ -608,10 +654,6 @@ export const MangaCard = memo(function MangaCard({
   const chapter = label ? (
     <p className="mt-0.5 line-clamp-1 text-[11px] font-bold leading-snug tabular-nums text-ink-200">
       {label}
-    </p>
-  ) : manga.other?.[0] ? (
-    <p className="mt-0.5 line-clamp-1 text-[11px] font-bold leading-snug tabular-nums text-ink-200">
-      {manga.other[0]}
     </p>
   ) : null
 

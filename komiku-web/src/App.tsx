@@ -134,6 +134,8 @@ function TopBar({
 }) {
   const notif = useNotifCounts()
   const navigate = useNavigate()
+  const { theme, toggle: toggleTheme } = useTheme()
+  const dark = theme === 'dark'
   const [menuOpen, setMenuOpen] = useState(false)
   const toggleMenu = () => setMenuOpen((o) => !o)
   // panel baru dibuka → tarik data terbaru
@@ -242,6 +244,19 @@ function TopBar({
                     className="flex min-h-11 w-full items-center gap-3 border-t border-ink-800 px-3.5 text-left text-[13px] font-medium text-ink-100 transition-colors active:bg-ink-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand-amber"
                   >
                     <IconBookHeart className="size-4 shrink-0 text-ink-300" /> Rak buku
+                  </button>
+                  <button
+                    type="button"
+                    role="menuitem"
+                    onClick={() => { toggleTheme(); setMenuOpen(false) }}
+                    className="flex min-h-11 w-full items-center gap-3 border-t border-ink-800 px-3.5 text-left text-[13px] font-medium text-ink-100 transition-colors active:bg-ink-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand-amber"
+                  >
+                    {dark ? (
+                      <IconSun className="size-4 shrink-0 text-ink-300" />
+                    ) : (
+                      <IconMoon className="size-4 shrink-0 text-ink-300" />
+                    )}
+                    {dark ? 'Mode terang' : 'Mode gelap'}
                   </button>
                 </div>
               </>
@@ -355,12 +370,10 @@ function CircleButton({
 /** BottomNav replica layout_navigation_main: ikon 16sdp + caption, pill geser. */
 function BottomNav() {
   const { pathname } = useLocation()
-  const activeIndex = Math.max(
-    0,
-    NAV.findIndex(({ to }) =>
-      to === '/' ? pathname === '/' : pathname === to || pathname.startsWith(`${to}/`),
-    ),
+  const rawIndex = NAV.findIndex(({ to }) =>
+    to === '/' ? pathname === '/' : pathname === to || pathname.startsWith(`${to}/`),
   )
+  const activeIndex = Math.max(0, rawIndex)
 
   return (
     <nav
@@ -371,7 +384,7 @@ function BottomNav() {
         {/* SATU pill persisten — posisi berubah via transform, tidak remount. */}
         <span
           aria-hidden="true"
-          className="pointer-events-none absolute bottom-1 left-1 top-1 w-[calc((100%-0.5rem)/3)] rounded-xl bg-ink-850 transition-transform duration-[var(--dur-ui)] ease-[var(--ease-out-quint)]"
+          className={`pointer-events-none absolute bottom-1 left-1 top-1 w-[calc((100%-0.5rem)/3)] rounded-xl bg-ink-850 transition-transform duration-[var(--dur-ui)] ease-[var(--ease-out-quint)] ${rawIndex < 0 ? 'opacity-0' : ''}`}
           style={{ transform: `translateX(${activeIndex * 100}%)` }}
         />
         {NAV.map(({ to, label, icon: Icon }) => (

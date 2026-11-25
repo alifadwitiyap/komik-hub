@@ -138,6 +138,7 @@ export interface UnifiedFilter {
 }
 
 export const unifiedApi = {
+  /** Ukuran halaman standar lintas sumber (search/catalogue/popular/latest). */
   search: (
     q: string,
     page = 1,
@@ -145,7 +146,7 @@ export const unifiedApi = {
     filter?: UnifiedFilter,
   ) =>
     get<UnifiedListResult>(
-      `/unified/search?q=${encodeURIComponent(q)}&page=${page}${filterQuery(filter)}`,
+      `/unified/search?q=${encodeURIComponent(q)}&page=${page}&limit=20${filterQuery(filter)}`,
       signal,
     ),
   /**
@@ -159,17 +160,17 @@ export const unifiedApi = {
     filter?: UnifiedFilter,
   ) =>
     get<UnifiedListResult>(
-      `/unified/catalogue?page=${page}${filterQuery(filter)}`,
+      `/unified/catalogue?page=${page}&limit=20${filterQuery(filter)}`,
       signal,
     ),
   popular: (page = 1, signal?: AbortSignal, filter?: UnifiedFilter) =>
     get<UnifiedListResult>(
-      `/unified/popular?page=${page}${filterQuery(filter)}`,
+      `/unified/popular?page=${page}&limit=20${filterQuery(filter)}`,
       signal,
     ),
   latest: (page = 1, signal?: AbortSignal, filter?: UnifiedFilter) =>
     get<UnifiedListResult>(
-      `/unified/latest?page=${page}${filterQuery(filter)}`,
+      `/unified/latest?page=${page}&limit=20${filterQuery(filter)}`,
       signal,
     ),
   genres: (signal?: AbortSignal) =>
@@ -404,13 +405,14 @@ export function toMangaCard(m: MangaOut): Manga {
     title: decodeEntities(m.title),
     // server kirim rating sebagai string; "-" berarti tanpa skor
     score: m.rating && m.rating !== '-' ? m.rating : null,
+    author: m.author ? decodeEntities(m.author) : null,
     thumbnail: cover,
     cover,
     // updated_at epoch millis → tanggal pendek lokal (samakan dengan kartu komiku)
     update_date: m.updated_at ? new Date(m.updated_at).toLocaleDateString('id-ID') : null,
     tipe: m.manga_type ? [m.manga_type] : m.status ? [m.status] : null,
     status: m.status ? [m.status] : null,
-    other: [m.last_chapter, m.author].filter(Boolean) as string[],
+    other: m.last_chapter ? [m.last_chapter] : [],
     handle: m.handle,
     source: m.source,
     title_key: m.title_key,

@@ -2,8 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { SourceStatus } from '../components/SourceStatus'
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
 import { imgUrl } from '../imgUrl'
-import { usableCoverUrl } from '../api'
-import { unifiedApi } from '../api'
+import { decodeEntities, usableCoverUrl, unifiedApi } from '../api'
 import { getUser } from '../account'
 import type { MangaOut, UnifiedChapterOut } from '../types'
 import { Empty, Spinner } from '../App'
@@ -62,6 +61,9 @@ export default function SeriesUnified() {
   const [error, setError] = useState<string | null>(null)
   const [showAll, setShowAll] = useState(false)
   const [chapterQuery, setChapterQuery] = useState('')
+  const [chapterOrder, setChapterOrder] = useState<'terbaru' | 'terlama'>('terbaru')
+  const [unreadOnly, setUnreadOnly] = useState(false)
+  const [synopsisOpen, setSynopsisOpen] = useState(false)
   const { recent } = useProgress()
   // --- unduh PDF mode range (2-tap rentang) --------------------------------
   const [pickMode, setPickMode] = useState(false)
@@ -85,7 +87,6 @@ export default function SeriesUnified() {
     const summary = announceFinish(finishedRun, { current: true })
     if (summary) setDlSummary(summary)
   })
-  const range = useRangeSelection(data?.chapters.length ?? 0)
   const navigate = useNavigate()
   const location = useLocation()
   /** Kembali ke asal (state.from / history), bukan selalu Beranda. */
@@ -101,8 +102,6 @@ export default function SeriesUnified() {
   const wasPickingRef = useRef(false)
   const selectionKey = `komik:download-selection:${handle}`
   const returnKey = `komik:download-return:${handle}`
-  const resetRange = range.reset
-  const selectRange = range.select
 
   // Listener modul aktif meski halaman series unmount saat /akun tampil.
   ensureDownloadReturn()
@@ -112,6 +111,13 @@ export default function SeriesUnified() {
     wasPickingRef.current = pickMode
   }, [pickMode])
 
+  useEffect(() => {
+    setChapterQuery('')
+    setChapterOrder('terbaru')
+    setUnreadOnly(false)
+    setSynopsisOpen(false)
+  }, [handle])
+
   // Sticky B+C — server coba sumber terakhir-dibaca untuk judul ini dulu
   // (kalau ada di riwayat), baru fallback primary. Ref supaya effect tidak
   // re-fetch setiap kali riwayat bertambah.
@@ -120,41 +126,91 @@ export default function SeriesUnified() {
 
   useEffect(() => {
     if (!handle) return
-    const ctrl = new AbortController()
-    // Request menggantung (koneksi lambat / HP suspend) dulu = spinner tanpa
-    // akhir. 15 detik lalu batalkan dan tampilkan pesan server bermasalah.
-    const timer = setTimeout(() => ctrl.abort(new DOMException('Waktu habis', 'TimeoutError')), 15_000)
+    const PHASE2_DELAY_MS = 3500
+    const MAX_PHASE2_ATTEMPTS = 2
+    let cancelled = false
+    const timers: ReturnType<typeof setTimeout>[] = []
+    const ctrls: AbortController[] = []
+
+    const run = (attempt: number) => {
+      const ctrl = new AbortController()
+      ctrls.push(ctrl)
+      // Request menggantung (koneksi lambat / HP suspend) dulu = spinner tanpa
+      // akhir. 15 detik lalu batalkan dan tampilkan pesan server bermasalah.
+      const timer = setTimeout(() => ctrl.abort(new DOMException('Waktu habis', 'TimeoutError')), 15_000)
+      timers.push(timer)
+      unifiedApi
+        .series(handle, ctrl.signal, lastSourceRef.current)
+        .then((r) => {
+          clearTimeout(timer)
+          if (cancelled) return
+          const cover = usableCoverUrl(r.manga.cover_url)
+          setData({
+            manga: { ...r.manga, cover_url: cover },
+            chapters: r.chapters ?? [],
+            representative_source: r.representative_source ?? null,
+          })
+          setFailedSources(r.failed_sources ?? [])
+          setPendingSources(r.pending ?? [])
+          const nextPending = r.pending ?? []
+          if (nextPending.length > 0 && attempt < MAX_PHASE2_ATTEMPTS) {
+            timers.push(
+              setTimeout(() => {
+                if (!cancelled) run(attempt + 1)
+              }, PHASE2_DELAY_MS),
+            )
+          }
+        })
+        .catch((e: Error) => {
+          clearTimeout(timer)
+          if (cancelled || e.name === 'AbortError') return
+          if (attempt === 0) {
+            setError(e.name === 'TimeoutError' ? 'Server tidak merespons — coba lagi.' : friendlyError(e))
+          } else {
+            setPendingSources([])
+          }
+        })
+    }
+
     setData(null)
     setError(null)
+    setFailedSources([])
+    setPendingSources([])
     setShowAll(false)
     setPickMode(false)
-    unifiedApi
-      .series(handle, ctrl.signal, lastSourceRef.current)
-      .then((r) => {
-        const cover = usableCoverUrl(r.manga.cover_url)
-        setData({
-          manga: { ...r.manga, cover_url: cover },
-          chapters: r.chapters ?? [],
-          representative_source: r.representative_source ?? null,
-        })
-        setFailedSources(r.failed_sources ?? [])
-        setPendingSources(r.pending ?? [])
-      })
-      .catch((e: Error) => {
-        if (e.name === 'AbortError') return
-        setError(e.name === 'TimeoutError' ? 'Server tidak merespons — coba lagi.' : friendlyError(e))
-      })
+    run(0)
+
     return () => {
-      clearTimeout(timer)
-      ctrl.abort()
+      cancelled = true
+      timers.forEach(clearTimeout)
+      ctrls.forEach((c) => c.abort())
     }
   }, [handle, reloadKey])
 
-  // Satu aturan urutan dipakai daftar, tombol mulai, dan lanjut/next.
+  // Mark "sudah dibaca" per akun: chapter yang pernah dibuka user jadi abu.
+  // Kunci = title_key series + nomor chapter (lihat readMarks.ts).
+  const titleKey = data?.manga.title_key ?? null
+  const { isRead, count: readTotal } = useReadMarks(titleKey)
+  const effectiveUnreadOnly = unreadOnly && readTotal > 0
+
+  // Satu aturan urutan kanonik (terbaru → terlama) untuk CTA atas & metadata.
   const chapters = useMemo(
     () => sortByChapterNumber(data?.chapters ?? [], (c) => c.number, 'terbaru'),
     [data],
   )
+  // Daftar yang benar-benar dirender (ikut toggle urutan & filter belum dibaca).
+  const displayChapters = useMemo(() => {
+    const ordered =
+      chapterOrder === 'terbaru'
+        ? chapters
+        : sortByChapterNumber(data?.chapters ?? [], (c) => c.number, 'lama')
+    return effectiveUnreadOnly ? ordered.filter((c) => !isRead(c.number)) : ordered
+  }, [chapters, data, chapterOrder, effectiveUnreadOnly, isRead])
+
+  const range = useRangeSelection(displayChapters.length)
+  const resetRange = range.reset
+  const selectRange = range.select
+
   // Simpan nomor chapter, bukan indeks: chapter baru dapat muncul selama login.
   useEffect(() => {
     if (!data) return
@@ -170,8 +226,8 @@ export default function SeriesUnified() {
           (saved.start === null && saved.end !== null)) {
         throw new Error('Seleksi tidak valid')
       }
-      const start = chapters.findIndex((c) => c.number === saved.start)
-      const end = chapters.findIndex((c) => c.number === saved.end)
+      const start = displayChapters.findIndex((c) => c.number === saved.start)
+      const end = displayChapters.findIndex((c) => c.number === saved.end)
       resetRange()
       setPickMode(true)
       setShowAll(saved.showAll || start >= 40 || end >= 40)
@@ -184,16 +240,12 @@ export default function SeriesUnified() {
     } catch {
       setDlNote('Seleksi sebelumnya tidak bisa dipulihkan — pilih ulang chapter.')
     }
-  }, [data, chapters, selectionKey, resetRange, selectRange])
+  }, [data, displayChapters, selectionKey, resetRange, selectRange])
 
   const oldest = chapters.length > 0 ? chapters[chapters.length - 1] : null
   // Chapter terbaru = elemen pertama sesudah urutan "terbaru" (dipakai CTA
   // "Lanjut ke terbaru" untuk fresh user, bukan asumsi Chapter 01).
   const newest = chapters.length > 0 ? chapters[0] : null
-  // Mark "sudah dibaca" per akun: chapter yang pernah dibuka user jadi abu.
-  // Kunci = title_key series + nomor chapter (lihat readMarks.ts).
-  const titleKey = data?.manga.title_key ?? null
-  const { isRead, count: readTotal } = useReadMarks(titleKey)
   // Resume baca + sesi maraton untuk series ini — hook bersama. Progres
   // mengikuti identitas series dengan kunci chapter persis; bila sumber halaman
   // berbeda dari sumber progres, label menjelaskannya tanpa jatuh ke chapter
@@ -216,14 +268,14 @@ export default function SeriesUnified() {
   const selectedRefs = useMemo(
     () =>
       range.indices
-        .map((i) => chapters[i])
+        .map((i) => displayChapters[i])
         .filter((c): c is UnifiedChapterOut => c !== undefined)
         .map((c) => ({ handle, number: c.number })),
-    [range.indices, handle, chapters],
+    [range.indices, handle, displayChapters],
   )
   // Chapter terpilih yang sudah tidak ada di daftar (daftar menyusut /
   // indeks basi) — diperingatkan, bukan diam-diam dibuang.
-  const outOfRange = outOfRangeCount(range.indices, chapters.length)
+  const outOfRange = outOfRangeCount(range.indices, displayChapters.length)
   // Chapter terpilih yang sudah tersimpan sebelumnya (ledger tahan tab
   // ditutup) — diberi tahu supaya user tidak mengunduh ulang tanpa sadar.
   const alreadyDone = useMemo(() => {
@@ -259,8 +311,8 @@ export default function SeriesUnified() {
   const signInForDownload = () => {
     try {
       sessionStorage.setItem(selectionKey, JSON.stringify({
-        start: range.state.start === null ? null : chapters[range.state.start]?.number ?? null,
-        end: range.state.end === null ? null : chapters[range.state.end]?.number ?? null,
+        start: range.state.start === null ? null : displayChapters[range.state.start]?.number ?? null,
+        end: range.state.end === null ? null : displayChapters[range.state.end]?.number ?? null,
         showAll,
       }))
       sessionStorage.setItem(returnKey, location.pathname + location.search + location.hash)
@@ -343,7 +395,7 @@ export default function SeriesUnified() {
   const unifiedGenres = (m as MangaOut & { genre?: { id?: string; name: string }[] }).genre
   // Satu daftar chapter saja; query menyaringnya tanpa mengubah index asli
   // (dipakai range.isAnchor/inRange/select dan resume lintas sumber).
-  const chapterRows = filterChapterIndices(chapters, chapterQuery)
+  const chapterRows = filterChapterIndices(displayChapters, chapterQuery)
   const visibleRows =
     showAll || chapterQuery.trim() ? chapterRows : chapterRows.slice(0, 40)
   // Diproses = semua hasil terminal (tersimpan + gagal), bukan hanya sukses.
@@ -382,13 +434,13 @@ export default function SeriesUnified() {
           </div>
         )}
 
-        <div className="relative px-4 pb-4 pt-5">
-          {/* py-3.5 memperluas area sentuh ke >=44px; padding inline tak mengubah tinggi header. */}
+        <div className="relative px-4 pb-3 pt-2">
+          {/* -my-1 memperluas area sentuh ke >=44px tanpa menambah tinggi header. */}
           <div className="flex items-center justify-between">
             <button
               type="button"
               onClick={goBack}
-              className="inline-flex min-h-11 items-center py-3.5 text-[12px] font-medium text-ink-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber focus-visible:ring-offset-2 [@media(hover:hover)_and_(pointer:fine)]:hover:text-ink-200"
+              className="-my-1 inline-flex min-h-11 items-center py-2 text-[12px] font-medium text-ink-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber focus-visible:ring-offset-2 [@media(hover:hover)_and_(pointer:fine)]:hover:text-ink-200"
             >
               ← Kembali
             </button>
@@ -397,7 +449,7 @@ export default function SeriesUnified() {
               type="button"
               onClick={copySeriesLink}
               aria-label={copied ? 'Tautan tersalin' : 'Salin tautan series'}
-              className="-mr-3 flex h-11 w-11 shrink-0 touch-manipulation items-center justify-center rounded-xl text-ink-400 transition-transform duration-150 [@media(hover:hover)_and_(pointer:fine)]:hover:text-ink-100 active:scale-[0.97] active:duration-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber focus-visible:ring-offset-2"
+              className="-mr-3 -my-1 flex h-11 w-11 shrink-0 touch-manipulation items-center justify-center rounded-xl text-ink-400 transition-transform duration-150 [@media(hover:hover)_and_(pointer:fine)]:hover:text-ink-100 active:scale-[0.97] active:duration-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber focus-visible:ring-offset-2"
             >
               {copied ? (
                 <svg viewBox="0 0 24 24" className="size-5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -413,8 +465,8 @@ export default function SeriesUnified() {
           </div>
           {copyError && <p className="mt-1 text-right text-[11px] text-brand-red">{copyError}</p>}
 
-          <div className="mt-3 flex gap-4">
-            <div className="w-28 shrink-0 sm:w-32">
+          <div className="mt-1.5 flex gap-3.5">
+            <div className="w-24 shrink-0 sm:w-32">
               <div className="aspect-[3/4] overflow-hidden rounded-xl border border-ink-700 bg-ink-850 shadow-lg">
                 {m.cover_url && !coverFailed ? (
                   <img referrerPolicy="no-referrer" src={imgUrl(m.cover_url)} alt={m.title} onError={() => setCoverFailed(true)} className="size-full object-cover" />
@@ -433,7 +485,7 @@ export default function SeriesUnified() {
                 <SourceBadge source={m.source} className="mt-1 shrink-0" />
               </div>
 
-              <dl className="mt-2.5 space-y-1 text-[12px]">
+              <dl className="mt-2 space-y-0.5 text-[12px]">
                 {m.author && (
                   <div className="flex gap-2">
                     <dt className="w-16 shrink-0 text-ink-500">Penulis</dt>
@@ -460,166 +512,193 @@ export default function SeriesUnified() {
                 )}
               </dl>
 
-              {unifiedGenres && unifiedGenres.length > 0 && (
-                <div className="mt-2.5 flex flex-wrap gap-1.5">
-                  {unifiedGenres.map((g, i) => (
-                    <Link
-                      key={`${g.id ?? g.name}-${i}`}
-                      to={genreHref(g.id, g.name)}
-                      className="inline-flex min-h-11 items-center rounded-full bg-brand-amber/10 px-2.5 py-1.5 text-[10.5px] font-semibold text-brand-amber transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber [@media(hover:hover)_and_(pointer:fine)]:hover:bg-brand-amber/20"
-                    >
-                      {g.name}
-                    </Link>
-                  ))}
-                </div>
-              )}
-
               {data.representative_source && (
                 <p className="mt-1.5 inline-flex items-center gap-1 rounded-md border border-ink-700 bg-ink-900 px-1.5 py-0.5 text-[10.5px] font-medium text-ink-400">
                   Terbaru dari {data.representative_source}
                 </p>
               )}
 
-              {m.updated_at != null && (
-                <p className="mt-1.5 text-[11px] text-ink-500">
-                  Update {new Date(m.updated_at).toLocaleDateString('id-ID')}
-                </p>
-              )}
-
-              {m.url && (
-                <a
-                  href={m.url}
-                  target="_blank"
-                  rel="noreferrer noopener"
-                  className="mt-2.5 inline-flex min-h-11 items-center text-[11.5px] font-semibold text-brand-amber"
-                >
-                  Buka halaman asli ↗
-                </a>
+              {(m.updated_at != null || m.url) && (
+                <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-ink-500">
+                  {m.updated_at != null && (
+                    <span>Update {new Date(m.updated_at).toLocaleDateString('id-ID')}</span>
+                  )}
+                  {m.url && (
+                    <a
+                      href={m.url}
+                      target="_blank"
+                      rel="noreferrer noopener"
+                      className="-my-2 inline-flex min-h-11 items-center text-[11.5px] font-semibold text-brand-amber"
+                    >
+                      Buka halaman asli ↗
+                    </a>
+                  )}
+                </div>
               )}
             </div>
           </div>
-        </div>
-      </div>
 
-      {/* Tombol baca / maraton */}
-      <div className="sticky top-[calc(3.5rem+env(safe-area-inset-top))] z-30 border-y border-ink-800 bg-ink-950/95 px-4 py-2.5 backdrop-blur">
-        <div className="grid grid-cols-2 gap-3">
-          {oldest && (
-            <>
-              <Link
-                to={resumeHref ?? `/baca/${handle}/${oldest.number}`}
-                className="flex min-h-11 flex-1 items-center justify-center rounded-xl bg-brand-amber py-2.5 text-center text-[13px] font-bold text-white transition-colors active:scale-[0.97] active:duration-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber focus-visible:ring-offset-2 [@media(hover:hover)_and_(pointer:fine)]:hover:bg-brand-amber-soft"
-              >
-                {lanjut ? (
-                  <span className="flex flex-col items-center">
-                    <span>{lanjut.label}</span>
-                    {lanjut.sub && (
-                      <span className="mt-0.5 text-[10.5px] font-medium text-white/85">
-                        {lanjut.sub}
-                      </span>
-                    )}
-                    {sourceNotice && (
-                      <span className="mt-0.5 text-[10px] font-medium text-white/80">
-                        {sourceNotice}
-                      </span>
-                    )}
-                  </span>
-                ) : (
-                  resumeKey
-                    ? `Lanjut · ${label}${sourceNotice ? ` ${sourceNotice}` : ''}`
-                    : `Baca ${chapterLabel(oldest)}`
-                )}
-              </Link>
-              <Link
-                to={
-                  // Fresh user: tawarkan chapter terbaru di samping "Baca dari
-                  // awal", supaya tidak perlu menelusur ratusan chapter.
-                  // User dengan progres tetap melihat tombol Maraton seperti
-                  // sebelumnya (lanjut sesi, bukan balik ke awal).
-                  !lanjut && !resumeKey && newest
-                    ? `/baca/${handle}/${newest.number}`
-                    : marathonLink ?? `/maraton/${handle}/${oldest.number}`
-                }
-                title={
-                  !lanjut && !resumeKey && newest
-                    ? `Baca chapter terbaru ${chapterLabel(newest)}`
-                    : marathonPos
-                      ? 'Lanjutkan maraton dari posisi terakhir'
-                      : `Mulai maraton dari ${chapterLabel(oldest)}`
-                }
-                className="flex min-h-11 items-center justify-center rounded-xl border border-brand-amber-dim px-3.5 py-2.5 text-center text-[13px] font-semibold text-brand-amber transition-colors active:scale-[0.97] active:duration-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber focus-visible:ring-offset-2 [@media(hover:hover)_and_(pointer:fine)]:hover:bg-brand-amber-dim/20"
-              >
-                {!lanjut && !resumeKey && newest && newest.number !== oldest.number
-                  ? `Terbaru · ${chapterLabel(newest)}`
-                  : 'Maraton'}
-              </Link>
-              {/* unduh PDF: aktifkan mode range 2-tap rentang pada daftar chapter */}
-              {chapters.length > 0 && (
-                <button
-                  type="button"
-                  data-range-toggle
-                  ref={downloadTriggerRef}
-                  aria-pressed={pickMode}
-                  aria-label={pickMode ? 'Tutup mode pilih chapter' : 'Unduh chapter'}
-                  onClick={() => {
-                    if (pickMode) range.reset()
-                    setPickMode(!pickMode)
-                  }}
-                  className={`flex min-h-11 shrink-0 items-center justify-center gap-1.5 rounded-xl border px-3 py-2.5 text-center text-[13px] font-semibold transition-colors active:scale-[0.97] active:duration-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber focus-visible:ring-offset-2 ${
-                    pickMode
-                      ? 'border-brand-amber bg-brand-amber/15 text-brand-amber'
-                      : 'border-ink-700 text-ink-300 [@media(hover:hover)_and_(pointer:fine)]:hover:bg-ink-850'
-                  }`}
-                >
-                  <svg
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2.5"
-                    aria-hidden="true"
-                    className="size-4"
-                  >
-                    <path d="M12 4v11m0 0 4-4m-4 4-4-4" strokeLinecap="round" strokeLinejoin="round" />
-                    <path d="M5 20h14" strokeLinecap="round" />
-                  </svg>
-                  Unduh
-                </button>
-              )}
-              {/* favorit: tombol berlabel di sebelah CTA baca (discoverability HP) */}
-              {m.title_key && (
-                <HeartButton
-                  labeled
-                  manga={{
-                    title_key: m.title_key,
-                    title: m.title,
-                    cover_url: m.cover_url ?? null,
-                    handle,
-                    source: m.source,
-                  }}
-                />
-              )}
-              {/* Fresh user tetap punya maraton; dipindah ke baris sendiri
-                  supaya dua CTA utama (awal/terbaru) tidak tertutup. */}
-              {!lanjut && !resumeKey && newest && (
+          {unifiedGenres && unifiedGenres.length > 0 && (
+            <div className="mt-2 flex gap-1.5 overflow-x-auto pb-0.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+              {unifiedGenres.map((g, i) => (
                 <Link
-                  to={marathonLink ?? `/maraton/${handle}/${oldest.number}`}
-                  title={
-                    marathonPos
-                      ? 'Lanjutkan maraton dari posisi terakhir'
-                      : `Mulai maraton dari ${chapterLabel(oldest)}`
-                  }
-                  className="col-span-2 flex min-h-11 items-center justify-center rounded-xl border border-ink-700 px-3.5 py-2.5 text-center text-[13px] font-medium text-ink-200 transition-colors active:scale-[0.97] active:duration-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber focus-visible:ring-offset-2 [@media(hover:hover)_and_(pointer:fine)]:hover:bg-ink-850"
+                  key={`${g.id ?? g.name}-${i}`}
+                  to={genreHref(g.id, g.name)}
+                  className="inline-flex min-h-11 shrink-0 items-center rounded-full bg-brand-amber/10 px-3 py-1.5 text-[11px] font-semibold text-brand-amber transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber [@media(hover:hover)_and_(pointer:fine)]:hover:bg-brand-amber/20"
                 >
-                  Maraton dari awal
+                  {g.name}
                 </Link>
-              )}
-            </>
+              ))}
+            </div>
           )}
         </div>
       </div>
 
+      {/* Sinopsis */}
+      {m.synopsis?.trim() && (
+        <section className="px-4 pb-3 pt-1">
+          <p
+            className={`text-[12.5px] leading-relaxed text-ink-300 ${
+              synopsisOpen ? 'whitespace-pre-line' : 'line-clamp-3'
+            }`}
+          >
+            {decodeEntities(m.synopsis.trim())}
+          </p>
+          <button
+            type="button"
+            aria-expanded={synopsisOpen}
+            onClick={() => setSynopsisOpen((open) => !open)}
+            className="-my-2 mt-0.5 inline-flex min-h-11 items-center text-[12px] font-semibold text-brand-amber focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber"
+          >
+            {synopsisOpen ? 'Ringkas' : 'Selengkapnya'}
+          </button>
+        </section>
+      )}
+
+      {/* Tombol baca utama (sticky hanya 1 baris agar daftar chapter langsung terlihat di HP) */}
+      {oldest && (
+        <div className="sticky top-[calc(3.5rem+env(safe-area-inset-top))] z-30 border-y border-ink-800 bg-ink-950/95 px-4 py-2 backdrop-blur">
+          <div className="grid grid-cols-2 gap-2.5">
+            <Link
+              to={resumeHref ?? `/baca/${handle}/${oldest.number}`}
+              className="flex min-h-11 flex-1 items-center justify-center rounded-xl bg-brand-amber py-2 text-center text-[13px] font-bold text-white transition-colors active:scale-[0.97] active:duration-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber focus-visible:ring-offset-2 [@media(hover:hover)_and_(pointer:fine)]:hover:bg-brand-amber-soft"
+            >
+              {lanjut ? (
+                <span className="flex flex-col items-center">
+                  <span>{lanjut.label}</span>
+                  {lanjut.sub && (
+                    <span className="mt-0.5 text-[10.5px] font-medium text-white/85">
+                      {lanjut.sub}
+                    </span>
+                  )}
+                  {sourceNotice && (
+                    <span className="mt-0.5 text-[10px] font-medium text-white/80">
+                      {sourceNotice}
+                    </span>
+                  )}
+                </span>
+              ) : (
+                resumeKey
+                  ? `Lanjut · ${label}${sourceNotice ? ` ${sourceNotice}` : ''}`
+                  : `Baca ${chapterLabel(oldest)}`
+              )}
+            </Link>
+            <Link
+              to={
+                // Fresh user: tawarkan chapter terbaru di samping "Baca dari
+                // awal", supaya tidak perlu menelusur ratusan chapter.
+                // User dengan progres tetap melihat tombol Maraton seperti
+                // sebelumnya (lanjut sesi, bukan balik ke awal).
+                !lanjut && !resumeKey && newest
+                  ? `/baca/${handle}/${newest.number}`
+                  : marathonLink ?? `/maraton/${handle}/${oldest.number}`
+              }
+              title={
+                !lanjut && !resumeKey && newest
+                  ? `Baca chapter terbaru ${chapterLabel(newest)}`
+                  : marathonPos
+                    ? 'Lanjutkan maraton dari posisi terakhir'
+                    : `Mulai maraton dari ${chapterLabel(oldest)}`
+              }
+              className="flex min-h-11 items-center justify-center rounded-xl border border-brand-amber-dim px-3.5 py-2 text-center text-[13px] font-semibold text-brand-amber transition-colors active:scale-[0.97] active:duration-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber focus-visible:ring-offset-2 [@media(hover:hover)_and_(pointer:fine)]:hover:bg-brand-amber-dim/20"
+            >
+              {!lanjut && !resumeKey && newest && newest.number !== oldest.number
+                ? `Terbaru · ${chapterLabel(newest)}`
+                : 'Maraton'}
+            </Link>
+          </div>
+        </div>
+      )}
+
+      {/* Aksi sekunder non-sticky (Unduh, Favorit, Maraton dari Ch. X) */}
+      {(chapters.length > 0 || Boolean(m.title_key)) && (
+        <div className="border-b border-ink-800/70 px-4 py-2">
+          <div className="grid grid-cols-2 gap-2">
+            {chapters.length > 0 && (
+              <button
+                type="button"
+                data-range-toggle
+                ref={downloadTriggerRef}
+                aria-pressed={pickMode}
+                aria-label={pickMode ? 'Tutup mode pilih chapter' : 'Unduh chapter'}
+                onClick={() => {
+                  if (pickMode) range.reset()
+                  setPickMode(!pickMode)
+                }}
+                className={`flex min-h-11 shrink-0 items-center justify-center gap-1.5 rounded-xl border px-3 py-2 text-center text-[13px] font-semibold transition-colors active:scale-[0.97] active:duration-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber focus-visible:ring-offset-2 ${
+                  !m.title_key ? 'col-span-2 ' : ''
+                }${
+                  pickMode
+                    ? 'border-brand-amber bg-brand-amber/15 text-brand-amber'
+                    : 'border-ink-700 text-ink-300 [@media(hover:hover)_and_(pointer:fine)]:hover:bg-ink-850'
+                }`}
+              >
+                <svg
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2.5"
+                  aria-hidden="true"
+                  className="size-4"
+                >
+                  <path d="M12 4v11m0 0 4-4m-4 4-4-4" strokeLinecap="round" strokeLinejoin="round" />
+                  <path d="M5 20h14" strokeLinecap="round" />
+                </svg>
+                Unduh
+              </button>
+            )}
+            {m.title_key && (
+              <HeartButton
+                labeled
+                className={chapters.length === 0 ? 'col-span-2' : ''}
+                manga={{
+                  title_key: m.title_key,
+                  title: m.title,
+                  cover_url: m.cover_url ?? null,
+                  handle,
+                  source: m.source,
+                }}
+              />
+            )}
+            {oldest && !lanjut && !resumeKey && newest && (
+              <Link
+                to={marathonLink ?? `/maraton/${handle}/${oldest.number}`}
+                title={
+                  marathonPos
+                    ? 'Lanjutkan maraton dari posisi terakhir'
+                    : `Mulai maraton dari ${chapterLabel(oldest)}`
+                }
+                className="col-span-2 flex min-h-11 items-center justify-center rounded-xl border border-ink-700 px-3.5 py-2 text-center text-[13px] font-medium text-ink-200 transition-colors active:scale-[0.97] active:duration-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber focus-visible:ring-offset-2 [@media(hover:hover)_and_(pointer:fine)]:hover:bg-ink-850"
+              >
+                {Number(oldest.number) > 1 ? `Maraton dari Ch. ${oldest.number}` : 'Maraton dari awal'}
+              </Link>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* Daftar chapter */}
-      <section className="px-4 pb-6 pt-4" data-series-list>
+      <section className="px-4 pb-6 pt-3" data-series-list>
         <h2 className="mb-2 text-[13px] font-semibold text-ink-100">
           Chapter <span className="text-ink-500">({chapters.length})</span>
           {readTotal > 0 && (
@@ -629,8 +708,8 @@ export default function SeriesUnified() {
           )}
         </h2>
 
-        {/* Pencarian nomor chapter — menyaring SATU daftar di bawah, tanpa panel scroll tersendiri. */}
-        <div className="mb-2 flex items-center gap-2">
+        {/* Pencarian nomor + urutan + filter belum dibaca */}
+        <div className="mb-2 flex flex-wrap items-center gap-1.5">
           <input
             type="search"
             aria-label="Cari nomor chapter"
@@ -639,7 +718,7 @@ export default function SeriesUnified() {
             onChange={(e) => setChapterQuery(e.target.value)}
             inputMode="decimal"
             enterKeyHint="search"
-            className="min-h-11 min-w-0 flex-1 rounded-xl border border-ink-700 bg-ink-900 px-3 text-base text-ink-100 placeholder:text-ink-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber sm:text-[12.5px]"
+            className="min-h-11 min-w-[8.5rem] flex-1 rounded-xl border border-ink-700 bg-ink-900 px-3 text-base text-ink-100 placeholder:text-ink-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber sm:text-[12.5px]"
           />
           {chapterQuery.trim() && (
             <button
@@ -650,6 +729,44 @@ export default function SeriesUnified() {
               Hapus
             </button>
           )}
+          {chapters.length > 0 && (
+            <button
+              type="button"
+              aria-label={
+                chapterOrder === 'terbaru'
+                  ? 'Urutan terbaru dulu — ubah ke chapter awal dulu'
+                  : 'Urutan chapter awal dulu — ubah ke terbaru dulu'
+              }
+              onClick={() => {
+                resetRange()
+                setChapterOrder((o) => (o === 'terbaru' ? 'terlama' : 'terbaru'))
+              }}
+              className={`min-h-11 shrink-0 ${
+                chapterOrder === 'terlama'
+                  ? 'rounded-xl border border-brand-amber bg-brand-amber/15 px-3 text-[12px] font-semibold text-brand-amber'
+                  : 'rounded-xl border border-ink-700 px-3 text-[12px] font-semibold bg-ink-900 text-ink-200 [@media(hover:hover)_and_(pointer:fine)]:hover:bg-ink-850'
+              } transition-colors active:scale-[0.97] active:duration-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber`}
+            >
+              {chapterOrder === 'terbaru' ? 'Terbaru ↓' : 'Ch. 1 ↑'}
+            </button>
+          )}
+          {readTotal > 0 && (
+            <button
+              type="button"
+              aria-pressed={effectiveUnreadOnly}
+              onClick={() => {
+                resetRange()
+                setUnreadOnly((v) => !v)
+              }}
+              className={`min-h-11 shrink-0 ${
+                effectiveUnreadOnly
+                  ? 'rounded-xl border border-brand-amber bg-brand-amber/15 px-3 text-[12px] font-semibold text-brand-amber'
+                  : 'rounded-xl border border-ink-700 px-3 text-[12px] font-semibold bg-ink-900 text-ink-200 [@media(hover:hover)_and_(pointer:fine)]:hover:bg-ink-850'
+              } transition-colors active:scale-[0.97] active:duration-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber`}
+            >
+              Belum dibaca
+            </button>
+          )}
         </div>
 
         {/* Kalau ada sumber yang gagal, katakan SEBELUM daftar chapter:
@@ -658,8 +775,9 @@ export default function SeriesUnified() {
         <SourceStatus
           failed={failedSources}
           pending={pendingSources}
+          compact={chapters.length > 0}
           onRetry={() => setReloadKey((k) => k + 1)}
-          className="mb-3"
+          className="mb-2.5"
         />
 
         {/* Mode seleksi range (2-tap rentang) → POST /unified/download-pdf.
@@ -850,7 +968,7 @@ export default function SeriesUnified() {
             </div>
           </div>
         )}
-        {getUser() === null && chapters.length > 0 && (
+        {pickMode && getUser() === null && chapters.length > 0 && (
           <div className="mb-3 text-[11px] text-ink-500">
             <button
               type="button"
@@ -902,7 +1020,9 @@ export default function SeriesUnified() {
           </div>
         ) : visibleRows.length === 0 ? (
           <p className="py-6 text-center text-[12.5px] text-ink-500">
-            Tidak ada chapter yang cocok.
+            {effectiveUnreadOnly && !chapterQuery.trim()
+              ? 'Semua chapter sudah dibaca.'
+              : 'Tidak ada chapter yang cocok.'}
           </p>
         ) : (
           <ul className="divide-y divide-ink-800 overflow-hidden rounded-xl border border-ink-800 bg-ink-900">
@@ -983,13 +1103,13 @@ export default function SeriesUnified() {
         )}
 
         {pickMode && <div aria-hidden className="h-24" />}
-        {!chapterQuery.trim() && chapters.length > 40 && (
+        {!chapterQuery.trim() && displayChapters.length > 40 && (
           <button
             type="button"
             onClick={() => setShowAll((v) => !v)}
             className="mt-3 min-h-11 w-full rounded-xl border border-ink-700 py-2.5 text-[13px] font-medium text-ink-300 transition-colors active:scale-[0.97] active:duration-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-amber focus-visible:ring-offset-2"
           >
-            {showAll ? 'Tampilkan lebih sedikit' : `Tampilkan semua ${chapters.length} chapter`}
+            {showAll ? 'Tampilkan lebih sedikit' : `Tampilkan semua ${displayChapters.length} chapter`}
           </button>
         )}
       </section>

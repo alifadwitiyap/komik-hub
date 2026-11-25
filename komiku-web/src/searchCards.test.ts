@@ -31,11 +31,11 @@ describe('Search kompak 320px', () => {
     expect(searchSrc).toContain('{inputActive && !riwayatDimatikan && !searching && (')
     expect(searchSrc).toContain('data-recent-searches')
     expect(searchSrc).toContain('setRiwayatDimatikan(true)')
-    expect(searchSrc).toContain('onFocus={() => setRiwayatDimatikan(false)}')
+    expect(searchSrc).toContain('setRiwayatDimatikan(false)')
     expect(searchSrc).toContain('setInputActive(true)')
     expect(searchSrc).toContain('setRiwayatDimatikan(false)')
     // Submit tidak menambah riwayat pencarian ke layar hasil.
-    expect(searchSrc).toContain('const commitQuery = (v: string) => {\n    setRiwayatDimatikan(true)')
+    expect(searchSrc).toContain('const commitQuery = (v: string) => {\n    pendingScrollRef.current = null\n    setRiwayatDimatikan(true)')
     expect(searchSrc).toContain('{searching ? (\n        <div className="mt-2">')
     expect(searchSrc).toContain('data-search-count className="text-[11.5px] text-ink-500"')
     expect(searchSrc).toContain('<ResultGrid items={results} />')
@@ -44,6 +44,22 @@ describe('Search kompak 320px', () => {
     expect(searchSrc).toContain('query,\n        filter: cloneFilters(params),')
     expect(searchSrc).toContain('scrollY: window.scrollY,')
     expect(searchSrc).toContain('href: link.getAttribute(\'href\') ?? \'\',')
+  })
+})
+
+describe('Chip sumber: kabar baik, tanpa tombol cepat Tamat', () => {
+  it('Search memakai SourceSuccessChip dan tidak lagi menampilkan teks "sumber gagal"', () => {
+    expect(searchSrc).toContain('SourceSuccessChip')
+    expect(searchSrc).toContain('sumber berhasil')
+    expect(searchSrc).toContain('bg-healthy/12')
+    expect(searchSrc).toContain('text-healthy')
+    // Label user-facing lama sudah diganti: tidak ada template "${...} sumber gagal".
+    expect(searchSrc).not.toContain('sumber gagal`')
+    expect(searchSrc).not.toContain('} sumber gagal')
+    expect(searchSrc).toContain('<span aria-hidden="true">✓</span>')
+    // Tombol cepat "Tamat" sudah dihapus, filter Completed tetap ada.
+    expect(searchSrc).not.toContain('data-tamat-chip')
+    expect(searchSrc).toContain('COMPLETED_STATUS')
   })
 })
 

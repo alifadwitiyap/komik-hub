@@ -39,6 +39,26 @@ describe('min_ch filter', () => {
     expect(urls[2]).not.toContain('min_ch')
   })
 
+  it('mengirim limit=20 eksplisit di search/catalogue/popular/latest', async () => {
+    const urls: string[] = []
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (url: string) => {
+        urls.push(url)
+        return { ok: true, json: async () => ({ items: [], has_more: false }) }
+      }),
+    )
+    await unifiedApi.search('q', 1)
+    await unifiedApi.catalogue(2)
+    await unifiedApi.popular(3)
+    await unifiedApi.latest(4)
+
+    expect(urls[0]).toContain('/unified/search?q=q&page=1&limit=20')
+    expect(urls[1]).toBe('/api/unified/catalogue?page=2&limit=20')
+    expect(urls[2]).toBe('/api/unified/popular?page=3&limit=20')
+    expect(urls[3]).toBe('/api/unified/latest?page=4&limit=20')
+  })
+
   it('memulihkan min_ch dari state pergi-pulang', () => {
     vi.stubGlobal('window', {
       sessionStorage: { getItem: () => null, setItem: () => {}, removeItem: () => {} },
